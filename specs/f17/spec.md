@@ -6,7 +6,7 @@ Fuente: tablero «Metodología Kanban Chile educate», tarjeta F17; docs/oficial
 Que el sistema crezca sin tocar el código.
 
 ## Criterios de aceptación (implementados)
-- Crear, editar, activar y desactivar opciones; se muestran las dependencias.
+- El Gestor crea y edita opciones; desactivar es solo del Administrador (CA-03). Se muestran las dependencias.
 - Desactivar no borra el historial; no hay «eliminar» y la base lo impide (PROTECT).
 - Las nuevas opciones aparecen en los formularios.
 

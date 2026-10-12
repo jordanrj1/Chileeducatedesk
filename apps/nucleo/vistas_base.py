@@ -276,7 +276,13 @@ class FichaBase(Permiso403Mixin, DetailView):
         return []
 
     def ctx_historial(self):
-        return {"cambios": cambios_historial(self.object)}
+        ctx = {"cambios": cambios_historial(self.object)}
+        etiqueta = f"{self.object._meta.app_label}.{self.object._meta.model_name}"
+        from apps.documentos.origen import MODELOS_CON_ORIGEN, origenes_de
+
+        if etiqueta in MODELOS_CON_ORIGEN and self.request.user.has_perm("documentos.view_origendato"):
+            ctx["origenes_historial"] = origenes_de(self.object)  # HI-04: de qué fuente salió el dato
+        return ctx
 
 
 class AlternarActivoBase(Permiso403Mixin, View):

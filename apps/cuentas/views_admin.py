@@ -11,7 +11,7 @@ from django.views.generic import CreateView, TemplateView, UpdateView
 
 from apps.nucleo.auditoria import registrar
 from apps.nucleo.models import Auditoria
-from apps.nucleo.vistas_base import ListaBase, Permiso403Mixin
+from apps.nucleo.vistas_base import Filtro, ListaBase, Permiso403Mixin
 
 from .forms_admin import ClaveForm, UsuarioForm
 from .roles import OPERATIVAS
@@ -216,5 +216,10 @@ class AuditoriaLista(ListaBase):
     campos_busqueda = ("usuario_nombre", "objeto", "detalle", "accion")
     columnas = [("Fecha", lambda a: a.fecha.astimezone().strftime("%d-%m-%Y %H:%M")), ("Usuario", "usuario_nombre"), ("Acción", "accion"), ("Objeto", "objeto"), ("Detalle", "detalle")]
     orden_defecto = ("-fecha", "-id")
+    filtros = [
+        Filtro("desde", "Desde", "fecha__date__gte", entrada="date"),
+        Filtro("hasta", "Hasta", "fecha__date__lte", entrada="date"),
+        Filtro("accion", "Acción", "accion", lambda: [(a, a) for a in Auditoria.objects.values_list("accion", flat=True).distinct().order_by("accion")]),
+    ]
     texto_vacio = "Sin registros de auditoría."
     paginate_by = 50

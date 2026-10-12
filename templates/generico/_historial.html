@@ -1,3 +1,7 @@
+{% if origenes_historial %}
+<div class="alert alert-light border small mb-3"><strong>Fuente de la información:</strong>
+{% for o in origenes_historial %}{{ o.get_fuente_display }}{% if o.documento %} (<a href="{{ o.documento.get_absolute_url }}">{{ o.documento }}</a>){% endif %} · {{ o.fecha|date:"d-m-Y" }} · {{ o.registrado_por|default:"sistema" }} · {{ o.get_estado_verificacion_display }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
+{% endif %}
 {% if cambios %}
 <div class="list-group">
 {% for c in cambios %}

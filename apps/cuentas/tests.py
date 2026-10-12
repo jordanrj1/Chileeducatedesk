@@ -201,3 +201,13 @@ def test_listado_de_usuarios_muestra_ultimo_ingreso(ca, gestor):
     User.objects.create_user("nunca_entro", email="ne@ejemplo.invalid", password="clave-ficticia-123")
     html = ca.get("/administracion/usuarios").content.decode()
     assert "Último ingreso" in html and "Nunca" in html
+
+
+def test_auditoria_filtra_por_fecha_y_accion(ca, gestor):
+    from datetime import date, timedelta
+
+    Client().post("/login", {"username": "gestor_prueba", "password": "mala"})
+    hoy = date.today()
+    html = ca.get(f"/administracion/auditoria?desde={hoy}&hasta={hoy}&accion=ingreso_fallido").content.decode()
+    assert "ingreso_fallido" in html
+    assert "Sin resultados" in ca.get(f"/administracion/auditoria?hasta={hoy - timedelta(days=5)}").content.decode()

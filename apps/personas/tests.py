@@ -276,3 +276,10 @@ def test_agregar_persona_con_cargo_desde_la_organizacion(cg, universidad, person
     assert "Presidenta" in html and "Agregar persona con cargo" in html
     v = persona.vinculos.get()
     assert cg.post(f"/organizaciones/{universidad.pk}/personas/{v.pk}/alternar").status_code == 404  # no hay «vigente» real: se cierra con fecha
+
+
+def test_historial_muestra_la_fuente_del_dato(cg):
+    cg.post("/personas/nueva", {"nombres": "Con Fuente"})
+    p = Persona.objects.get()
+    html = cg.get(f"/personas/{p.pk}?tab=historial").content.decode()
+    assert "Fuente de la información" in html and "Ingreso en el sistema" in html
