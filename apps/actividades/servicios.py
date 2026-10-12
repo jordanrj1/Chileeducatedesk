@@ -59,6 +59,29 @@ def programar(actividad, usuario, fecha, hora_inicio=None, hora_fin=None, lugar=
 
 
 @transaction.atomic
+def crear_serie(actividad, usuario, primera_fecha, frecuencia_dias, repeticiones, hora_inicio, hora_fin=None, lugar=None):
+    """Crea `repeticiones` actividades dentro de `actividad`, una por fecha, ya programadas. Cada una se gestiona por separado."""
+    from datetime import timedelta
+
+    if actividad.actividad_padre_id:
+        raise ReglaNegocio("La serie se crea desde la actividad principal, no desde una que ya está dentro de otra.")
+    if actividad.estado.codigo in ("cancelada", "realizada"):
+        raise ReglaNegocio("No se puede crear una serie desde una actividad cancelada o realizada.")
+    creadas = []
+    for i in range(repeticiones):
+        fecha = primera_fecha + timedelta(days=frecuencia_dias * i)
+        hija = Actividad.objects.create(
+            nombre=f"{actividad.nombre} — {fecha:%d-%m-%Y}", actividad_padre=actividad, proyecto=actividad.proyecto, tipo=actividad.tipo,
+            objetivo=actividad.objetivo, modalidad=actividad.modalidad, responsable=actividad.responsable, condiciones=actividad.condiciones,
+            estado=_estado("pendiente"), creado_por=usuario,
+        )
+        programar(hija, usuario, fecha, hora_inicio, hora_fin, lugar, actividad.modalidad)
+        creadas.append(hija)
+    registrar(usuario, "serie_creada", actividad, f"{repeticiones} actividades cada {frecuencia_dias} días desde {primera_fecha:%d-%m-%Y}")
+    return creadas
+
+
+@transaction.atomic
 def cambiar_estado(actividad, codigo, usuario, motivo=""):
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
     actual = actividad.estado.codigo

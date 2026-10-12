@@ -209,7 +209,7 @@ class PersonaFicha(FichaBase):
         docs = self.object.documentos.select_related("tipo")
         if not self.request.user.has_perm("documentos.ver_restringido"):
             docs = docs.filter(restringido=False)
-        return {"documentos": docs, "url_nuevo_doc": f"/documentos/nuevo?persona={self.object.pk}"}
+        return {"documentos": docs, "url_nuevo_doc": f"/documentos/nuevo?persona={self.object.pk}", "url_asociar_doc": f"/documentos/asociar?persona={self.object.pk}"}
 
     def ctx_origen(self):
         from apps.documentos.origen import contexto_origen

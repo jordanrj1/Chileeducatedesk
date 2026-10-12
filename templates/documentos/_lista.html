@@ -1,6 +1,6 @@
 {% if documentos %}
 <div class="table-responsive"><table class="table table-sm align-middle">
 <thead><tr><th>Documento</th><th>Tipo</th><th>Fecha</th><th></th></tr></thead>
-<tbody>{% for d in documentos %}<tr class="{% if not d.activo %}text-muted{% endif %}"><td><a href="{{ d.get_absolute_url }}">{{ d.nombre }}</a>{% if d.restringido %} <span class="badge text-bg-warning">Restringido</span>{% endif %}{% if not d.activo %} <span class="badge text-bg-secondary">Archivado</span>{% endif %}</td>
+<tbody>{% for d in documentos %}<tr class="{% if not d.activo %}text-muted{% endif %}"><td><a href="{{ d.get_absolute_url }}">{{ d.nombre }}</a>{% if d.restringido %} <span class="badge text-bg-warning">🔒 Restringido</span>{% endif %}{% if not d.activo %} <span class="badge text-bg-secondary">Archivado</span>{% endif %}{% if d.vencido %} <span class="badge text-bg-danger">Vencido</span>{% endif %}</td>
 <td>{{ d.tipo }}</td><td>{{ d.fecha|date:"d-m-Y" }}</td><td><a class="btn btn-outline-secondary btn-sm" href="{% url 'documentos:archivo' d.pk %}">Descargar</a></td></tr>{% endfor %}</tbody></table></div>
 {% else %}<p class="text-muted">Sin documentos.</p>{% endif %}

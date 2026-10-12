@@ -9,13 +9,15 @@ from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import CreateView, UpdateView
 
 from apps.nucleo.auditoria import registrar
 from apps.nucleo.models import TipoDocumento
 from apps.nucleo.vistas_base import FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo
 
-from .forms import DocumentoForm, OrigenForm
+from .forms import AsociarExistenteForm, DocumentoForm, OrigenForm
 from .models import Documento, OrigenDato
 from .origen import MODELOS_CON_ORIGEN, registrar_origen
 
@@ -38,6 +40,9 @@ class DocumentoLista(ListaBase):
         Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoDocumento)),
         Filtro("desde", "Desde", "fecha__gte", entrada="date"),
         Filtro("hasta", "Hasta", "fecha__lte", entrada="date"),
+        Filtro("persona", "Persona", "persona_id", lambda: [(str(p.pk), p.nombre_completo) for p in __import__("apps.personas.models", fromlist=["Persona"]).Persona.objects.filter(documentos__isnull=False).distinct()]),
+        Filtro("actividad", "Actividad", "actividad_id", lambda: [(str(a.pk), a.nombre) for a in __import__("apps.actividades.models", fromlist=["Actividad"]).Actividad.objects.filter(documentos__isnull=False).distinct()[:300]]),
+        Filtro("vencimiento", "Vigencia", "", lambda: [("vencidos", "Vencidos"), ("por_vencer", "Vencen en 30 días")], aplicar=lambda qs, v: _vigencia(qs, v)),
     ]
 
     def get_queryset(self):
@@ -45,6 +50,62 @@ class DocumentoLista(ListaBase):
         if not self.request.user.has_perm("documentos.ver_restringido"):
             qs = qs.filter(restringido=False)
         return qs
+
+
+def _vigencia(qs, v):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    hoy = timezone.localdate()
+    if v == "vencidos":
+        return qs.filter(fecha_vencimiento__lt=hoy)
+    if v == "por_vencer":
+        return qs.filter(fecha_vencimiento__gte=hoy, fecha_vencimiento__lte=hoy + timedelta(days=30))
+    return qs
+
+
+DESTINOS = {"actividad": ("actividades", "Actividad"), "proyecto": ("proyectos", "Proyecto"), "persona": ("personas", "Persona"), "organizacion": ("organizaciones", "Organizacion")}
+
+
+class DocumentoAsociar(Permiso403Mixin, View):
+    """[Asociar existente]: el mismo archivo queda disponible en otra ficha sin copiarlo (DO-03)."""
+
+    permission_required = "documentos.add_documento"
+
+    def _destino(self, request):
+        for campo, (app, modelo) in DESTINOS.items():
+            v = request.GET.get(campo) or request.POST.get(campo)
+            if v and v.isdigit():
+                return campo, get_object_or_404(registro.get_model(app, modelo), pk=v)
+        raise Http404
+
+    def _ctx(self, destino, form):
+        return {"form": form, "titulo": f"Asociar documento existente a {destino}", "volver_url": f"{destino.get_absolute_url()}?tab=documentos", "breadcrumb": [(str(destino), destino.get_absolute_url())]}
+
+    def get(self, request):
+        campo, destino = self._destino(request)
+        return render(request, "documentos/asociar.html", {**self._ctx(destino, AsociarExistenteForm(usuario=request.user)), "campo": campo, "destino": destino})
+
+    def post(self, request):
+        campo, destino = self._destino(request)
+        form = AsociarExistenteForm(request.POST, usuario=request.user)
+        if not form.is_valid():
+            return render(request, "documentos/asociar.html", {**self._ctx(destino, form), "campo": campo, "destino": destino}, status=400)
+        original = form.cleaned_data["documento"]
+        if Documento.objects.filter(archivo=original.archivo.name, **{campo: destino}).exists():
+            messages.info(request, "Ese documento ya estaba asociado aquí.")
+        else:
+            copia = Documento(
+                nombre=original.nombre, tipo=original.tipo, fecha=original.fecha, descripcion=original.descripcion, restringido=original.restringido,
+                folio=original.folio, emisor=original.emisor, fecha_emision=original.fecha_emision, fecha_vencimiento=original.fecha_vencimiento,
+                subido_por=request.user, **{campo: destino},
+            )
+            copia.archivo.name = original.archivo.name  # mismo archivo en disco: no se duplica
+            copia.save()
+            registrar(request.user, "documento_asociado", copia, f"desde documento {original.pk}")
+            messages.success(request, "Documento asociado. Es el mismo archivo, no una copia.")
+        return HttpResponseRedirect(f"{destino.get_absolute_url()}?tab=documentos")
 
 
 class DocumentoNuevo(Permiso403Mixin, CreateView):
@@ -163,6 +224,96 @@ class DocumentoArchivo(Permiso403Mixin, View):
         r["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{quote(nombre)}'
         r["X-Content-Type-Options"] = "nosniff"
         return r
+
+
+@method_decorator(xframe_options_sameorigin, name="dispatch")
+class DocumentoVer(Permiso403Mixin, View):
+    """Muestra el documento dentro del sistema (para transcribir). Mismos permisos que la descarga."""
+
+    permission_required = "documentos.view_documento"
+
+    def get(self, request, pk):
+        d = get_object_or_404(Documento, pk=pk)
+        if d.restringido and not request.user.has_perm("documentos.ver_restringido"):
+            raise PermissionDenied
+        if not d.visible_en_navegador:
+            raise Http404("Este tipo de archivo no se puede mostrar en el navegador.")
+        try:
+            f = d.archivo.open("rb")
+        except (FileNotFoundError, ValueError):
+            raise Http404("El archivo no está disponible en el servidor.")
+        r = FileResponse(f, content_type=mimetypes.guess_type(d.archivo.name)[0] or "application/octet-stream")
+        r["Content-Disposition"] = "inline"
+        r["X-Content-Type-Options"] = "nosniff"
+        if d.extension == "txt":
+            r["Content-Security-Policy"] = "sandbox"  # texto plano: nunca se interpreta como página
+        return r
+
+
+class Transcribir(Permiso403Mixin, View):
+    """Ingesta asistida (IG-05): el documento a un lado y el formulario al otro. El dato nuevo queda con este documento como origen."""
+
+    def has_permission(self):
+        u = self.request.user
+        return u.has_perm("documentos.view_documento") and (u.has_perm("personas.add_persona") or u.has_perm("organizaciones.add_organizacion"))
+
+    def _documento(self, request, pk):
+        d = get_object_or_404(Documento, pk=pk)
+        if d.restringido and not request.user.has_perm("documentos.ver_restringido"):
+            raise PermissionDenied
+        return d
+
+    def _form(self, tipo, data=None):
+        from apps.organizaciones.forms import OrganizacionForm
+        from apps.personas.forms import PersonaNuevaForm
+
+        return (OrganizacionForm if tipo == "organizacion" else PersonaNuevaForm)(data)
+
+    def _ctx(self, d, tipo, form, candidatos=None):
+        return {"documento": d, "tipo": tipo, "form": form, "candidatos": candidatos, "titulo": f"Transcribir: {d.nombre}", "breadcrumb": [("Documentos", "/documentos"), (d.nombre, d.get_absolute_url())]}
+
+    def get(self, request, pk):
+        d = self._documento(request, pk)
+        tipo = "organizacion" if request.GET.get("registro") == "organizacion" else "persona"
+        return render(request, "documentos/transcribir.html", self._ctx(d, tipo, self._form(tipo)))
+
+    def post(self, request, pk):
+        from django.db import transaction
+
+        d = self._documento(request, pk)
+        tipo = "organizacion" if request.POST.get("registro") == "organizacion" else "persona"
+        if not request.user.has_perm("organizaciones.add_organizacion" if tipo == "organizacion" else "personas.add_persona"):
+            raise PermissionDenied
+        form = self._form(tipo, request.POST)
+        if not form.is_valid():
+            return render(request, "documentos/transcribir.html", self._ctx(d, tipo, form), status=400)
+        if tipo == "persona" and not request.POST.get("confirmar_duplicado"):
+            from apps.personas.duplicados import candidatos
+
+            c = form.cleaned_data
+            rut = c.get("rut")
+            cands = candidatos(c["nombres"], c.get("apellido_paterno", ""), c.get("apellido_materno", ""), rut[0] if rut else None, c.get("correo", ""), c.get("telefono", ""))
+            if cands:
+                return render(request, "documentos/transcribir.html", self._ctx(d, tipo, form, cands))
+        with transaction.atomic():
+            obj = form.save(commit=False)
+            obj.creado_por = request.user
+            if tipo == "persona":
+                from apps.nucleo.models import EstadoRegistro, TipoContacto
+                from apps.personas.models import Contacto
+
+                obj.estado_registro = EstadoRegistro.objects.filter(codigo="por_verificar").first()
+                obj.save()
+                c = form.cleaned_data
+                if c.get("correo"):
+                    Contacto.objects.create(persona=obj, tipo=TipoContacto.objects.get(codigo="correo"), valor=c["correo"], principal=True)
+                if c.get("telefono"):
+                    Contacto.objects.create(persona=obj, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=c["telefono"])
+            else:
+                obj.save()
+            registrar_origen(obj, request.user, fuente="documento", documento=d, detalle="Transcrito desde el documento", verificacion="por_revisar")
+        messages.success(request, f"«{obj}» registrado con este documento como origen. Puedes seguir transcribiendo.")
+        return HttpResponseRedirect(f"/documentos/{d.pk}/transcribir?registro={tipo}")
 
 
 class OrigenNuevo(Permiso403Mixin, CreateView):

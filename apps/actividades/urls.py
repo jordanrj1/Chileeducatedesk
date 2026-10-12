@@ -14,6 +14,7 @@ urlpatterns = [
     path("actividades/<int:pk>", views.ActividadFicha.as_view(), name="ficha"),
     path("actividades/<int:pk>/editar", views.ActividadEditar.as_view(), name="editar"),
     path("actividades/<int:pk>/programar", views.ProgramarVista.as_view(), name="programar"),
+    path("actividades/<int:pk>/serie", views.SerieVista.as_view(), name="serie"),
     path("actividades/<int:pk>/confirmar", views.ConfirmarVista.as_view(), name="confirmar"),
     path("actividades/<int:pk>/estado", views.EstadoVista.as_view(), name="estado"),
     path("actividades/<int:pk>/resultados", views.ResultadosVista.as_view(), name="resultados"),

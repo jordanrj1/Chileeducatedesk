@@ -45,6 +45,7 @@ class Documento(models.Model):
     folio = models.CharField(max_length=60, blank=True)
     emisor = models.CharField(max_length=150, blank=True)
     fecha_emision = models.DateField("fecha de emisión", null=True, blank=True)
+    fecha_vencimiento = models.DateField("vence el", null=True, blank=True, help_text="Para certificados y documentos con vigencia (DO-06).")
     activo = models.BooleanField(default=True)
     subido_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     subido_en = models.DateTimeField(auto_now_add=True)
@@ -69,6 +70,14 @@ class Documento(models.Model):
 
     def get_absolute_url(self):
         return reverse("documentos:ficha", args=[self.pk])
+
+    @property
+    def vencido(self):
+        return bool(self.fecha_vencimiento and self.fecha_vencimiento < timezone.localdate())
+
+    @property
+    def visible_en_navegador(self):
+        return self.extension in ("pdf", "png", "jpg", "jpeg", "txt")
 
     @property
     def extension(self):

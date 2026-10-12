@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
   if (!el || !window.FullCalendar) return;
   var estado = document.getElementById("f-estado");
   var historicas = document.getElementById("f-historicas");
+  var extras = ["zona", "responsable", "organizacion"].map(function (n) { return [n, document.getElementById("f-" + n)]; });
   var cal = new FullCalendar.Calendar(el, {
     locale: "es", firstDay: 1, initialView: window.innerWidth < 768 ? "listWeek" : "dayGridMonth",
     height: "auto", navLinks: true, nowIndicator: true,
@@ -12,6 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var q = new URLSearchParams({ start: info.startStr, end: info.endStr });
       if (estado.value) q.set("estado", estado.value);
       if (historicas.checked) q.set("historicas", "1");
+      extras.forEach(function (par) { if (par[1] && par[1].value) q.set(par[0], par[1].value); });
       fetch(el.dataset.eventos + "?" + q.toString(), { credentials: "same-origin" })
         .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(ok).catch(fail);
     },
@@ -20,4 +22,5 @@ document.addEventListener("DOMContentLoaded", function () {
   cal.render();
   estado.addEventListener("change", function () { cal.refetchEvents(); });
   historicas.addEventListener("change", function () { cal.refetchEvents(); });
+  extras.forEach(function (par) { if (par[1]) par[1].addEventListener("change", function () { cal.refetchEvents(); }); });
 });

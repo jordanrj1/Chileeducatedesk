@@ -577,3 +577,62 @@ def test_filtros_por_responsable_e_institucion(cg, crear_actividad, crear_person
     assert "Con responsable" in html and "Con institución" not in html
     html = cg.get(f"/actividades?institucion={universidad.pk}").content.decode()
     assert "Con institución" in html and "Con responsable" not in html
+
+
+# --- Requerimientos por módulo (AG, VA) ---------------------------------------------------------------------
+def test_programar_con_duracion(cg, actividad, lugar):
+    r = cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": str(FUTURO), "hora_inicio": "18:00", "duracion": "90", "lugar": lugar.pk})
+    ag = actividad.agenda_vigente
+    assert r.status_code == 302 and ag.hora_fin == time(19, 30) and ag.duracion_minutos == 90
+    r = cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": str(FUTURO), "hora_inicio": "23:30", "duracion": "60", "lugar": lugar.pk, "motivo": "x"})
+    assert r.status_code == 400  # terminaría al día siguiente
+    r = cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": str(FUTURO), "hora_inicio": "18:00", "hora_fin": "19:00", "duracion": "90", "lugar": lugar.pk, "motivo": "x"})
+    assert r.status_code == 400  # duración y término no coinciden
+
+
+def test_crear_serie_semanal(cg, actividad, lugar):
+    r = cg.post(f"/actividades/{actividad.pk}/serie", {"primera_fecha": str(FUTURO), "frecuencia": "7", "repeticiones": "4", "hora_inicio": "18:00", "hora_fin": "19:00", "lugar": lugar.pk})
+    hijas = list(actividad.hijas.order_by("agendas__fecha"))
+    assert r.status_code == 302 and len(hijas) == 4
+    fechas = [h.agenda_vigente.fecha for h in hijas]
+    assert fechas == [FUTURO + timedelta(days=7 * i) for i in range(4)]
+    assert all(h.estado.codigo == "planificada" and h.responsable_id == actividad.responsable_id for h in hijas)
+    from apps.nucleo.models import Auditoria
+
+    assert Auditoria.objects.filter(accion="serie_creada").exists()
+
+
+def test_serie_valida_y_no_desde_una_hija(cg, actividad, crear_actividad, lugar):
+    assert cg.post(f"/actividades/{actividad.pk}/serie", {"primera_fecha": str(FUTURO), "frecuencia": "7", "repeticiones": "99", "hora_inicio": "18:00"}).status_code == 400
+    hija = crear_actividad("Hija", actividad_padre=actividad)
+    r = cg.post(f"/actividades/{hija.pk}/serie", {"primera_fecha": str(FUTURO), "frecuencia": "7", "repeticiones": "2", "hora_inicio": "18:00"})
+    assert r.status_code == 400 and not hija.hijas.exists()
+
+
+def test_calendario_filtra_por_zona_responsable_y_organizacion(cg, crear_actividad, crear_persona, lugar, gestor, universidad):
+    from apps.actividades.models import ActividadOrganizacion
+
+    resp = crear_persona("Resp")
+    a = crear_actividad("Con todo", responsable=resp)
+    b = crear_actividad("Sin nada")
+    programar(a, gestor, lugar)
+    programar(b, gestor, None)
+    ActividadOrganizacion.objects.create(actividad=a, organizacion=universidad)
+    rango = f"start={FUTURO - timedelta(days=2)}&end={FUTURO + timedelta(days=2)}"
+    for filtro in (f"zona={lugar.direccion.comuna_id}", f"responsable={resp.pk}", f"organizacion={universidad.pk}"):
+        titulos = [e["title"] for e in cg.get(f"/calendario/eventos?{rango}&{filtro}").json()]
+        assert titulos == ["Con todo"], filtro
+    html = cg.get("/calendario").content.decode()
+    assert 'id="f-zona"' in html and 'id="f-responsable"' in html and 'id="f-organizacion"' in html
+
+
+def test_confirmar_muestra_lo_compatible(cg, actividad, lugar, gestor, crear_persona, rol):
+    actividad.responsable = crear_persona("Resp")
+    actividad.save()
+    programar(actividad, gestor, lugar)
+    participar(actividad, crear_persona(), rol)
+    html = cg.get(f"/actividades/{actividad.pk}/confirmar").content.decode()
+    assert "✓" in html and "Capacidad compatible: 1 de 20" in html and "disponible en ese horario" in html
+    assert "✓ Sin problemas detectados" in html
+    codigos = {p.codigo for p in revisar(actividad) if p.nivel == "ok"}
+    assert {"responsable_ok", "agenda_ok", "lugar_ok", "capacidad_ok", "horarios_ok"} <= codigos

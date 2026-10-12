@@ -23,7 +23,7 @@ from apps.territorio.models import Comuna
 
 from . import servicios
 from .forms import (
-    ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
+    SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
 )
 from .models import Actividad, AgendaActividad, Participacion
 from .reglas import TRANSICIONES, ReglaNegocio, revisar
@@ -339,6 +339,33 @@ class ProgramarVista(_AccionActividad):
         return render(request, "actividades/programar.html", self._contexto(a, form), status=400)
 
 
+class SerieVista(_AccionActividad):
+    permission_required = "actividades.reprogramar_actividad"
+
+    def _ctx(self, a, form):
+        return {"form": form, "titulo": f"Crear serie: {a.nombre}", "volver_url": f"{a.get_absolute_url()}?tab=info", "breadcrumb": [("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())]}
+
+    def get(self, request, pk):
+        a = self.actividad(pk)
+        v = a.agenda_vigente
+        ini = {"hora_inicio": v.hora_inicio, "hora_fin": v.hora_fin, "lugar": v.lugar_id, "primera_fecha": v.fecha} if v else {}
+        return render(request, "generico/formulario.html", self._ctx(a, SerieForm(initial=ini)))
+
+    def post(self, request, pk):
+        a = self.actividad(pk)
+        form = SerieForm(request.POST)
+        if form.is_valid():
+            d = form.cleaned_data
+            try:
+                creadas = servicios.crear_serie(a, request.user, d["primera_fecha"], d["frecuencia"], d["repeticiones"], d["hora_inicio"], d.get("hora_fin"), d.get("lugar"))
+            except ReglaNegocio as e:
+                _avisar(request, e)
+            else:
+                messages.success(request, f"Se crearon {len(creadas)} actividades programadas. Cada una se confirma y gestiona por separado.")
+                return self.volver(a, "info")
+        return render(request, "generico/formulario.html", self._ctx(a, form), status=400)
+
+
 class ConfirmarVista(_AccionActividad):
     """Muestra la revisión de compatibilidad y permite confirmar."""
 
@@ -349,10 +376,11 @@ class ConfirmarVista(_AccionActividad):
 
         problemas = revisar(a)
         niveles = {p.nivel for p in problemas}
+        hay_problemas = bool(niveles - {"ok", "info"})
         return {
             "actividad": a, "problemas": problemas, "titulo": f"Confirmar: {a.nombre}", "breadcrumb": [("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())],
             "hay_bloqueantes": "bloqueante" in niveles, "hay_criticos": "critico" in niveles, "hay_advertencias": "advertencia" in niveles,
-            "critico_permitido": conflicto_critico_permitido(), "volver_url": a.get_absolute_url(),
+            "critico_permitido": conflicto_critico_permitido(), "volver_url": a.get_absolute_url(), "hay_problemas": hay_problemas,
             "puede_confirmar": "confirmada" in TRANSICIONES.get(a.estado.codigo, set()),
         }
 
@@ -598,7 +626,11 @@ class Calendario(Permiso403Mixin, TemplateView):
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo="Calendario", estados=EstadoActividad.objects.all(), colores=COLORES)
+        ctx.update(
+            titulo="Calendario", estados=EstadoActividad.objects.all(), colores=COLORES, comunas=Comuna.objects.all(),
+            responsables=Persona.objects.filter(actividades_a_cargo__isnull=False).distinct(),
+            organizaciones=Organizacion.objects.filter(activo=True, actividades__isnull=False).distinct(),
+        )
         return ctx
 
 
@@ -618,6 +650,13 @@ class CalendarioEventos(Permiso403Mixin, View):
             qs = qs.filter(actividad__estado__codigo=request.GET["estado"])
         if request.GET.get("lugar", "").isdigit():
             qs = qs.filter(lugar_id=request.GET["lugar"])
+        if request.GET.get("zona", "").isdigit():
+            z = request.GET["zona"]
+            qs = qs.filter(Q(lugar__direccion__comuna_id=z) | Q(actividad__territorios__vigente=True, actividad__territorios__comuna_id=z)).distinct()
+        if request.GET.get("responsable", "").isdigit():
+            qs = qs.filter(actividad__responsable_id=request.GET["responsable"])
+        if request.GET.get("organizacion", "").isdigit():
+            qs = qs.filter(actividad__organizaciones__organizacion_id=request.GET["organizacion"]).distinct()
         eventos = []
         for ag in qs[:1000]:
             codigo = ag.actividad.estado.codigo

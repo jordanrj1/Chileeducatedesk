@@ -41,9 +41,40 @@ class ProgramarForm(BootstrapMixin, forms.Form):
     fecha = forms.DateField(widget=forms.DateInput)
     hora_inicio = forms.TimeField(label="Hora de inicio", widget=forms.TimeInput)
     hora_fin = forms.TimeField(label="Hora de término", widget=forms.TimeInput, required=False)
+    duracion = forms.IntegerField(label="o duración (minutos)", required=False, min_value=1, max_value=24 * 60, help_text="Si indicas la duración, se calcula la hora de término.")
     lugar = forms.ModelChoiceField(Lugar.objects.filter(activo=True), required=False)
     modalidad = forms.ModelChoiceField(Modalidad.objects.filter(activo=True), required=False)
     motivo = forms.CharField(label="Motivo del cambio", max_length=250, required=False, help_text="Obligatorio al reprogramar.")
+
+    def clean(self):
+        d = super().clean()
+        ini, fin, dur = d.get("hora_inicio"), d.get("hora_fin"), d.get("duracion")
+        if ini and dur and not fin:
+            minutos = ini.hour * 60 + ini.minute + dur
+            if minutos >= 24 * 60:
+                self.add_error("duracion", "La actividad no puede terminar al día siguiente.")
+            else:
+                from datetime import time
+
+                d["hora_fin"] = time(minutos // 60, minutos % 60)
+        elif ini and fin and dur:
+            if (fin.hour * 60 + fin.minute) - (ini.hour * 60 + ini.minute) != dur:
+                self.add_error("duracion", "No coincide con la hora de término; indica solo una de las dos.")
+        if ini and d.get("hora_fin") and d["hora_fin"] <= ini:
+            self.add_error("hora_fin", "La hora de término debe ser posterior a la de inicio.")
+        return d
+
+
+class SerieForm(BootstrapMixin, forms.Form):
+    """Crear una serie de actividades repetidas (AG-07 [P]): cada repetición es una actividad propia dentro de la original."""
+
+    FRECUENCIAS = [(7, "Cada semana"), (14, "Cada dos semanas"), (1, "Cada día"), (28, "Cada cuatro semanas")]
+    primera_fecha = forms.DateField(widget=forms.DateInput)
+    frecuencia = forms.TypedChoiceField(choices=FRECUENCIAS, coerce=int, initial=7)
+    repeticiones = forms.IntegerField(min_value=2, max_value=52, initial=4, help_text="Entre 2 y 52.")
+    hora_inicio = forms.TimeField(widget=forms.TimeInput)
+    hora_fin = forms.TimeField(widget=forms.TimeInput, required=False)
+    lugar = forms.ModelChoiceField(Lugar.objects.filter(activo=True), required=False)
 
     def clean(self):
         d = super().clean()
