@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">{{ titulo }}</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4 mb-3">{{ titulo }}</h1>
+<form method="post" enctype="multipart/form-data" data-aviso-cambios novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+  {% block campos %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endblock %}
+  {% block extra_form %}{% endblock %}
+  <div class="d-flex gap-2 mt-3">
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{{ volver_url }}" class="btn btn-outline-secondary volver">← Volver</a>
+  </div>
+</form>
+{% endblock %}

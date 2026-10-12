@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block titulo %}Administración{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Administración</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">Administración</h1>
+<div class="list-group" style="max-width: 32rem;">
+  {% if perms.auth.view_user %}<a class="list-group-item list-group-item-action" href="/administracion/usuarios">Usuarios</a>{% endif %}
+  {% if perms.auth.view_group %}<a class="list-group-item list-group-item-action" href="/administracion/roles">Roles y permisos</a>{% endif %}
+  <a class="list-group-item list-group-item-action" href="/administracion/catalogos/">Catálogos</a>
+  {% if perms.nucleo.view_auditoria %}<a class="list-group-item list-group-item-action" href="/administracion/auditoria">Auditoría</a>{% endif %}
+</div>
+{% endblock %}

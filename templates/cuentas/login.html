@@ -4,8 +4,8 @@
 <div class="mx-auto" style="max-width: 24rem;">
   <h1 class="h4 mb-3">Fundación Chile Edúcate</h1>
   <form method="post" novalidate>{% csrf_token %}
-    {% if form.errors %}<div class="alert alert-danger" role="alert">Usuario o contraseña incorrectos.</div>{% endif %}
-    <div class="mb-3"><label class="form-label" for="id_username">Usuario</label>
+    {% if form.errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors.0 }}</div>{% endif %}
+    <div class="mb-3"><label class="form-label" for="id_username">Usuario o correo</label>
       <input class="form-control" id="id_username" name="username" autofocus required autocomplete="username"></div>
     <div class="mb-3"><label class="form-label" for="id_password">Contraseña</label>
       <input class="form-control" id="id_password" type="password" name="password" required autocomplete="current-password"></div>

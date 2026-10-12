@@ -13,8 +13,8 @@
   <nav class="fche-menu bg-dark text-white p-3" aria-label="Menú principal">
     <a href="{% url 'dashboard' %}" class="d-block h5 text-white text-decoration-none mb-3">FCHE</a>
     <ul class="nav flex-md-column">
-      {% for clave, etiqueta, ruta in menu %}
-      <li class="nav-item"><a class="nav-link text-white-50 {% if request.path == ruta %}active text-white{% endif %}" href="{{ ruta }}">{{ etiqueta }}</a></li>
+      {% for etiqueta, ruta, activa in menu %}
+      <li class="nav-item"><a class="nav-link text-white-50 {% if activa %}active text-white{% endif %}" href="{{ ruta }}">{{ etiqueta }}</a></li>
       {% endfor %}
     </ul>
   </nav>
@@ -23,7 +23,7 @@
       <form class="flex-grow-1" role="search" action="{% url 'buscar' %}" method="get">
         <input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Buscar personas, organizaciones, actividades, lugares, documentos…" aria-label="Buscador global">
       </form>
-      <span class="text-muted small">{{ user.get_username }}</span>
+      <a class="text-muted small text-decoration-none" href="/mi-cuenta">{{ user.get_username }}</a>
       <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm" type="submit">Cerrar sesión</button></form>
     </header>
     <main class="p-3 flex-grow-1">
