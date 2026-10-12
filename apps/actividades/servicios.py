@@ -22,7 +22,7 @@ def programar(actividad, usuario, fecha, hora_inicio=None, hora_fin=None, lugar=
     """Crea la primera programación o, si ya existe, una nueva versión (reprogramar). La anterior se conserva."""
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
     codigo = actividad.estado.codigo
-    if codigo in ("cancelada", "realizada", "cerrada"):
+    if codigo in ("cancelada", "realizada"):
         raise ReglaNegocio(f"No se puede programar una actividad {actividad.estado.nombre.lower()}.")
     if hora_inicio and hora_fin and hora_fin <= hora_inicio:
         raise ReglaNegocio("La hora de término debe ser posterior a la de inicio.")
@@ -59,11 +59,34 @@ def programar(actividad, usuario, fecha, hora_inicio=None, hora_fin=None, lugar=
 
 
 @transaction.atomic
+def crear_serie(actividad, usuario, primera_fecha, frecuencia_dias, repeticiones, hora_inicio, hora_fin=None, lugar=None):
+    """Crea `repeticiones` actividades dentro de `actividad`, una por fecha, ya programadas. Cada una se gestiona por separado."""
+    from datetime import timedelta
+
+    if actividad.actividad_padre_id:
+        raise ReglaNegocio("La serie se crea desde la actividad principal, no desde una que ya está dentro de otra.")
+    if actividad.estado.codigo in ("cancelada", "realizada"):
+        raise ReglaNegocio("No se puede crear una serie desde una actividad cancelada o realizada.")
+    creadas = []
+    for i in range(repeticiones):
+        fecha = primera_fecha + timedelta(days=frecuencia_dias * i)
+        hija = Actividad.objects.create(
+            nombre=f"{actividad.nombre} — {fecha:%d-%m-%Y}", actividad_padre=actividad, proyecto=actividad.proyecto, tipo=actividad.tipo,
+            objetivo=actividad.objetivo, modalidad=actividad.modalidad, responsable=actividad.responsable, condiciones=actividad.condiciones,
+            estado=_estado("pendiente"), creado_por=usuario,
+        )
+        programar(hija, usuario, fecha, hora_inicio, hora_fin, lugar, actividad.modalidad)
+        creadas.append(hija)
+    registrar(usuario, "serie_creada", actividad, f"{repeticiones} actividades cada {frecuencia_dias} días desde {primera_fecha:%d-%m-%Y}")
+    return creadas
+
+
+@transaction.atomic
 def cambiar_estado(actividad, codigo, usuario, motivo=""):
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
     actual = actividad.estado.codigo
-    if codigo in ("confirmada", "cerrada"):
-        raise ReglaNegocio("Usa la acción específica (confirmar / cerrar).")
+    if codigo in ("confirmada", "realizada"):
+        raise ReglaNegocio("Usa la acción específica (Confirmar / Finalizar actividad).")
     if codigo not in TRANSICIONES.get(actual, set()):
         raise ReglaNegocio(f"No se puede pasar de «{actividad.estado.nombre}» a «{_estado(codigo).nombre}».")
     if codigo in MOTIVO_OBLIGATORIO and not motivo.strip():
@@ -106,11 +129,11 @@ def confirmar(actividad, usuario, acepta_advertencias=False, motivo_conflicto=""
 
 
 @transaction.atomic
-def cerrar(actividad, usuario):
-    """Finalizar: exige asistencia (o «sin registro» explícito) y resultado."""
+def finalizar(actividad, usuario):
+    """«Finalizar actividad»: exige asistencia (o «sin registro» explícito) y resultado. Queda *realizada* y de solo lectura."""
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
-    if actividad.estado.codigo != "realizada":
-        raise ReglaNegocio("Solo se puede cerrar una actividad realizada.")
+    if "realizada" not in TRANSICIONES.get(actividad.estado.codigo, set()):
+        raise ReglaNegocio(f"No se puede finalizar una actividad {actividad.estado.nombre.lower()}.")
     faltan = []
     registrada = actividad.participaciones.filter(asistencia__isnull=False).exists()
     if not registrada and not actividad.asistencia_sin_registro:
@@ -119,27 +142,27 @@ def cerrar(actividad, usuario):
         faltan.append("Falta registrar el resultado.")
     if faltan:
         raise ReglaNegocio(*faltan)
-    actividad.estado = _estado("cerrada")
-    actividad.cerrada_en = timezone.now()
-    actividad.cerrada_por = usuario
+    actividad.estado = _estado("realizada")
+    actividad.finalizada_en = timezone.now()
+    actividad.finalizada_por = usuario
     actividad.save()
     _sincronizar_estado_agenda(actividad)
-    registrar(usuario, "cerrada", actividad)
+    registrar(usuario, "finalizada", actividad)
     return actividad
 
 
 @transaction.atomic
 def reabrir(actividad, usuario, motivo):
-    """Corrección excepcional [V#4]: solo con el permiso `reabrir_actividad`, que ningún rol tiene por defecto."""
+    """Corrección excepcional [V#4]: solo con el permiso `reabrir_actividad`, que ningún rol tiene por defecto. Vuelve a «confirmada»."""
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
-    if actividad.estado.codigo != "cerrada":
-        raise ReglaNegocio("La actividad no está cerrada.")
+    if actividad.estado.codigo != "realizada":
+        raise ReglaNegocio("La actividad no está finalizada.")
     if not motivo.strip():
         raise ReglaNegocio("Indica el motivo para reabrir.")
-    actividad.estado = _estado("realizada")
+    actividad.estado = _estado("confirmada")
     actividad.motivo_estado = motivo.strip()[:250]
-    actividad.cerrada_en = None
-    actividad.cerrada_por = None
+    actividad.finalizada_en = None
+    actividad.finalizada_por = None
     actividad.save()
     _sincronizar_estado_agenda(actividad)
     registrar(usuario, "reabierta", actividad, motivo)

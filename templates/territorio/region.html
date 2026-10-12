@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titulo %}{{ region.nombre }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">{{ region.nombre }}</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">{{ region.nombre }}</h1>
+<div class="row g-3">{% for p in provincias %}
+  <div class="col-12 col-md-6 col-lg-4"><div class="card h-100"><div class="card-header"><strong>Provincia de {{ p.nombre }}</strong></div>
+  <ul class="list-group list-group-flush">{% for c in p.comunas.all %}<li class="list-group-item"><a href="{{ c.get_absolute_url }}">{{ c.nombre }}</a></li>{% empty %}<li class="list-group-item text-muted">Sin comunas.</li>{% endfor %}</ul></div></div>
+{% endfor %}</div>
+<a href="/territorio" class="btn btn-outline-secondary btn-sm mt-3 volver">← Volver</a>
+{% endblock %}

@@ -1,7 +1,7 @@
 from apps.actividades.models import Participacion
 from apps.nucleo.models import EstadoParticipacion
 
-ESTADO_PARTICIPACION = {"pendiente": "invitado", "sin_respuesta": "invitado", "aceptada": "confirmado", "rechazada": "rechazo"}
+ESTADO_PARTICIPACION = {"enviada": "invitado", "sin_respuesta": "invitado", "respondio": "interesado", "aceptada": "confirmado", "rechazada": "rechazo"}
 
 
 def sincronizar_invitacion(inv, usuario=None):
@@ -10,7 +10,7 @@ def sincronizar_invitacion(inv, usuario=None):
     p, creada = Participacion.objects.get_or_create(
         actividad=inv.actividad, persona=inv.persona, rol=inv.rol, defaults={"estado": estado, "creado_por": usuario}
     )
-    if not creada and p.estado_id != estado.pk and not (inv.estado in ("pendiente", "sin_respuesta") and p.estado.codigo not in ("invitado",)):
+    if not creada and p.estado_id != estado.pk and not (inv.estado in ("enviada", "sin_respuesta") and p.estado.codigo not in ("invitado",)):
         p.estado = estado
         p.save()
     return p

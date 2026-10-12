@@ -103,7 +103,7 @@ def test_listado_de_tareas_vencidas(cg):
 
 def test_invitacion_se_refleja_en_la_participacion(cg, actividad, crear_persona, rol):
     p = crear_persona("Ana")
-    datos = {"persona": p.pk, "actividad": actividad.pk, "rol": rol("voluntario").pk, "fecha": "2026-10-01", "estado": "pendiente"}
+    datos = {"persona": p.pk, "actividad": actividad.pk, "rol": rol("voluntario").pk, "fecha": "2026-10-01", "estado": "enviada"}
     cg.post("/invitaciones/nueva", datos)
     i = Invitacion.objects.get()
     part = actividad.participaciones.get()
@@ -123,9 +123,9 @@ def test_invitacion_respondida_requiere_fecha(cg, actividad, crear_persona, rol)
 
 
 def test_colaboracion_de_organizacion(cg, actividad, universidad):
-    r = cg.post("/colaboraciones/nueva", {"organizacion": universidad.pk, "actividad": actividad.pk, "tipo_apoyo": TipoIntervencion.objects.get(codigo="facilita_espacio").pk, "estado": "acordada", "resultado": "Presta la sala"})
+    r = cg.post("/colaboraciones/nueva", {"organizacion": universidad.pk, "actividad": actividad.pk, "tipo_apoyo": TipoIntervencion.objects.get(codigo="facilita_espacio").pk, "estado": "aceptada", "resultado": "Presta la sala"})
     c = Colaboracion.objects.get()
-    assert r.status_code == 302 and c.estado == "acordada"
+    assert r.status_code == 302 and c.estado == "aceptada"
     assert "Presta la sala" in cg.get(c.get_absolute_url()).content.decode()
     assert "Universidad Ficticia" in cg.get(f"/actividades/{actividad.pk}?tab=coordinacion").content.decode()
 
@@ -146,3 +146,28 @@ def test_permisos_de_coordinacion(ca, cs, cg):
     assert ca.get("/interacciones/nueva").status_code == 403
     assert cs.get("/tareas").status_code == 403
     assert cg.get("/tareas/exportar").status_code == 200
+
+
+
+def test_estados_de_invitacion_segun_el_documento(cg, actividad, crear_persona, rol):
+    assert [e for e, _ in Invitacion.ESTADOS] == ["enviada", "respondio", "aceptada", "rechazada", "sin_respuesta"]
+    p = crear_persona("Rita")
+    datos = {"persona": p.pk, "actividad": actividad.pk, "rol": rol("voluntario").pk, "fecha": "2026-10-01", "estado": "enviada"}
+    cg.post("/invitaciones/nueva", datos)
+    i = Invitacion.objects.get()
+    assert cg.post(f"/invitaciones/{i.pk}/editar", {**datos, "estado": "respondio"}).status_code == 200  # falta la fecha de respuesta
+    cg.post(f"/invitaciones/{i.pk}/editar", {**datos, "estado": "respondio", "respuesta": "Lo verá", "fecha_respuesta": "2026-10-02"})
+    assert actividad.participaciones.get().estado.codigo == "interesado"
+
+
+def test_solicitud_de_apoyo_en_la_coordinacion(cg, actividad, universidad):
+    html = cg.get(f"/actividades/{actividad.pk}?tab=coordinacion").content.decode()
+    assert "+ Solicitud de apoyo" in html and "Solicitudes de apoyo" in html
+
+
+def test_registrar_interaccion_desde_las_fichas(cg, persona, universidad, actividad):
+    for ficha, param in ((persona, "persona"), (universidad, "organizacion"), (actividad, "actividad")):
+        html = cg.get(ficha.get_absolute_url()).content.decode()
+        assert f"/interacciones/nueva?{param}={ficha.pk}" in html, param
+    llamada(cg, persona=persona.pk, resultado="Contestó y confirmó")
+    assert "Contestó y confirmó" in cg.get(f"/personas/{persona.pk}?tab=interacciones").content.decode()

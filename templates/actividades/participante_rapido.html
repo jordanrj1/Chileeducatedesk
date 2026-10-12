@@ -1,5 +1,5 @@
 {% extends "generico/formulario.html" %}
-{% block extra_form %}
+{% block extra_form %}{% if llego %}<input type="hidden" name="llego" value="1"><p class="small text-muted mt-2">Quedará marcada como asistente.</p>{% endif %}
 {% if candidatos %}
 <div class="alert alert-warning mt-3" role="alert">
   <strong>Esta persona podría ya existir.</strong> Elige una o confirma que es otra:

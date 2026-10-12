@@ -144,3 +144,98 @@ def test_origen_requiere_permiso(ca, cs, persona):
 def test_registrar_origen_helper(persona, gestor):
     registrar_origen(persona, gestor, fuente="llamado", detalle="Llamó el 10-10")
     assert origenes_de(persona).get().get_fuente_display() == "Llamado"
+
+
+# --- Requerimientos por módulo (DO, IG-05) -----------------------------------------------------------
+def test_vencimiento_y_filtros(cg, actividad, persona):
+    from datetime import date, timedelta
+
+    hoy = date.today()
+    subir(cg, actividad, nombre="Certificado vencido", fecha_vencimiento=str(hoy - timedelta(days=1)))
+    subir(cg, actividad, nombre="Certificado por vencer", fecha_vencimiento=str(hoy + timedelta(days=10)))
+    subir(cg, persona=persona.pk, nombre="De la persona")
+    assert Documento.objects.get(nombre="Certificado vencido").vencido
+    html = cg.get("/documentos?vencimiento=vencidos").content.decode()
+    assert "Certificado vencido" in html and "por vencer" not in html and "Vencido" in html
+    assert "Certificado por vencer" in cg.get("/documentos?vencimiento=por_vencer").content.decode()
+    html = cg.get(f"/documentos?persona={persona.pk}").content.decode()
+    assert "De la persona" in html and "Certificado vencido" not in html
+    assert "De la persona" not in cg.get(f"/documentos?actividad={actividad.pk}").content.decode()
+
+
+def test_asociar_existente_sin_duplicar_el_archivo(cg, actividad, persona):
+    subir(cg, actividad, nombre="Ficha de voluntario")
+    original = Documento.objects.get()
+    assert "Asociar existente" in cg.get(f"/personas/{persona.pk}?tab=documentos").content.decode()
+    r = cg.post("/documentos/asociar", {"persona": persona.pk, "documento": original.pk})
+    assert r.status_code == 302
+    copia = Documento.objects.exclude(pk=original.pk).get()
+    assert copia.persona == persona and copia.archivo.name == original.archivo.name
+    archivos = list((original.archivo.storage.path(original.archivo.name).rsplit("/", 1)[0],))
+    import os
+
+    assert len(os.listdir(archivos[0])) == 1  # un solo archivo en disco
+    cg.post("/documentos/asociar", {"persona": persona.pk, "documento": original.pk})
+    assert Documento.objects.count() == 2  # no se asocia dos veces
+    assert cg.get("/documentos/asociar").status_code == 404
+
+
+def test_asociar_no_ofrece_restringidos_sin_permiso(cg, actividad, persona, administrador):
+    from django.contrib.auth.models import Permission
+
+    subir(cg, actividad, nombre="Secreto", restringido="on")
+    administrador.groups.first().permissions.remove(Permission.objects.get(codename="ver_restringido"))
+    administrador.groups.first().permissions.add(Permission.objects.get(codename="add_documento"))
+    c = Client()
+    c.force_login(type(administrador).objects.get(pk=administrador.pk))
+    assert "Secreto" not in c.get(f"/documentos/asociar?persona={persona.pk}").content.decode()
+
+
+def test_ver_documento_dentro_del_sistema(cg, actividad):
+    subir(cg, actividad)
+    d = Documento.objects.get()
+    r = cg.get(f"/documentos/{d.pk}/ver")
+    assert r.status_code == 200 and r["Content-Disposition"] == "inline" and r["X-Frame-Options"] == "SAMEORIGIN"
+    subir(cg, actividad, nombre="Planilla", archivo=archivo("lista.xlsx", b"PK ficticio"))
+    xl = Documento.objects.get(nombre="Planilla")
+    assert cg.get(f"/documentos/{xl.pk}/ver").status_code == 404
+
+
+def test_transcribir_persona_desde_un_documento(cg, actividad):
+    from apps.documentos.origen import origenes_de
+    from apps.personas.models import Persona
+
+    subir(cg, actividad, nombre="Minuta con asistentes")
+    d = Documento.objects.get()
+    html = cg.get(f"/documentos/{d.pk}/transcribir").content.decode()
+    assert f"/documentos/{d.pk}/ver" in html and 'name="nombres"' in html
+    r = cg.post(f"/documentos/{d.pk}/transcribir", {"registro": "persona", "nombres": "Teresa", "apellido_paterno": "Transcrita", "correo": "t@ejemplo.invalid"})
+    p = Persona.objects.get()
+    o = origenes_de(p).get()
+    assert r.status_code == 302 and o.fuente == "documento" and o.documento == d and o.estado_verificacion == "por_revisar"
+    assert p.estado_registro.codigo == "por_verificar" and p.contactos.count() == 1
+    r = cg.post(f"/documentos/{d.pk}/transcribir", {"registro": "persona", "nombres": "Teresa", "apellido_paterno": "Transcrita"})
+    assert r.status_code == 200 and "Podría ya existir" in r.content.decode() and Persona.objects.count() == 1
+
+
+def test_transcribir_organizacion(cg, actividad):
+    from apps.documentos.origen import origenes_de
+    from apps.nucleo.models import TipoOrganizacion
+    from apps.organizaciones.models import Organizacion
+
+    subir(cg, actividad, nombre="Carta")
+    d = Documento.objects.get()
+    assert 'name="naturaleza_juridica"' in cg.get(f"/documentos/{d.pk}/transcribir?registro=organizacion").content.decode()
+    junta = TipoOrganizacion.objects.get(codigo="junta_de_vecinos_o_comite")
+    r = cg.post(f"/documentos/{d.pk}/transcribir", {"registro": "organizacion", "nombre": "Junta Transcrita", "tipo": junta.pk})
+    o = Organizacion.objects.get()
+    assert r.status_code == 302 and "registro=organizacion" in r["Location"] and o.tipo == junta
+    assert origenes_de(o).get().documento == d
+    assert cg.post(f"/documentos/{d.pk}/transcribir", {"registro": "organizacion", "nombre": "Sin tipo"}).status_code == 400
+
+
+def test_transcribir_requiere_permisos(cs, ca, actividad, cg):
+    subir(cg, actividad)
+    d = Documento.objects.get()
+    assert cs.get(f"/documentos/{d.pk}/transcribir").status_code == 403
+    assert ca.get(f"/documentos/{d.pk}/transcribir").status_code == 403  # el Administrador no digita

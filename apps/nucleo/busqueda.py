@@ -174,6 +174,11 @@ def buscar(user, params):
             continue
         if not user.has_perm(perm):
             continue
+        if clave == "reunion":
+            from .fases import segunda_fase_activa
+
+            if not segunda_fase_activa():
+                continue
         # «Estado» y «tipo de actividad» solo tienen sentido para actividades y personas
         if f["estado"] and clave not in ("actividad",):
             continue

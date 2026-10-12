@@ -30,7 +30,11 @@ def _catalogo(nombre_clase, verbose, verbose_plural):
         (Catalogo,),
         {
             "__module__": __name__,
-            "Meta": type("Meta", (Catalogo.Meta,), {"abstract": False, "verbose_name": verbose, "verbose_name_plural": verbose_plural}),
+            "Meta": type("Meta", (Catalogo.Meta,), {
+                "abstract": False, "verbose_name": verbose, "verbose_name_plural": verbose_plural,
+                # Desactivar es del Administrador; el Gestor agrega y edita valores (CA-01, CA-03)
+                "permissions": [(f"desactivar_{nombre_clase.lower()}", f"Puede desactivar valores de {verbose_plural}")],
+            }),
         },
     )
 

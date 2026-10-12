@@ -1,12 +1,20 @@
 {% extends "generico/formulario.html" %}
-{% block extra_form %}
+{% block campos %}
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link {% if modo == 'rapida' %}active{% endif %}" href="?modo=rapida">Ficha rápida</a></li>
+  <li class="nav-item"><a class="nav-link {% if modo == 'completa' %}active{% endif %}" href="?modo=completa">Ficha completa</a></li>
+</ul>
+<p class="small text-muted">{% if modo == 'rapida' %}Nombre y un dato de contacto; el resto lo completas después.{% else %}Solo el nombre es obligatorio.{% endif %}</p>
+<input type="hidden" name="modo" value="{{ modo }}">
+{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
 {% if candidatos %}
 <div class="alert alert-warning mt-3" role="alert">
   <strong>Esta persona podría ya existir.</strong> Revisa antes de crear un duplicado:
-  <ul class="mb-2 mt-2">
-    {% for p, razones in candidatos %}<li><a href="{{ p.get_absolute_url }}" target="_blank">{{ p.nombre_completo }}</a> — {{ razones|join:", " }}</li>{% endfor %}
+  <ul class="list-unstyled mb-2 mt-2">
+    {% for p, razones in candidatos %}<li class="mb-1">{{ p.nombre_completo }} — <span class="small">{{ razones|join:", " }}</span> <a class="btn btn-outline-primary btn-sm ms-2" href="{{ p.get_absolute_url }}">Usar existente</a></li>{% endfor %}
   </ul>
-  <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Es otra persona: guardar de todos modos</button>
+  <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Crear de todos modos</button>
 </div>
 {% endif %}
 {% endblock %}
+{% block extra_form %}<button type="submit" name="despues" value="1" class="btn btn-outline-primary mt-3">Guardar y completar después</button>{% endblock %}

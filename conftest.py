@@ -134,3 +134,14 @@ def estado_part(db):
     from apps.nucleo.models import EstadoParticipacion
 
     return lambda codigo: EstadoParticipacion.objects.get(codigo=codigo)
+
+
+@pytest.fixture(autouse=True)
+def _segunda_fase_activa(settings, request):
+    """Las pruebas existentes cubren también los módulos de segunda fase; las que prueban el ajuste apagado usan `sin_segunda_fase`."""
+    settings.SEGUNDA_FASE = "sin_segunda_fase" not in request.fixturenames
+
+
+@pytest.fixture
+def sin_segunda_fase(settings):
+    settings.SEGUNDA_FASE = False

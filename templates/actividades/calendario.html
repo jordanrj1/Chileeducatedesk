@@ -6,6 +6,9 @@
 <h1 class="h4">Calendario</h1>
 <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
   <select id="f-estado" class="form-select form-select-sm" style="max-width:14rem;" aria-label="Estado"><option value="">Todos los estados</option>{% for e in estados %}<option value="{{ e.codigo }}">{{ e.nombre }}</option>{% endfor %}</select>
+  <select id="f-zona" class="form-select form-select-sm" style="max-width:12rem;" aria-label="Zona"><option value="">Todas las zonas</option>{% for c in comunas %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}</select>
+  <select id="f-responsable" class="form-select form-select-sm" style="max-width:14rem;" aria-label="Responsable"><option value="">Todos los responsables</option>{% for p in responsables %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}</select>
+  <select id="f-organizacion" class="form-select form-select-sm" style="max-width:14rem;" aria-label="Organización"><option value="">Todas las organizaciones</option>{% for o in organizaciones %}<option value="{{ o.pk }}">{{ o.nombre }}</option>{% endfor %}</select>
   <div class="form-check"><input class="form-check-input" type="checkbox" id="f-historicas"><label class="form-check-label" for="f-historicas">Mostrar programaciones anteriores</label></div>
   <span class="small text-muted">{% for c, color in colores.items %}<span style="color:{{ color }}">●</span> {{ c }} {% endfor %}</span>
 </div>

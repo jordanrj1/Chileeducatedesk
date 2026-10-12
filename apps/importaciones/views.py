@@ -38,6 +38,12 @@ class LoteNuevo(Permiso403Mixin, FormView):
     permission_required = "importaciones.importar_listado"
     template_name = "generico/formulario.html"
 
+    def get_initial(self):
+        ini = super().get_initial()
+        if self.request.GET.get("actividad", "").isdigit():
+            ini.update(tipo="listado_actividad", actividad=int(self.request.GET["actividad"]))
+        return ini
+
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ctx.update(titulo="Nueva importación", volver_url="/importaciones", breadcrumb=[("Importaciones", "/importaciones")])

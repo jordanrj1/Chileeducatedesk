@@ -7,9 +7,11 @@
   <dt class="col-sm-3">Proyecto</dt><dd class="col-sm-9">{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd>
   <dt class="col-sm-3">Persona</dt><dd class="col-sm-9">{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% else %}—{% endif %}</dd>
   <dt class="col-sm-3">Organización</dt><dd class="col-sm-9">{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Vencimiento</dt><dd class="col-sm-9">{{ object.fecha_vencimiento|date:"d-m-Y"|default:"—" }}{% if object.vencido %} <span class="badge text-bg-danger">Vencido</span>{% endif %}</dd>
   <dt class="col-sm-3">Subido</dt><dd class="col-sm-9">{{ object.subido_en|date:"d-m-Y H:i" }} · {{ object.subido_por|default:"—" }}</dd>
   <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">{% if object.activo %}Vigente{% else %}Archivado{% endif %}{% if object.restringido %} · Restringido{% endif %}</dd>
 </dl>
 <a class="btn btn-primary btn-sm" href="{% url 'documentos:archivo' object.pk %}">Descargar archivo</a>
+{% if perms.personas.add_persona or perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:transcribir' object.pk %}">Transcribir datos de este documento</a>{% endif %}
 {% if puede_agregar %}<form class="d-inline" method="post" action="{% url 'documentos:alternar' object.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Archivar{% else %}Restaurar{% endif %}</button></form>{% endif %}
 {% if origenes %}<h2 class="h6 mt-4">Datos que se tomaron de este documento</h2><ul class="list-group">{% for o in origenes %}<li class="list-group-item small">{{ o.objeto }} — {{ o.get_estado_verificacion_display }}</li>{% endfor %}</ul>{% endif %}

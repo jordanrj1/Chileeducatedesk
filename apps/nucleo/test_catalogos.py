@@ -25,7 +25,8 @@ def test_nombre_vacio_rechazado(cg):
     assert not TipoActividad.objects.filter(nombre="").exists()
 
 
-def test_desactivar_y_reactivar(cg):
+def test_desactivar_y_reactivar(ca):
+    cg = ca
     t = TipoActividad.objects.get(codigo="taller")
     cg.post(f"/administracion/catalogos/tipo-actividad/{t.pk}/alternar")
     t.refresh_from_db()
@@ -64,4 +65,13 @@ def test_opcion_usada_no_se_puede_eliminar(persona):
 
 def test_la_interfaz_no_ofrece_eliminar(cg):
     html = cg.get("/administracion/catalogos/canal/").content.decode()
-    assert "Eliminar" not in html and "Desactivar" in html
+    assert "Eliminar" not in html
+
+
+def test_el_gestor_agrega_pero_no_desactiva(cg):
+    t = TipoActividad.objects.get(codigo="taller")
+    assert cg.post(f"/administracion/catalogos/tipo-actividad/{t.pk}/alternar").status_code == 403
+    t.refresh_from_db()
+    assert t.activo
+    html = cg.get("/administracion/catalogos/tipo-actividad/").content.decode()
+    assert "+ Agregar valor" in html and ">Desactivar<" not in html

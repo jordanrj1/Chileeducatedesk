@@ -343,56 +343,68 @@ def test_asistencia(cg, actividad, crear_persona, rol, estado_part):
     assert a.estado.codigo == "asistio" and b.estado.codigo == "no_asistio" and c.estado.codigo == "confirmado"
 
 
-# --- cierre ------------------------------------------------------------------------------
-def realizada(crear_actividad, **kw):
-    return crear_actividad("Realizada", estado="realizada", **kw)
+# --- finalizar (queda «realizada») ----------------------------------------------------------
+def confirmada(crear_actividad, **kw):
+    return crear_actividad("Por finalizar", estado="confirmada", **kw)
 
 
-def test_cerrar_exige_asistencia_y_resultado(crear_actividad, gestor, crear_persona, rol):
-    a = realizada(crear_actividad)
+def test_finalizar_exige_asistencia_y_resultado(crear_actividad, gestor):
+    a = confirmada(crear_actividad)
     with pytest.raises(ReglaNegocio) as e:
-        servicios.cerrar(a, gestor)
+        servicios.finalizar(a, gestor)
     assert len(e.value.mensajes) == 2
     a.asistencia_sin_registro = True
     a.resultado = "Se realizó con 12 asistentes"
     a.save()
-    servicios.cerrar(a, gestor)
+    servicios.finalizar(a, gestor)
     a.refresh_from_db()
-    assert a.estado.codigo == "cerrada" and a.cerrada_en and a.cerrada_por == gestor
+    assert a.estado.codigo == "realizada" and a.finalizada_en and a.finalizada_por == gestor
 
 
-def test_cerrar_con_asistencia_registrada(crear_actividad, gestor, crear_persona, rol):
-    a = realizada(crear_actividad, resultado="ok")
+def test_finalizar_con_asistencia_registrada(crear_actividad, gestor, crear_persona, rol):
+    a = confirmada(crear_actividad, resultado="ok")
     p = participar(a, crear_persona(), rol)
     p.asistencia = True
     p.save()
-    servicios.cerrar(a, gestor)
+    servicios.finalizar(a, gestor)
 
 
-def test_solo_se_cierra_una_realizada(actividad, gestor):
-    with pytest.raises(ReglaNegocio, match="realizada"):
-        servicios.cerrar(actividad, gestor)
+def test_no_existe_el_estado_cerrada():
+    assert not EstadoActividad.objects.filter(codigo="cerrada").exists()
 
 
-def test_cierre_por_pantalla_y_bloqueo_posterior(cg, crear_actividad, crear_persona, rol):
-    a = realizada(crear_actividad)
+@pytest.mark.parametrize("estado", ["pendiente", "suspendida", "cancelada", "realizada"])
+def test_solo_se_finaliza_una_actividad_en_curso(crear_actividad, gestor, estado):
+    a = crear_actividad(estado=estado, resultado="x", asistencia_sin_registro=True)
+    with pytest.raises(ReglaNegocio, match="No se puede finalizar"):
+        servicios.finalizar(a, gestor)
+
+
+def test_realizada_solo_se_alcanza_finalizando(actividad, gestor, lugar):
+    programar(actividad, gestor, lugar)
+    with pytest.raises(ReglaNegocio, match="Finalizar"):
+        servicios.cambiar_estado(actividad, "realizada", gestor)
+
+
+def test_finalizar_por_pantalla_y_bloqueo_posterior(cg, crear_actividad, crear_persona, rol):
+    a = confirmada(crear_actividad)
     cg.post(f"/actividades/{a.pk}/resultados", {"resultado": "Fue bien", "observaciones": "", "incidencias": "", "indicadores": "", "asistencia_sin_registro": "on"})
-    cg.post(f"/actividades/{a.pk}/cerrar")
+    cg.post(f"/actividades/{a.pk}/finalizar")
     a.refresh_from_db()
-    assert a.estado.codigo == "cerrada"
+    assert a.estado.codigo == "realizada"
     cg.post(f"/actividades/{a.pk}/resultados", {"resultado": "Cambiado", "asistencia_sin_registro": "on"})
     a.refresh_from_db()
     assert a.resultado == "Fue bien"
-    assert cg.get(f"/actividades/{a.pk}/editar").status_code == 200
-    r = cg.post(f"/actividades/{a.pk}/editar", {"nombre": "Otro nombre"})
+    cg.post(f"/actividades/{a.pk}/editar", {"nombre": "Otro nombre"})
     a.refresh_from_db()
-    assert a.nombre == "Realizada"
+    assert a.nombre == "Por finalizar"
     assert cg.post(f"/actividades/{a.pk}/participantes/nuevo", {}).status_code == 302  # rechazado con aviso
+    assert "Finalizar actividad" not in cg.get(f"/actividades/{a.pk}?tab=resultados").content.decode()
 
 
-def test_reabrir_requiere_permiso_especial(cg, ca, crear_actividad, gestor):
-    a = realizada(crear_actividad, resultado="x", asistencia_sin_registro=True)
-    servicios.cerrar(a, gestor)
+def test_reabrir_requiere_permiso_especial(cg, crear_actividad, gestor):
+    a = confirmada(crear_actividad, resultado="x", asistencia_sin_registro=True)
+    servicios.finalizar(a, gestor)
     assert cg.post(f"/actividades/{a.pk}/reabrir", {"motivo": "error de digitación"}).status_code == 403
     from django.contrib.auth.models import Permission
 
@@ -401,10 +413,10 @@ def test_reabrir_requiere_permiso_especial(cg, ca, crear_actividad, gestor):
     c.force_login(type(gestor).objects.get(pk=gestor.pk))
     assert c.post(f"/actividades/{a.pk}/reabrir", {"motivo": ""}).status_code == 302
     a.refresh_from_db()
-    assert a.estado.codigo == "cerrada"  # sin motivo no reabre
+    assert a.estado.codigo == "realizada"  # sin motivo no reabre
     c.post(f"/actividades/{a.pk}/reabrir", {"motivo": "error de digitación"})
     a.refresh_from_db()
-    assert a.estado.codigo == "realizada"
+    assert a.estado.codigo == "confirmada" and a.finalizada_en is None
 
 
 # --- otros --------------------------------------------------------------------------------------
@@ -515,3 +527,112 @@ def test_matching_por_pantalla(cg, actividad, crear_persona, universidad):
     assert "Marta" not in cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=personas&buscar=1&area=astronomía").content.decode()
     assert cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=lugares&buscar=1").status_code == 200
     assert cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=organizaciones&buscar=1").status_code == 200
+
+
+def test_crear_lugar_desde_la_agenda(cg, actividad, comuna, lugar):
+    from apps.lugares.models import Lugar
+    from apps.nucleo.models import TipoLugar
+
+    assert "+ Crear lugar sin salir de la actividad" in cg.get(f"/actividades/{actividad.pk}/programar").content.decode()
+    datos = {"nuevo_lugar_nombre": "Biblioteca Ficticia", "nuevo_lugar_tipo": TipoLugar.objects.get(codigo="sala").pk, "nuevo_lugar_comuna": comuna.pk, "nuevo_lugar_capacidad": "40"}
+    r = cg.post("/lugares/crear-rapido", datos)
+    nuevo = Lugar.objects.get(nombre="Biblioteca Ficticia")
+    assert f'value="{nuevo.pk}" selected' in r.content.decode() and nuevo.capacidad == 40
+    r = cg.post("/lugares/crear-rapido", {**datos, "nuevo_lugar_nombre": "biblioteca ficticia"})
+    assert Lugar.objects.filter(nombre__iexact="biblioteca ficticia").count() == 1 and "Ya existía" in r.content.decode()
+    assert "indica nombre, tipo y comuna" in cg.post("/lugares/crear-rapido", {"nuevo_lugar_nombre": "X"}).content.decode()
+    assert "entero positivo" in cg.post("/lugares/crear-rapido", {**datos, "nuevo_lugar_nombre": "Otra", "nuevo_lugar_capacidad": "-3"}).content.decode()
+
+
+def test_crear_lugar_rapido_requiere_permiso(ca, comuna):
+    assert ca.post("/lugares/crear-rapido", {"nuevo_lugar_nombre": "X"}).status_code == 403
+
+
+
+def test_cargar_listado_desde_la_actividad(cg, actividad):
+    assert f"/importaciones/nueva?actividad={actividad.pk}" in cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()
+    html = cg.get(f"/importaciones/nueva?actividad={actividad.pk}").content.decode()
+    assert 'value="listado_actividad" selected' in html and f'value="{actividad.pk}" selected' in html
+
+
+def test_agregar_persona_que_llego(cg, actividad, crear_persona, rol, estado_part):
+    assert "+ Agregar persona que llegó" in cg.get(f"/actividades/{actividad.pk}?tab=asistencia").content.decode()
+    p = crear_persona("Llegó")
+    r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk, "llego": "1"})
+    part = actividad.participaciones.get(persona=p)
+    assert r.status_code == 302 and "tab=asistencia" in r["Location"] and part.asistencia is True and part.estado.codigo == "asistio"
+    cg.post(f"/actividades/{actividad.pk}/participantes/rapido", {"nombres": "Nueva", "apellido_paterno": "Llegada", "rol": rol("participante").pk, "llego": "1"})
+    nueva = actividad.participaciones.get(persona__nombres="Nueva")
+    assert nueva.asistencia is True
+
+
+def test_filtros_por_responsable_e_institucion(cg, crear_actividad, crear_persona, universidad):
+    from apps.actividades.models import ActividadOrganizacion
+
+    resp = crear_persona("Responsable")
+    a = crear_actividad("Con responsable", responsable=resp)
+    b = crear_actividad("Con institución")
+    ActividadOrganizacion.objects.create(actividad=b, organizacion=universidad)
+    html = cg.get(f"/actividades?responsable={resp.pk}").content.decode()
+    assert "Con responsable" in html and "Con institución" not in html
+    html = cg.get(f"/actividades?institucion={universidad.pk}").content.decode()
+    assert "Con institución" in html and "Con responsable" not in html
+
+
+# --- Requerimientos por módulo (AG, VA) ---------------------------------------------------------------------
+def test_programar_con_duracion(cg, actividad, lugar):
+    r = cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": str(FUTURO), "hora_inicio": "18:00", "duracion": "90", "lugar": lugar.pk})
+    ag = actividad.agenda_vigente
+    assert r.status_code == 302 and ag.hora_fin == time(19, 30) and ag.duracion_minutos == 90
+    r = cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": str(FUTURO), "hora_inicio": "23:30", "duracion": "60", "lugar": lugar.pk, "motivo": "x"})
+    assert r.status_code == 400  # terminaría al día siguiente
+    r = cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": str(FUTURO), "hora_inicio": "18:00", "hora_fin": "19:00", "duracion": "90", "lugar": lugar.pk, "motivo": "x"})
+    assert r.status_code == 400  # duración y término no coinciden
+
+
+def test_crear_serie_semanal(cg, actividad, lugar):
+    r = cg.post(f"/actividades/{actividad.pk}/serie", {"primera_fecha": str(FUTURO), "frecuencia": "7", "repeticiones": "4", "hora_inicio": "18:00", "hora_fin": "19:00", "lugar": lugar.pk})
+    hijas = list(actividad.hijas.order_by("agendas__fecha"))
+    assert r.status_code == 302 and len(hijas) == 4
+    fechas = [h.agenda_vigente.fecha for h in hijas]
+    assert fechas == [FUTURO + timedelta(days=7 * i) for i in range(4)]
+    assert all(h.estado.codigo == "planificada" and h.responsable_id == actividad.responsable_id for h in hijas)
+    from apps.nucleo.models import Auditoria
+
+    assert Auditoria.objects.filter(accion="serie_creada").exists()
+
+
+def test_serie_valida_y_no_desde_una_hija(cg, actividad, crear_actividad, lugar):
+    assert cg.post(f"/actividades/{actividad.pk}/serie", {"primera_fecha": str(FUTURO), "frecuencia": "7", "repeticiones": "99", "hora_inicio": "18:00"}).status_code == 400
+    hija = crear_actividad("Hija", actividad_padre=actividad)
+    r = cg.post(f"/actividades/{hija.pk}/serie", {"primera_fecha": str(FUTURO), "frecuencia": "7", "repeticiones": "2", "hora_inicio": "18:00"})
+    assert r.status_code == 400 and not hija.hijas.exists()
+
+
+def test_calendario_filtra_por_zona_responsable_y_organizacion(cg, crear_actividad, crear_persona, lugar, gestor, universidad):
+    from apps.actividades.models import ActividadOrganizacion
+
+    resp = crear_persona("Resp")
+    a = crear_actividad("Con todo", responsable=resp)
+    b = crear_actividad("Sin nada")
+    programar(a, gestor, lugar)
+    programar(b, gestor, None)
+    ActividadOrganizacion.objects.create(actividad=a, organizacion=universidad)
+    rango = f"start={FUTURO - timedelta(days=2)}&end={FUTURO + timedelta(days=2)}"
+    for filtro in (f"zona={lugar.direccion.comuna_id}", f"responsable={resp.pk}", f"organizacion={universidad.pk}"):
+        titulos = [e["title"] for e in cg.get(f"/calendario/eventos?{rango}&{filtro}").json()]
+        assert titulos == ["Con todo"], filtro
+    html = cg.get("/calendario").content.decode()
+    assert 'id="f-zona"' in html and 'id="f-responsable"' in html and 'id="f-organizacion"' in html
+
+
+def test_confirmar_muestra_lo_compatible(cg, actividad, lugar, gestor, crear_persona, rol):
+    actividad.responsable = crear_persona("Resp")
+    actividad.save()
+    programar(actividad, gestor, lugar)
+    participar(actividad, crear_persona(), rol)
+    html = cg.get(f"/actividades/{actividad.pk}/confirmar").content.decode()
+    assert "✓" in html and "Capacidad compatible: 1 de 20" in html and "disponible en ese horario" in html
+    assert "✓ Sin problemas detectados" in html
+    codigos = {p.codigo for p in revisar(actividad) if p.nivel == "ok"}
+    assert {"responsable_ok", "agenda_ok", "lugar_ok", "capacidad_ok", "horarios_ok"} <= codigos

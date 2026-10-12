@@ -22,20 +22,22 @@ Fundación Chile Edúcate (FCHE). Práctica profesional: 14-09-2026 al 30-11-202
 
 ---
 
-## 0.5 Actualización 12-10-2026 — el tablero manda
+## 0.5 Decisiones vigentes (actualizado 12-10-2026)
 
-El tablero de GitHub «Metodología Kanban Chile educate» (tarjetas F01–F21) es posterior a este documento y **prevalece** donde difieran. Quedó implementado completo. Cambios respecto del texto original:
+Fuentes, de más a menos reciente: **«FCHE — Requerimientos por módulo»** (HU con IDs AC, US, TE, PE…; trazabilidad en `specs/trazabilidad_requerimientos.md`), el **tablero de GitHub** (tarjetas F01–F21) y este documento. Donde difieren, prevalece el más reciente.
 
-- **Proyecto** es un módulo propio (F08): reúne equipo, organizaciones, beneficiarios, actividades, postulación, documentos y presupuesto. La actividad vive dentro de un proyecto (opcional) y la solicitud puede convertirse en proyecto o en actividad. Reemplaza el «agrupador opcional» [V#7].
-- Existe el estado de actividad **«cerrada»** (F13: «Finalizar actividad»). Flujo: … → realizada → cerrada. Reabrir una cerrada exige el permiso `reabrir_actividad`, que ningún rol tiene por defecto [V#4].
-- **Reuniones, tareas, invitaciones y colaboraciones** (F12) están completas, no «en versión simple».
-- **F16 (búsqueda asistida), F18 (importación con revisión) y F19 (presupuesto, aportes y donaciones)** están dentro del alcance entregado. F19 queda tras permisos de `finanzas` (solo Gestor por defecto) [V].
-- Persona incluye experiencia, disponibilidad, contacto de emergencia y verificaciones (datos sensibles tras el permiso `ver_sensibles`).
-- F14: cada dato puede registrar su **origen** (fuente, documento, fecha, usuario, verificación): `documentos.OrigenDato`.
-- Apps nuevas respecto de la sección 6: `proyectos`, `coordinacion`, `finanzas`, `importaciones`.
-- Sigue vigente que el Excel con las filas en amarillo **no está** en el repositorio; no se usó para decidir alcance.
+- **Finalizar actividad** exige asistencia (o «sin registro» explícito) y resultado, y la deja **realizada** y de solo lectura. **No existe el estado «cerrada».** Reabrir: permiso `reabrir_actividad`, que nadie tiene por defecto [V#4].
+- **Segunda fase** (reuniones con asistentes y compromisos, tareas, sesiones, beneficiarios, verificaciones, finanzas): está construida pero **oculta** con `SEGUNDA_FASE=False` en `.env`. Con `True` se muestra. Sin ella, la reunión es un canal de interacción y el panel muestra las próximas acciones.
+- **Proyecto** es agrupador opcional con su ficha (equipo, organizaciones, actividades) [V#7]. Ninguna actividad lo exige.
+- **Catálogos:** el Gestor agrega y edita valores; **desactivar** es solo del Administrador.
+- **Cuentas:** desde la pantalla, una cuenta se crea solo para una persona ya registrada. La primera cuenta se crea por consola (`crear_usuario`).
+- **Territorio:** dirección en cascada y nombres alternativos de sector (`SectorAlias`).
+- **Documentos:** se puede asociar un documento existente a otra ficha sin copiar el archivo; tienen fecha de vencimiento; transcribir datos con el documento al lado (origen «por revisar»).
+- **Commits:** sin líneas de coautoría ni marcas de herramientas.
+- Apps además de la sección 6: `proyectos`, `coordinacion`, `finanzas`, `importaciones`.
+- Sigue sin estar en el repositorio el Excel con las filas en amarillo ni el archivo oficial CUT.
 
-Cómo trabajar: `.venv/bin/python -m pytest -q` (Mac) o `.venv\Scripts\python -m pytest -q` (Windows). Documentación de uso: `docs/manual_de_uso.md`; entrega: `docs/entrega.md`; specs por feature: `specs/fXX/`.
+Cómo trabajar: `.venv/bin/python -m pytest -q` (Mac) o `.venv\Scripts\python -m pytest -q` (Windows). Uso: `docs/manual_de_uso.md`; entrega: `docs/entrega.md`; specs: `specs/fXX/`.
 
 ---
 
@@ -76,12 +78,12 @@ La **Actividad** es la unidad central. Persona, Organización y Lugar son maestr
 | Digitación | Toda la ingesta la hace Claudio |
 | Registro | Sin portal público. Sin autoservicio |
 | Persona ≠ Cuenta | Relación 1 a 0..1 [O] |
-| Punto de entrada | Solicitud/Oportunidad → Proyecto y/o Actividad (0..1 a 1) [O]. **Proyecto** es módulo propio por decisión del tablero (F08) |
+| Punto de entrada | Solicitud/Oportunidad → Actividad (0..1 a 1) [O]; opcionalmente Proyecto como agrupador [V#7] |
 | Borrado | No se elimina información con historial: se desactiva, cancela o cierra |
 | Agenda | Reprogramar crea una versión nueva y conserva la anterior [O] |
 | Matching | Sugiere candidatos con razones y conflictos (F16, implementado). **Nunca asigna solo** [O] |
-| Estados de actividad [O] | planificada, confirmada, reprogramada, suspendida, cancelada, realizada, **pendiente** (oportunidad abierta) y **cerrada** (tablero F13) |
-| Cierre | «Finalizar» una actividad realizada exige asistencia (o «sin registro») y resultado; queda *cerrada* y de solo lectura. Reabrir: permiso especial |
+| Estados de actividad [O] | planificada, confirmada, reprogramada, suspendida, cancelada, realizada y **pendiente** (oportunidad abierta) |
+| Cierre | «Finalizar actividad» exige asistencia (o «sin registro») y resultado; queda *realizada* y de solo lectura. Reabrir: permiso especial |
 | Respaldos | `pg_dump` diario más copia de la carpeta de documentos [O, RNF-10] |
 
 ---

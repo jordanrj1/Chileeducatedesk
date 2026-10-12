@@ -62,6 +62,7 @@ class Lista(View):
             "slug": slug, "filas": filas, "form": form, "titulo": modelo._meta.verbose_name_plural.capitalize(),
             "puede_crear": request.user.has_perm(f"nucleo.add_{modelo._meta.model_name}"),
             "puede_editar": request.user.has_perm(f"nucleo.change_{modelo._meta.model_name}"),
+            "puede_desactivar": request.user.has_perm(f"nucleo.desactivar_{modelo._meta.model_name}"),
             "breadcrumb": [("Administración", "/administracion/"), ("Catálogos", "/administracion/catalogos/")],
         })
 
@@ -103,7 +104,7 @@ class Editar(View):
 class Alternar(View):
     def post(self, request, slug, pk):
         modelo = _modelo(slug)
-        _perm(request, "change", modelo)
+        _perm(request, "desactivar", modelo)
         obj = get_object_or_404(modelo, pk=pk)
         obj.activo = not obj.activo
         obj.save()

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">Transcribir</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">{{ titulo }}</h1>
+<p class="small text-muted">El documento queda como evidencia; aquí registras solo los datos que sirven. Cada registro queda con este documento como origen, «por revisar».</p>
+<div class="row g-3">
+  <div class="col-12 col-lg-7">
+    {% if documento.visible_en_navegador %}
+    <iframe src="{% url 'documentos:ver' documento.pk %}" title="Documento {{ documento.nombre }}" style="width:100%; height:75vh; border:1px solid #dee2e6;"></iframe>
+    {% else %}
+    <div class="alert alert-secondary">Este formato no se puede mostrar en el navegador. <a href="{% url 'documentos:archivo' documento.pk %}">Descárgalo</a> y ábrelo al lado.</div>
+    {% endif %}
+  </div>
+  <div class="col-12 col-lg-5">
+    <ul class="nav nav-pills mb-2">
+      {% if perms.personas.add_persona %}<li class="nav-item"><a class="nav-link {% if tipo == 'persona' %}active{% endif %}" href="?registro=persona">Persona</a></li>{% endif %}
+      {% if perms.organizaciones.add_organizacion %}<li class="nav-item"><a class="nav-link {% if tipo == 'organizacion' %}active{% endif %}" href="?registro=organizacion">Organización</a></li>{% endif %}
+    </ul>
+    <form method="post" data-aviso-cambios novalidate>{% csrf_token %}
+      <input type="hidden" name="registro" value="{{ tipo }}">
+      {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+      {% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
+      {% if candidatos %}
+      <div class="alert alert-warning" role="alert"><strong>Podría ya existir:</strong>
+        <ul class="list-unstyled mb-2 mt-1">{% for p, razones in candidatos %}<li>{{ p.nombre_completo }} — <span class="small">{{ razones|join:", " }}</span> <a class="btn btn-outline-primary btn-sm ms-1" href="{{ p.get_absolute_url }}" target="_blank">Usar existente</a></li>{% endfor %}</ul>
+        <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1">Crear de todos modos</button></div>
+      {% endif %}
+      <button class="btn btn-primary">Guardar</button>
+      <a class="btn btn-outline-secondary volver" href="{{ documento.get_absolute_url }}">← Volver</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

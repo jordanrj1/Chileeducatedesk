@@ -9,7 +9,7 @@ Detectar problemas antes de confirmar algo que no se podrá cumplir.
 - Faltantes (responsable, fecha/hora, lugar o virtual) bloquean.
 - Críticos: capacidad excedida, lugar ocupado/desactivado; impiden confirmar. Opción `CONFIRMAR_CON_CONFLICTO_CRITICO` (apagada) permite confirmar con motivo [V#3].
 - Advertencias: persona con otra actividad, fuera de la disponibilidad declarada, fecha pasada, sin participantes; se aceptan explícitamente.
-- Cada problema se explica con el motivo.
+- Cada problema se explica con el motivo; la pantalla muestra ✓ compatible, ⚠ advertencia y ✕ crítico (VA-01).
 
 ## Estado
 Implementada y probada. Pendiente: validación con el usuario final (F20).

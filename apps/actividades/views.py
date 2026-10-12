@@ -23,7 +23,7 @@ from apps.territorio.models import Comuna
 
 from . import servicios
 from .forms import (
-    ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
+    SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
 )
 from .models import Actividad, AgendaActividad, Participacion
 from .reglas import TRANSICIONES, ReglaNegocio, revisar
@@ -79,6 +79,9 @@ class ActividadLista(ListaBase):
         Filtro("proyecto", "Proyecto", "proyecto_id", lambda: [(str(p.pk), p.nombre) for p in Proyecto.objects.all()]),
         Filtro("comuna", "Zona (comuna)", "", opciones_modelo(Comuna), aplicar=_filtro_comuna),
         Filtro("organizacion", "Organización", "organizaciones__organizacion_id", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(activo=True)[:300]], aplicar=lambda qs, v: qs.filter(organizaciones__organizacion_id=v).distinct()),
+        Filtro("responsable", "Responsable", "responsable_id", lambda: [(str(p.pk), p.nombre_completo) for p in Persona.objects.filter(actividades_a_cargo__isnull=False).distinct()]),
+        Filtro("institucion", "Institución", "", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(tipo__codigo="institucion_educativa", activo=True)],
+               aplicar=lambda qs, v: qs.filter(organizaciones__organizacion_id=v).distinct()),
         Filtro("desde", "Desde", "", entrada="date", aplicar=_filtro_fecha("gte")),
         Filtro("hasta", "Hasta", "", entrada="date", aplicar=_filtro_fecha("lte")),
         Filtro("incompleta", "Incompletas", "", lambda: [("1", "Solo incompletas")], aplicar=lambda qs, v: qs.filter(pk__in=Actividad.objects.incompletas().values("pk")) if v == "1" else qs),
@@ -153,8 +156,8 @@ class ActividadEditar(EditarBase):
     breadcrumb = [("Actividades", "/actividades")]
 
     def form_valid(self, form):
-        if self.object.estado.codigo in ("cerrada",):
-            messages.error(self.request, "La actividad está cerrada. Reábrela (con permiso) para corregirla.")
+        if self.object.estado.codigo == "realizada":
+            messages.error(self.request, "La actividad ya fue finalizada. Reábrela (con permiso) para corregirla.")
             return self.form_invalid(form)
         return super().form_valid(form)
 
@@ -163,6 +166,7 @@ class ActividadFicha(FichaBase):
     model = Actividad
     permission_required = "actividades.view_actividad"
     template_name = "actividades/ficha.html"
+    pestanas_segunda_fase = ("beneficiarios", "sesiones")
     breadcrumb = [("Actividades", "/actividades")]
     permiso_editar = "actividades.change_actividad"
     pestanas = [
@@ -183,27 +187,36 @@ class ActividadFicha(FichaBase):
     def get_queryset(self):
         return super().get_queryset().select_related("proyecto", "tipo", "estado", "modalidad", "responsable", "actividad_padre")
 
+    def acciones_extra(self):
+        if self.request.user.has_perm("coordinacion.add_interaccion"):
+            return [("Registrar interacción", f"/interacciones/nueva?actividad={self.object.pk}")]
+        return []
+
     def contexto_ficha(self):
         a = self.object
         u = self.request.user
         codigo = a.estado.codigo
-        siguientes = [c for c in TRANSICIONES.get(codigo, set()) if c not in ("confirmada", "cerrada")]
-        editable = codigo != "cerrada"
+        siguientes = [c for c in TRANSICIONES.get(codigo, set()) if c not in ("confirmada", "realizada")]
+        editable = codigo != "realizada"
         return {
             "url_editar": reverse("actividades:editar", args=[a.pk]) if editable else None,
             "url_volver": a.proyecto.get_absolute_url() if a.proyecto_id else "/actividades",
             "puede_agregar": u.has_perm("actividades.change_actividad") and editable,
-            "puede_programar": u.has_perm("actividades.reprogramar_actividad") and codigo not in ("cancelada", "realizada", "cerrada", "suspendida"),
+            "puede_programar": u.has_perm("actividades.reprogramar_actividad") and codigo not in ("cancelada", "realizada", "suspendida"),
             "puede_confirmar": u.has_perm("actividades.change_actividad") and "confirmada" in TRANSICIONES.get(codigo, set()),
             "estados_siguientes": [(c, EstadoActividad.objects.get(codigo=c).nombre) for c in siguientes] if u.has_perm("actividades.change_actividad") else [],
-            "puede_cerrar": u.has_perm("actividades.cerrar_actividad") and codigo == "realizada",
-            "puede_reabrir": u.has_perm("actividades.reabrir_actividad") and codigo == "cerrada",
+            "puede_finalizar": u.has_perm("actividades.cerrar_actividad") and "realizada" in TRANSICIONES.get(codigo, set()),
+            "puede_reabrir": u.has_perm("actividades.reabrir_actividad") and codigo == "realizada",
             "agenda": a.agenda_vigente,
             "faltantes": a.faltantes(),
         }
 
     def _participantes(self, beneficiarios):
+        from apps.nucleo.fases import segunda_fase_activa
+
         qs = self.object.participaciones.select_related("persona", "rol", "estado")
+        if not segunda_fase_activa():
+            return list(qs) if not beneficiarios else []  # sin pestaña aparte: todos van en Participantes
         return [p for p in qs if p.es_beneficiario == beneficiarios]
 
     def ctx_participantes(self):
@@ -267,7 +280,7 @@ class ActividadFicha(FichaBase):
         return {"documentos": docs}
 
     def ctx_resultados(self):
-        return {"form_resultado": ResultadoForm(instance=self.object), "cerrada": self.object.estado.codigo == "cerrada"}
+        return {"form_resultado": ResultadoForm(instance=self.object), "finalizada": self.object.estado.codigo == "realizada"}
 
     def ctx_origen(self):
         from apps.documentos.origen import contexto_origen
@@ -295,7 +308,13 @@ class ProgramarVista(_AccionActividad):
 
     def _contexto(self, a, form):
         vigente = a.agenda_vigente
-        return {"form": form, "titulo": ("Reprogramar: " if vigente else "Programar: ") + a.nombre, "volver_url": f"{a.get_absolute_url()}?tab=agenda", "breadcrumb": [("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())], "vigente": vigente}
+        from apps.nucleo.models import TipoLugar
+
+        return {
+            "form": form, "titulo": ("Reprogramar: " if vigente else "Programar: ") + a.nombre, "volver_url": f"{a.get_absolute_url()}?tab=agenda",
+            "breadcrumb": [("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())], "vigente": vigente,
+            "tipos_lugar": TipoLugar.objects.filter(activo=True), "comunas": Comuna.objects.all(),
+        }
 
     def get(self, request, pk):
         a = self.actividad(pk)
@@ -320,6 +339,33 @@ class ProgramarVista(_AccionActividad):
         return render(request, "actividades/programar.html", self._contexto(a, form), status=400)
 
 
+class SerieVista(_AccionActividad):
+    permission_required = "actividades.reprogramar_actividad"
+
+    def _ctx(self, a, form):
+        return {"form": form, "titulo": f"Crear serie: {a.nombre}", "volver_url": f"{a.get_absolute_url()}?tab=info", "breadcrumb": [("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())]}
+
+    def get(self, request, pk):
+        a = self.actividad(pk)
+        v = a.agenda_vigente
+        ini = {"hora_inicio": v.hora_inicio, "hora_fin": v.hora_fin, "lugar": v.lugar_id, "primera_fecha": v.fecha} if v else {}
+        return render(request, "generico/formulario.html", self._ctx(a, SerieForm(initial=ini)))
+
+    def post(self, request, pk):
+        a = self.actividad(pk)
+        form = SerieForm(request.POST)
+        if form.is_valid():
+            d = form.cleaned_data
+            try:
+                creadas = servicios.crear_serie(a, request.user, d["primera_fecha"], d["frecuencia"], d["repeticiones"], d["hora_inicio"], d.get("hora_fin"), d.get("lugar"))
+            except ReglaNegocio as e:
+                _avisar(request, e)
+            else:
+                messages.success(request, f"Se crearon {len(creadas)} actividades programadas. Cada una se confirma y gestiona por separado.")
+                return self.volver(a, "info")
+        return render(request, "generico/formulario.html", self._ctx(a, form), status=400)
+
+
 class ConfirmarVista(_AccionActividad):
     """Muestra la revisión de compatibilidad y permite confirmar."""
 
@@ -330,10 +376,11 @@ class ConfirmarVista(_AccionActividad):
 
         problemas = revisar(a)
         niveles = {p.nivel for p in problemas}
+        hay_problemas = bool(niveles - {"ok", "info"})
         return {
             "actividad": a, "problemas": problemas, "titulo": f"Confirmar: {a.nombre}", "breadcrumb": [("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())],
             "hay_bloqueantes": "bloqueante" in niveles, "hay_criticos": "critico" in niveles, "hay_advertencias": "advertencia" in niveles,
-            "critico_permitido": conflicto_critico_permitido(), "volver_url": a.get_absolute_url(),
+            "critico_permitido": conflicto_critico_permitido(), "volver_url": a.get_absolute_url(), "hay_problemas": hay_problemas,
             "puede_confirmar": "confirmada" in TRANSICIONES.get(a.estado.codigo, set()),
         }
 
@@ -370,8 +417,8 @@ class ResultadosVista(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo == "cerrada":
-            messages.error(request, "La actividad está cerrada.")
+        if a.estado.codigo == "realizada":
+            messages.error(request, "La actividad ya fue finalizada.")
             return self.volver(a, "resultados")
         form = ResultadoForm(request.POST, instance=a)
         if form.is_valid():
@@ -382,17 +429,17 @@ class ResultadosVista(_AccionActividad):
         return self.volver(a, "resultados")
 
 
-class CerrarVista(_AccionActividad):
+class FinalizarVista(_AccionActividad):
     permission_required = "actividades.cerrar_actividad"
 
     def post(self, request, pk):
         a = self.actividad(pk)
         try:
-            servicios.cerrar(a, request.user)
+            servicios.finalizar(a, request.user)
         except ReglaNegocio as e:
             _avisar(request, e)
             return self.volver(a, "resultados")
-        messages.success(request, "Actividad cerrada. Queda disponible en el historial.")
+        messages.success(request, "Actividad finalizada: quedó como realizada y disponible en el historial.")
         return self.volver(a, "resultados")
 
 
@@ -414,27 +461,39 @@ class ReabrirVista(_AccionActividad):
 class ParticipanteNuevo(_AccionActividad):
     permission_required = "actividades.add_participacion"
 
-    def _ctx(self, a, form):
-        return {"form": form, "titulo": "Agregar participante", "volver_url": f"{a.get_absolute_url()}?tab=participantes", "breadcrumb": [(a.nombre, a.get_absolute_url())], "rapida_url": reverse("actividades:participante_rapido", args=[a.pk])}
+    def _ctx(self, a, form, llego=False):
+        return {
+            "form": form, "titulo": "Agregar persona que llegó" if llego else "Agregar participante", "llego": llego,
+            "volver_url": f"{a.get_absolute_url()}?tab={'asistencia' if llego else 'participantes'}", "breadcrumb": [(a.nombre, a.get_absolute_url())],
+            "rapida_url": reverse("actividades:participante_rapido", args=[a.pk]) + ("?llego=1" if llego else ""),
+        }
 
     def get(self, request, pk):
         a = self.actividad(pk)
-        return render(request, "actividades/participante_form.html", self._ctx(a, ParticipanteNuevoForm(actividad=a)))
+        llego = request.GET.get("llego") == "1"
+        form = ParticipanteNuevoForm(actividad=a, initial={"estado": EstadoParticipacion.objects.filter(codigo="asistio").first()} if llego else None)
+        return render(request, "actividades/participante_form.html", self._ctx(a, form, llego))
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo in ("cerrada", "cancelada"):
-            messages.error(request, "No se pueden agregar participantes a una actividad cerrada o cancelada.")
+        if a.estado.codigo in ("realizada", "cancelada"):
+            messages.error(request, "No se pueden agregar participantes a una actividad finalizada o cancelada.")
             return self.volver(a, "participantes")
         form = ParticipanteNuevoForm(request.POST, actividad=a)
+        llego = request.POST.get("llego") == "1"
         if form.is_valid():
             p = form.save(commit=False)
             p.actividad = a
             p.creado_por = request.user
+            if llego:  # RE-02: llegó sin estar previsto
+                p.asistencia = True
+                p.estado = EstadoParticipacion.objects.get(codigo="asistio")
             p.save()
-            messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}.")
-            return self.volver(a, "beneficiarios" if p.es_beneficiario else "participantes")
-        return render(request, "actividades/participante_form.html", self._ctx(a, form), status=400)
+            messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}" + (" y marcada como asistente." if llego else "."))
+            from apps.nucleo.fases import segunda_fase_activa
+
+            return self.volver(a, "asistencia" if llego else ("beneficiarios" if p.es_beneficiario and segunda_fase_activa() else "participantes"))
+        return render(request, "actividades/participante_form.html", self._ctx(a, form, llego), status=400)
 
 
 class ParticipanteRapido(_AccionActividad):
@@ -443,7 +502,8 @@ class ParticipanteRapido(_AccionActividad):
     permission_required = "personas.add_persona"
 
     def _ctx(self, a, form, cands=None):
-        return {"form": form, "titulo": "Crear persona y agregarla", "volver_url": f"{a.get_absolute_url()}?tab=participantes", "breadcrumb": [(a.nombre, a.get_absolute_url())], "candidatos": cands, "actividad": a}
+        llego = (self.request.GET.get("llego") or self.request.POST.get("llego")) == "1"
+        return {"form": form, "titulo": "Crear persona que llegó" if llego else "Crear persona y agregarla", "volver_url": f"{a.get_absolute_url()}?tab={'asistencia' if llego else 'participantes'}", "breadcrumb": [(a.nombre, a.get_absolute_url())], "candidatos": cands, "actividad": a, "llego": llego}
 
     def get(self, request, pk):
         return render(request, "actividades/participante_rapido.html", self._ctx(self.actividad(pk), PersonaRapidaForm()))
@@ -473,9 +533,13 @@ class ParticipanteRapido(_AccionActividad):
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=d["correo"], principal=True)
             if d["telefono"]:
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"])
-            Participacion.objects.create(actividad=a, persona=persona, rol=d["rol"], estado=EstadoParticipacion.objects.get(codigo="invitado"), creado_por=request.user)
+            llego = request.POST.get("llego") == "1"
+            Participacion.objects.create(
+                actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, asistencia=True if llego else None,
+                estado=EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"),
+            )
         messages.success(request, f"{persona} creada y agregada. Completa su ficha cuando puedas.")
-        return self.volver(a, "participantes")
+        return self.volver(a, "asistencia" if llego else "participantes")
 
 
 class ParticipanteUsar(_AccionActividad):
@@ -487,8 +551,10 @@ class ParticipanteUsar(_AccionActividad):
         a = self.actividad(pk)
         persona = get_object_or_404(Persona, pk=persona_pk)
         rol = get_object_or_404(RolParticipacion, pk=request.POST.get("rol"))
+        llego = request.POST.get("llego") == "1"
         obj, creada = Participacion.objects.get_or_create(
-            actividad=a, persona=persona, rol=rol, defaults={"estado": EstadoParticipacion.objects.get(codigo="invitado"), "creado_por": request.user}
+            actividad=a, persona=persona, rol=rol,
+            defaults={"estado": EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"), "creado_por": request.user, "asistencia": True if llego else None},
         )
         messages.success(request, f"{persona} agregada." if creada else f"{persona} ya participaba con ese rol.")
         return self.volver(a, "participantes")
@@ -511,8 +577,8 @@ class ParticipacionEditar(Permiso403Mixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
-        if self.object.actividad.estado.codigo == "cerrada":
-            messages.error(self.request, "La actividad está cerrada.")
+        if self.object.actividad.estado.codigo == "realizada":
+            messages.error(self.request, "La actividad ya fue finalizada.")
             return self.form_invalid(form)
         form.save()
         messages.success(self.request, "Participación actualizada.")
@@ -524,7 +590,7 @@ class AsistenciaVista(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo in ("cerrada", "cancelada"):
+        if a.estado.codigo in ("realizada", "cancelada"):
             messages.error(request, "No se puede registrar asistencia en esta actividad.")
             return self.volver(a, "asistencia")
         estados = {e.codigo: e for e in EstadoParticipacion.objects.filter(codigo__in=["asistio", "no_asistio"])}
@@ -551,7 +617,7 @@ class AsistenciaVista(_AccionActividad):
 
 
 # --- Calendario -------------------------------------------------------------------
-COLORES = {"planificada": "#6c757d", "confirmada": "#198754", "reprogramada": "#fd7e14", "suspendida": "#ffc107", "cancelada": "#dc3545", "realizada": "#0d6efd", "cerrada": "#0a58ca", "pendiente": "#adb5bd"}
+COLORES = {"planificada": "#6c757d", "confirmada": "#198754", "reprogramada": "#fd7e14", "suspendida": "#ffc107", "cancelada": "#dc3545", "realizada": "#0d6efd", "pendiente": "#adb5bd"}
 
 
 class Calendario(Permiso403Mixin, TemplateView):
@@ -560,7 +626,11 @@ class Calendario(Permiso403Mixin, TemplateView):
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo="Calendario", estados=EstadoActividad.objects.all(), colores=COLORES)
+        ctx.update(
+            titulo="Calendario", estados=EstadoActividad.objects.all(), colores=COLORES, comunas=Comuna.objects.all(),
+            responsables=Persona.objects.filter(actividades_a_cargo__isnull=False).distinct(),
+            organizaciones=Organizacion.objects.filter(activo=True, actividades__isnull=False).distinct(),
+        )
         return ctx
 
 
@@ -580,6 +650,13 @@ class CalendarioEventos(Permiso403Mixin, View):
             qs = qs.filter(actividad__estado__codigo=request.GET["estado"])
         if request.GET.get("lugar", "").isdigit():
             qs = qs.filter(lugar_id=request.GET["lugar"])
+        if request.GET.get("zona", "").isdigit():
+            z = request.GET["zona"]
+            qs = qs.filter(Q(lugar__direccion__comuna_id=z) | Q(actividad__territorios__vigente=True, actividad__territorios__comuna_id=z)).distinct()
+        if request.GET.get("responsable", "").isdigit():
+            qs = qs.filter(actividad__responsable_id=request.GET["responsable"])
+        if request.GET.get("organizacion", "").isdigit():
+            qs = qs.filter(actividad__organizaciones__organizacion_id=request.GET["organizacion"]).distinct()
         eventos = []
         for ag in qs[:1000]:
             codigo = ag.actividad.estado.codigo
@@ -624,7 +701,7 @@ class Candidatos(Permiso403Mixin, TemplateView):
             roles=RolParticipacion.objects.filter(activo=True), comunas=Comuna.objects.all(), tipos_org=TipoOrganizacion.objects.filter(activo=True),
             instituciones=Organizacion.objects.filter(tipo__codigo="institucion_educativa", activo=True),
             breadcrumb=[("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())], datos=g,
-            puede_agregar=self.request.user.has_perm("actividades.add_participacion") and a.estado.codigo not in ("cerrada", "cancelada"),
+            puede_agregar=self.request.user.has_perm("actividades.add_participacion") and a.estado.codigo not in ("realizada", "cancelada"),
         )
         return ctx
 

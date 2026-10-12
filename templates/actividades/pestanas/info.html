@@ -11,5 +11,6 @@
 {% if hijas or object.actividad_padre is None %}
 <h2 class="h6 mt-3">Charlas y talleres de esta jornada</h2>
 <ul class="list-group mb-2">{% for h in hijas %}<li class="list-group-item"><a href="{{ h.get_absolute_url }}">{{ h.nombre }}</a> <span class="badge text-bg-secondary">{{ h.estado }}</span></li>{% empty %}<li class="list-group-item text-muted">Ninguna.</li>{% endfor %}</ul>
+{% if puede_programar and object.actividad_padre is None %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:serie' object.pk %}">Crear serie (repetir)</a>{% endif %}
 {% if puede_agregar %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:nueva' %}?padre={{ object.pk }}{% if object.proyecto_id %}&proyecto={{ object.proyecto_id }}{% endif %}">+ Actividad dentro de esta jornada</a>{% endif %}
 {% endif %}

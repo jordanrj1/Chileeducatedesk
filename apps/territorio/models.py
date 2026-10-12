@@ -14,6 +14,11 @@ class Region(models.Model):
     def __str__(self):
         return self.nombre
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("territorio:region", args=[self.pk])
+
 
 class Provincia(models.Model):
     region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name="provincias")
@@ -73,11 +78,40 @@ class Sector(models.Model):
     def __str__(self):
         return f"{self.sector_padre} › {self.nombre}" if self.sector_padre_id else self.nombre
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("territorio:sector", args=[self.pk])
+
+    def descendientes_ids(self):
+        """Ids de este sector y de todos los que contiene (etapas dentro de un sector, etc.)."""
+        ids, frontera = [self.pk], [self.pk]
+        while frontera:
+            frontera = list(Sector.objects.filter(sector_padre_id__in=frontera).values_list("pk", flat=True))
+            ids += frontera
+        return ids
+
     def clean(self):
         if self.sector_padre_id and self.sector_padre.comuna_id != self.comuna_id:
             raise ValidationError({"sector_padre": "El sector padre debe pertenecer a la misma comuna."})
         if self.sector_padre_id and self.sector_padre_id == self.pk:
             raise ValidationError({"sector_padre": "Un sector no puede ser su propio padre."})
+
+
+class SectorAlias(models.Model):
+    """Nombre alternativo de un sector («Pobl. San Pedro», «SPC Etapa 2»), para reconocerlo aunque se escriba distinto (TE-06)."""
+
+    sector = models.ForeignKey(Sector, on_delete=models.CASCADE, related_name="alias")
+    nombre = models.CharField(max_length=120)
+
+    class Meta:
+        ordering = ["nombre"]
+        verbose_name = "nombre alternativo de sector"
+        verbose_name_plural = "nombres alternativos de sectores"
+        constraints = [models.UniqueConstraint(fields=["sector", "nombre"], name="alias_unico_por_sector")]
+
+    def __str__(self):
+        return self.nombre
 
 
 class Direccion(models.Model):

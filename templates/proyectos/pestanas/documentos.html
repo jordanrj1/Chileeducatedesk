@@ -1,3 +1,4 @@
 <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Documentos del proyecto</h2>
-{% if puede_agregar and perms.documentos.add_documento %}<a class="btn btn-primary btn-sm" href="{% url 'documentos:nuevo' %}?proyecto={{ object.pk }}">+ Agregar documento</a>{% endif %}</div>
+{% if puede_agregar and perms.documentos.add_documento %}<a class="btn btn-primary btn-sm" href="{% url 'documentos:nuevo' %}?proyecto={{ object.pk }}">Subir nuevo</a>
+<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:asociar' %}?proyecto={{ object.pk }}">Asociar existente</a>{% endif %}</div>
 {% include "documentos/_lista.html" %}

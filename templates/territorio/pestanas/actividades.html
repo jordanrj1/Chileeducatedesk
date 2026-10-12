@@ -1,0 +1,1 @@
+<ul class="list-group">{% for a in actividades %}<li class="list-group-item"><a href="{{ a.get_absolute_url }}">{{ a.nombre }}</a> <span class="badge text-bg-secondary">{{ a.estado }}</span>{% if a.tipo %} <span class="small text-muted">{{ a.tipo }}</span>{% endif %}</li>{% empty %}<li class="list-group-item text-muted">Aún no hay actividades aquí.</li>{% endfor %}</ul>

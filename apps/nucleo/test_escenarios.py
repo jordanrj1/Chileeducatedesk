@@ -18,7 +18,7 @@ def id_de(url):
 
 
 def test_recorrido_completo_normal(cg, lugar, universidad):
-    """Persona → proyecto → actividad → participantes → programar → confirmar → realizar → asistencia → resultado → cerrar → historial."""
+    """Persona → proyecto → actividad → participantes → programar → confirmar → realizar → asistencia → resultado → finalizar → historial."""
     # 1. Persona (responsable) y voluntarios
     r = cg.post("/personas/nueva", {"nombres": "Claudia", "apellido_paterno": "Responsable", "correo": "claudia@ejemplo.invalid"})
     claudia = Persona.objects.get(nombres="Claudia")
@@ -44,8 +44,6 @@ def test_recorrido_completo_normal(cg, lugar, universidad):
     cg.post(f"/actividades/{actividad.pk}/confirmar", {"acepto": "1"})
     actividad.refresh_from_db()
     assert actividad.estado.codigo == "confirmada"
-    # 7. Se realiza
-    cg.post(f"/actividades/{actividad.pk}/estado", {"estado": "realizada"})
     # 8. Asistencia y resultado
     datos = {f"asistencia_{p.pk}": "si" for p in actividad.participaciones.all()}
     cg.post(f"/actividades/{actividad.pk}/asistencia", datos)
@@ -53,17 +51,17 @@ def test_recorrido_completo_normal(cg, lugar, universidad):
     # 9. Evidencia
     cg.post("/documentos/nuevo", {"nombre": "Fotos del taller", "archivo": SimpleUploadedFile("fotos.png", b"\x89PNG ficticio"), "tipo": TipoDocumento.objects.get(codigo="otro").pk, "fecha": str(date.today()), "actividad": actividad.pk})
     assert actividad.documentos.count() == 1
-    # 10. Cierre
-    cg.post(f"/actividades/{actividad.pk}/cerrar")
+    # 10. Finalizar: queda realizada
+    cg.post(f"/actividades/{actividad.pk}/finalizar")
     actividad.refresh_from_db()
-    assert actividad.estado.codigo == "cerrada" and actividad.cerrada_en
+    assert actividad.estado.codigo == "realizada" and actividad.finalizada_en
     # 11. Historial consultable desde todos los lados
-    assert "Cerrada" in cg.get(f"/actividades/{actividad.pk}").content.decode()
+    assert "Realizada" in cg.get(f"/actividades/{actividad.pk}").content.decode()
     assert "Taller 1" in cg.get(f"/personas/{claudia.pk}?tab=trayectoria").content.decode() or True
     diego = Persona.objects.get(nombres="Diego")
     assert "Taller 1" in cg.get(f"/personas/{diego.pk}?tab=trayectoria").content.decode()
     assert "Taller 1" in cg.get(f"/proyectos/{proyecto_id}?tab=actividades").content.decode()
-    assert "cerrada" in cg.get(f"/actividades/{actividad.pk}?tab=historial").content.decode().lower()
+    assert "realizada" in cg.get(f"/actividades/{actividad.pk}?tab=historial").content.decode().lower()
     assert "Taller 1" in cg.get("/buscar?q=primeros").content.decode()
 
 
@@ -195,7 +193,7 @@ def test_error_de_informacion_se_explica(cg):
     assert r.status_code == 200 and not Persona.objects.exists()
 
 
-def test_recorrido_de_solicitud_a_actividad_cerrada(cg, universidad, crear_persona):
+def test_recorrido_de_solicitud_a_actividad_realizada(cg, universidad, crear_persona):
     """Del contacto inicial al registro cerrado y consultable, sin crear cuentas para los participantes (criterio principal, doc 03)."""
     from django.contrib.auth.models import User
 
@@ -210,11 +208,10 @@ def test_recorrido_de_solicitud_a_actividad_cerrada(cg, universidad, crear_perso
     a = s.actividad
     cg.post(f"/actividades/{a.pk}/participantes/rapido", {"nombres": "Iván", "apellido_paterno": "Apoyo", "rol": RolParticipacion.objects.get(codigo="practicante").pk})
     cg.post(f"/actividades/{a.pk}/estado", {"estado": "planificada"})
-    cg.post(f"/actividades/{a.pk}/estado", {"estado": "realizada"})
     cg.post(f"/actividades/{a.pk}/resultados", {"resultado": "Se apoyó a 12 estudiantes", "asistencia_sin_registro": "on"})
-    cg.post(f"/actividades/{a.pk}/cerrar")
+    cg.post(f"/actividades/{a.pk}/finalizar")
     a.refresh_from_db()
-    assert a.estado.codigo == "cerrada"
+    assert a.estado.codigo == "realizada"
     assert User.objects.count() == cuentas_antes  # nadie recibió cuenta
     assert not hasattr(Persona.objects.get(nombres="Iván"), "cuenta")
     assert "Estudiantes disponibles" in cg.get("/buscar?q=apoyo escolar").content.decode() or "Estudiantes" in cg.get(f"/organizaciones/{universidad.pk}?tab=actividades").content.decode() or True

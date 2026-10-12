@@ -1,5 +1,20 @@
 {% extends "generico/formulario.html" %}
 {% block campos %}
 {% if vigente %}<div class="alert alert-info">Programación vigente: <strong>{{ vigente.fecha|date:"d-m-Y" }} {{ vigente.hora_inicio|time:"H:i" }}</strong>{% if vigente.lugar %} · {{ vigente.lugar }}{% endif %}. Al guardar se crea la versión {{ vigente.version|add:1 }} y la actual se conserva en el historial.</div>{% endif %}
-{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
+{% for campo in form %}{% include "generico/_campo.html" %}
+  {% if campo.name == "lugar" and perms.lugares.add_lugar %}
+  <details class="crear-lugar mb-3"><summary class="small">+ Crear lugar sin salir de la actividad</summary>
+    <div class="row g-2 mt-1">
+      <div class="col-12 col-md-6"><input class="form-control form-control-sm" name="nuevo_lugar_nombre" placeholder="Nombre del lugar" aria-label="Nombre del lugar nuevo"></div>
+      <div class="col-6 col-md-3"><select class="form-select form-select-sm" name="nuevo_lugar_tipo" aria-label="Tipo de lugar"><option value="">Tipo</option>{% for t in tipos_lugar %}<option value="{{ t.pk }}">{{ t.nombre }}</option>{% endfor %}</select></div>
+      <div class="col-6 col-md-3"><input class="form-control form-control-sm" name="nuevo_lugar_capacidad" type="number" min="1" placeholder="Capacidad" aria-label="Capacidad"></div>
+      <div class="col-12 col-md-4"><select class="form-select form-select-sm" name="nuevo_lugar_comuna" aria-label="Comuna"><option value="">Comuna</option>{% for c in comunas %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}</select></div>
+      <div class="col-8 col-md-5"><input class="form-control form-control-sm" name="nuevo_lugar_calle" placeholder="Calle" aria-label="Calle"></div>
+      <div class="col-4 col-md-3"><input class="form-control form-control-sm" name="nuevo_lugar_numero" placeholder="Número" aria-label="Número"></div>
+      <div class="col-12"><button type="button" class="btn btn-outline-primary btn-sm" hx-post="/lugares/crear-rapido" hx-include="closest .crear-lugar" hx-target="#{{ campo.id_for_label }}">Crear y seleccionar</button>
+        <div id="aviso-lugar" class="small"></div></div>
+    </div>
+  </details>
+  {% endif %}
+{% endfor %}
 {% endblock %}

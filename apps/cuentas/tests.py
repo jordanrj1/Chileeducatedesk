@@ -24,7 +24,7 @@ def test_cuenta_desactivada_no_ingresa(gestor):
     gestor.save()
     c = Client()
     r = c.post("/login", {"username": "gestor_prueba", "password": "clave-ficticia-123"})
-    assert r.status_code == 200 and MSG in r.content.decode()
+    assert r.status_code == 200 and "desactivada" in r.content.decode()
     assert c.get("/dashboard").status_code == 302
 
 
@@ -170,3 +170,44 @@ def test_comando_crear_usuario():
         call_command("crear_usuario", "nuevo_gestor", "--correo", "otro@ejemplo.invalid", "--rol", "Gestor", "--password", "una-clave-larga-123")
     with pytest.raises(CommandError):
         call_command("crear_usuario", "debil", "--correo", "d@ejemplo.invalid", "--rol", "Gestor", "--password", "123")
+
+
+def test_cuenta_desactivada_con_clave_correcta_explica_a_quien_consultar(gestor, settings):
+    settings.CONTACTO_ADMINISTRADOR = "Manuel (admin@ejemplo.invalid)"
+    gestor.is_active = False
+    gestor.save()
+    r = Client().post("/login", {"username": "gestor_prueba@ejemplo.invalid", "password": "clave-ficticia-123"})
+    html = r.content.decode()
+    assert r.status_code == 200 and "Tu cuenta está desactivada" in html and "Manuel" in html
+
+
+def test_cuenta_desactivada_con_clave_incorrecta_no_revela_nada(gestor):
+    gestor.is_active = False
+    gestor.save()
+    html = Client().post("/login", {"username": "gestor_prueba", "password": "mala"}).content.decode()
+    assert MSG in html and "desactivada" not in html
+
+
+def test_crear_cuenta_exige_persona(ca):
+    r = ca.post("/administracion/usuarios/nuevo", {
+        "username": "sin_persona", "email": "sp@ejemplo.invalid", "rol": Group.objects.get(name="Gestor").pk,
+        "password1": "una-clave-larga-123", "password2": "una-clave-larga-123",
+    })
+    assert r.status_code == 200 and not User.objects.filter(username="sin_persona").exists()
+
+
+def test_listado_de_usuarios_muestra_ultimo_ingreso(ca, gestor):
+    Client().post("/login", {"username": "gestor_prueba", "password": "clave-ficticia-123"})
+    User.objects.create_user("nunca_entro", email="ne@ejemplo.invalid", password="clave-ficticia-123")
+    html = ca.get("/administracion/usuarios").content.decode()
+    assert "Último ingreso" in html and "Nunca" in html
+
+
+def test_auditoria_filtra_por_fecha_y_accion(ca, gestor):
+    from datetime import date, timedelta
+
+    Client().post("/login", {"username": "gestor_prueba", "password": "mala"})
+    hoy = date.today()
+    html = ca.get(f"/administracion/auditoria?desde={hoy}&hasta={hoy}&accion=ingreso_fallido").content.decode()
+    assert "ingreso_fallido" in html
+    assert "Sin resultados" in ca.get(f"/administracion/auditoria?hasta={hoy - timedelta(days=5)}").content.decode()

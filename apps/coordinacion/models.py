@@ -13,6 +13,13 @@ def _creado_por():
     return models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
 
 
+class InteraccionQuerySet(models.QuerySet):
+    def proximas_acciones(self, hoy=None, dias=7):
+        """Próximas acciones no cumplidas que vencen en los próximos días (o ya vencieron): IN-02."""
+        hoy = hoy or timezone.localdate()
+        return self.filter(accion_cumplida=False, proxima_fecha__isnull=False, proxima_fecha__lte=hoy + timedelta(days=dias)).exclude(proxima_accion="").order_by("proxima_fecha")
+
+
 class Interaccion(models.Model):
     """Llamado, correo, mensaje o contacto con una persona u organización, con su próximo paso."""
 
@@ -28,6 +35,7 @@ class Interaccion(models.Model):
     proxima_fecha = models.DateField("fecha de la próxima acción", null=True, blank=True)
     accion_cumplida = models.BooleanField("próxima acción cumplida", default=False)
     creado_por = _creado_por()
+    objects = InteraccionQuerySet.as_manager()
 
     class Meta:
         ordering = ["-fecha"]
@@ -153,12 +161,12 @@ class TareaResponsable(models.Model):
 
 
 class Invitacion(models.Model):
-    ESTADOS = [("pendiente", "Pendiente"), ("aceptada", "Aceptada"), ("rechazada", "Rechazada"), ("sin_respuesta", "Sin respuesta")]
+    ESTADOS = [("enviada", "Enviada"), ("respondio", "Respondió"), ("aceptada", "Aceptó"), ("rechazada", "Rechazó"), ("sin_respuesta", "Sin respuesta")]
     persona = models.ForeignKey("personas.Persona", on_delete=models.PROTECT, related_name="invitaciones")
     actividad = models.ForeignKey("actividades.Actividad", on_delete=models.PROTECT, related_name="invitaciones")
     rol = models.ForeignKey(RolParticipacion, on_delete=models.PROTECT, related_name="+", verbose_name="rol propuesto")
     fecha = models.DateField(default=timezone.localdate)
-    estado = models.CharField(max_length=14, choices=ESTADOS, default="pendiente")
+    estado = models.CharField(max_length=14, choices=ESTADOS, default="enviada")
     respuesta = models.TextField(blank=True)
     fecha_respuesta = models.DateField(null=True, blank=True)
     creado_por = _creado_por()
@@ -176,11 +184,13 @@ class Invitacion(models.Model):
 
 
 class Colaboracion(models.Model):
-    ESTADOS = [("solicitada", "Solicitada"), ("acordada", "Acordada"), ("cumplida", "Cumplida"), ("rechazada", "Rechazada")]
+    """Solicitud de apoyo a una organización (IN-05)."""
+
+    ESTADOS = [("enviada", "Enviada"), ("respondio", "Respondió"), ("aceptada", "Aceptó"), ("rechazada", "Rechazó"), ("sin_respuesta", "Sin respuesta"), ("cumplida", "Cumplida")]
     organizacion = models.ForeignKey("organizaciones.Organizacion", on_delete=models.PROTECT, related_name="colaboraciones", verbose_name="organización")
     actividad = models.ForeignKey("actividades.Actividad", on_delete=models.PROTECT, related_name="colaboraciones")
     tipo_apoyo = models.ForeignKey(TipoIntervencion, on_delete=models.PROTECT, related_name="+", verbose_name="tipo de apoyo")
-    estado = models.CharField(max_length=12, choices=ESTADOS, default="solicitada")
+    estado = models.CharField(max_length=14, choices=ESTADOS, default="enviada")
     resultado = models.TextField(blank=True)
     observaciones = models.CharField(max_length=250, blank=True)
     creado_por = _creado_por()
@@ -188,8 +198,8 @@ class Colaboracion(models.Model):
 
     class Meta:
         ordering = ["-creado_en"]
-        verbose_name = "colaboración"
-        verbose_name_plural = "colaboraciones"
+        verbose_name = "solicitud de apoyo"
+        verbose_name_plural = "solicitudes de apoyo"
 
     def __str__(self):
         return f"{self.organizacion} · {self.tipo_apoyo}"

@@ -10,7 +10,7 @@ from .models import Lote, validar_listado
 
 class LoteForm(BootstrapMixin, forms.Form):
     tipo = forms.ChoiceField(choices=Lote.TIPOS, label="¿Qué vas a cargar?")
-    actividad = SelectorField(Actividad.objects.exclude(estado__codigo__in=["cancelada", "cerrada"]), reverse_lazy("actividades:opciones"), required=False, label="Actividad (para listados de participantes)")
+    actividad = SelectorField(Actividad.objects.exclude(estado__codigo__in=["cancelada", "realizada"]), reverse_lazy("actividades:opciones"), required=False, label="Actividad (para listados de participantes)")
     rol = forms.ModelChoiceField(RolParticipacion.objects.filter(activo=True), required=False, label="Rol de las personas del listado")
     archivo = forms.FileField(required=False, validators=[validar_listado], help_text="CSV, TXT con tabulaciones o XLSX. La primera fila son los encabezados.")
     texto = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 6}), label="…o pega aquí las filas (copiadas desde Excel, con encabezados)")

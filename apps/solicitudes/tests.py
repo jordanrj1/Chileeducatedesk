@@ -102,3 +102,16 @@ def test_historial_y_permisos(cg, ca, cs):
     assert ca.get("/solicitudes").status_code == 200 and ca.get("/solicitudes/nueva").status_code == 403
     assert ca.post(f"/solicitudes/{s.pk}/estado", {"estado": "en_seguimiento"}).status_code == 403
     assert cs.get("/solicitudes").status_code == 403
+
+
+
+def test_nueva_oportunidad_y_por_identificar(cg):
+    html = cg.get("/solicitudes").content.decode()
+    assert "+ Nueva oportunidad" in html
+    r = cg.get("/solicitudes/nueva?oportunidad=1").content.decode()
+    assert "Nueva oportunidad" in r and 'value="busqueda_activa" selected' in r
+    nueva(cg, motivo="Sin saber quién llamó")
+    s = Solicitud.objects.get()
+    assert "Por identificar" in cg.get("/solicitudes").content.decode()
+    assert "Por identificar" in cg.get(s.get_absolute_url()).content.decode()
+    assert f"/interacciones/nueva?solicitud={s.pk}" in cg.get(s.get_absolute_url()).content.decode()

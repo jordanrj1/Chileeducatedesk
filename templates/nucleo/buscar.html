@@ -5,7 +5,7 @@
 <h1 class="h4">Búsqueda</h1>
 <form class="row g-2 mb-3" method="get">
   <div class="col-12 col-md-4"><input class="form-control" type="search" name="q" value="{{ datos.q }}" placeholder="Buscar…" aria-label="Texto a buscar"></div>
-  <div class="col-6 col-md-2"><select class="form-select" name="tipo" aria-label="Tipo"><option value="">Tipo: todos</option>{% for v, n in tipos %}<option value="{{ v }}" {% if datos.tipo == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><select class="form-select" name="tipo" aria-label="Tipo"><option value="">Tipo: todos</option>{% for v, n in tipos %}{% if v != "reunion" or segunda_fase %}<option value="{{ v }}" {% if datos.tipo == v %}selected{% endif %}>{{ n }}</option>{% endif %}{% endfor %}</select></div>
   <div class="col-6 col-md-2"><select class="form-select" name="estado" aria-label="Estado de la actividad"><option value="">Estado: todos</option>{% for e in estados %}<option value="{{ e.codigo }}" {% if datos.estado == e.codigo %}selected{% endif %}>{{ e.nombre }}</option>{% endfor %}</select></div>
   <div class="col-6 col-md-2"><select class="form-select" name="zona" aria-label="Zona"><option value="">Zona: todas</option>{% for c in comunas %}<option value="{{ c.pk }}" {% if datos.zona == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}</select></div>
   <div class="col-6 col-md-2"><select class="form-select" name="tipo_actividad" aria-label="Tipo de actividad"><option value="">Tipo de actividad</option>{% for t in tipos_actividad %}<option value="{{ t.pk }}" {% if datos.tipo_actividad == t.pk|stringformat:"s" %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}</select></div>
@@ -18,10 +18,13 @@
 {% elif total == 0 %}<p class="text-muted">Sin resultados{% if termino %} para «{{ termino }}»{% endif %}. Prueba con menos filtros.</p>
 {% else %}
 <p class="text-muted small">{{ total }} resultado(s)</p>
-<ul class="list-group">{% for r in pagina %}
-  <li class="list-group-item d-flex justify-content-between align-items-start gap-2"><div><span class="badge text-bg-secondary text-capitalize">{{ r.tipo }}</span> <a href="{{ r.url }}">{{ r.titulo }}</a>
+{% for nombre, total_grupo, items in agrupados %}
+<h2 class="h6 mt-3">{{ nombre }} <span class="badge text-bg-secondary">{{ total_grupo }}</span></h2>
+<ul class="list-group">{% for r in items %}
+  <li class="list-group-item d-flex justify-content-between align-items-start gap-2"><div><a href="{{ r.url }}">{{ r.titulo }}</a>
   {% if r.detalle %}<div class="small text-muted">{{ r.detalle }}</div>{% endif %}</div>
   <div class="text-end small">{% if r.estado %}<span class="badge text-bg-primary">{{ r.estado }}</span>{% endif %}{% if r.fecha %}<div class="text-muted">{{ r.fecha }}</div>{% endif %}</div></li>{% endfor %}</ul>
+{% endfor %}
 {% if pagina.has_other_pages %}<nav class="mt-3" aria-label="Páginas"><ul class="pagination">
   {% if pagina.has_previous %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ pagina.previous_page_number }}">Anterior</a></li>{% endif %}
   <li class="page-item disabled"><span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span></li>

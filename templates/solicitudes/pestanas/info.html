@@ -11,7 +11,7 @@
   <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">{{ object.fecha|date:"d-m-Y" }}</dd>
   <dt class="col-sm-3">Origen</dt><dd class="col-sm-9">{{ object.get_origen_display }}</dd>
   <dt class="col-sm-3">Canal</dt><dd class="col-sm-9">{{ object.canal|default:"—" }}</dd>
-  <dt class="col-sm-3">Persona</dt><dd class="col-sm-9">{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Persona</dt><dd class="col-sm-9">{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% elif not object.organizacion %}<span class="text-warning-emphasis">Por identificar</span>{% else %}—{% endif %}</dd>
   <dt class="col-sm-3">Organización</dt><dd class="col-sm-9">{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd>
   <dt class="col-sm-3">Motivo</dt><dd class="col-sm-9">{{ object.motivo|default:"—" }}</dd>
   <dt class="col-sm-3">Descripción</dt><dd class="col-sm-9">{{ object.descripcion|default:"—"|linebreaksbr }}</dd>

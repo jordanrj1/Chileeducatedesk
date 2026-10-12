@@ -11,10 +11,9 @@ TRANSICIONES = {
     "reprogramada": {"confirmada", "suspendida", "cancelada", "realizada"},
     "suspendida": {"planificada", "cancelada"},
     "cancelada": set(),
-    "realizada": {"cerrada"},
-    "cerrada": set(),
+    "realizada": set(),  # se llega solo con «Finalizar actividad»; reabrir exige permiso especial [V#4]
 }
-ESTADOS_QUE_OCUPAN = ("planificada", "confirmada", "reprogramada", "realizada", "cerrada")
+ESTADOS_QUE_OCUPAN = ("planificada", "confirmada", "reprogramada", "realizada")
 MOTIVO_OBLIGATORIO = {"suspendida", "cancelada"}
 
 
@@ -126,7 +125,7 @@ def revisar(actividad, hoy=None):
                 res.append(Problema("info", "condiciones_lugar", f"Condiciones del lugar: {lugar.condiciones}"))
         if actividad.condiciones:
             res.append(Problema("info", "condiciones", f"Condiciones de la actividad: {actividad.condiciones}"))
-        if agenda.fecha < hoy and actividad.estado.codigo not in ("realizada", "cerrada"):
+        if agenda.fecha < hoy and actividad.estado.codigo != "realizada":
             res.append(Problema("advertencia", "fecha_pasada", f"La fecha programada ({agenda.fecha:%d-%m-%Y}) ya pasó."))
         personas = {p.persona_id: p.persona for p in activas if not p.es_beneficiario}
         if actividad.responsable_id and actividad.responsable_id not in personas:
@@ -136,8 +135,27 @@ def revisar(actividad, hoy=None):
                 res.append(Problema("advertencia", "persona_ocupada", f"{persona} ya participa en «{otra.actividad}» ese día a las {otra.hora_inicio:%H:%M}."))
             if fuera_de_disponibilidad(persona, agenda):
                 res.append(Problema("advertencia", "fuera_de_disponibilidad", f"{persona} declaró disponibilidad en otros horarios."))
-    orden = {"bloqueante": 0, "critico": 1, "advertencia": 2, "info": 3}
+    res += _compatibles(actividad, agenda, lugar, activas, {p.codigo for p in res})
+    orden = {"bloqueante": 0, "critico": 1, "advertencia": 2, "info": 3, "ok": 4}
     return sorted(res, key=lambda p: orden[p.nivel])
+
+
+def _compatibles(actividad, agenda, lugar, activas, codigos):
+    """Lo que sí está bien, para mostrarlo con ✓ (VA-01). No influye en la confirmación."""
+    ok = []
+    if "sin_responsable" not in codigos:
+        ok.append(Problema("ok", "responsable_ok", f"Responsable: {actividad.responsable}."))
+    if agenda and agenda.hora_inicio:
+        ok.append(Problema("ok", "agenda_ok", f"Programada el {agenda.fecha:%d-%m-%Y} a las {agenda.hora_inicio:%H:%M}."))
+        if lugar and not codigos & {"lugar_ocupado", "lugar_inactivo"}:
+            ok.append(Problema("ok", "lugar_ok", f"El lugar «{lugar}» está disponible en ese horario."))
+        elif not lugar and actividad.es_virtual:
+            ok.append(Problema("ok", "virtual_ok", "Modalidad virtual: no requiere lugar."))
+        if lugar and lugar.capacidad is not None and "capacidad" not in codigos:
+            ok.append(Problema("ok", "capacidad_ok", f"Capacidad compatible: {len(activas)} de {lugar.capacidad}."))
+        if activas and not codigos & {"persona_ocupada", "fuera_de_disponibilidad"}:
+            ok.append(Problema("ok", "horarios_ok", "Sin choques de horario de las personas."))
+    return ok
 
 
 def conflicto_critico_permitido():

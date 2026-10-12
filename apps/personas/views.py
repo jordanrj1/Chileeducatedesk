@@ -6,13 +6,17 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import CreateView
 
-from apps.nucleo.models import EstadoRegistro, OrigenPersona
+from django.db.models import Q
+
+from apps.nucleo.models import EstadoRegistro, OrigenPersona, RolParticipacion
+from apps.organizaciones.models import Organizacion
+from apps.territorio.models import Comuna
 from apps.nucleo.vistas_base import (
     AlternarActivoBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
 )
 
 from .duplicados import candidatos
-from .forms import PersonaDireccionForm, PersonaForm, PersonaNuevaForm
+from .forms import PersonaDireccionForm, PersonaForm, PersonaNuevaForm, PersonaRapidaForm
 from .models import Contacto, Persona, PersonaDireccion
 
 
@@ -33,7 +37,7 @@ class PersonaLista(ListaBase):
     campos_busqueda = ()
     columnas = [
         ("Nombre", lambda p: p.nombre_completo),
-        ("RUT", "rut"),
+        ("RUT 🔒", "rut"),
         ("Correo", lambda p: _principal(p, ["correo"])),
         ("Teléfono", lambda p: _principal(p, ["telefono_movil", "telefono_fijo"])),
         ("Registro", "estado_registro"),
@@ -45,6 +49,10 @@ class PersonaLista(ListaBase):
         filtro_activo(),
         Filtro("registro", "Registro", "estado_registro__codigo", lambda: [(e.codigo, e.nombre) for e in EstadoRegistro.objects.all()]),
         Filtro("origen", "Origen", "origen_id", opciones_modelo(OrigenPersona)),
+        Filtro("rol", "Tipo de relación", "", opciones_modelo(RolParticipacion), aplicar=lambda qs, v: qs.filter(participaciones__rol_id=v).distinct()),
+        Filtro("organizacion", "Organización", "", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(activo=True)[:300]],
+               aplicar=lambda qs, v: qs.filter(Q(vinculos__organizacion_id=v) | Q(formaciones__organizacion_id=v)).distinct()),
+        Filtro("comuna", "Comuna", "", opciones_modelo(Comuna), aplicar=lambda qs, v: qs.filter(direcciones__vigente=True, direcciones__direccion__comuna_id=v).distinct()),
     ]
     texto_vacio = "Aún no hay personas registradas."
     url_exportar = "/personas/exportar"
@@ -63,14 +71,25 @@ class PersonaExportar(PersonaLista):
 
 
 class PersonaNueva(Permiso403Mixin, CreateView):
+    """Ficha rápida (nombre y un contacto) o completa. Siempre busca coincidencias antes de crear (PE-04)."""
+
     model = Persona
-    form_class = PersonaNuevaForm
     permission_required = "personas.add_persona"
     template_name = "personas/nueva.html"
 
+    def modo(self):
+        if self.request.method == "POST":
+            m = self.request.POST.get("modo", "completa")  # sin «modo» (p. ej. integraciones) se aceptan todos los campos
+        else:
+            m = self.request.GET.get("modo", "rapida")
+        return "completa" if m == "completa" else "rapida"
+
+    def get_form_class(self):
+        return PersonaNuevaForm if self.modo() == "completa" else PersonaRapidaForm
+
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo="Nueva persona", volver_url="/personas", breadcrumb=[("Personas", "/personas")])
+        ctx.update(titulo="Nueva persona", volver_url="/personas", breadcrumb=[("Personas", "/personas")], modo=self.modo())
         return ctx
 
     def form_valid(self, form):
@@ -97,6 +116,12 @@ class PersonaNueva(Permiso403Mixin, CreateView):
             from apps.documentos.origen import registrar_origen
 
             registrar_origen(persona, self.request.user)
+        if self.request.POST.get("despues"):
+            if persona.estado_registro and persona.estado_registro.codigo != "incompleto":
+                persona.estado_registro = EstadoRegistro.objects.filter(codigo="incompleto").first()
+                persona.save(update_fields=["estado_registro"])
+            messages.success(self.request, f"{persona} registrada. Quedó en la lista de registros por completar.")
+            return HttpResponseRedirect("/personas/nueva")
         messages.success(self.request, "Persona registrada. Puedes completar el resto de su ficha cuando quieras.")
         return HttpResponseRedirect(persona.get_absolute_url())
 
@@ -124,23 +149,30 @@ def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente
 class PersonaFicha(FichaBase):
     model = Persona
     permission_required = "personas.view_persona"
+    pestanas_segunda_fase = ("verificaciones",)
     breadcrumb = [("Personas", "/personas")]
     permiso_editar = "personas.change_persona"
     pestanas = [
         ("datos", "Datos", "personas/pestanas/datos.html"),
         ("contactos", "Contactos", "generico/_hijos.html"),
-        ("direcciones", "Direcciones", "generico/_hijos.html"),
+        ("direcciones", "Direcciones 🔒", "generico/_hijos.html"),
         ("formacion", "Formación", "generico/_hijos.html"),
         ("experiencia", "Experiencia", "generico/_hijos.html"),
         ("disponibilidad", "Disponibilidad", "generico/_hijos.html"),
         ("vinculos", "Organizaciones y cargos", "generico/_hijos.html"),
-        ("trayectoria", "Trayectoria", "personas/pestanas/trayectoria.html", "actividades.view_participacion"),
+        ("trayectoria", "Participaciones", "personas/pestanas/trayectoria.html", "actividades.view_participacion"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
-        ("emergencia", "Contacto de emergencia", "generico/_hijos.html", "personas.ver_sensibles"),
-        ("verificaciones", "Verificaciones", "generico/_hijos.html", "personas.ver_sensibles"),
+        ("interacciones", "Interacciones", "coordinacion/_interacciones.html", "coordinacion.view_interaccion"),
+        ("emergencia", "Contacto de emergencia 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
+        ("verificaciones", "Verificaciones 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "personas.view_historicalpersona"),
     ]
+
+    def acciones_extra(self):
+        if self.request.user.has_perm("coordinacion.add_interaccion"):
+            return [("Registrar interacción", f"/interacciones/nueva?persona={self.object.pk}")]
+        return []
 
     def contexto_ficha(self):
         p = self.object
@@ -170,11 +202,14 @@ class PersonaFicha(FichaBase):
             "invitaciones": p.invitaciones.select_related("actividad"),
         }
 
+    def ctx_interacciones(self):
+        return {"interacciones": self.object.interacciones.select_related("canal", "actividad", "solicitud").order_by("-fecha"), "url_nueva_interaccion": f"/interacciones/nueva?persona={self.object.pk}"}
+
     def ctx_documentos(self):
         docs = self.object.documentos.select_related("tipo")
         if not self.request.user.has_perm("documentos.ver_restringido"):
             docs = docs.filter(restringido=False)
-        return {"documentos": docs, "url_nuevo_doc": f"/documentos/nuevo?persona={self.object.pk}"}
+        return {"documentos": docs, "url_nuevo_doc": f"/documentos/nuevo?persona={self.object.pk}", "url_asociar_doc": f"/documentos/asociar?persona={self.object.pk}"}
 
     def ctx_origen(self):
         from apps.documentos.origen import contexto_origen
@@ -227,7 +262,7 @@ class DireccionPersonaNueva(Permiso403Mixin, CreateView):
 
     form_class = PersonaDireccionForm
     permission_required = "personas.change_persona"
-    template_name = "generico/formulario.html"
+    template_name = "personas/direccion.html"
 
     def dispatch(self, request, *a, **kw):
         self.persona = get_object_or_404(Persona, pk=kw["pk"])

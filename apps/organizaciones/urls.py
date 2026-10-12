@@ -16,6 +16,8 @@ urlpatterns = [
     path("organizaciones/<int:pk>/alternar", views.OrganizacionAlternar.as_view(), name="alternar"),
     path("organizaciones/<int:pk>/carreras/nuevo", views.CarreraNueva.as_view(), name="carreras_nuevo"),
     path("organizaciones/<int:pk>/carreras/<int:hijo_pk>/editar", views.CarreraEditar.as_view(), name="carreras_editar"),
+    *urls_hijo("organizaciones", "personas", "PersonaCargo", modelo=pm.PersonaOrganizacion, form_class=pf.VinculoDesdeOrganizacionForm, tab="personas",
+               etiqueta="persona con cargo", padre_modelo=models.Organizacion, campo_padre="organizacion"),
     *urls_hijo("organizaciones", "contactos", "Contacto", modelo=pm.Contacto, form_class=pf.ContactoForm, tab="contactos", etiqueta="contacto",
                padre_modelo=models.Organizacion, campo_padre="organizacion"),
 ]

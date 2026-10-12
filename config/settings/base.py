@@ -48,6 +48,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "apps.nucleo.fases.SegundaFaseMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -89,8 +90,18 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTHENTICATION_BACKENDS = ["apps.cuentas.backends.CorreoOUsuarioBackend"]
+# Segunda fase (reuniones, tareas, sesiones, beneficiarios, verificaciones, finanzas): ocultos por defecto.
+SEGUNDA_FASE = env.bool("SEGUNDA_FASE", default=False)
+
 # [V#3] ¿Se puede confirmar una actividad con incompatibilidad crítica, con motivo? Hoy: no.
 CONFIRMAR_CON_CONFLICTO_CRITICO = env.bool("CONFIRMAR_CON_CONFLICTO_CRITICO", default=False)
+
+from django.contrib.messages import constants as _mensajes
+
+MESSAGE_TAGS = {_mensajes.ERROR: "danger"}  # Bootstrap usa «danger», no «error»
+
+# A quién consultar si una cuenta está desactivada (AC-02). Ej.: «Manuel (correo@ejemplo.cl)».
+CONTACTO_ADMINISTRADOR = env("CONTACTO_ADMINISTRADOR", default="")
 
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/dashboard"

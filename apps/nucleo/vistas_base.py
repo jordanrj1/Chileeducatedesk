@@ -59,6 +59,7 @@ class ListaBase(Permiso403Mixin, ListView):
     texto_vacio = "Aún no hay registros."
     url_exportar = None
     permiso_exportar = None
+    botones_extra = ()  # [(etiqueta, url, permiso)]
 
     exportar = False
 
@@ -150,6 +151,7 @@ class ListaBase(Permiso403Mixin, ListView):
             hay_filtros=bool(self.request.GET.get("q")) or any(
                 self.request.GET.get(f.param) not in (None, "", f.por_defecto) for f in self.filtros
             ),
+            botones_extra=[(e, u) for e, u, p in self.botones_extra if not p or self.request.user.has_perm(p)],
             url_exportar=self.url_exportar
             if self.url_exportar and (not self.permiso_exportar or self.request.user.has_perm(self.permiso_exportar))
             else None,
@@ -229,9 +231,16 @@ class FichaBase(Permiso403Mixin, DetailView):
         t = self.request.GET.get("tab", claves[0] if claves else "")
         return t if t in claves else (claves[0] if claves else "")
 
+    pestanas_segunda_fase = ()  # claves de pestañas que solo se muestran con SEGUNDA_FASE
+
     def pestanas_visibles(self):
+        from .fases import segunda_fase_activa
+
         res = []
+        fase2 = segunda_fase_activa()
         for p in self.pestanas:
+            if p[0] in self.pestanas_segunda_fase and not fase2:
+                continue
             perm = p[3] if len(p) > 3 else None
             if not perm or self.request.user.has_perm(perm):
                 res.append(p)
@@ -256,13 +265,24 @@ class FichaBase(Permiso403Mixin, DetailView):
         if extra:
             ctx.update(extra())
         ctx.update(self.contexto_ficha())
+        ctx["acciones_extra"] = self.acciones_extra()
         return ctx
 
     def contexto_ficha(self):
         return {}
 
+    def acciones_extra(self):
+        """[(etiqueta, url)] que aparecen junto a «Editar» en la cabecera de la ficha."""
+        return []
+
     def ctx_historial(self):
-        return {"cambios": cambios_historial(self.object)}
+        ctx = {"cambios": cambios_historial(self.object)}
+        etiqueta = f"{self.object._meta.app_label}.{self.object._meta.model_name}"
+        from apps.documentos.origen import MODELOS_CON_ORIGEN, origenes_de
+
+        if etiqueta in MODELOS_CON_ORIGEN and self.request.user.has_perm("documentos.view_origendato"):
+            ctx["origenes_historial"] = origenes_de(self.object)  # HI-04: de qué fuente salió el dato
+        return ctx
 
 
 class AlternarActivoBase(Permiso403Mixin, View):

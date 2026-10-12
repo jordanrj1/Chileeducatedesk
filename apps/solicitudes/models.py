@@ -17,7 +17,7 @@ class SolicitudQuerySet(models.QuerySet):
 
 
 class Solicitud(models.Model):
-    ORIGENES = [("solicitud_externa", "Solicitud externa"), ("busqueda_activa", "Búsqueda activa"), ("campana", "Campaña temática")]
+    ORIGENES = [("solicitud_externa", "Solicitud externa"), ("busqueda_activa", "Búsqueda activa (oportunidad)"), ("campana", "Campaña temática")]
     origen = models.CharField(max_length=20, choices=ORIGENES, default="solicitud_externa")
     canal = models.ForeignKey(Canal, null=True, blank=True, on_delete=models.PROTECT, related_name="+", verbose_name="canal de contacto")
     fecha = models.DateField(default=timezone.localdate)
