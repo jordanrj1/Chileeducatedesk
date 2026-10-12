@@ -1,0 +1,9 @@
+django>=5.2,<5.3
+psycopg[binary]
+django-simple-history
+django-htmx
+whitenoise
+waitress
+openpyxl
+django-environ
+pytest-django

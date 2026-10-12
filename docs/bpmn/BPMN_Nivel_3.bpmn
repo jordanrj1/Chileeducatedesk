@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Nivel3" targetNamespace="http://fundacionchileeducate.cl/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.29.0">
+  <collaboration id="Collab_N3">
+    <participant id="Pool_N3_F" name="Fundación" processRef="Proc_N3" />
+    <participant id="Pool_N3_E" name="Participantes / organizaciones" processRef="Proc_N3_E" />
+    <messageFlow id="N3_M1" name="Programación confirmada" sourceRef="N3_Comunicar" targetRef="E_Recibir" />
+    <messageFlow id="N3_M2" name="Cambio / novedad" sourceRef="E_Cambio" targetRef="N3_RegistrarCambio" />
+  </collaboration>
+  <process id="Proc_N3" name="Agenda y ejecución" isExecutable="false">
+    <laneSet id="LS3">
+      <lane id="N3_L">
+        <flowNodeRef>N3_Start</flowNodeRef>
+        <flowNodeRef>N3_Agendar</flowNodeRef>
+        <flowNodeRef>N3_Comunicar</flowNodeRef>
+        <flowNodeRef>N3_G</flowNodeRef>
+        <flowNodeRef>N3_Ejecutar</flowNodeRef>
+        <flowNodeRef>N3_Cerrar</flowNodeRef>
+        <flowNodeRef>N3_RegistrarCambio</flowNodeRef>
+        <flowNodeRef>N3_Actualizar</flowNodeRef>
+        <flowNodeRef>N3_End</flowNodeRef>
+        <flowNodeRef>N3_Validar</flowNodeRef>
+        <flowNodeRef>N3_Recoordinar</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="N3_Start" name="Actividad confirmada" />
+    <task id="N3_Agendar" name="Registrar evento en agenda" />
+    <task id="N3_Comunicar" name="Comunicar programación" />
+    <exclusiveGateway id="N3_G" name="¿Existe cambio o interrupción?" />
+    <task id="N3_Ejecutar" name="Ejecutar actividad" />
+    <task id="N3_Cerrar" name="Registrar asistencia, resultados y evidencias" />
+    <task id="N3_RegistrarCambio" name="Registrar cambio y motivo" />
+    <task id="N3_Actualizar" name="Actualizar agenda y conservar versión anterior" />
+    <endEvent id="N3_End" name="Actividad cerrada" />
+    <task id="N3_Validar" name="Validar nuevamente" />
+    <task id="N3_Recoordinar" name="Recoordinar fecha, lugar o participantes" />
+    <sequenceFlow id="a1" sourceRef="N3_Start" targetRef="N3_Agendar" />
+    <sequenceFlow id="a2" sourceRef="N3_Agendar" targetRef="N3_Comunicar" />
+    <sequenceFlow id="a9" name="Nueva programación" sourceRef="N3_Actualizar" targetRef="N3_Comunicar" />
+    <sequenceFlow id="a3" sourceRef="N3_Comunicar" targetRef="N3_G" />
+    <sequenceFlow id="a4" name="Sí" sourceRef="N3_G" targetRef="N3_RegistrarCambio" />
+    <sequenceFlow id="a8" name="No" sourceRef="N3_G" targetRef="N3_Ejecutar" />
+    <sequenceFlow id="a10" sourceRef="N3_Ejecutar" targetRef="N3_Cerrar" />
+    <sequenceFlow id="a11" sourceRef="N3_Cerrar" targetRef="N3_End" />
+    <sequenceFlow id="a5" sourceRef="N3_RegistrarCambio" targetRef="N3_Recoordinar" />
+    <sequenceFlow id="a12" name="Compatibilidad confirmada" sourceRef="N3_Validar" targetRef="N3_Actualizar" />
+    <sequenceFlow id="a6" sourceRef="N3_Recoordinar" targetRef="N3_Validar" />
+  </process>
+  <process id="Proc_N3_E" name="Participantes y organizaciones" isExecutable="false">
+    <startEvent id="E_Start" name="Información recibida" />
+    <task id="E_Recibir" name="Recibir programación" />
+    <task id="E_Cambio" name="Informar cambio o novedad" />
+    <endEvent id="E_End" name="Coordinación actualizada" />
+    <sequenceFlow id="e1" sourceRef="E_Start" targetRef="E_Recibir" />
+    <sequenceFlow id="e2" sourceRef="E_Recibir" targetRef="E_Cambio" />
+    <sequenceFlow id="e3" sourceRef="E_Cambio" targetRef="E_End" />
+  </process>
+  <dataStore id="DS_Agenda" name="Agenda / versiones de eventos" />
+  <dataStore id="DS_HistN3" name="Historial y evidencias" />
+  <bpmndi:BPMNDiagram id="Diagram_N3">
+    <bpmndi:BPMNPlane id="Plane_N3" bpmnElement="Collab_N3">
+      <bpmndi:BPMNShape id="Pool_N3_F_di" bpmnElement="Pool_N3_F" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="2500" height="650" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_L_di" bpmnElement="N3_L" isHorizontal="true">
+        <dc:Bounds x="160" y="120" width="2500" height="570" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_Start_di" bpmnElement="N3_Start">
+        <dc:Bounds x="230" y="320" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="221" y="356" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_Agendar_di" bpmnElement="N3_Agendar">
+        <dc:Bounds x="340" y="312" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_Comunicar_di" bpmnElement="N3_Comunicar">
+        <dc:Bounds x="600" y="312" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_G_di" bpmnElement="N3_G" isMarkerVisible="true">
+        <dc:Bounds x="870" y="302" width="110" height="70" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="882" y="264.5" width="85" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_Ejecutar_di" bpmnElement="N3_Ejecutar">
+        <dc:Bounds x="1120" y="312" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_Cerrar_di" bpmnElement="N3_Cerrar">
+        <dc:Bounds x="1380" y="312" width="250" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_RegistrarCambio_di" bpmnElement="N3_RegistrarCambio">
+        <dc:Bounds x="680" y="460" width="200" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_Actualizar_di" bpmnElement="N3_Actualizar">
+        <dc:Bounds x="1725" y="544" width="230" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_End_di" bpmnElement="N3_End">
+        <dc:Bounds x="1712" y="320" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1688" y="356" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_Validar_di" bpmnElement="N3_Validar">
+        <dc:Bounds x="1410" y="544" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_Recoordinar_di" bpmnElement="N3_Recoordinar">
+        <dc:Bounds x="1110" y="544" width="210" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="a1_di" bpmnElement="a1">
+        <di:waypoint x="266" y="338" />
+        <di:waypoint x="340" y="338" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a2_di" bpmnElement="a2">
+        <di:waypoint x="530" y="338" />
+        <di:waypoint x="600" y="338" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a3_di" bpmnElement="a3">
+        <di:waypoint x="790" y="338" />
+        <di:waypoint x="870" y="337" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a4_di" bpmnElement="a4">
+        <di:waypoint x="925" y="372" />
+        <di:waypoint x="925" y="460" />
+        <di:waypoint x="870" y="460" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="912" y="437" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a5_di" bpmnElement="a5">
+        <di:waypoint x="880" y="486" />
+        <di:waypoint x="913" y="486" />
+        <di:waypoint x="913" y="570" />
+        <di:waypoint x="1110" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a6_di" bpmnElement="a6">
+        <di:waypoint x="1320" y="570" />
+        <di:waypoint x="1410" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a8_di" bpmnElement="a8">
+        <di:waypoint x="980" y="337" />
+        <di:waypoint x="1050" y="337" />
+        <di:waypoint x="1050" y="338" />
+        <di:waypoint x="1120" y="338" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1007" y="312" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a9_di" bpmnElement="a9">
+        <di:waypoint x="1840" y="544" />
+        <di:waypoint x="1840" y="250" />
+        <di:waypoint x="695" y="250" />
+        <di:waypoint x="695" y="312" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1234" y="225" width="68" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a10_di" bpmnElement="a10">
+        <di:waypoint x="1310" y="338" />
+        <di:waypoint x="1380" y="338" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a11_di" bpmnElement="a11">
+        <di:waypoint x="1630" y="338" />
+        <di:waypoint x="1712" y="338" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="a12_di" bpmnElement="a12">
+        <di:waypoint x="1600" y="570" />
+        <di:waypoint x="1725" y="570" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1606" y="526" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Pool_N3_E_di" bpmnElement="Pool_N3_E" isHorizontal="true">
+        <dc:Bounds x="160" y="820" width="2500" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Start_di" bpmnElement="E_Start">
+        <dc:Bounds x="230" y="890" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="219" y="926" width="58" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Recibir_di" bpmnElement="E_Recibir">
+        <dc:Bounds x="445" y="882" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Cambio_di" bpmnElement="E_Cambio">
+        <dc:Bounds x="960" y="882" width="180" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_End_di" bpmnElement="E_End">
+        <dc:Bounds x="1432" y="890" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1418" y="926" width="65" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="e1_di" bpmnElement="e1">
+        <di:waypoint x="266" y="908" />
+        <di:waypoint x="445" y="908" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e2_di" bpmnElement="e2">
+        <di:waypoint x="635" y="908" />
+        <di:waypoint x="960" y="908" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e3_di" bpmnElement="e3">
+        <di:waypoint x="1140" y="908" />
+        <di:waypoint x="1432" y="908" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="N3_M1_di" bpmnElement="N3_M1">
+        <di:waypoint x="673" y="364" />
+        <di:waypoint x="540" y="520" />
+        <di:waypoint x="540" y="882" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="465" y="596" width="69" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="N3_M2_di" bpmnElement="N3_M2">
+        <di:waypoint x="1040" y="882" />
+        <di:waypoint x="1040" y="703" />
+        <di:waypoint x="785" y="703" />
+        <di:waypoint x="785" y="512" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="988" y="779" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

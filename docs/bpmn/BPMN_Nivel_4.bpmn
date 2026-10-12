@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Nivel4" targetNamespace="http://fundacionchileeducate.cl/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.29.0">
+  <collaboration id="Collab_N4">
+    <participant id="Pool_N4_F" name="Fundación / gestión de información" processRef="Proc_N4" />
+    <participant id="Pool_N4_A" name="Persona registrada" processRef="Proc_N4_A" />
+    <messageFlow id="N4_M1" name="Datos para registro" sourceRef="A_Entregar" targetRef="N4_RegistrarPersona" />
+    <messageFlow id="N4_M2" name="Acceso, si corresponde" sourceRef="N4_CrearCuenta" targetRef="A_Acceso" />
+  </collaboration>
+  <process id="Proc_N4" name="Gestión de personas y cuentas" isExecutable="false">
+    <laneSet id="LS4">
+      <lane id="N4_L">
+        <flowNodeRef>N4_Start</flowNodeRef>
+        <flowNodeRef>N4_BuscarPersona</flowNodeRef>
+        <flowNodeRef>N4_G1</flowNodeRef>
+        <flowNodeRef>N4_G2</flowNodeRef>
+        <flowNodeRef>N4_CrearCuenta</flowNodeRef>
+        <flowNodeRef>N4_SoloRegistro</flowNodeRef>
+        <flowNodeRef>N4_End</flowNodeRef>
+        <flowNodeRef>N4_RegistrarPersona</flowNodeRef>
+        <flowNodeRef>N4_Relacionar</flowNodeRef>
+        <flowNodeRef>N4_Historial</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="N4_Start" name="Se identifica una persona" />
+    <task id="N4_BuscarPersona" name="Buscar registro existente" />
+    <exclusiveGateway id="N4_G1" name="¿La persona ya existe?" />
+    <exclusiveGateway id="N4_G2" name="¿Necesita acceder al sistema?" />
+    <task id="N4_CrearCuenta" name="Crear cuenta y asignar rol" />
+    <task id="N4_SoloRegistro" name="Mantener como registro sin cuenta" />
+    <endEvent id="N4_End" name="Persona disponible para futuras relaciones" />
+    <task id="N4_RegistrarPersona" name="Crear o actualizar ficha de persona" />
+    <task id="N4_Relacionar" name="Relacionar con institución, organización o actividad" />
+    <task id="N4_Historial" name="Conservar trayectoria e historial" />
+    <sequenceFlow id="p1" sourceRef="N4_Start" targetRef="N4_BuscarPersona" />
+    <sequenceFlow id="p2" sourceRef="N4_BuscarPersona" targetRef="N4_G1" />
+    <sequenceFlow id="p3" name="No" sourceRef="N4_G1" targetRef="N4_RegistrarPersona" />
+    <sequenceFlow id="p4" name="Sí" sourceRef="N4_G1" targetRef="N4_Relacionar" />
+    <sequenceFlow id="p6" sourceRef="N4_Relacionar" targetRef="N4_G2" />
+    <sequenceFlow id="p7" name="Sí" sourceRef="N4_G2" targetRef="N4_CrearCuenta" />
+    <sequenceFlow id="p8" name="No" sourceRef="N4_G2" targetRef="N4_SoloRegistro" />
+    <sequenceFlow id="p9" sourceRef="N4_CrearCuenta" targetRef="N4_Historial" />
+    <sequenceFlow id="p10" sourceRef="N4_SoloRegistro" targetRef="N4_Historial" />
+    <sequenceFlow id="p11" sourceRef="N4_Historial" targetRef="N4_End" />
+  </process>
+  <process id="Proc_N4_A" name="Entrega de datos / acceso" isExecutable="false">
+    <startEvent id="A_Start" name="Persona identificada" />
+    <task id="A_Entregar" name="Entregar datos o antecedentes" />
+    <task id="A_Acceso" name="Ingresar al sistema si tiene cuenta" />
+    <endEvent id="A_End" name="Interacción completada" />
+    <sequenceFlow id="q1" sourceRef="A_Start" targetRef="A_Entregar" />
+    <sequenceFlow id="q2" sourceRef="A_Entregar" targetRef="A_Acceso" />
+    <sequenceFlow id="q3" sourceRef="A_Acceso" targetRef="A_End" />
+  </process>
+  <dataStore id="DS_N4_P" name="Banco de personas" />
+  <dataStore id="DS_N4_U" name="Cuentas y roles" />
+  <dataStore id="DS_N4_H" name="Historial de participaciones" />
+  <bpmndi:BPMNDiagram id="Diagram_N4">
+    <bpmndi:BPMNPlane id="Plane_N4" bpmnElement="Collab_N4">
+      <bpmndi:BPMNShape id="Pool_N4_F_di" bpmnElement="Pool_N4_F" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="2600" height="650" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_L_di" bpmnElement="N4_L" isHorizontal="true">
+        <dc:Bounds x="160" y="120" width="2600" height="570" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_Start_di" bpmnElement="N4_Start">
+        <dc:Bounds x="230" y="320" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="207" y="356" width="82" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_BuscarPersona_di" bpmnElement="N4_BuscarPersona">
+        <dc:Bounds x="340" y="312" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_G1_di" bpmnElement="N4_G1" isMarkerVisible="true">
+        <dc:Bounds x="600" y="302" width="110" height="70" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="719.5" y="323" width="77" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_G2_di" bpmnElement="N4_G2" isMarkerVisible="true">
+        <dc:Bounds x="1340" y="302" width="110" height="70" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1369" y="220" width="51" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_CrearCuenta_di" bpmnElement="N4_CrearCuenta">
+        <dc:Bounds x="1500" y="230" width="210" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_SoloRegistro_di" bpmnElement="N4_SoloRegistro">
+        <dc:Bounds x="1500" y="400" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_End_di" bpmnElement="N4_End">
+        <dc:Bounds x="2040" y="320" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2015" y="356" width="87" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_RegistrarPersona_di" bpmnElement="N4_RegistrarPersona">
+        <dc:Bounds x="780" y="204" width="210" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_Relacionar_di" bpmnElement="N4_Relacionar">
+        <dc:Bounds x="970" y="464" width="220" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N4_Historial_di" bpmnElement="N4_Historial">
+        <dc:Bounds x="1760" y="312" width="200" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="p1_di" bpmnElement="p1">
+        <di:waypoint x="266" y="338" />
+        <di:waypoint x="340" y="338" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p2_di" bpmnElement="p2">
+        <di:waypoint x="530" y="338" />
+        <di:waypoint x="600" y="337" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p3_di" bpmnElement="p3">
+        <di:waypoint x="655" y="302" />
+        <di:waypoint x="655" y="230" />
+        <di:waypoint x="780" y="230" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="663" y="255" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p4_di" bpmnElement="p4">
+        <di:waypoint x="655" y="372" />
+        <di:waypoint x="655" y="490" />
+        <di:waypoint x="970" y="490" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="658" y="453" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p6_di" bpmnElement="p6">
+        <di:waypoint x="1190" y="492" />
+        <di:waypoint x="1395" y="492" />
+        <di:waypoint x="1395" y="372" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p7_di" bpmnElement="p7">
+        <di:waypoint x="1450" y="337" />
+        <di:waypoint x="1480" y="337" />
+        <di:waypoint x="1480" y="256" />
+        <di:waypoint x="1500" y="256" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1490" y="287" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p8_di" bpmnElement="p8">
+        <di:waypoint x="1450" y="337" />
+        <di:waypoint x="1480" y="337" />
+        <di:waypoint x="1480" y="426" />
+        <di:waypoint x="1500" y="426" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1488" y="372" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p9_di" bpmnElement="p9">
+        <di:waypoint x="1710" y="256" />
+        <di:waypoint x="1860" y="256" />
+        <di:waypoint x="1860" y="312" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p10_di" bpmnElement="p10">
+        <di:waypoint x="1690" y="426" />
+        <di:waypoint x="1740" y="426" />
+        <di:waypoint x="1740" y="338" />
+        <di:waypoint x="1760" y="338" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p11_di" bpmnElement="p11">
+        <di:waypoint x="1960" y="338" />
+        <di:waypoint x="2040" y="338" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Pool_N4_A_di" bpmnElement="Pool_N4_A" isHorizontal="true">
+        <dc:Bounds x="160" y="820" width="2600" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_Start_di" bpmnElement="A_Start">
+        <dc:Bounds x="230" y="890" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="220" y="926" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_Entregar_di" bpmnElement="A_Entregar">
+        <dc:Bounds x="340" y="882" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_Acceso_di" bpmnElement="A_Acceso">
+        <dc:Bounds x="600" y="882" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A_End_di" bpmnElement="A_End">
+        <dc:Bounds x="850" y="890" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="840" y="926" width="57" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="q1_di" bpmnElement="q1">
+        <di:waypoint x="266" y="908" />
+        <di:waypoint x="340" y="908" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="q2_di" bpmnElement="q2">
+        <di:waypoint x="530" y="908" />
+        <di:waypoint x="600" y="908" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="q3_di" bpmnElement="q3">
+        <di:waypoint x="790" y="908" />
+        <di:waypoint x="850" y="908" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="N4_M1_di" bpmnElement="N4_M1">
+        <di:waypoint x="435" y="882" />
+        <di:waypoint x="435" y="590" />
+        <di:waypoint x="885" y="590" />
+        <di:waypoint x="885" y="256" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="443" y="756" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="N4_M2_di" bpmnElement="N4_M2">
+        <di:waypoint x="1605" y="282" />
+        <di:waypoint x="1605" y="780" />
+        <di:waypoint x="695" y="780" />
+        <di:waypoint x="695" y="882" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1529" y="586" width="62" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

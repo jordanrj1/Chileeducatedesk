@@ -1,0 +1,45 @@
+{% load static %}<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}FCHE{% endblock %} · Fundación Chile Edúcate</title>
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/fche.css' %}">
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+{% if user.is_authenticated %}
+<div class="d-flex flex-column flex-md-row min-vh-100">
+  <nav class="fche-menu bg-dark text-white p-3" aria-label="Menú principal">
+    <a href="{% url 'dashboard' %}" class="d-block h5 text-white text-decoration-none mb-3">FCHE</a>
+    <ul class="nav flex-md-column">
+      {% for clave, etiqueta, ruta in menu %}
+      <li class="nav-item"><a class="nav-link text-white-50 {% if request.path == ruta %}active text-white{% endif %}" href="{{ ruta }}">{{ etiqueta }}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+  <div class="flex-grow-1 d-flex flex-column">
+    <header class="border-bottom bg-white p-2 d-flex flex-wrap gap-2 align-items-center">
+      <form class="flex-grow-1" role="search" action="{% url 'buscar' %}" method="get">
+        <input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Buscar personas, organizaciones, actividades, lugares, documentos…" aria-label="Buscador global">
+      </form>
+      <span class="text-muted small">{{ user.get_username }}</span>
+      <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm" type="submit">Cerrar sesión</button></form>
+    </header>
+    <main class="p-3 flex-grow-1">
+      <nav aria-label="breadcrumb"><ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
+        {% block breadcrumb %}{% endblock %}
+      </ol></nav>
+      {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
+      {% block contenido %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+<main class="container py-5">{% block publico %}{% endblock %}</main>
+{% endif %}
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+</body>
+</html>
