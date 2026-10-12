@@ -1,0 +1,1 @@
+{% for etiqueta, url in breadcrumb %}<li class="breadcrumb-item">{% if url %}<a href="{{ url }}">{{ etiqueta }}</a>{% else %}{{ etiqueta }}{% endif %}</li>{% endfor %}

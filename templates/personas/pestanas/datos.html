@@ -1,0 +1,15 @@
+<dl class="row" style="max-width: 44rem;">
+  <dt class="col-sm-4">RUT</dt><dd class="col-sm-8">{{ object.rut|default:"—" }}</dd>
+  <dt class="col-sm-4">Profesión u oficio</dt><dd class="col-sm-8">{{ object.profesion|default:"—" }}</dd>
+  <dt class="col-sm-4">Sitio web</dt><dd class="col-sm-8">{% if object.sitio_web %}<a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-4">Origen</dt><dd class="col-sm-8">{{ object.origen|default:"—" }}</dd>
+  <dt class="col-sm-4">Registro</dt><dd class="col-sm-8">{{ object.estado_registro|default:"—" }}</dd>
+  <dt class="col-sm-4">Estado</dt><dd class="col-sm-8">{% if object.activo %}Activa{% else %}Inactiva{% endif %}</dd>
+  <dt class="col-sm-4">Observaciones</dt><dd class="col-sm-8">{{ object.observaciones|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-4">Registrada</dt><dd class="col-sm-8">{{ object.creado_en|date:"d-m-Y" }}</dd>
+</dl>
+{% if puede_agregar %}
+<form method="post" action="{% url 'personas:alternar' object.pk %}">{% csrf_token %}
+  <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Desactivar persona{% else %}Reactivar persona{% endif %}</button>
+</form>
+{% endif %}

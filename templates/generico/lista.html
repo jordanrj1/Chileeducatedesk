@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">{{ titulo }}</li>{% endblock %}
+{% block contenido %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <h1 class="h4 mb-0">{{ titulo }}</h1>
+  <div class="d-flex gap-2">
+    {% if url_exportar %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_exportar }}{% if querystring %}?{{ querystring }}{% endif %}">Exportar</a>{% endif %}
+    {% if puede_crear %}<a class="btn btn-primary btn-sm" href="{{ url_crear }}">{{ etiqueta_crear }}</a>{% endif %}
+  </div>
+</div>
+<form class="row g-2 mb-3" method="get">
+  {% if buscable %}<div class="col-12 col-md-4"><input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar…" aria-label="Buscar"></div>{% endif %}
+  {% for f in filtros_ui %}
+  <div class="col-6 col-md-2">
+    <select class="form-select" name="{{ f.param }}" aria-label="{{ f.etiqueta }}">
+      <option value="">{{ f.etiqueta }}: todos</option>
+      {% for valor, etiqueta in f.opciones %}<option value="{{ valor }}" {% if valor == f.valor %}selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endfor %}
+  <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Filtrar</button></div>
+  {% if hay_filtros %}<div class="col-auto"><a class="btn btn-link" href="?">Limpiar</a></div>{% endif %}
+</form>
+{% block cuerpo %}
+{% if filas %}
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+  <thead><tr>{% for e in encabezados %}<th scope="col">{{ e }}</th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for fila in filas %}
+    <tr>{% for celda in fila.celdas %}
+      <td>{% if forloop.first and fila.obj.get_absolute_url %}<a href="{{ fila.obj.get_absolute_url }}">{{ celda }}</a>{% else %}{{ celda }}{% endif %}</td>
+    {% endfor %}</tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "generico/_paginacion.html" %}
+{% elif hay_filtros %}
+<p class="text-muted">Sin resultados con estos filtros. <a href="?">Limpiar filtros</a></p>
+{% else %}
+<p class="text-muted">{{ texto_vacio }}</p>
+{% endif %}
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "generico/formulario.html" %}
+{% block campos %}
+{% for campo in form %}
+  {% if campo.name == "persona" %}
+  <div class="mb-3"><label class="form-label" for="q_persona">Buscar persona</label>
+    <input class="form-control" id="q_persona" name="q_persona" type="search" placeholder="Nombre o RUT…" hx-get="/administracion/usuarios/personas" hx-trigger="input changed delay:300ms" hx-target="#id_persona"></div>
+  {% endif %}
+  {% include "generico/_campo.html" %}
+{% endfor %}
+{% endblock %}

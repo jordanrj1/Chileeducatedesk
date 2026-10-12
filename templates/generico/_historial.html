@@ -1,0 +1,10 @@
+{% if cambios %}
+<div class="list-group">
+{% for c in cambios %}
+  <div class="list-group-item">
+    <div class="d-flex justify-content-between"><strong>{{ c.tipo }}</strong><span class="text-muted small">{{ c.fecha|date:"d-m-Y H:i" }} · {{ c.usuario }}</span></div>
+    {% if c.cambios %}<ul class="mb-0 small">{% for campo, antes, despues in c.cambios %}<li>{{ campo }}: <span class="text-decoration-line-through">{{ antes|default:"—" }}</span> → {{ despues|default:"—" }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+{% endfor %}
+</div>
+{% else %}<p class="text-muted">Sin historial.</p>{% endif %}

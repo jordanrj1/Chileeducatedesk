@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}Mi cuenta{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Mi cuenta</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">Mi cuenta</h1>
+<dl class="row" style="max-width:32rem;">
+  <dt class="col-5">Usuario</dt><dd class="col-7">{{ user.get_username }}</dd>
+  <dt class="col-5">Nombre</dt><dd class="col-7">{{ user.get_full_name|default:"—" }}</dd>
+  <dt class="col-5">Correo</dt><dd class="col-7">{{ user.email|default:"—" }}</dd>
+  <dt class="col-5">Rol</dt><dd class="col-7">{% for g in grupos %}{{ g }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+</dl>
+<a class="btn btn-outline-primary btn-sm" href="/mi-cuenta/clave">Cambiar contraseña</a>
+{% endblock %}

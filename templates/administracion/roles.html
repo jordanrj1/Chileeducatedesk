@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block titulo %}Roles{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">Roles</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">Roles</h1>
+<table class="table" style="max-width:40rem;"><thead><tr><th>Rol</th><th>Usuarios</th><th>Permisos</th><th></th></tr></thead>
+<tbody>{% for g, nu, np in roles %}<tr><td>{{ g.name }}</td><td>{{ nu }}</td><td>{{ np }}</td><td>{% if perms.auth.change_group %}<a class="btn btn-outline-primary btn-sm" href="/administracion/roles/{{ g.pk }}">Configurar permisos</a>{% endif %}</td></tr>{% endfor %}</tbody></table>
+{% endblock %}

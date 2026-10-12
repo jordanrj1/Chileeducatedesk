@@ -1,0 +1,12 @@
+{% extends "generico/formulario.html" %}
+{% block extra_form %}
+{% if candidatos %}
+<div class="alert alert-warning mt-3" role="alert">
+  <strong>Esta persona podría ya existir.</strong> Revisa antes de crear un duplicado:
+  <ul class="mb-2 mt-2">
+    {% for p, razones in candidatos %}<li><a href="{{ p.get_absolute_url }}" target="_blank">{{ p.nombre_completo }}</a> — {{ razones|join:", " }}</li>{% endfor %}
+  </ul>
+  <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Es otra persona: guardar de todos modos</button>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 {% block titulo %}Inicio{% endblock %}
 {% block contenido %}
-<h1 class="h4">Qué tengo que hacer hoy</h1>
-<p class="text-muted">Aún no hay información que mostrar. Las actividades incompletas, solicitudes sin respuesta y tareas por vencer aparecerán aquí a medida que se construyan los módulos.</p>
+<h1 class="h4 mb-3">Qué tengo que hacer hoy</h1>
+<div class="row g-3">
+{% for t in tarjetas %}
+  <div class="col-12 col-md-6">
+    <div class="card h-100"><div class="card-header d-flex justify-content-between"><strong>{{ t.titulo }}</strong>{% if t.url %}<a class="small" href="{{ t.url }}">Ver todo</a>{% endif %}</div>
+      <ul class="list-group list-group-flush">
+        {% for nombre, url, detalle in t.items %}<li class="list-group-item d-flex justify-content-between"><a href="{{ url }}">{{ nombre }}</a><span class="text-muted small">{{ detalle }}</span></li>
+        {% empty %}<li class="list-group-item text-muted">{{ t.vacio }}</li>{% endfor %}
+      </ul></div>
+  </div>
+{% empty %}
+  <p class="text-muted">Aún no hay información que mostrar.</p>
+{% endfor %}
+</div>
+<h2 class="h6 mt-4">Acciones rápidas</h2>
+<div class="d-flex flex-wrap gap-2">
+  {% if perms.personas.add_persona %}<a class="btn btn-outline-primary btn-sm" href="/personas/nueva">Nueva persona</a>{% endif %}
+  {% if perms.solicitudes.add_solicitud %}<a class="btn btn-outline-primary btn-sm" href="/solicitudes/nueva">Nueva solicitud</a>{% endif %}
+  {% if perms.actividades.add_actividad %}<a class="btn btn-outline-primary btn-sm" href="/actividades/nueva">Nueva actividad</a>{% endif %}
+  {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva">Nueva organización</a>{% endif %}
+</div>
 {% endblock %}

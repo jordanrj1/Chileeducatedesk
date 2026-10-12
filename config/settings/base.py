@@ -27,9 +27,12 @@ INSTALLED_APPS = [
     "apps.personas",
     "apps.organizaciones",
     "apps.lugares",
-    "apps.solicitudes",
+    "apps.proyectos",
     "apps.actividades",
+    "apps.solicitudes",
+    "apps.coordinacion",
     "apps.documentos",
+    "apps.finanzas",
 ]
 
 MIDDLEWARE = [
@@ -84,6 +87,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+AUTHENTICATION_BACKENDS = ["apps.cuentas.backends.CorreoOUsuarioBackend"]
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/dashboard"
 LOGOUT_REDIRECT_URL = "/login"

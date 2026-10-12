@@ -1,0 +1,16 @@
+<dl class="row" style="max-width: 44rem;">
+  <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">{{ object.tipo }}</dd>
+  <dt class="col-sm-4">RUT</dt><dd class="col-sm-8">{{ object.rut|default:"—" }}{% if object.otro_identificador %} · {{ object.otro_identificador }}{% endif %}</dd>
+  <dt class="col-sm-4">Dirección</dt><dd class="col-sm-8">{{ object.direccion|default:"—" }}</dd>
+  <dt class="col-sm-4">Comuna (municipalidad)</dt><dd class="col-sm-8">{{ object.comuna_municipal|default:"—" }}</dd>
+  <dt class="col-sm-4">Sitio web</dt><dd class="col-sm-8">{% if object.sitio_web %}<a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-4">Descripción</dt><dd class="col-sm-8">{{ object.descripcion|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-4">Estado</dt><dd class="col-sm-8">{{ object.estado_registro|default:"—" }} · {% if object.activo %}Activa{% else %}Inactiva{% endif %}</dd>
+  {% if object.naturaleza_juridica or object.vigencia_hasta or object.domicilio_legal %}
+  <dt class="col-sm-4">Naturaleza jurídica</dt><dd class="col-sm-8">{{ object.naturaleza_juridica|default:"—" }}</dd>
+  <dt class="col-sm-4">Domicilio legal</dt><dd class="col-sm-8">{{ object.domicilio_legal|default:"—" }}</dd>
+  <dt class="col-sm-4">Vigencia</dt><dd class="col-sm-8">{{ object.vigencia_desde|date:"d-m-Y"|default:"?" }} a {{ object.vigencia_hasta|date:"d-m-Y"|default:"?" }}</dd>
+  {% endif %}
+</dl>
+{% if puede_agregar %}<form method="post" action="{% url 'organizaciones:alternar' object.pk %}">{% csrf_token %}
+  <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Desactivar organización{% else %}Reactivar organización{% endif %}</button></form>{% endif %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">{{ titulo }}</li>{% endblock %}
+{% block contenido %}
+<div id="ficha-completa">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1">{{ titulo }}</h1>
+      {% block subtitulo %}{% endblock %}
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      {% block acciones %}{% endblock %}
+      {% if puede_editar and url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">Editar</a>{% endif %}
+      <a href="{{ url_volver|default:'javascript:history.back()' }}" class="btn btn-outline-secondary btn-sm volver">← Volver</a>
+    </div>
+  </div>
+  <ul class="nav nav-tabs mb-3" hx-boost="false">
+    {% for clave, etiqueta in pestanas %}
+    <li class="nav-item"><a class="nav-link {% if clave == pestana %}active{% endif %}" href="?tab={{ clave }}"
+        hx-get="?tab={{ clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true">{{ etiqueta }}</a></li>
+    {% endfor %}
+  </ul>
+  <div id="pestana">{% if plantilla_pestana %}{% include plantilla_pestana %}{% endif %}</div>
+</div>
+{% endblock %}

@@ -1,0 +1,211 @@
+from django.contrib import messages
+from django.db import transaction
+from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
+from django.views.generic import CreateView
+
+from apps.nucleo.models import EstadoRegistro, OrigenPersona
+from apps.nucleo.vistas_base import (
+    AlternarActivoBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
+)
+
+from .duplicados import candidatos
+from .forms import PersonaDireccionForm, PersonaForm, PersonaNuevaForm
+from .models import Contacto, Persona, PersonaDireccion
+
+
+def _principal(persona, codigos):
+    for c in persona.contactos.all():
+        if c.vigente and c.tipo.codigo in codigos:
+            return c.valor
+    return ""
+
+
+class PersonaLista(ListaBase):
+    model = Persona
+    permission_required = "personas.view_persona"
+    titulo = "Personas"
+    url_crear = "/personas/nueva"
+    permiso_crear = "personas.add_persona"
+    etiqueta_crear = "+ Nueva persona"
+    campos_busqueda = ()
+    columnas = [
+        ("Nombre", lambda p: p.nombre_completo),
+        ("RUT", "rut"),
+        ("Correo", lambda p: _principal(p, ["correo"])),
+        ("Teléfono", lambda p: _principal(p, ["telefono_movil", "telefono_fijo"])),
+        ("Registro", "estado_registro"),
+        ("Origen", "origen"),
+    ]
+    ordenes = {"nombre": "apellido_paterno", "creado": "creado_en"}
+    orden_defecto = ("apellido_paterno", "apellido_materno", "nombres")
+    filtros = [
+        filtro_activo(),
+        Filtro("registro", "Registro", "estado_registro__codigo", lambda: [(e.codigo, e.nombre) for e in EstadoRegistro.objects.all()]),
+        Filtro("origen", "Origen", "origen_id", opciones_modelo(OrigenPersona)),
+    ]
+    texto_vacio = "Aún no hay personas registradas."
+    url_exportar = "/personas/exportar"
+    permiso_exportar = "personas.exportar_persona"
+
+    def filtrar(self, qs):
+        return super().filtrar(qs).buscar(self.request.GET.get("q"))
+
+    def get_queryset(self):
+        return super().get_queryset().select_related("estado_registro", "origen").prefetch_related("contactos__tipo")
+
+
+class PersonaNueva(Permiso403Mixin, CreateView):
+    model = Persona
+    form_class = PersonaNuevaForm
+    permission_required = "personas.add_persona"
+    template_name = "personas/nueva.html"
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        ctx.update(titulo="Nueva persona", volver_url="/personas", breadcrumb=[("Personas", "/personas")])
+        return ctx
+
+    def form_valid(self, form):
+        d = form.cleaned_data
+        rut = d.get("rut")
+        if not self.request.POST.get("confirmar_duplicado"):
+            cands = candidatos(d["nombres"], d.get("apellido_paterno", ""), d.get("apellido_materno", ""), rut[0] if rut else None, d.get("correo", ""), d.get("telefono", ""))
+            if cands:
+                return self.render_to_response(self.get_context_data(form=form, candidatos=cands))
+        with transaction.atomic():
+            persona = form.save(commit=False)
+            persona.creado_por = self.request.user
+            tiene_contacto = bool(d.get("correo") or d.get("telefono"))
+            if not persona.estado_registro_id:
+                codigo = "activo" if (persona.apellido_paterno and tiene_contacto) else "incompleto"
+                persona.estado_registro = EstadoRegistro.objects.filter(codigo=codigo).first()
+            persona.save()
+            from apps.nucleo.models import TipoContacto
+
+            if d.get("correo"):
+                Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=d["correo"], principal=True)
+            if d.get("telefono"):
+                Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"], principal=not d.get("correo"))
+        messages.success(self.request, "Persona registrada. Puedes completar el resto de su ficha cuando quieras.")
+        return HttpResponseRedirect(persona.get_absolute_url())
+
+
+class PersonaEditar(EditarBase):
+    model = Persona
+    form_class = PersonaForm
+    permission_required = "personas.change_persona"
+    titulo = "Editar persona"
+    breadcrumb = [("Personas", "/personas")]
+
+
+def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente="vigente"):
+    res = []
+    for o in objs:
+        h = {"texto": texto(o), "detalle": detalle(o) if detalle else "", "vigente": getattr(o, vigente, True) if vigente else True}
+        if slug:
+            h["url_editar"] = reverse(f"personas:{slug}_editar", args=[pk, o.pk])
+            if vigente:
+                h["url_alternar"] = reverse(f"personas:{slug}_alternar", args=[pk, o.pk])
+        res.append(h)
+    return res
+
+
+class PersonaFicha(FichaBase):
+    model = Persona
+    permission_required = "personas.view_persona"
+    breadcrumb = [("Personas", "/personas")]
+    permiso_editar = "personas.change_persona"
+    pestanas = [
+        ("datos", "Datos", "personas/pestanas/datos.html"),
+        ("contactos", "Contactos", "generico/_hijos.html"),
+        ("direcciones", "Direcciones", "generico/_hijos.html"),
+        ("formacion", "Formación", "generico/_hijos.html"),
+        ("experiencia", "Experiencia", "generico/_hijos.html"),
+        ("disponibilidad", "Disponibilidad", "generico/_hijos.html"),
+        ("vinculos", "Organizaciones y cargos", "generico/_hijos.html"),
+        ("emergencia", "Contacto de emergencia", "generico/_hijos.html", "personas.ver_sensibles"),
+        ("verificaciones", "Verificaciones", "generico/_hijos.html", "personas.ver_sensibles"),
+        ("historial", "Historial", "generico/_historial.html", "personas.view_historicalpersona"),
+    ]
+
+    def contexto_ficha(self):
+        p = self.object
+        return {
+            "url_editar": reverse("personas:editar", args=[p.pk]),
+            "url_volver": "/personas",
+            "puede_agregar": self.request.user.has_perm("personas.change_persona"),
+        }
+
+    def encabezado(self):
+        return self.object.nombre_completo
+
+    def _hijo_ctx(self, titulo, slug, etiqueta, objs, **kw):
+        return {
+            "titulo_pestana": titulo, "etiqueta_nuevo": etiqueta, "url_nuevo": reverse(f"personas:{slug}_nuevo", args=[self.object.pk]),
+            "hijos": _hijos(objs, pk=self.object.pk, slug=slug, **kw), "vacio": f"Sin {titulo.lower()} registrados.",
+        }
+
+    def ctx_contactos(self):
+        return self._hijo_ctx("Contactos", "contactos", "Contacto", self.object.contactos.select_related("tipo"),
+                              texto=lambda c: f"{c.tipo}: {c.valor}", detalle=lambda c: " · ".join(x for x in [c.proposito, "Principal" if c.principal else ""] if x))
+
+    def ctx_direcciones(self):
+        ctx = self._hijo_ctx("Direcciones", "direcciones", "Dirección", self.object.direcciones.select_related("direccion__comuna", "direccion__sector"),
+                             texto=lambda d: str(d.direccion), detalle=lambda d: d.get_tipo_display())
+        for h in ctx["hijos"]:
+            h.pop("url_editar", None)  # una dirección se reemplaza agregando otra y marcando la anterior como no vigente
+        return ctx
+
+    def ctx_formacion(self):
+        return self._hijo_ctx("Formación", "formacion", "Formación", self.object.formaciones.select_related("organizacion", "carrera"),
+                              texto=lambda f: str(f), detalle=lambda f: f"{f.get_estado_display()} {f.anio_inicio or ''}–{f.anio_termino or ''}".strip())
+
+    def ctx_experiencia(self):
+        return self._hijo_ctx("Experiencia", "experiencia", "Experiencia", self.object.experiencias.all(),
+                              texto=lambda e: e.descripcion, detalle=lambda e: e.lugar)
+
+    def ctx_disponibilidad(self):
+        return self._hijo_ctx("Disponibilidad", "disponibilidad", "Horario", self.object.disponibilidades.all(),
+                              texto=lambda d: str(d), detalle=lambda d: d.comentario)
+
+    def ctx_vinculos(self):
+        return self._hijo_ctx("Organizaciones y cargos", "vinculos", "Vínculo", self.object.vinculos.select_related("organizacion"),
+                              texto=lambda v: f"{v.cargo or 'Vínculo'} · {v.organizacion}", detalle=lambda v: f"{v.get_tipo_cargo_display()} · {v.fecha_inicio or '?'} a {v.fecha_termino or 'actualidad'}", vigente=None)
+
+    def ctx_emergencia(self):
+        return self._hijo_ctx("Contacto de emergencia", "emergencia", "Contacto", self.object.contactos_emergencia.all(),
+                              texto=lambda c: c.nombre, detalle=lambda c: f"{c.parentesco} · {c.telefono}")
+
+    def ctx_verificaciones(self):
+        return self._hijo_ctx("Verificaciones", "verificaciones", "Verificación", self.object.verificaciones.all(),
+                              texto=lambda v: v.tipo, detalle=lambda v: f"{v.fecha:%d-%m-%Y}" + (f" · vigente hasta {v.vigente_hasta:%d-%m-%Y}" if v.vigente_hasta else "") + (" · VENCIDA" if v.vencida else ""))
+
+
+class PersonaAlternar(AlternarActivoBase):
+    modelo = Persona
+    permission_required = "personas.change_persona"
+
+
+class DireccionPersonaNueva(Permiso403Mixin, CreateView):
+    """Agrega una dirección (residencia/procedencia) a una persona."""
+
+    form_class = PersonaDireccionForm
+    permission_required = "personas.change_persona"
+    template_name = "generico/formulario.html"
+
+    def dispatch(self, request, *a, **kw):
+        self.persona = get_object_or_404(Persona, pk=kw["pk"])
+        return super().dispatch(request, *a, **kw)
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        url = f"{self.persona.get_absolute_url()}?tab=direcciones"
+        ctx.update(titulo="Agregar dirección", volver_url=url, breadcrumb=[(self.persona.nombre_completo, self.persona.get_absolute_url())])
+        return ctx
+
+    def form_valid(self, form):
+        form.save_para(self.persona)
+        messages.success(self.request, "Dirección guardada.")
+        return HttpResponseRedirect(f"{self.persona.get_absolute_url()}?tab=direcciones")

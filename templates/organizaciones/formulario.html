@@ -1,0 +1,13 @@
+{% extends "generico/formulario.html" %}
+{% block extra_form %}
+<fieldset class="mt-4"><legend class="h6">Dirección (opcional)</legend>
+  {% if form_direccion.non_field_errors %}<div class="alert alert-danger">{{ form_direccion.non_field_errors }}</div>{% endif %}
+  <div class="row">{% for campo in form_direccion %}<div class="col-12 col-md-6">{% include "generico/_campo.html" %}</div>{% endfor %}</div>
+</fieldset>
+{% if candidatos %}
+<div class="alert alert-warning mt-3" role="alert">
+  <strong>Esta organización podría ya existir.</strong>
+  <ul class="mb-2 mt-2">{% for o, razones in candidatos %}<li><a href="{{ o.get_absolute_url }}" target="_blank">{{ o.nombre }}</a> — {{ razones|join:", " }}</li>{% endfor %}</ul>
+  <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Es otra: guardar de todos modos</button>
+</div>{% endif %}
+{% endblock %}
