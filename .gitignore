@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+*.sqlite3
+media/
+docs/reales/
+.DS_Store
+~$*
+staticfiles/
+.pytest_cache/

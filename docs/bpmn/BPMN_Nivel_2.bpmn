@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Nivel2" targetNamespace="http://fundacionchileeducate.cl/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.29.0">
+  <collaboration id="Collab_N2">
+    <participant id="Pool_N2_F" name="Fundación - Coordinación" processRef="Proc_N2" />
+    <participant id="Pool_N2_C" name="Persona / organización contactada" processRef="Proc_N2_C" />
+    <messageFlow id="N2_M1" name="Consulta de disponibilidad" sourceRef="N2_Contactar" targetRef="C_Recibir" />
+    <messageFlow id="N2_M2" name="Respuesta" sourceRef="C_Responder" targetRef="N2_Registrar" />
+  </collaboration>
+  <process id="Proc_N2" name="Coordinación y matching" isExecutable="false">
+    <laneSet id="LS2">
+      <lane id="N2_L">
+        <flowNodeRef>N2_Start</flowNodeRef>
+        <flowNodeRef>N2_DefinirCriterios</flowNodeRef>
+        <flowNodeRef>N2_ConsultarBanco</flowNodeRef>
+        <flowNodeRef>N2_Filtrar</flowNodeRef>
+        <flowNodeRef>N2_Revisar</flowNodeRef>
+        <flowNodeRef>N2_Contactar</flowNodeRef>
+        <flowNodeRef>N2_Registrar</flowNodeRef>
+        <flowNodeRef>N2_End</flowNodeRef>
+        <flowNodeRef>N2_Seleccionar</flowNodeRef>
+        <flowNodeRef>N2_G</flowNodeRef>
+        <flowNodeRef>N2_Ajustar</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="N2_Start" name="Necesidad definida" />
+    <task id="N2_DefinirCriterios" name="Definir criterios de búsqueda">
+      <outgoing>n9</outgoing>
+    </task>
+    <task id="N2_ConsultarBanco" name="Consultar banco de información" />
+    <task id="N2_Filtrar" name="Aplicar filtros de zona, área, tipo, disponibilidad y origen" />
+    <task id="N2_Revisar" name="Revisar candidatos y recursos" />
+    <task id="N2_Contactar" name="Contactar candidatos y registrar respuesta" />
+    <task id="N2_Registrar" name="Registrar interés, disponibilidad y rol" />
+    <dataStoreReference id="N2_DSR_P" name="Banco de Personas" dataStoreRef="DS_P" />
+    <dataStoreReference id="N2_DSR_O" name="Banco de Organizaciones" dataStoreRef="DS_O" />
+    <dataStoreReference id="N2_DSR_L" name="Banco de Lugares" dataStoreRef="DS_L" />
+    <endEvent id="N2_End" name="Candidatos coordinados" />
+    <task id="N2_Seleccionar" name="Seleccionar participantes y recursos" />
+    <exclusiveGateway id="N2_G" name="¿Hay combinación suficiente?" />
+    <task id="N2_Ajustar" name="Ajustar criterios o buscar nuevas opciones">
+      <incoming>n9</incoming>
+    </task>
+    <sequenceFlow id="n1" sourceRef="N2_Start" targetRef="N2_DefinirCriterios" />
+    <sequenceFlow id="n2" sourceRef="N2_DefinirCriterios" targetRef="N2_ConsultarBanco" />
+    <sequenceFlow id="n9" name="Nuevo intento" sourceRef="N2_DefinirCriterios" targetRef="N2_Ajustar" />
+    <sequenceFlow id="n3" sourceRef="N2_ConsultarBanco" targetRef="N2_Filtrar" />
+    <sequenceFlow id="n4" sourceRef="N2_Filtrar" targetRef="N2_Revisar" />
+    <sequenceFlow id="n5" sourceRef="N2_Revisar" targetRef="N2_Contactar" />
+    <sequenceFlow id="n6" sourceRef="N2_Contactar" targetRef="N2_Registrar" />
+    <sequenceFlow id="n7" sourceRef="N2_Registrar" targetRef="N2_G" />
+    <sequenceFlow id="n11" sourceRef="N2_Seleccionar" targetRef="N2_End" />
+    <sequenceFlow id="n10" name="Sí" sourceRef="N2_G" targetRef="N2_Seleccionar" />
+    <sequenceFlow id="n8" name="No" sourceRef="N2_G" targetRef="N2_Ajustar" />
+  </process>
+  <process id="Proc_N2_C" name="Respuesta externa" isExecutable="false">
+    <startEvent id="C_Start" name="Solicitud recibida" />
+    <task id="C_Recibir" name="Recibir consulta" />
+    <task id="C_Responder" name="Informar interés y disponibilidad" />
+    <endEvent id="C_End" name="Respuesta enviada" />
+    <sequenceFlow id="c1" sourceRef="C_Start" targetRef="C_Recibir" />
+    <sequenceFlow id="c2" sourceRef="C_Recibir" targetRef="C_Responder" />
+    <sequenceFlow id="c3" sourceRef="C_Responder" targetRef="C_End" />
+  </process>
+  <dataStore id="DS_P" name="Banco de Personas" />
+  <dataStore id="DS_O" name="Banco de Organizaciones" />
+  <dataStore id="DS_L" name="Banco de Lugares" />
+  <bpmndi:BPMNDiagram id="Diagram_N2">
+    <bpmndi:BPMNPlane id="Plane_N2" bpmnElement="Collab_N2">
+      <bpmndi:BPMNShape id="Pool_N2_F_di" bpmnElement="Pool_N2_F" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="2350" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_L_di" bpmnElement="N2_L" isHorizontal="true">
+        <dc:Bounds x="160" y="120" width="2350" height="430" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_Start_di" bpmnElement="N2_Start">
+        <dc:Bounds x="230" y="300" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="222" y="336" width="52" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_DefinirCriterios_di" bpmnElement="N2_DefinirCriterios">
+        <dc:Bounds x="340" y="292" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_ConsultarBanco_di" bpmnElement="N2_ConsultarBanco">
+        <dc:Bounds x="600" y="292" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_Filtrar_di" bpmnElement="N2_Filtrar">
+        <dc:Bounds x="860" y="292" width="230" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_Revisar_di" bpmnElement="N2_Revisar">
+        <dc:Bounds x="1160" y="292" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_Contactar_di" bpmnElement="N2_Contactar">
+        <dc:Bounds x="1410" y="292" width="190" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_Registrar_di" bpmnElement="N2_Registrar">
+        <dc:Bounds x="1660" y="292" width="210" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_DSR_P_di" bpmnElement="N2_DSR_P">
+        <dc:Bounds x="670" y="440" width="190" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="742" y="500" width="47" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_DSR_O_di" bpmnElement="N2_DSR_O">
+        <dc:Bounds x="930" y="440" width="210" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="997" y="500" width="77" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_DSR_L_di" bpmnElement="N2_DSR_L">
+        <dc:Bounds x="1210" y="440" width="190" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1260" y="500" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_End_di" bpmnElement="N2_End">
+        <dc:Bounds x="2432" y="300" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2420" y="336" width="60" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_Seleccionar_di" bpmnElement="N2_Seleccionar">
+        <dc:Bounds x="2190" y="304" width="200" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_G_di" bpmnElement="N2_G" isMarkerVisible="true">
+        <dc:Bounds x="1975" y="275" width="110" height="70" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1999" y="345" width="62" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N2_Ajustar_di" bpmnElement="N2_Ajustar">
+        <dc:Bounds x="1920" y="154" width="200" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="n1_di" bpmnElement="n1">
+        <di:waypoint x="266" y="318" />
+        <di:waypoint x="340" y="318" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n2_di" bpmnElement="n2">
+        <di:waypoint x="530" y="318" />
+        <di:waypoint x="600" y="318" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n3_di" bpmnElement="n3">
+        <di:waypoint x="790" y="318" />
+        <di:waypoint x="860" y="318" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n4_di" bpmnElement="n4">
+        <di:waypoint x="1090" y="318" />
+        <di:waypoint x="1160" y="318" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n5_di" bpmnElement="n5">
+        <di:waypoint x="1350" y="318" />
+        <di:waypoint x="1410" y="318" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n6_di" bpmnElement="n6">
+        <di:waypoint x="1600" y="318" />
+        <di:waypoint x="1660" y="318" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n7_di" bpmnElement="n7">
+        <di:waypoint x="1870" y="320" />
+        <di:waypoint x="1923" y="320" />
+        <di:waypoint x="1923" y="309" />
+        <di:waypoint x="1977" y="309" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n8_di" bpmnElement="n8">
+        <di:waypoint x="2030" y="275" />
+        <di:waypoint x="2030" y="206" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2037" y="214" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n9_di" bpmnElement="n9">
+        <di:waypoint x="410" y="290" />
+        <di:waypoint x="410" y="180" />
+        <di:waypoint x="1920" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1169" y="188" width="68" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n10_di" bpmnElement="n10">
+        <di:waypoint x="2083" y="309" />
+        <di:waypoint x="2115" y="309" />
+        <di:waypoint x="2115" y="331" />
+        <di:waypoint x="2190" y="331" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2147" y="306" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="n11_di" bpmnElement="n11">
+        <di:waypoint x="2390" y="318" />
+        <di:waypoint x="2432" y="318" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Pool_N2_C_di" bpmnElement="Pool_N2_C" isHorizontal="true">
+        <dc:Bounds x="160" y="650" width="2350" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_Start_di" bpmnElement="C_Start">
+        <dc:Bounds x="220" y="720" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="196" y="756" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_Recibir_di" bpmnElement="C_Recibir">
+        <dc:Bounds x="330" y="712" width="180" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_Responder_di" bpmnElement="C_Responder">
+        <dc:Bounds x="580" y="712" width="220" height="52" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_End_di" bpmnElement="C_End">
+        <dc:Bounds x="880" y="720" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="872" y="756" width="53" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="c1_di" bpmnElement="c1">
+        <di:waypoint x="256" y="738" />
+        <di:waypoint x="330" y="738" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="c2_di" bpmnElement="c2">
+        <di:waypoint x="510" y="738" />
+        <di:waypoint x="580" y="738" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="c3_di" bpmnElement="c3">
+        <di:waypoint x="800" y="738" />
+        <di:waypoint x="880" y="738" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="N2_M1_di" bpmnElement="N2_M1">
+        <di:waypoint x="1505" y="344" />
+        <di:waypoint x="1505" y="820" />
+        <di:waypoint x="400" y="820" />
+        <di:waypoint x="400" y="764" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1416" y="776" width="67" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="N2_M2_di" bpmnElement="N2_M2">
+        <di:waypoint x="690" y="712" />
+        <di:waypoint x="690" y="619" />
+        <di:waypoint x="1765" y="619" />
+        <di:waypoint x="1765" y="344" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="703" y="593" width="53" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

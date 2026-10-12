@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Buscar{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Buscar</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">Búsqueda</h1>
+{% if termino %}<p class="text-muted">Sin resultados para «{{ termino }}». El buscador global se habilita más adelante.</p>
+{% else %}<p class="text-muted">Escribe en el buscador para encontrar personas, organizaciones, actividades, lugares y documentos.</p>{% endif %}
+<a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+{% endblock %}
