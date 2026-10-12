@@ -57,6 +57,11 @@ class PersonaLista(ListaBase):
         return super().get_queryset().select_related("estado_registro", "origen").prefetch_related("contactos__tipo")
 
 
+class PersonaExportar(PersonaLista):
+    exportar = True
+    permission_required = "personas.exportar_persona"
+
+
 class PersonaNueva(Permiso403Mixin, CreateView):
     model = Persona
     form_class = PersonaNuevaForm

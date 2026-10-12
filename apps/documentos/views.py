@@ -1,4 +1,5 @@
 import mimetypes
+from urllib.parse import quote
 
 from django.apps import apps as registro
 from django.contrib import messages
@@ -159,7 +160,7 @@ class DocumentoArchivo(Permiso403Mixin, View):
         registrar(request.user, "documento_descargado", d, "restringido" if d.restringido else "")
         r = FileResponse(f, content_type=tipo)
         nombre = f"{d.nombre}.{d.extension}" if d.extension and not d.nombre.lower().endswith(d.extension) else d.nombre
-        r["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{__import__("urllib.parse", fromlist=["quote"]).quote(nombre)}'
+        r["Content-Disposition"] = f'attachment; filename*=UTF-8\'\'{quote(nombre)}'
         r["X-Content-Type-Options"] = "nosniff"
         return r
 

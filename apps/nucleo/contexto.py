@@ -13,6 +13,7 @@ MENU = [
     ("Territorio", "/territorio", "territorio.view_comuna"),
     ("Importaciones", "/importaciones", "importaciones.importar_listado"),
     ("Finanzas", "/finanzas", "finanzas.view_movimiento"),
+    ("Catálogos", "/administracion/catalogos/", "nucleo.view_estadoactividad"),
     ("Administración", "/administracion/", "auth.view_user"),
 ]
 
@@ -22,10 +23,7 @@ def navegacion(request):
     if not user or not user.is_authenticated:
         return {"menu": []}
     ruta = request.path
-    return {
-        "menu": [
-            (e, r, ruta == r or (r != "/dashboard" and ruta.startswith(r.rstrip("/") + "/")))
-            for e, r, perm in MENU
-            if not perm or user.has_perm(perm)
-        ]
-    }
+    visibles = [(e, r) for e, r, perm in MENU if not perm or user.has_perm(perm)]
+    coinciden = [r for _, r in visibles if ruta == r or (r != "/dashboard" and ruta.startswith(r.rstrip("/") + "/"))]
+    activa = max(coinciden, key=len) if coinciden else None  # la ruta más específica
+    return {"menu": [(e, r, r == activa) for e, r in visibles]}

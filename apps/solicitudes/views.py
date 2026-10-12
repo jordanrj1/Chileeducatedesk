@@ -157,7 +157,7 @@ class SolicitudEstado(_Accion):
 
 
 class SolicitudAProyecto(_Accion):
-    """[Crear proyecto]: abre el formulario de proyecto precargado; al guardarlo hay que vincularlo (ver SolicitudVincularProyecto)."""
+    """[Crear proyecto]: crea el proyecto con lo que ya se sabe de la solicitud y la marca como convertida."""
 
     permission_required = "proyectos.add_proyecto"
 

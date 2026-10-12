@@ -9,3 +9,4 @@ docs/reales/
 ~$*
 staticfiles/
 .pytest_cache/
+logs/

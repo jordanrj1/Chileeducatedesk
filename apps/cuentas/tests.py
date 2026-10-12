@@ -157,3 +157,16 @@ def test_mi_cuenta_y_cambio_de_clave(cg, gestor):
     assert r.status_code == 302
     gestor.refresh_from_db()
     assert gestor.check_password("nueva-clave-larga-789")
+
+
+def test_comando_crear_usuario():
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+
+    call_command("crear_usuario", "nuevo_gestor", "--correo", "ng@ejemplo.invalid", "--rol", "Gestor", "--password", "una-clave-larga-123")
+    u = User.objects.get(username="nuevo_gestor")
+    assert u.groups.get().name == "Gestor" and u.check_password("una-clave-larga-123") and u.perfil
+    with pytest.raises(CommandError):
+        call_command("crear_usuario", "nuevo_gestor", "--correo", "otro@ejemplo.invalid", "--rol", "Gestor", "--password", "una-clave-larga-123")
+    with pytest.raises(CommandError):
+        call_command("crear_usuario", "debil", "--correo", "d@ejemplo.invalid", "--rol", "Gestor", "--password", "123")

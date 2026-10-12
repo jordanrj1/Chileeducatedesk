@@ -109,6 +109,22 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+# Para entrar desde otros equipos de la red [V#5]: lista de orígenes, p. ej. http://192.168.1.10:8000
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
+LOG_DIR = Path(env("LOG_DIR", default=str(BASE_DIR / "logs")))
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"simple": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
+    "handlers": {
+        "consola": {"class": "logging.StreamHandler", "formatter": "simple"},
+        "archivo": {"class": "logging.handlers.RotatingFileHandler", "filename": str(LOG_DIR / "fche.log"), "maxBytes": 2_000_000, "backupCount": 5, "formatter": "simple", "encoding": "utf-8"},
+    },
+    "root": {"handlers": ["consola", "archivo"], "level": "WARNING"},
+}
+
 # Archivos subidos: carpeta fuera del código (configurable).
 MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR.parent / "fche_media")))
 MEDIA_URL = "/media/"

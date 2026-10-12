@@ -56,5 +56,5 @@ def fijar_valores_selectores(form):
             if form.is_bound:
                 v = form.data.get(form.add_prefix(nombre))
             else:
-                v = form.initial.get(nombre) or getattr(form.instance, f"{nombre}_id", None)
+                v = form.initial.get(nombre) or getattr(getattr(form, "instance", None), f"{nombre}_id", None)
             campo.valor_actual = getattr(v, "pk", v) or None

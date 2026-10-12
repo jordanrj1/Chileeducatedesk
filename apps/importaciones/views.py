@@ -114,6 +114,7 @@ class LoteRevisar(Permiso403Mixin, View):
         accion = request.POST.get("accion")
         if accion == "descartar":
             lote.estado = "descartado"
+            lote.filas = []  # no se conservan datos personales de una carga descartada
             lote.save()
             registrar(request.user, "importacion_descartada", lote)
             messages.success(request, "Importación descartada. No se guardó ningún dato.")

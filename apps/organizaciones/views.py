@@ -49,6 +49,11 @@ class OrganizacionLista(ListaBase):
         return super().get_queryset().select_related("tipo", "estado_registro", "direccion__comuna")
 
 
+class OrganizacionExportar(OrganizacionLista):
+    exportar = True
+    permission_required = "organizaciones.exportar_organizacion"
+
+
 class OrganizacionNueva(ConDireccionMixin, Permiso403Mixin, CreateView):
     model = Organizacion
     form_class = OrganizacionForm

@@ -290,6 +290,7 @@ def aplicar(lote, usuario):
     lote.estado = "confirmado"
     lote.confirmado_en = timezone.now()
     lote.resumen = {**lote.resumen, "aplicado": n}
+    lote.filas = []  # minimización (RNF-02): el detalle de las filas ya está en los registros creados
     lote.save()
     registrar(usuario, "importacion_confirmada", lote, str(n))
     return n

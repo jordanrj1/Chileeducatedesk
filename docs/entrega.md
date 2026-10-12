@@ -1,0 +1,36 @@
+# Entrega, instalación y operación (F21)
+
+## Instalación en el equipo de la Fundación (Windows)
+1. Instalar **Python 3.12** (marcar «Add to PATH») y **PostgreSQL 14 o superior** (incluye `pg_dump`). El usuario de la base necesita permiso para `CREATE EXTENSION pg_trgm` la primera vez (usar el superusuario `postgres` al migrar).
+2. Copiar la carpeta del proyecto (p. ej. `C:\fche`). Crear la base: `createdb fche` y el usuario de aplicación.
+3. `py -m venv .venv` → `.venv\Scripts\pip install -r requirements.txt`.
+4. Copiar `.env.example` a `.env` y completar: `SECRET_KEY` (larga y aleatoria), `DB_*`, `ALLOWED_HOSTS`, `MEDIA_ROOT` (carpeta **fuera** del código, p. ej. `C:\fche_media`), `RESPALDO_DIR`.
+5. `iniciar.bat` (migra, junta estáticos y arranca con `waitress` en `127.0.0.1:8000`).
+6. Cargar el territorio con el archivo oficial CUT: `python manage.py cargar_territorio ruta\comunas.csv` (columnas: `region_codigo, region_nombre, provincia_codigo, provincia_nombre, comuna_codigo, comuna_nombre`).
+7. Crear los usuarios: `python manage.py crear_usuario claudio --correo ... --rol Gestor` y `python manage.py crear_usuario admin --correo ... --rol Administrador`.
+8. Opcional para ensayar: `python manage.py cargar_demo --si-estoy-seguro` (datos **ficticios**; no usar si ya hay datos reales).
+
+En Mac/Linux: `./iniciar.sh`, `./respaldar.sh`.
+
+## Acceso desde otros equipos o celulares [V#5]
+Por defecto solo el equipo donde corre (`127.0.0.1`). Para la red de la Fundación: cambiar `--listen` a `0.0.0.0:8000` en `iniciar.bat`, agregar la IP/nombre a `ALLOWED_HOSTS` y a `CSRF_TRUSTED_ORIGINS` (p. ej. `http://192.168.1.10:8000`), y permitir el puerto en el firewall. Si se publica en internet, usar HTTPS y activar las cookies seguras en `config/settings/produccion.py`.
+
+## Respaldos (RNF-10)
+- `respaldar.bat` (o `./respaldar.sh`) genera en `RESPALDO_DIR` un `fche_bd_AAAAMMDD_HHMMSS.dump` (pg_dump) y un `fche_documentos_….zip`, y elimina los de más de 30 días.
+- Programarlo a diario en el **Programador de tareas de Windows** (acción: iniciar `respaldar.bat`, 02:00).
+- Guardar además una copia **fuera del equipo** (disco externo o nube institucional).
+- **Probar la restauración** al menos una vez: `pg_restore -c -d fche archivo.dump` y descomprimir el zip de documentos en `MEDIA_ROOT`.
+
+## Antes de entregar (lista de verificación)
+- [ ] `python manage.py test`/`pytest` sin fallos.
+- [ ] `DEBUG=False`, `SECRET_KEY` propia, `.env` fuera del repositorio.
+- [ ] Usuarios creados y permisos revisados en Administración → Roles.
+- [ ] Territorio cargado; catálogos revisados con Claudio.
+- [ ] Respaldo programado y restauración probada.
+- [ ] Recorrido completo con Claudio: persona → proyecto → actividad → participantes → programar → confirmar → realizar → asistencia → resultado → cerrar → historial.
+- [ ] Definir quién administra después del 30-11-2026 [V#1] y traspasar credenciales.
+
+## Si algo falla
+- `/salud` responde `{"estado": "ok"}` cuando la base funciona.
+- Los registros de errores están en `logs/fche.log`.
+- Si cambió algo de la base, `python manage.py migrate` aplica las migraciones pendientes (siempre respaldar antes).
