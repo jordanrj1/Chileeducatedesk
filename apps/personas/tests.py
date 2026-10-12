@@ -226,3 +226,53 @@ def test_administrador_ve_pero_no_crea(ca, persona):
 
 def test_persona_en_varios_estados_de_registro(persona):
     assert Persona.objects.cola_incompletos is not None
+
+
+# --- Requerimientos por módulo (PE) -----------------------------------------------------------------
+def test_ficha_rapida_y_ficha_completa(cg):
+    rapida = cg.get("/personas/nueva").content.decode()
+    assert "Ficha rápida" in rapida and 'name="rut"' not in rapida and 'name="telefono"' in rapida
+    completa = cg.get("/personas/nueva?modo=completa").content.decode()
+    assert 'name="rut"' in completa and 'name="origen"' in completa
+    r = cg.post("/personas/nueva", {"modo": "rapida", "nombres": "Rápida", "telefono": "9 1234 5678"})
+    assert r.status_code == 302 and Persona.objects.get().contactos.count() == 1
+
+
+def test_guardar_y_completar_despues(cg):
+    r = cg.post("/personas/nueva", {"modo": "completa", "nombres": "Luego", "apellido_paterno": "Completo", "correo": "l@ejemplo.invalid", "despues": "1"})
+    p = Persona.objects.get()
+    assert r["Location"] == "/personas/nueva" and p.estado_registro.codigo == "incompleto"
+
+
+def test_aviso_de_duplicado_ofrece_usar_existente(cg, persona):
+    html = cg.post("/personas/nueva", {"modo": "rapida", "nombres": "Ana María", "apellido_paterno": "Pérez"}).content.decode()
+    assert "Usar existente" in html and persona.get_absolute_url() in html and "Crear de todos modos" in html
+
+
+def test_filtros_por_relacion_organizacion_y_comuna(cg, crear_actividad, rol, estado_part, universidad, comuna):
+    from apps.actividades.models import Participacion
+    from apps.personas.models import PersonaDireccion, PersonaOrganizacion
+    from apps.territorio.models import Direccion
+
+    vol = Persona.objects.create(nombres="Voluntaria")
+    otra = Persona.objects.create(nombres="Otra")
+    Participacion.objects.create(actividad=crear_actividad(), persona=vol, rol=rol("voluntario"), estado=estado_part("confirmado"))
+    PersonaOrganizacion.objects.create(persona=vol, organizacion=universidad, cargo="Ayudante")
+    PersonaDireccion.objects.create(persona=vol, direccion=Direccion.objects.create(comuna=comuna))
+    for filtro in (f"rol={rol('voluntario').pk}", f"organizacion={universidad.pk}", f"comuna={comuna.pk}"):
+        html = cg.get(f"/personas?{filtro}").content.decode()
+        assert "Voluntaria" in html and ">Otra<" not in html, filtro
+
+
+def test_candado_en_datos_restringidos(cg, persona):
+    html = cg.get(persona.get_absolute_url()).content.decode()
+    assert "Direcciones 🔒" in html and "Dato restringido" in html and "Participaciones" in html
+
+
+def test_agregar_persona_con_cargo_desde_la_organizacion(cg, universidad, persona):
+    r = cg.post(f"/organizaciones/{universidad.pk}/personas/nuevo", {"persona": persona.pk, "cargo": "Presidenta", "tipo_cargo": "directorio", "fecha_inicio": "2025-01-01"})
+    assert r.status_code == 302 and persona.vinculos.get().cargo == "Presidenta"
+    html = cg.get(f"/organizaciones/{universidad.pk}?tab=personas").content.decode()
+    assert "Presidenta" in html and "Agregar persona con cargo" in html
+    v = persona.vinculos.get()
+    assert cg.post(f"/organizaciones/{universidad.pk}/personas/{v.pk}/alternar").status_code == 404  # no hay «vigente» real: se cierra con fecha

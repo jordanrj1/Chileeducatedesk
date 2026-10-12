@@ -171,11 +171,16 @@ class OrganizacionFicha(FichaBase):
         return {"titulo_pestana": "Carreras", "etiqueta_nuevo": "Carrera", "url_nuevo": reverse("organizaciones:carreras_nuevo", args=[pk]), "hijos": hijos, "vacio": "Sin carreras registradas."}
 
     def ctx_personas(self):
+        pk = self.object.pk
         hijos = [{
             "texto": f"{v.persona} · {v.cargo or 'Vínculo'}", "vigente": v.vigente,
             "detalle": f"{v.get_tipo_cargo_display()} · {v.fecha_inicio or '?'} a {v.fecha_termino or 'actualidad'}",
+            "url_editar": reverse("organizaciones:personas_editar", args=[pk, v.pk]),
         } for v in self.object.vinculos.select_related("persona")]
-        return {"titulo_pestana": "Personas relacionadas", "hijos": hijos, "puede_agregar": False, "vacio": "Aún no hay personas vinculadas. Se registran desde la ficha de cada persona."}
+        return {
+            "titulo_pestana": "Personas relacionadas", "hijos": hijos, "etiqueta_nuevo": "Agregar persona con cargo",
+            "url_nuevo": reverse("organizaciones:personas_nuevo", args=[pk]), "vacio": "Aún no hay personas vinculadas.",
+        }
 
 
 class CarreraNueva(Permiso403Mixin, CreateView):

@@ -123,7 +123,8 @@ def urls_hijo(base, slug, nombre, **attrs):
         path(f"{base}/<int:pk>/{slug}/nuevo", crear.as_view(), name=f"{slug}_nuevo"),
         path(f"{base}/<int:pk>/{slug}/<int:hijo_pk>/editar", editar.as_view(), name=f"{slug}_editar"),
     ]
-    if attrs.get("campo_vigente") is not None or hasattr(attrs["modelo"], "vigente"):
+    campo = attrs.get("campo_vigente", "vigente")
+    if any(f.name == campo for f in attrs["modelo"]._meta.fields):
         alternar = type(f"Alternar{nombre}", (HijoAlternar,), attrs)
         res.append(path(f"{base}/<int:pk>/{slug}/<int:hijo_pk>/alternar", alternar.as_view(), name=f"{slug}_alternar"))
     return res

@@ -84,6 +84,45 @@ class LugarEditar(_Formulario, UpdateView):
         return self.object.get_absolute_url()
 
 
+class LugarCrearRapido(Permiso403Mixin, __import__("django.views", fromlist=["View"]).View):
+    """«+ Crear lugar» desde la agenda, sin salir de la actividad. Si ya existe con ese nombre en la comuna, se usa ese."""
+
+    permission_required = "lugares.add_lugar"
+
+    def post(self, request):
+        from django.db import transaction
+        from django.http import HttpResponse
+        from django.utils.html import format_html, format_html_join
+
+        from apps.territorio.models import Direccion
+
+        p = request.POST
+        nombre = p.get("nuevo_lugar_nombre", "").strip()
+        comuna = Comuna.objects.filter(pk=p.get("nuevo_lugar_comuna") or 0).first()
+        tipo = TipoLugar.objects.filter(pk=p.get("nuevo_lugar_tipo") or 0, activo=True).first()
+        cap = p.get("nuevo_lugar_capacidad", "").strip()
+        seleccionado, nivel = None, "danger"
+        if not (nombre and comuna and tipo):
+            mensaje = "Para crear el lugar indica nombre, tipo y comuna."
+        elif cap and (not cap.isdigit() or int(cap) < 1):
+            mensaje = "La capacidad debe ser un número entero positivo."
+        else:
+            existente = Lugar.objects.filter(nombre__iexact=nombre, direccion__comuna=comuna).first()
+            if existente:
+                seleccionado, nivel, mensaje = existente.pk, "info", f"Ya existía «{existente}» en {comuna}: quedó seleccionado."
+            else:
+                with transaction.atomic():
+                    d = Direccion.objects.create(comuna=comuna, calle=p.get("nuevo_lugar_calle", "").strip(), numero=p.get("nuevo_lugar_numero", "").strip())
+                    l = Lugar.objects.create(nombre=nombre, tipo=tipo, direccion=d, capacidad=int(cap) if cap else None, creado_por=request.user)
+                    from apps.documentos.origen import registrar_origen
+
+                    registrar_origen(l, request.user)
+                seleccionado, nivel, mensaje = l.pk, "success", f"Lugar «{l}» creado y seleccionado. Completa sus condiciones en su ficha cuando puedas."
+        filas = [("", "", "---------")] + [(l.pk, "selected" if l.pk == seleccionado else "", f"{l} ({l.direccion.comuna}" + (f", cap. {l.capacidad})" if l.capacidad else ")")) for l in Lugar.objects.filter(activo=True).select_related("direccion__comuna")]
+        html = format_html_join("", '<option value="{}" {}>{}</option>', filas)
+        return HttpResponse(html + format_html('<div id="aviso-lugar" hx-swap-oob="true" class="small text-{}">{}</div>', nivel, mensaje))
+
+
 class LugarAlternar(AlternarActivoBase):
     modelo = Lugar
     permission_required = "lugares.change_lugar"

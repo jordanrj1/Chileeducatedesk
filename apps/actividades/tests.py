@@ -527,3 +527,22 @@ def test_matching_por_pantalla(cg, actividad, crear_persona, universidad):
     assert "Marta" not in cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=personas&buscar=1&area=astronomía").content.decode()
     assert cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=lugares&buscar=1").status_code == 200
     assert cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=organizaciones&buscar=1").status_code == 200
+
+
+def test_crear_lugar_desde_la_agenda(cg, actividad, comuna, lugar):
+    from apps.lugares.models import Lugar
+    from apps.nucleo.models import TipoLugar
+
+    assert "+ Crear lugar sin salir de la actividad" in cg.get(f"/actividades/{actividad.pk}/programar").content.decode()
+    datos = {"nuevo_lugar_nombre": "Biblioteca Ficticia", "nuevo_lugar_tipo": TipoLugar.objects.get(codigo="sala").pk, "nuevo_lugar_comuna": comuna.pk, "nuevo_lugar_capacidad": "40"}
+    r = cg.post("/lugares/crear-rapido", datos)
+    nuevo = Lugar.objects.get(nombre="Biblioteca Ficticia")
+    assert f'value="{nuevo.pk}" selected' in r.content.decode() and nuevo.capacidad == 40
+    r = cg.post("/lugares/crear-rapido", {**datos, "nuevo_lugar_nombre": "biblioteca ficticia"})
+    assert Lugar.objects.filter(nombre__iexact="biblioteca ficticia").count() == 1 and "Ya existía" in r.content.decode()
+    assert "indica nombre, tipo y comuna" in cg.post("/lugares/crear-rapido", {"nuevo_lugar_nombre": "X"}).content.decode()
+    assert "entero positivo" in cg.post("/lugares/crear-rapido", {**datos, "nuevo_lugar_nombre": "Otra", "nuevo_lugar_capacidad": "-3"}).content.decode()
+
+
+def test_crear_lugar_rapido_requiere_permiso(ca, comuna):
+    assert ca.post("/lugares/crear-rapido", {"nuevo_lugar_nombre": "X"}).status_code == 403

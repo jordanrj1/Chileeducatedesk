@@ -1,5 +1,5 @@
 <dl class="row" style="max-width: 44rem;">
-  <dt class="col-sm-4">RUT</dt><dd class="col-sm-8">{{ object.rut|default:"—" }}</dd>
+  <dt class="col-sm-4">RUT <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd class="col-sm-8">{{ object.rut|default:"—" }}</dd>
   <dt class="col-sm-4">Profesión u oficio</dt><dd class="col-sm-8">{{ object.profesion|default:"—" }}</dd>
   <dt class="col-sm-4">Sitio web</dt><dd class="col-sm-8">{% if object.sitio_web %}<a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a>{% else %}—{% endif %}</dd>
   <dt class="col-sm-4">Origen</dt><dd class="col-sm-8">{{ object.origen|default:"—" }}</dd>

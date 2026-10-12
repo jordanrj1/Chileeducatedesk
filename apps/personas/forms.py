@@ -24,7 +24,8 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        self.fields["origen"].queryset = OrigenPersona.objects.filter(activo=True)
+        if "origen" in self.fields:
+            self.fields["origen"].queryset = OrigenPersona.objects.filter(activo=True)
         if "estado_registro" in self.fields:
             self.fields["estado_registro"].queryset = EstadoRegistro.objects.filter(activo=True)
         if self.instance.pk and self.instance.rut_numero:
@@ -61,6 +62,15 @@ class PersonaNuevaForm(PersonaForm):
         if t and not telefono_normalizado_valido(normalizar_telefono(t)):
             raise forms.ValidationError("No se pudo interpretar el teléfono. Usa el formato +56 9 1234 5678.")
         return t
+
+
+class PersonaRapidaForm(PersonaNuevaForm):
+    """Ficha rápida (IG-01): nombre y un dato de contacto, para registrar mientras se habla por teléfono."""
+
+    rut = None  # campo declarado en la ficha completa; aquí no se pide
+
+    class Meta(PersonaNuevaForm.Meta):
+        fields = ["nombres", "apellido_paterno", "correo", "telefono"]
 
 
 class ContactoForm(BootstrapMixin, forms.ModelForm):
@@ -123,6 +133,26 @@ class VinculoForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.fields["organizacion"].queryset = Organizacion.objects.filter(activo=True)
+
+
+class VinculoDesdeOrganizacionForm(BootstrapMixin, forms.ModelForm):
+    """Agregar persona con cargo desde la ficha de la organización. Los cargos son históricos: se cierran con «hasta»."""
+
+    persona = forms.ModelChoiceField(Persona.objects.none())
+
+    class Meta:
+        model = PersonaOrganizacion
+        fields = ["persona", "cargo", "tipo_cargo", "fecha_inicio", "fecha_termino"]
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        from django.urls import reverse_lazy
+
+        from apps.nucleo.formularios import SelectorField, fijar_valores_selectores
+
+        self.fields["persona"] = SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"))
+        self.fields["persona"].widget.attrs["class"] = "form-select"
+        fijar_valores_selectores(self)
 
 
 class ExperienciaForm(BootstrapMixin, forms.ModelForm):

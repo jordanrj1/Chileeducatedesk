@@ -300,7 +300,13 @@ class ProgramarVista(_AccionActividad):
 
     def _contexto(self, a, form):
         vigente = a.agenda_vigente
-        return {"form": form, "titulo": ("Reprogramar: " if vigente else "Programar: ") + a.nombre, "volver_url": f"{a.get_absolute_url()}?tab=agenda", "breadcrumb": [("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())], "vigente": vigente}
+        from apps.nucleo.models import TipoLugar
+
+        return {
+            "form": form, "titulo": ("Reprogramar: " if vigente else "Programar: ") + a.nombre, "volver_url": f"{a.get_absolute_url()}?tab=agenda",
+            "breadcrumb": [("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())], "vigente": vigente,
+            "tipos_lugar": TipoLugar.objects.filter(activo=True), "comunas": Comuna.objects.all(),
+        }
 
     def get(self, request, pk):
         a = self.actividad(pk)
