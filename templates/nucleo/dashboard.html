@@ -17,9 +17,11 @@
 </div>
 <h2 class="h6 mt-4">Acciones rápidas</h2>
 <div class="d-flex flex-wrap gap-2">
-  {% if perms.personas.add_persona %}<a class="btn btn-outline-primary btn-sm" href="/personas/nueva">Nueva persona</a>{% endif %}
-  {% if perms.solicitudes.add_solicitud %}<a class="btn btn-outline-primary btn-sm" href="/solicitudes/nueva">Nueva solicitud</a>{% endif %}
-  {% if perms.actividades.add_actividad %}<a class="btn btn-outline-primary btn-sm" href="/actividades/nueva">Nueva actividad</a>{% endif %}
-  {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva">Nueva organización</a>{% endif %}
+  {% if perms.solicitudes.add_solicitud %}<a class="btn btn-outline-primary btn-sm" href="/solicitudes/nueva">+ Solicitud</a>
+  <a class="btn btn-outline-primary btn-sm" href="/solicitudes/nueva?oportunidad=1">+ Oportunidad</a>{% endif %}
+  {% if perms.actividades.add_actividad %}<a class="btn btn-outline-primary btn-sm" href="/actividades/nueva">+ Actividad</a>{% endif %}
+  {% if perms.personas.add_persona %}<a class="btn btn-outline-primary btn-sm" href="/personas/nueva">+ Persona</a>{% endif %}
+  {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva">+ Organización</a>{% endif %}
+  {% if perms.lugares.add_lugar %}<a class="btn btn-outline-primary btn-sm" href="/lugares/nuevo">+ Lugar</a>{% endif %}
 </div>
 {% endblock %}

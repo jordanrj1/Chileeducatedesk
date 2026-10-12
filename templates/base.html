@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/fche.css' %}">
 </head>
-<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' hx-indicator="#cargando">
 {% if user.is_authenticated %}
 <div class="d-flex flex-column flex-md-row min-vh-100">
   <nav class="fche-menu bg-dark text-white p-3" aria-label="Menú principal">
@@ -23,15 +23,26 @@
       <form class="flex-grow-1" role="search" action="{% url 'buscar' %}" method="get">
         <input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Buscar personas, organizaciones, actividades, lugares, documentos…" aria-label="Buscador global">
       </form>
-      <a class="text-muted small text-decoration-none" href="/mi-cuenta">{{ user.get_username }}</a>
-      <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm" type="submit">Cerrar sesión</button></form>
+      <span id="cargando" class="htmx-indicator spinner-border spinner-border-sm text-secondary" role="status" aria-label="Cargando"></span>
+      <div class="dropdown">
+        <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">{{ user.get_full_name|default:user.get_username }}</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="/mi-cuenta">Mi cuenta</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="dropdown-item" type="submit">Cerrar sesión</button></form></li>
+        </ul>
+      </div>
     </header>
     <main class="p-3 flex-grow-1">
       <nav aria-label="breadcrumb"><ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
         {% block breadcrumb %}{% endblock %}
       </ol></nav>
-      {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}">{{ m }}</div>{% endfor %}{% endif %}
+      <div id="error-htmx" class="alert alert-danger d-flex justify-content-between align-items-center" role="alert" hidden>
+        <span>No se pudo cargar esta sección. Revisa la conexión o inténtalo de nuevo.</span>
+        <button type="button" class="btn btn-outline-danger btn-sm" id="reintentar">Reintentar</button>
+      </div>
+      {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}" role="status">{{ m }}</div>{% endfor %}{% endif %}
       {% block contenido %}{% endblock %}
     </main>
   </div>
@@ -41,5 +52,6 @@
 {% endif %}
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+<script src="{% static 'js/fche.js' %}"></script>
 </body>
 </html>

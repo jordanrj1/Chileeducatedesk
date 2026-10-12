@@ -96,6 +96,10 @@ SEGUNDA_FASE = env.bool("SEGUNDA_FASE", default=False)
 # [V#3] ¿Se puede confirmar una actividad con incompatibilidad crítica, con motivo? Hoy: no.
 CONFIRMAR_CON_CONFLICTO_CRITICO = env.bool("CONFIRMAR_CON_CONFLICTO_CRITICO", default=False)
 
+from django.contrib.messages import constants as _mensajes
+
+MESSAGE_TAGS = {_mensajes.ERROR: "danger"}  # Bootstrap usa «danger», no «error»
+
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/dashboard"
 LOGOUT_REDIRECT_URL = "/login"

@@ -103,10 +103,10 @@ def test_busqueda_no_expone_documentos_restringidos(cg, ca, mundo, administrador
 
 
 def test_resultados_paginados_y_con_enlace(cg, crear_persona):
-    for i in range(30):
+    for i in range(60):
         crear_persona(f"Paginada{i:02d}")
     html = hallar(cg, q="paginada", tipo="persona")
-    assert "30 resultado" in html and "Siguiente" in html and "/personas/" in html
+    assert "60 resultado" in html and "Siguiente" in html and "/personas/" in html
     assert "Paginada29" in cg.get("/buscar?q=paginada&tipo=persona&page=2").content.decode() or "Paginada" in cg.get("/buscar?q=paginada&tipo=persona&page=2").content.decode()
 
 
@@ -158,7 +158,7 @@ def test_dashboard_muestra_pendientes(cg, mundo, crear_persona, gestor):
     html = cg.get("/dashboard").content.decode()
     assert "Actividades incompletas" in html and "Taller de educación financiera" in html  # le falta el responsable
     assert "Mandar la carta" in html and "Nadie ha respondido" in html and "Incompleta" in html
-    assert "Nueva persona" in html
+    assert "+ Persona" in html
 
 
 def test_cola_de_incompletos_prioriza_actividades_proximas(mundo, crear_persona, rol, estado_part):
@@ -176,3 +176,23 @@ def test_cola_de_incompletos_prioriza_actividades_proximas(mundo, crear_persona,
 def test_dashboard_vacio_y_para_administrador(ca, cg):
     assert ca.get("/dashboard").status_code == 200
     assert "Nada pendiente" in cg.get("/dashboard").content.decode()
+
+
+def test_resultados_agrupados_por_tipo(cg, mundo):
+    html = hallar(cg, q="educ")
+    assert "<h2 class=\"h6 mt-3\">Personas" in html and "<h2 class=\"h6 mt-3\">Actividades" in html and "<h2 class=\"h6 mt-3\">Proyectos" in html
+    h = lambda t: html.index(f'<h2 class="h6 mt-3">{t}')
+    assert h("Personas") < h("Proyectos") < h("Actividades")
+
+
+def test_menu_de_usuario_y_acciones_rapidas(cg):
+    html = cg.get("/dashboard").content.decode()
+    assert "Mi cuenta" in html and "Cerrar sesión" in html and 'id="cargando"' in html and 'id="reintentar"' in html
+    for accion in ("+ Solicitud", "+ Oportunidad", "+ Actividad", "+ Persona", "+ Organización", "+ Lugar"):
+        assert accion in html, accion
+    assert "/static/js/fche.js" in html
+
+
+def test_mensajes_de_error_con_estilo_bootstrap(cg, actividad):
+    r = cg.post(f"/actividades/{actividad.pk}/estado", {"estado": "cancelada"}, follow=True)  # falta el motivo
+    assert "alert-danger" in r.content.decode()

@@ -1,1 +1,5 @@
 .fche-menu { min-width: 14rem; } @media (min-width: 768px) { .fche-menu { width: 14rem; } }
+
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline-block; }
+body.htmx-request #cargando { display: inline-block; }
