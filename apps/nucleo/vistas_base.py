@@ -59,6 +59,7 @@ class ListaBase(Permiso403Mixin, ListView):
     texto_vacio = "Aún no hay registros."
     url_exportar = None
     permiso_exportar = None
+    botones_extra = ()  # [(etiqueta, url, permiso)]
 
     exportar = False
 
@@ -150,6 +151,7 @@ class ListaBase(Permiso403Mixin, ListView):
             hay_filtros=bool(self.request.GET.get("q")) or any(
                 self.request.GET.get(f.param) not in (None, "", f.por_defecto) for f in self.filtros
             ),
+            botones_extra=[(e, u) for e, u, p in self.botones_extra if not p or self.request.user.has_perm(p)],
             url_exportar=self.url_exportar
             if self.url_exportar and (not self.permiso_exportar or self.request.user.has_perm(self.permiso_exportar))
             else None,
@@ -263,10 +265,15 @@ class FichaBase(Permiso403Mixin, DetailView):
         if extra:
             ctx.update(extra())
         ctx.update(self.contexto_ficha())
+        ctx["acciones_extra"] = self.acciones_extra()
         return ctx
 
     def contexto_ficha(self):
         return {}
+
+    def acciones_extra(self):
+        """[(etiqueta, url)] que aparecen junto a «Editar» en la cabecera de la ficha."""
+        return []
 
     def ctx_historial(self):
         return {"cambios": cambios_historial(self.object)}

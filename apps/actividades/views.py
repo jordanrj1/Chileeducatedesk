@@ -79,6 +79,9 @@ class ActividadLista(ListaBase):
         Filtro("proyecto", "Proyecto", "proyecto_id", lambda: [(str(p.pk), p.nombre) for p in Proyecto.objects.all()]),
         Filtro("comuna", "Zona (comuna)", "", opciones_modelo(Comuna), aplicar=_filtro_comuna),
         Filtro("organizacion", "Organización", "organizaciones__organizacion_id", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(activo=True)[:300]], aplicar=lambda qs, v: qs.filter(organizaciones__organizacion_id=v).distinct()),
+        Filtro("responsable", "Responsable", "responsable_id", lambda: [(str(p.pk), p.nombre_completo) for p in Persona.objects.filter(actividades_a_cargo__isnull=False).distinct()]),
+        Filtro("institucion", "Institución", "", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(tipo__codigo="institucion_educativa", activo=True)],
+               aplicar=lambda qs, v: qs.filter(organizaciones__organizacion_id=v).distinct()),
         Filtro("desde", "Desde", "", entrada="date", aplicar=_filtro_fecha("gte")),
         Filtro("hasta", "Hasta", "", entrada="date", aplicar=_filtro_fecha("lte")),
         Filtro("incompleta", "Incompletas", "", lambda: [("1", "Solo incompletas")], aplicar=lambda qs, v: qs.filter(pk__in=Actividad.objects.incompletas().values("pk")) if v == "1" else qs),
@@ -183,6 +186,11 @@ class ActividadFicha(FichaBase):
 
     def get_queryset(self):
         return super().get_queryset().select_related("proyecto", "tipo", "estado", "modalidad", "responsable", "actividad_padre")
+
+    def acciones_extra(self):
+        if self.request.user.has_perm("coordinacion.add_interaccion"):
+            return [("Registrar interacción", f"/interacciones/nueva?actividad={self.object.pk}")]
+        return []
 
     def contexto_ficha(self):
         a = self.object
@@ -425,12 +433,18 @@ class ReabrirVista(_AccionActividad):
 class ParticipanteNuevo(_AccionActividad):
     permission_required = "actividades.add_participacion"
 
-    def _ctx(self, a, form):
-        return {"form": form, "titulo": "Agregar participante", "volver_url": f"{a.get_absolute_url()}?tab=participantes", "breadcrumb": [(a.nombre, a.get_absolute_url())], "rapida_url": reverse("actividades:participante_rapido", args=[a.pk])}
+    def _ctx(self, a, form, llego=False):
+        return {
+            "form": form, "titulo": "Agregar persona que llegó" if llego else "Agregar participante", "llego": llego,
+            "volver_url": f"{a.get_absolute_url()}?tab={'asistencia' if llego else 'participantes'}", "breadcrumb": [(a.nombre, a.get_absolute_url())],
+            "rapida_url": reverse("actividades:participante_rapido", args=[a.pk]) + ("?llego=1" if llego else ""),
+        }
 
     def get(self, request, pk):
         a = self.actividad(pk)
-        return render(request, "actividades/participante_form.html", self._ctx(a, ParticipanteNuevoForm(actividad=a)))
+        llego = request.GET.get("llego") == "1"
+        form = ParticipanteNuevoForm(actividad=a, initial={"estado": EstadoParticipacion.objects.filter(codigo="asistio").first()} if llego else None)
+        return render(request, "actividades/participante_form.html", self._ctx(a, form, llego))
 
     def post(self, request, pk):
         a = self.actividad(pk)
@@ -438,14 +452,20 @@ class ParticipanteNuevo(_AccionActividad):
             messages.error(request, "No se pueden agregar participantes a una actividad finalizada o cancelada.")
             return self.volver(a, "participantes")
         form = ParticipanteNuevoForm(request.POST, actividad=a)
+        llego = request.POST.get("llego") == "1"
         if form.is_valid():
             p = form.save(commit=False)
             p.actividad = a
             p.creado_por = request.user
+            if llego:  # RE-02: llegó sin estar previsto
+                p.asistencia = True
+                p.estado = EstadoParticipacion.objects.get(codigo="asistio")
             p.save()
-            messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}.")
-            return self.volver(a, "beneficiarios" if p.es_beneficiario else "participantes")
-        return render(request, "actividades/participante_form.html", self._ctx(a, form), status=400)
+            messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}" + (" y marcada como asistente." if llego else "."))
+            from apps.nucleo.fases import segunda_fase_activa
+
+            return self.volver(a, "asistencia" if llego else ("beneficiarios" if p.es_beneficiario and segunda_fase_activa() else "participantes"))
+        return render(request, "actividades/participante_form.html", self._ctx(a, form, llego), status=400)
 
 
 class ParticipanteRapido(_AccionActividad):
@@ -454,7 +474,8 @@ class ParticipanteRapido(_AccionActividad):
     permission_required = "personas.add_persona"
 
     def _ctx(self, a, form, cands=None):
-        return {"form": form, "titulo": "Crear persona y agregarla", "volver_url": f"{a.get_absolute_url()}?tab=participantes", "breadcrumb": [(a.nombre, a.get_absolute_url())], "candidatos": cands, "actividad": a}
+        llego = (self.request.GET.get("llego") or self.request.POST.get("llego")) == "1"
+        return {"form": form, "titulo": "Crear persona que llegó" if llego else "Crear persona y agregarla", "volver_url": f"{a.get_absolute_url()}?tab={'asistencia' if llego else 'participantes'}", "breadcrumb": [(a.nombre, a.get_absolute_url())], "candidatos": cands, "actividad": a, "llego": llego}
 
     def get(self, request, pk):
         return render(request, "actividades/participante_rapido.html", self._ctx(self.actividad(pk), PersonaRapidaForm()))
@@ -484,9 +505,13 @@ class ParticipanteRapido(_AccionActividad):
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=d["correo"], principal=True)
             if d["telefono"]:
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"])
-            Participacion.objects.create(actividad=a, persona=persona, rol=d["rol"], estado=EstadoParticipacion.objects.get(codigo="invitado"), creado_por=request.user)
+            llego = request.POST.get("llego") == "1"
+            Participacion.objects.create(
+                actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, asistencia=True if llego else None,
+                estado=EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"),
+            )
         messages.success(request, f"{persona} creada y agregada. Completa su ficha cuando puedas.")
-        return self.volver(a, "participantes")
+        return self.volver(a, "asistencia" if llego else "participantes")
 
 
 class ParticipanteUsar(_AccionActividad):
@@ -498,8 +523,10 @@ class ParticipanteUsar(_AccionActividad):
         a = self.actividad(pk)
         persona = get_object_or_404(Persona, pk=persona_pk)
         rol = get_object_or_404(RolParticipacion, pk=request.POST.get("rol"))
+        llego = request.POST.get("llego") == "1"
         obj, creada = Participacion.objects.get_or_create(
-            actividad=a, persona=persona, rol=rol, defaults={"estado": EstadoParticipacion.objects.get(codigo="invitado"), "creado_por": request.user}
+            actividad=a, persona=persona, rol=rol,
+            defaults={"estado": EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"), "creado_por": request.user, "asistencia": True if llego else None},
         )
         messages.success(request, f"{persona} agregada." if creada else f"{persona} ya participaba con ese rol.")
         return self.volver(a, "participantes")

@@ -1,0 +1,4 @@
+<div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Interacciones</h2>
+{% if perms.coordinacion.add_interaccion %}<a class="btn btn-primary btn-sm" href="{{ url_nueva_interaccion }}">Registrar interacción</a>{% endif %}</div>
+<ul class="list-group">{% for i in interacciones %}<li class="list-group-item"><a href="{{ i.get_absolute_url }}">{{ i.fecha|date:"d-m-Y H:i" }} · {{ i.canal }}</a>{% if i.actividad %} · <a href="{{ i.actividad.get_absolute_url }}">{{ i.actividad }}</a>{% endif %}{% if i.solicitud %} · <a href="{{ i.solicitud.get_absolute_url }}">{{ i.solicitud }}</a>{% endif %}
+<div class="small text-muted">{{ i.resultado|truncatechars:120 }}{% if i.proxima_accion %} → {{ i.proxima_accion }}{% if i.proxima_fecha %} ({{ i.proxima_fecha|date:"d-m-Y" }}){% endif %}{% if i.accion_cumplida %} ✓{% endif %}{% endif %}</div></li>{% empty %}<li class="list-group-item text-muted">Sin interacciones registradas.</li>{% endfor %}</ul>

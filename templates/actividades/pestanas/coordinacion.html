@@ -3,7 +3,7 @@
   {% if perms.coordinacion.add_interaccion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'coordinacion:interaccion_nueva' %}?actividad={{ object.pk }}">+ Nueva interacción</a>{% endif %}
   {% if segunda_fase and perms.coordinacion.add_reunion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'coordinacion:reunion_nueva' %}?actividad={{ object.pk }}">+ Nueva reunión</a>{% endif %}
   {% if perms.coordinacion.add_invitacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'coordinacion:invitacion_nueva' %}?actividad={{ object.pk }}">+ Nueva invitación</a>{% endif %}
-  {% if perms.coordinacion.add_colaboracion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'coordinacion:colaboracion_nueva' %}?actividad={{ object.pk }}">+ Nueva colaboración</a>{% endif %}
+  {% if perms.coordinacion.add_colaboracion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'coordinacion:colaboracion_nueva' %}?actividad={{ object.pk }}">+ Solicitud de apoyo</a>{% endif %}
   {% if segunda_fase and perms.coordinacion.add_tarea %}<a class="btn btn-outline-primary btn-sm" href="{% url 'coordinacion:tarea_nueva' %}?actividad={{ object.pk }}">+ Nueva tarea</a>{% endif %}
   {% endif %}
 </div>
@@ -13,7 +13,7 @@
 <ul class="list-group mb-3">{% for r in reuniones %}<li class="list-group-item"><a href="{{ r.get_absolute_url }}">{{ r.fecha|date:"d-m-Y" }} · {{ r.titulo }}</a></li>{% empty %}<li class="list-group-item text-muted">Sin reuniones.</li>{% endfor %}</ul>{% endif %}
 <h2 class="h6">Invitaciones</h2>
 <ul class="list-group mb-3">{% for i in invitaciones %}<li class="list-group-item"><a href="{{ i.get_absolute_url }}">{{ i.persona }}</a> <span class="badge text-bg-secondary">{{ i.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin invitaciones.</li>{% endfor %}</ul>
-<h2 class="h6">Colaboraciones</h2>
-<ul class="list-group mb-3">{% for c in colaboraciones %}<li class="list-group-item"><a href="{{ c.get_absolute_url }}">{{ c.organizacion }} · {{ c.tipo_apoyo }}</a> <span class="badge text-bg-secondary">{{ c.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin colaboraciones.</li>{% endfor %}</ul>
+<h2 class="h6">Solicitudes de apoyo</h2>
+<ul class="list-group mb-3">{% for c in colaboraciones %}<li class="list-group-item"><a href="{{ c.get_absolute_url }}">{{ c.organizacion }} · {{ c.tipo_apoyo }}</a> <span class="badge text-bg-secondary">{{ c.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin solicitudes de apoyo.</li>{% endfor %}</ul>
 {% if segunda_fase %}<h2 class="h6">Tareas</h2>
 <ul class="list-group">{% for t in tareas %}<li class="list-group-item"><a href="{{ t.get_absolute_url }}">{{ t.titulo }}</a> <span class="badge text-bg-secondary">{{ t.get_estado_display }}</span> <span class="small text-muted">{% for r in t.responsables.all %}{{ r }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if t.fecha_limite %} · vence {{ t.fecha_limite|date:"d-m-Y" }}{% endif %}</span></li>{% empty %}<li class="list-group-item text-muted">Sin tareas.</li>{% endfor %}</ul>{% endif %}

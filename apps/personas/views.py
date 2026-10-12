@@ -162,11 +162,17 @@ class PersonaFicha(FichaBase):
         ("vinculos", "Organizaciones y cargos", "generico/_hijos.html"),
         ("trayectoria", "Participaciones", "personas/pestanas/trayectoria.html", "actividades.view_participacion"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
+        ("interacciones", "Interacciones", "coordinacion/_interacciones.html", "coordinacion.view_interaccion"),
         ("emergencia", "Contacto de emergencia 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
         ("verificaciones", "Verificaciones 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "personas.view_historicalpersona"),
     ]
+
+    def acciones_extra(self):
+        if self.request.user.has_perm("coordinacion.add_interaccion"):
+            return [("Registrar interacción", f"/interacciones/nueva?persona={self.object.pk}")]
+        return []
 
     def contexto_ficha(self):
         p = self.object
@@ -195,6 +201,9 @@ class PersonaFicha(FichaBase):
             "vinculos": p.vinculos.select_related("organizacion"),
             "invitaciones": p.invitaciones.select_related("actividad"),
         }
+
+    def ctx_interacciones(self):
+        return {"interacciones": self.object.interacciones.select_related("canal", "actividad", "solicitud").order_by("-fecha"), "url_nueva_interaccion": f"/interacciones/nueva?persona={self.object.pk}"}
 
     def ctx_documentos(self):
         docs = self.object.documentos.select_related("tipo")

@@ -1,4 +1,7 @@
-<h2 class="h6">Asistencia</h2>
+<div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Asistencia</h2>
+{% if puede_agregar and perms.actividades.add_participacion %}<div class="d-flex gap-2">
+  <a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_nuevo' object.pk %}?llego=1">+ Agregar persona que llegó</a>
+  {% if perms.personas.add_persona %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:participante_rapido' object.pk %}?llego=1">Crear y marcar asistencia</a>{% endif %}</div>{% endif %}</div>
 {% if participaciones %}
 <form method="post" action="{% url 'actividades:asistencia' object.pk %}">{% csrf_token %}
 <div class="table-responsive"><table class="table table-sm align-middle">

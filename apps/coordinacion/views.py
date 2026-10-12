@@ -237,7 +237,7 @@ class InvitacionEditar(_Editar):
     model = Invitacion
     form_class = InvitacionForm
     permission_required = "coordinacion.change_invitacion"
-    titulo = "Registrar respuesta / editar invitación"
+    titulo = "Marcar respuesta de la invitación"
 
     def hook(self, form, obj):
         servicios.sincronizar_invitacion(obj, self.request.user)
@@ -256,7 +256,7 @@ class ColaboracionNueva(_Nuevo):
     model = Colaboracion
     form_class = ColaboracionForm
     permission_required = "coordinacion.add_colaboracion"
-    titulo = "Nueva colaboración"
+    titulo = "Nueva solicitud de apoyo"
     prefill = ("organizacion", "actividad")
 
     def despues(self, obj):
@@ -267,7 +267,7 @@ class ColaboracionEditar(_Editar):
     model = Colaboracion
     form_class = ColaboracionForm
     permission_required = "coordinacion.change_colaboracion"
-    titulo = "Editar colaboración"
+    titulo = "Marcar respuesta de la solicitud de apoyo"
 
 
 class ColaboracionFicha(_Detalle):

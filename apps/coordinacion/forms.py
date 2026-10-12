@@ -124,7 +124,7 @@ class InvitacionForm(BootstrapMixin, forms.ModelForm):
 
     def clean(self):
         d = super().clean()
-        if d.get("estado") in ("aceptada", "rechazada") and not d.get("fecha_respuesta"):
+        if d.get("estado") in ("respondio", "aceptada", "rechazada") and not d.get("fecha_respuesta"):
             self.add_error("fecha_respuesta", "Indica la fecha de la respuesta.")
         return d
 

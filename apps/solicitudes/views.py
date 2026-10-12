@@ -25,7 +25,7 @@ class SolicitudLista(ListaBase):
     campos_busqueda = ("motivo", "descripcion", "persona__nombres", "persona__apellido_paterno", "organizacion__nombre")
     columnas = [
         ("Solicitud", lambda s: s.titulo), ("Fecha", lambda s: s.fecha.strftime("%d-%m-%Y")), ("Origen", "get_origen_display"),
-        ("Contacto", lambda s: s.persona or s.organizacion or "—"), ("Canal", "canal"), ("Estado", "estado"),
+        ("Contacto", lambda s: s.persona or s.organizacion or "Por identificar"), ("Canal", "canal"), ("Estado", "estado"),
     ]
     ordenes = {"fecha": "fecha"}
     orden_defecto = ("-fecha", "-id")
@@ -37,6 +37,7 @@ class SolicitudLista(ListaBase):
     ]
     url_exportar = "/solicitudes/exportar"
     permiso_exportar = "solicitudes.exportar_solicitud"
+    botones_extra = [("+ Nueva oportunidad", "/solicitudes/nueva?oportunidad=1", "solicitudes.add_solicitud")]
 
     def get_queryset(self):
         return super().get_queryset().select_related("estado", "canal", "persona", "organizacion")
@@ -58,11 +59,14 @@ class SolicitudNueva(Permiso403Mixin, CreateView):
         for k in ("persona", "organizacion"):
             if self.request.GET.get(k, "").isdigit():
                 ini[k] = int(self.request.GET[k])
+        if self.request.GET.get("oportunidad"):
+            ini["origen"] = "busqueda_activa"
         return ini
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo="Nueva solicitud u oportunidad", volver_url="/solicitudes", breadcrumb=[("Solicitudes", "/solicitudes")])
+        titulo = "Nueva oportunidad" if self.request.GET.get("oportunidad") else "Nueva solicitud"
+        ctx.update(titulo=titulo, volver_url="/solicitudes", breadcrumb=[("Solicitudes", "/solicitudes")])
         return ctx
 
     def form_valid(self, form):
@@ -102,6 +106,11 @@ class SolicitudFicha(FichaBase):
 
     def encabezado(self):
         return self.object.titulo
+
+    def acciones_extra(self):
+        if self.request.user.has_perm("coordinacion.add_interaccion"):
+            return [("Registrar interacción", f"/interacciones/nueva?solicitud={self.object.pk}")]
+        return []
 
     def contexto_ficha(self):
         s = self.object

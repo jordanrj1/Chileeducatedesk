@@ -546,3 +546,34 @@ def test_crear_lugar_desde_la_agenda(cg, actividad, comuna, lugar):
 
 def test_crear_lugar_rapido_requiere_permiso(ca, comuna):
     assert ca.post("/lugares/crear-rapido", {"nuevo_lugar_nombre": "X"}).status_code == 403
+
+
+
+def test_cargar_listado_desde_la_actividad(cg, actividad):
+    assert f"/importaciones/nueva?actividad={actividad.pk}" in cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()
+    html = cg.get(f"/importaciones/nueva?actividad={actividad.pk}").content.decode()
+    assert 'value="listado_actividad" selected' in html and f'value="{actividad.pk}" selected' in html
+
+
+def test_agregar_persona_que_llego(cg, actividad, crear_persona, rol, estado_part):
+    assert "+ Agregar persona que llegó" in cg.get(f"/actividades/{actividad.pk}?tab=asistencia").content.decode()
+    p = crear_persona("Llegó")
+    r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk, "llego": "1"})
+    part = actividad.participaciones.get(persona=p)
+    assert r.status_code == 302 and "tab=asistencia" in r["Location"] and part.asistencia is True and part.estado.codigo == "asistio"
+    cg.post(f"/actividades/{actividad.pk}/participantes/rapido", {"nombres": "Nueva", "apellido_paterno": "Llegada", "rol": rol("participante").pk, "llego": "1"})
+    nueva = actividad.participaciones.get(persona__nombres="Nueva")
+    assert nueva.asistencia is True
+
+
+def test_filtros_por_responsable_e_institucion(cg, crear_actividad, crear_persona, universidad):
+    from apps.actividades.models import ActividadOrganizacion
+
+    resp = crear_persona("Responsable")
+    a = crear_actividad("Con responsable", responsable=resp)
+    b = crear_actividad("Con institución")
+    ActividadOrganizacion.objects.create(actividad=b, organizacion=universidad)
+    html = cg.get(f"/actividades?responsable={resp.pk}").content.decode()
+    assert "Con responsable" in html and "Con institución" not in html
+    html = cg.get(f"/actividades?institucion={universidad.pk}").content.decode()
+    assert "Con institución" in html and "Con responsable" not in html

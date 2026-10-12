@@ -124,6 +124,11 @@ class OrganizacionFicha(FichaBase):
         ("historial", "Historial", "generico/_historial.html", "organizaciones.view_historicalorganizacion"),
     ]
 
+    def acciones_extra(self):
+        if self.request.user.has_perm("coordinacion.add_interaccion"):
+            return [("Registrar interacción", f"/interacciones/nueva?organizacion={self.object.pk}")]
+        return []
+
     def contexto_ficha(self):
         o = self.object
         return {
