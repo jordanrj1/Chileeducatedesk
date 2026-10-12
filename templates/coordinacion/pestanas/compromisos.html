@@ -1,0 +1,4 @@
+<div class="d-flex justify-content-between mb-2"><h2 class="h6 mb-0">Compromisos</h2>
+{% if puede_agregar and perms.coordinacion.add_tarea %}<a class="btn btn-primary btn-sm" href="{% url 'coordinacion:tarea_nueva' %}?reunion={{ object.pk }}{% if object.actividad_id %}&actividad={{ object.actividad_id }}{% endif %}{% if object.proyecto_id %}&proyecto={{ object.proyecto_id }}{% endif %}">+ Compromiso</a>{% endif %}</div>
+<ul class="list-group">{% for t in tareas %}<li class="list-group-item"><a href="{{ t.get_absolute_url }}">{{ t.titulo }}</a> <span class="badge text-bg-secondary">{{ t.get_estado_display }}</span>
+<span class="small text-muted">{% for r in t.responsables %}{{ r }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if t.fecha_limite %} · vence {{ t.fecha_limite|date:"d-m-Y" }}{% endif %}</span></li>{% empty %}<li class="list-group-item text-muted">Sin compromisos registrados.</li>{% endfor %}</ul>

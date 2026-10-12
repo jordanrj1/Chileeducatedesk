@@ -1,0 +1,2 @@
+{% extends "generico/formulario.html" %}
+{% block extra_form %}{% if rapida_url and perms.personas.add_persona %}<p class="small mt-3">¿No encuentras a la persona? <a href="{{ rapida_url }}">Créala aquí mismo</a> y quedará agregada.</p>{% endif %}{% endblock %}

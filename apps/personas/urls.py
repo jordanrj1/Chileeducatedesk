@@ -8,6 +8,7 @@ app_name = "personas"
 P = dict(padre_modelo=models.Persona, campo_padre="persona")
 urlpatterns = [
     path("personas", views.PersonaLista.as_view(), name="lista"),
+    path("personas/opciones", views.PersonaOpciones.as_view(), name="opciones"),
     path("personas/nueva", views.PersonaNueva.as_view(), name="nueva"),
     path("personas/<int:pk>", views.PersonaFicha.as_view(), name="ficha"),
     path("personas/<int:pk>/editar", views.PersonaEditar.as_view(), name="editar"),

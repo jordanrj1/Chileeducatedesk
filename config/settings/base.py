@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.solicitudes",
     "apps.coordinacion",
     "apps.documentos",
+    "apps.importaciones",
     "apps.finanzas",
 ]
 
@@ -88,6 +89,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTHENTICATION_BACKENDS = ["apps.cuentas.backends.CorreoOUsuarioBackend"]
+# [V#3] ¿Se puede confirmar una actividad con incompatibilidad crítica, con motivo? Hoy: no.
+CONFIRMAR_CON_CONFLICTO_CRITICO = env.bool("CONFIRMAR_CON_CONFLICTO_CRITICO", default=False)
+
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/dashboard"
 LOGOUT_REDIRECT_URL = "/login"

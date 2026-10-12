@@ -76,3 +76,61 @@ def persona(db):
     from apps.personas.models import Persona
 
     return Persona.objects.create(nombres="Ana María", apellido_paterno="Pérez", apellido_materno="Soto")
+
+
+@pytest.fixture(autouse=True)
+def _media_temporal(settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path / "media"
+
+
+@pytest.fixture
+def lugar(db, comuna):
+    from apps.lugares.models import Lugar
+    from apps.nucleo.models import TipoLugar
+    from apps.territorio.models import Direccion
+
+    d = Direccion.objects.create(calle="Calle Inventada", numero="100", comuna=comuna)
+    return Lugar.objects.create(nombre="Sala Ficticia", tipo=TipoLugar.objects.get(codigo="sala"), direccion=d, capacidad=20)
+
+
+@pytest.fixture
+def crear_actividad(db):
+    from apps.actividades.models import Actividad
+    from apps.nucleo.models import EstadoActividad
+
+    def hacer(nombre="Taller de prueba", estado="pendiente", **kw):
+        return Actividad.objects.create(nombre=nombre, estado=EstadoActividad.objects.get(codigo=estado), **kw)
+
+    return hacer
+
+
+@pytest.fixture
+def actividad(crear_actividad):
+    return crear_actividad()
+
+
+@pytest.fixture
+def crear_persona(db):
+    from apps.personas.models import Persona
+
+    n = {"i": 0}
+
+    def hacer(nombres=None, **kw):
+        n["i"] += 1
+        return Persona.objects.create(nombres=nombres or f"Persona{n['i']}", apellido_paterno=kw.pop("apellido_paterno", f"Apellido{n['i']}"), **kw)
+
+    return hacer
+
+
+@pytest.fixture
+def rol(db):
+    from apps.nucleo.models import RolParticipacion
+
+    return lambda codigo: RolParticipacion.objects.get(codigo=codigo)
+
+
+@pytest.fixture
+def estado_part(db):
+    from apps.nucleo.models import EstadoParticipacion
+
+    return lambda codigo: EstadoParticipacion.objects.get(codigo=codigo)

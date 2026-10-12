@@ -1,0 +1,21 @@
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+  <span class="badge text-bg-primary">{{ object.estado }}</span>
+  {% if puede_proyecto %}<form method="post" action="{% url 'solicitudes:crear_proyecto' object.pk %}">{% csrf_token %}<button class="btn btn-success btn-sm">Crear proyecto</button></form>{% endif %}
+  {% if puede_actividad %}<form method="post" action="{% url 'solicitudes:crear_actividad' object.pk %}">{% csrf_token %}<button class="btn btn-outline-success btn-sm">Crear actividad</button></form>{% endif %}
+  {% if puede_convertir %}
+  <form method="post" action="{% url 'solicitudes:estado' object.pk %}">{% csrf_token %}<input type="hidden" name="estado" value="en_seguimiento"><button class="btn btn-outline-secondary btn-sm">Pasar a seguimiento</button></form>
+  <form method="post" action="{% url 'solicitudes:estado' object.pk %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="estado" value="descartada"><input class="form-control form-control-sm" name="motivo" placeholder="Motivo" required><button class="btn btn-outline-danger btn-sm">Descartar</button></form>
+  {% endif %}
+</div>
+<dl class="row" style="max-width: 48rem;">
+  <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">{{ object.fecha|date:"d-m-Y" }}</dd>
+  <dt class="col-sm-3">Origen</dt><dd class="col-sm-9">{{ object.get_origen_display }}</dd>
+  <dt class="col-sm-3">Canal</dt><dd class="col-sm-9">{{ object.canal|default:"—" }}</dd>
+  <dt class="col-sm-3">Persona</dt><dd class="col-sm-9">{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Organización</dt><dd class="col-sm-9">{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Motivo</dt><dd class="col-sm-9">{{ object.motivo|default:"—" }}</dd>
+  <dt class="col-sm-3">Descripción</dt><dd class="col-sm-9">{{ object.descripcion|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Observaciones</dt><dd class="col-sm-9">{{ object.observaciones|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Proyecto</dt><dd class="col-sm-9">{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Actividad</dt><dd class="col-sm-9">{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a>{% else %}—{% endif %}</dd>
+</dl>

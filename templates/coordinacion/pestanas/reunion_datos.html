@@ -1,0 +1,9 @@
+<dl class="row" style="max-width:48rem;">
+  <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">{{ object.fecha|date:"d-m-Y" }} {{ object.hora_inicio|time:"H:i" }}{% if object.hora_fin %}–{{ object.hora_fin|time:"H:i" }}{% endif %}</dd>
+  <dt class="col-sm-3">Lugar / modalidad</dt><dd class="col-sm-9">{{ object.lugar|default:"—" }} · {{ object.modalidad|default:"—" }}</dd>
+  <dt class="col-sm-3">Objetivo</dt><dd class="col-sm-9">{{ object.objetivo|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Temas tratados</dt><dd class="col-sm-9">{{ object.temas|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Acuerdos</dt><dd class="col-sm-9">{{ object.acuerdos|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Actividad</dt><dd class="col-sm-9">{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Proyecto</dt><dd class="col-sm-9">{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd>
+</dl>

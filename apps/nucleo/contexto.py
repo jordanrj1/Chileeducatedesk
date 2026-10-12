@@ -11,7 +11,7 @@ MENU = [
     ("Tareas", "/tareas", "coordinacion.view_tarea"),
     ("Documentos", "/documentos", "documentos.view_documento"),
     ("Territorio", "/territorio", "territorio.view_comuna"),
-    ("Importaciones", "/importaciones", "actividades.importar_listado"),
+    ("Importaciones", "/importaciones", "importaciones.importar_listado"),
     ("Finanzas", "/finanzas", "finanzas.view_movimiento"),
     ("Administración", "/administracion/", "auth.view_user"),
 ]

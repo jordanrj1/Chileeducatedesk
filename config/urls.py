@@ -28,4 +28,12 @@ urlpatterns = [
     path("", include("apps.territorio.urls")),
     path("", include("apps.personas.urls")),
     path("", include("apps.organizaciones.urls")),
+    path("", include("apps.lugares.urls")),
+    path("", include("apps.proyectos.urls")),
+    path("", include("apps.actividades.urls")),
+    path("", include("apps.solicitudes.urls")),
+    path("", include("apps.coordinacion.urls")),
+    path("", include("apps.documentos.urls")),
+    path("", include("apps.finanzas.urls")),
+    path("", include("apps.importaciones.urls")),
 ]

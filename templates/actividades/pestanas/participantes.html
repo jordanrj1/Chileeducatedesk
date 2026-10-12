@@ -1,0 +1,16 @@
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h2 class="h6 mb-0">{{ titulo_pestana }} ({{ participaciones|length }})</h2>
+  {% if puede_agregar and perms.actividades.add_participacion %}<div class="d-flex gap-2">
+    <a class="btn btn-primary btn-sm" href="{% url 'actividades:participante_nuevo' object.pk %}">+ Agregar</a>
+    {% if perms.personas.add_persona %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_rapido' object.pk %}">Crear persona nueva</a>{% endif %}
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:candidatos' object.pk %}">Buscar candidatos</a></div>{% endif %}
+</div>
+{% if capacidad_alerta %}<div class="alert {% if capacidad_alerta.excede %}alert-danger{% else %}alert-light border{% endif %} py-2">Participantes activos: {{ capacidad_alerta.n }} · capacidad del lugar: {{ capacidad_alerta.capacidad }}{% if capacidad_alerta.excede %} — <strong>excede la capacidad</strong>{% endif %}</div>{% endif %}
+{% if participaciones %}
+<div class="table-responsive"><table class="table table-sm align-middle">
+<thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th><th>Observaciones</th><th></th></tr></thead>
+<tbody>{% for p in participaciones %}<tr class="{% if not p.activa %}text-muted{% endif %}">
+<td><a href="{{ p.persona.get_absolute_url }}">{{ p.persona }}</a></td><td>{{ p.rol }}</td><td>{{ p.estado }}</td>
+<td>{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% else %}—{% endif %}</td><td class="small">{{ p.observaciones }}</td>
+<td>{% if puede_agregar and perms.actividades.change_participacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_editar' object.pk p.pk %}">Editar</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="text-muted">Aún no hay {{ grupo }} registrados.</p>{% endif %}

@@ -1,7 +1,7 @@
 """Permisos iniciales de los dos roles (docs/CONTEXTO.md §9). Se pueden ajustar luego desde Administración > Roles."""
 from django.contrib.auth.models import Group, Permission
 
-OPERATIVAS = ["nucleo", "territorio", "personas", "organizaciones", "lugares", "proyectos", "actividades", "solicitudes", "coordinacion", "documentos"]
+OPERATIVAS = ["nucleo", "territorio", "personas", "organizaciones", "lugares", "proyectos", "actividades", "solicitudes", "coordinacion", "documentos", "importaciones"]
 CATALOGOS_MODELOS = {
     "estadoactividad", "estadosolicitud", "estadoparticipacion", "rolparticipacion", "tipoorganizacion", "tipoactividad",
     "tipocontacto", "canal", "modalidad", "origenpersona", "estadoregistro", "tipolugar", "tipodocumento", "tipointervencion",
@@ -12,8 +12,13 @@ def _accion(codename):
     return codename.split("_", 1)[0]
 
 
+SOLO_POR_EXCEPCION = {"reabrir_actividad"}  # nadie lo tiene por defecto [V#4]; el Administrador puede asignarlo en Roles
+
+
 def permisos_gestor(p):
     app, cod = p.content_type.app_label, p.codename
+    if cod in SOLO_POR_EXCEPCION:
+        return False
     if app == "finanzas":
         return _accion(cod) != "delete"
     if app not in OPERATIVAS:

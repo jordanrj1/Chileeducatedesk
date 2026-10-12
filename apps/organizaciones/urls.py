@@ -8,6 +8,7 @@ from . import models, views
 app_name = "organizaciones"
 urlpatterns = [
     path("organizaciones", views.OrganizacionLista.as_view(), name="lista"),
+    path("organizaciones/opciones", views.OrganizacionOpciones.as_view(), name="opciones"),
     path("organizaciones/nueva", views.OrganizacionNueva.as_view(), name="nueva"),
     path("organizaciones/<int:pk>", views.OrganizacionFicha.as_view(), name="ficha"),
     path("organizaciones/<int:pk>/editar", views.OrganizacionEditar.as_view(), name="editar"),

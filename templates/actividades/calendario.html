@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Calendario{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Calendario</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">Calendario</h1>
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+  <select id="f-estado" class="form-select form-select-sm" style="max-width:14rem;" aria-label="Estado"><option value="">Todos los estados</option>{% for e in estados %}<option value="{{ e.codigo }}">{{ e.nombre }}</option>{% endfor %}</select>
+  <div class="form-check"><input class="form-check-input" type="checkbox" id="f-historicas"><label class="form-check-label" for="f-historicas">Mostrar programaciones anteriores</label></div>
+  <span class="small text-muted">{% for c, color in colores.items %}<span style="color:{{ color }}">●</span> {{ c }} {% endfor %}</span>
+</div>
+<div id="calendario" data-eventos="{% url 'actividades:calendario_eventos' %}"></div>
+<noscript><p>El calendario requiere JavaScript. Usa el listado de <a href="/actividades">actividades</a>.</p></noscript>
+<script src="{% static 'vendor/fullcalendar/index.global.min.js' %}"></script>
+<script src="{% static 'vendor/fullcalendar/es.global.min.js' %}"></script>
+<script src="{% static 'js/calendario.js' %}"></script>
+{% endblock %}

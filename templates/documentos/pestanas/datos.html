@@ -1,0 +1,15 @@
+<dl class="row" style="max-width:48rem;">
+  <dt class="col-sm-3">Tipo</dt><dd class="col-sm-9">{{ object.tipo }}</dd>
+  <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">{{ object.fecha|date:"d-m-Y" }}</dd>
+  <dt class="col-sm-3">Descripción</dt><dd class="col-sm-9">{{ object.descripcion|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Emisor / folio</dt><dd class="col-sm-9">{{ object.emisor|default:"—" }} · {{ object.folio|default:"—" }}{% if object.fecha_emision %} · emitido {{ object.fecha_emision|date:"d-m-Y" }}{% endif %}</dd>
+  <dt class="col-sm-3">Actividad</dt><dd class="col-sm-9">{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Proyecto</dt><dd class="col-sm-9">{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Persona</dt><dd class="col-sm-9">{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Organización</dt><dd class="col-sm-9">{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Subido</dt><dd class="col-sm-9">{{ object.subido_en|date:"d-m-Y H:i" }} · {{ object.subido_por|default:"—" }}</dd>
+  <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">{% if object.activo %}Vigente{% else %}Archivado{% endif %}{% if object.restringido %} · Restringido{% endif %}</dd>
+</dl>
+<a class="btn btn-primary btn-sm" href="{% url 'documentos:archivo' object.pk %}">Descargar archivo</a>
+{% if puede_agregar %}<form class="d-inline" method="post" action="{% url 'documentos:alternar' object.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Archivar{% else %}Restaurar{% endif %}</button></form>{% endif %}
+{% if origenes %}<h2 class="h6 mt-4">Datos que se tomaron de este documento</h2><ul class="list-group">{% for o in origenes %}<li class="list-group-item small">{{ o.objeto }} — {{ o.get_estado_verificacion_display }}</li>{% endfor %}</ul>{% endif %}

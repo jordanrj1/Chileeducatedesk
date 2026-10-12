@@ -1,0 +1,11 @@
+<dl class="row" style="max-width:44rem;">
+  <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">{{ object.get_tipo_display }}</dd>
+  <dt class="col-sm-4">Origen</dt><dd class="col-sm-8">{{ object.nombre_archivo }}{% if object.fuente %} · {{ object.fuente }}{% endif %}</dd>
+  <dt class="col-sm-4">Estado</dt><dd class="col-sm-8">{{ object.get_estado_display }}</dd>
+  <dt class="col-sm-4">Actividad</dt><dd class="col-sm-8">{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a> ({{ object.rol }}){% else %}—{% endif %}</dd>
+  <dt class="col-sm-4">Cargado por</dt><dd class="col-sm-8">{{ object.usuario|default:"—" }} · {{ object.creado_en|date:"d-m-Y H:i" }}</dd>
+  {% if aplicado %}<dt class="col-sm-4">Resultado</dt><dd class="col-sm-8">{{ aplicado.creados }} creados · {{ aplicado.vinculados }} vinculados · {{ aplicado.omitidos }} omitidos{% if aplicado.participaciones %} · {{ aplicado.participaciones }} participaciones{% endif %}</dd>{% endif %}
+  {% if reversion %}<dt class="col-sm-4">Reversión</dt><dd class="col-sm-8">{{ reversion.eliminados }} eliminados · {{ reversion.conservados }} conservados (tenían otra historia)</dd>{% endif %}
+</dl>
+{% if puede_revertir %}<form method="post" action="{% url 'importaciones:revertir' object.pk %}">{% csrf_token %}<button class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Revertir el lote? Se eliminarán los registros que creó y que no tengan otra historia.')">Revertir lote</button></form>{% endif %}
+{% if object.estado == "previa" %}<a class="btn btn-primary btn-sm" href="{% url 'importaciones:revisar' object.pk %}">Continuar revisión</a>{% endif %}

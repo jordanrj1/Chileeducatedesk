@@ -1,0 +1,10 @@
+{% extends "generico/formulario.html" %}
+{% block extra_form %}
+{% if candidatos %}
+<div class="alert alert-warning mt-3" role="alert">
+  <strong>Esta persona podría ya existir.</strong> Elige una o confirma que es otra:
+  <ul class="mt-2">{% for p, razones in candidatos %}<li class="mb-2"><a href="{{ p.get_absolute_url }}" target="_blank">{{ p.nombre_completo }}</a> — {{ razones|join:", " }}
+    <button class="btn btn-outline-primary btn-sm ms-2" type="submit" formaction="{% url 'actividades:participante_usar' actividad.pk p.pk %}" name="rol" value="{{ form.rol.value }}">Usar esta persona</button></li>{% endfor %}</ul>
+  <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Es otra persona: crear</button>
+</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,11 @@
+<dl class="row" style="max-width:44rem;">
+  <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">{{ object.get_tipo_display }}</dd>
+  <dt class="col-sm-4">Monto</dt><dd class="col-sm-8">${{ object.monto|floatformat:0 }}</dd>
+  <dt class="col-sm-4">Fecha</dt><dd class="col-sm-8">{{ object.fecha|date:"d-m-Y" }}</dd>
+  <dt class="col-sm-4">Proyecto</dt><dd class="col-sm-8"><a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a></dd>
+  <dt class="col-sm-4">Persona / organización</dt><dd class="col-sm-8">{{ object.persona|default:object.organizacion|default:"—" }}</dd>
+  <dt class="col-sm-4">Concepto</dt><dd class="col-sm-8">{{ object.concepto }}</dd>
+  <dt class="col-sm-4">Respaldo</dt><dd class="col-sm-8">{% if object.documento %}<a href="{{ object.documento.get_absolute_url }}">{{ object.documento }}</a>{% else %}<span class="text-warning-emphasis">Sin documento de respaldo</span>{% endif %}</dd>
+  <dt class="col-sm-4">Estado</dt><dd class="col-sm-8">{% if object.anulado %}Anulado: {{ object.motivo_anulacion }}{% else %}Vigente{% endif %}</dd>
+</dl>
+{% if puede_agregar %}<form method="post" action="{% url 'finanzas:anular' object.pk %}" class="d-flex gap-2" style="max-width:34rem;">{% csrf_token %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo de la anulación" required><button class="btn btn-outline-danger btn-sm">Anular</button></form>{% endif %}

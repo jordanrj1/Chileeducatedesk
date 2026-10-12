@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">Revisar</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">{{ titulo }}</h1>
+<p class="text-muted">{{ lote.get_tipo_display }} · {{ lote.nombre_archivo }}{% if lote.actividad %} · actividad «{{ lote.actividad }}»{% endif %}. Nada se guarda hasta que confirmes.</p>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <span class="badge text-bg-success">Nuevos: {{ lote.resumen.nuevo }}</span><span class="badge text-bg-info">Ya existen: {{ lote.resumen.existente }}</span>
+  <span class="badge text-bg-warning">Posibles duplicados: {{ lote.resumen.duplicado }}</span><span class="badge text-bg-danger">Con errores: {{ lote.resumen.error }}</span>
+  {% if lote.resumen.columnas_ignoradas %}<span class="small text-muted">Columnas no reconocidas (ignoradas): {{ lote.resumen.columnas_ignoradas|join:", " }}</span>{% endif %}
+</div>
+<form method="post">{% csrf_token %}
+<div class="table-responsive"><table class="table table-sm align-middle">
+<thead><tr><th>Fila</th><th>Estado</th>{% for c in campos %}<th>{{ c }}</th>{% endfor %}<th>Qué hacer</th></tr></thead>
+<tbody>{% for f in filas %}
+<tr class="{% if f.estado == 'error' %}table-danger{% elif f.estado == 'duplicado' %}table-warning{% elif f.estado == 'existente' %}table-info{% endif %}">
+  <td>{{ f.fila }}</td>
+  <td>{% if f.estado == 'nuevo' %}Nuevo{% elif f.estado == 'existente' %}Ya existe{% elif f.estado == 'duplicado' %}Posible duplicado{% else %}Error{% endif %}</td>
+  {% for c in campos %}<td><input class="form-control form-control-sm" style="min-width:8rem" name="f{{ f.fila }}_{{ c }}" value="{% for k, v in f.datos.items %}{% if k == c %}{{ v }}{% endif %}{% endfor %}" aria-label="{{ c }} fila {{ f.fila }}"></td>{% endfor %}
+  <td style="min-width:16rem">
+    {% for e in f.errores %}<div class="small text-danger">{{ e }}</div>{% endfor %}
+    {% if f.estado != 'error' %}
+    <select class="form-select form-select-sm" name="d{{ f.fila }}" aria-label="Decisión fila {{ f.fila }}">
+      {% if f.decision == 'pendiente' %}<option value="pendiente" selected>— Decide qué hacer —</option>{% endif %}
+      {% if f.estado != 'existente' %}<option value="crear" {% if f.decision == 'crear' %}selected{% endif %}>Crear nuevo</option>{% endif %}
+      {% for c in f.coincidencias %}<option value="{{ c.valor }}" {% if f.decision == c.valor %}selected{% endif %}>Usar existente: {{ c.nombre }} ({{ c.razones|join:", " }})</option>{% endfor %}
+      <option value="omitir" {% if f.decision == 'omitir' %}selected{% endif %}>Omitir</option>
+    </select>
+    {% else %}<select class="form-select form-select-sm" name="d{{ f.fila }}" aria-label="Decisión fila {{ f.fila }}"><option value="pendiente" {% if f.decision == 'pendiente' %}selected{% endif %}>— Corrige los datos o elige omitir —</option><option value="omitir" {% if f.decision == 'omitir' %}selected{% endif %}>Omitir esta fila</option></select>{% endif %}
+  </td></tr>{% endfor %}</tbody></table></div>
+<div class="d-flex flex-wrap gap-2 mt-3">
+  <button class="btn btn-outline-primary" name="accion" value="revisar">Revisar de nuevo con mis correcciones</button>
+  <button class="btn btn-primary" name="accion" value="confirmar" {% if hay_pendientes %}disabled title="Resuelve las filas pendientes"{% endif %}>Confirmar carga ({{ a_aplicar }} filas)</button>
+  <button class="btn btn-outline-danger" name="accion" value="descartar">Descartar importación</button>
+</div>
+{% if hay_pendientes %}<p class="small text-danger mt-2">{{ n_pendientes }} fila(s) por resolver: corrige los datos y pulsa «Revisar de nuevo», elige qué hacer con los posibles duplicados, u omítelas.</p>{% endif %}
+</form>
+{% endblock %}

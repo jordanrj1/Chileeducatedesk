@@ -1,0 +1,11 @@
+<dl class="row" style="max-width:48rem;">
+  <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">{{ object.get_estado_display }}{% if object.vencida %} <span class="badge text-bg-danger">Vencida</span>{% endif %}</dd>
+  <dt class="col-sm-3">Fecha límite</dt><dd class="col-sm-9">{{ object.fecha_limite|date:"d-m-Y"|default:"—" }}</dd>
+  <dt class="col-sm-3">Descripción</dt><dd class="col-sm-9">{{ object.descripcion|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Responsables</dt><dd class="col-sm-9">{% for r in object.responsables %}<a href="{{ r.get_absolute_url }}">{{ r }}</a>{% if not forloop.last %}, {% endif %}{% empty %}Sin responsable{% endfor %}</dd>
+  <dt class="col-sm-3">Reunión</dt><dd class="col-sm-9">{% if object.reunion %}<a href="{{ object.reunion.get_absolute_url }}">{{ object.reunion }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Actividad</dt><dd class="col-sm-9">{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Proyecto</dt><dd class="col-sm-9">{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd>
+</dl>
+{% if puede_agregar %}<form method="post" action="{% url 'coordinacion:tarea_estado' object.pk %}" class="d-flex gap-2" style="max-width:24rem;">{% csrf_token %}
+<select class="form-select form-select-sm" name="estado" aria-label="Estado">{% for v, n in estados %}<option value="{{ v }}" {% if v == object.estado %}selected{% endif %}>{{ n }}</option>{% endfor %}</select><button class="btn btn-outline-primary btn-sm">Cambiar</button></form>{% endif %}

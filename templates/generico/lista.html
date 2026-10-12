@@ -13,15 +13,20 @@
   {% if buscable %}<div class="col-12 col-md-4"><input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar…" aria-label="Buscar"></div>{% endif %}
   {% for f in filtros_ui %}
   <div class="col-6 col-md-2">
+    {% if f.entrada == "select" %}
     <select class="form-select" name="{{ f.param }}" aria-label="{{ f.etiqueta }}">
       <option value="">{{ f.etiqueta }}: todos</option>
       {% for valor, etiqueta in f.opciones %}<option value="{{ valor }}" {% if valor == f.valor %}selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
     </select>
+    {% else %}
+    <input class="form-control" type="{{ f.entrada }}" name="{{ f.param }}" value="{{ f.valor }}" placeholder="{{ f.etiqueta }}" aria-label="{{ f.etiqueta }}" title="{{ f.etiqueta }}">
+    {% endif %}
   </div>
   {% endfor %}
   <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Filtrar</button></div>
   {% if hay_filtros %}<div class="col-auto"><a class="btn btn-link" href="?">Limpiar</a></div>{% endif %}
 </form>
+{% if resumen %}<div class="alert alert-light border small">Presupuestado ${{ resumen.presupuestado|floatformat:0 }} · Gastado ${{ resumen.gastado|floatformat:0 }} · Aportes ${{ resumen.aportes|floatformat:0 }} · Donaciones ${{ resumen.donaciones|floatformat:0 }} · <strong>Saldo ${{ resumen.saldo|floatformat:0 }}</strong></div>{% endif %}
 {% block cuerpo %}
 {% if filas %}
 <div class="table-responsive">

@@ -1,0 +1,11 @@
+<dl class="row" style="max-width: 44rem;">
+  <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">{{ object.tipo }}</dd>
+  <dt class="col-sm-4">Dirección</dt><dd class="col-sm-8">{{ object.direccion }}</dd>
+  <dt class="col-sm-4">Región</dt><dd class="col-sm-8">{{ object.direccion.comuna.provincia.region }}</dd>
+  <dt class="col-sm-4">Capacidad</dt><dd class="col-sm-8">{{ object.capacidad|default:"No registrada" }}</dd>
+  <dt class="col-sm-4">Condiciones</dt><dd class="col-sm-8">{{ object.condiciones|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-4">Propietaria</dt><dd class="col-sm-8">{% if object.organizacion_propietaria %}<a href="{{ object.organizacion_propietaria.get_absolute_url }}">{{ object.organizacion_propietaria }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-4">Estado</dt><dd class="col-sm-8">{% if object.activo %}Activo{% else %}Inactivo{% endif %}</dd>
+</dl>
+{% if puede_agregar %}<form method="post" action="{% url 'lugares:alternar' object.pk %}">{% csrf_token %}
+  <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Desactivar lugar{% else %}Reactivar lugar{% endif %}</button></form>{% endif %}
