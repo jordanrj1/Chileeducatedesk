@@ -1,0 +1,4 @@
+{% include "generico/_hijos.html" %}
+<h2 class="h6 mt-4">Beneficiarios que han participado en las actividades</h2>
+<ul class="list-group">{% for p in desde_actividades %}<li class="list-group-item"><a href="{{ p.persona.get_absolute_url }}">{{ p.persona }}</a> <span class="small text-muted">· {{ p.actividad }}</span></li>{% empty %}<li class="list-group-item text-muted">Ninguno todavía.</li>{% endfor %}</ul>
+{% if poblacion %}<p class="small text-muted mt-3"><strong>Población objetivo:</strong> {{ poblacion }}</p>{% endif %}

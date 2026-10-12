@@ -1,0 +1,5 @@
+<div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Actividades del proyecto</h2>
+{% if puede_agregar and perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="{% url 'actividades:nueva' %}?proyecto={{ object.pk }}">+ Nueva actividad</a>{% endif %}</div>
+{% if actividades %}<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Actividad</th><th>Tipo</th><th>Estado</th><th>Responsable</th></tr></thead>
+<tbody>{% for a in actividades %}<tr><td><a href="{{ a.get_absolute_url }}">{{ a.nombre }}</a></td><td>{{ a.tipo|default:"—" }}</td><td>{{ a.estado }}</td><td>{{ a.responsable|default:"—" }}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="text-muted">El proyecto aún no tiene actividades.</p>{% endif %}

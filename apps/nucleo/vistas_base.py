@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -26,6 +27,8 @@ class Filtro:
     opciones: Callable = field(default=lambda: [])  # -> [(valor, etiqueta)]
     convertir: Optional[Callable] = None
     por_defecto: str = ""
+    entrada: str = "select"  # select | text | number | date
+    aplicar: Optional[Callable] = None  # (qs, valor) -> qs; reemplaza al lookup simple
 
 
 def opciones_activo():
@@ -57,6 +60,21 @@ class ListaBase(Permiso403Mixin, ListView):
     url_exportar = None
     permiso_exportar = None
 
+    exportar = False
+
+    def get(self, request, *args, **kwargs):
+        if self.exportar:
+            return self.responder_xlsx()
+        return super().get(request, *args, **kwargs)
+
+    def responder_xlsx(self):
+        from .exportacion import respuesta_xlsx
+
+        filas = []
+        for obj in self.get_queryset():
+            filas.append(["" if v is None else str(v) for v in (self._valor(obj, a) for _, a in self.columnas)])
+        return respuesta_xlsx(self.request.user, self.titulo, [e for e, _ in self.columnas], filas)
+
     def valor_filtro(self, f):
         v = self.request.GET.get(f.param, f.por_defecto)
         return v
@@ -71,7 +89,13 @@ class ListaBase(Permiso403Mixin, ListView):
         for f in self.filtros:
             v = self.valor_filtro(f)
             if v and v != "*":
-                qs = qs.filter(**{f.lookup: f.convertir(v) if f.convertir else v})
+                try:
+                    valor = f.convertir(v) if f.convertir else v
+                    nuevo = f.aplicar(qs, valor) if f.aplicar else qs.filter(**{f.lookup: valor})
+                    list(nuevo.query.where.children)  # fuerza a validar el valor aquí
+                except (ValueError, TypeError, ValidationError):
+                    continue  # valor mal escrito: se ignora el filtro en vez de fallar
+                qs = nuevo
         return qs
 
     def get_queryset(self):
@@ -111,7 +135,7 @@ class ListaBase(Permiso403Mixin, ListView):
             filas=filas,
             encabezados=[e for e, _ in self.columnas],
             filtros_ui=[
-                {"param": f.param, "etiqueta": f.etiqueta, "opciones": f.opciones(), "valor": self.valor_filtro(f)}
+                {"param": f.param, "etiqueta": f.etiqueta, "opciones": f.opciones() if f.entrada == "select" else [], "valor": self.valor_filtro(f), "entrada": f.entrada}
                 for f in self.filtros
             ],
             q=self.request.GET.get("q", ""),

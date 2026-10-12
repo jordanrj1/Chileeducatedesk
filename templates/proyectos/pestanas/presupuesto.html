@@ -1,0 +1,13 @@
+<h2 class="h6">Presupuesto y movimientos</h2>
+<p class="small text-muted">Información financiera: visible solo para usuarios autorizados.</p>
+<dl class="row" style="max-width:32rem;">
+  <dt class="col-6">Presupuestado</dt><dd class="col-6">${{ resumen.presupuestado|floatformat:0 }}</dd>
+  <dt class="col-6">Gastado</dt><dd class="col-6">${{ resumen.gastado|floatformat:0 }}</dd>
+  <dt class="col-6">Aportes recibidos</dt><dd class="col-6">${{ resumen.aportes|floatformat:0 }}</dd>
+  <dt class="col-6">Donaciones recibidas</dt><dd class="col-6">${{ resumen.donaciones|floatformat:0 }}</dd>
+  <dt class="col-6">Saldo</dt><dd class="col-6"><strong>${{ resumen.saldo|floatformat:0 }}</strong></dd>
+</dl>
+<a class="btn btn-outline-primary btn-sm" href="/finanzas?proyecto={{ object.pk }}">Ver movimientos y presupuesto</a>
+
+<hr>
+{% include "generico/_hijos.html" %}

@@ -3,6 +3,10 @@
     <div class="form-check">{{ campo }} <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label></div>
   {% else %}
     <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %} <span class="text-danger" aria-hidden="true">*</span>{% endif %}</label>
+    {% if campo.field.widget.attrs.selector_url %}
+    <input class="form-control form-control-sm mb-1" type="search" name="q" placeholder="Escribe para buscar…" aria-label="Buscar para {{ campo.label }}"
+           hx-get="{{ campo.field.widget.attrs.selector_url }}" hx-trigger="input changed delay:300ms" hx-target="#{{ campo.id_for_label }}" hx-swap="innerHTML">
+    {% endif %}
     {{ campo }}
   {% endif %}
   {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}

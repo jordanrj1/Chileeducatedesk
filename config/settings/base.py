@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.solicitudes",
     "apps.coordinacion",
     "apps.documentos",
+    "apps.importaciones",
     "apps.finanzas",
 ]
 
@@ -88,6 +89,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTHENTICATION_BACKENDS = ["apps.cuentas.backends.CorreoOUsuarioBackend"]
+# [V#3] ¿Se puede confirmar una actividad con incompatibilidad crítica, con motivo? Hoy: no.
+CONFIRMAR_CON_CONFLICTO_CRITICO = env.bool("CONFIRMAR_CON_CONFLICTO_CRITICO", default=False)
+
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/dashboard"
 LOGOUT_REDIRECT_URL = "/login"
@@ -104,6 +108,22 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Para entrar desde otros equipos de la red [V#5]: lista de orígenes, p. ej. http://192.168.1.10:8000
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
+LOG_DIR = Path(env("LOG_DIR", default=str(BASE_DIR / "logs")))
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"simple": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
+    "handlers": {
+        "consola": {"class": "logging.StreamHandler", "formatter": "simple"},
+        "archivo": {"class": "logging.handlers.RotatingFileHandler", "filename": str(LOG_DIR / "fche.log"), "maxBytes": 2_000_000, "backupCount": 5, "formatter": "simple", "encoding": "utf-8"},
+    },
+    "root": {"handlers": ["consola", "archivo"], "level": "WARNING"},
+}
 
 # Archivos subidos: carpeta fuera del código (configurable).
 MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR.parent / "fche_media")))

@@ -1,0 +1,12 @@
+<dl class="row" style="max-width: 52rem;">
+  <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">{{ object.get_estado_display }}</dd>
+  <dt class="col-sm-3">Descripción</dt><dd class="col-sm-9">{{ object.descripcion|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Objetivo general</dt><dd class="col-sm-9">{{ object.objetivo_general|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Objetivos específicos</dt><dd class="col-sm-9">{{ object.objetivos_especificos|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Diagnóstico</dt><dd class="col-sm-9">{{ object.diagnostico|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Población objetivo</dt><dd class="col-sm-9">{{ object.poblacion_objetivo|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Zona</dt><dd class="col-sm-9">{{ object.zona|default:"—" }}</dd>
+  <dt class="col-sm-3">Fechas</dt><dd class="col-sm-9">{{ object.fecha_inicio|date:"d-m-Y"|default:"?" }} a {{ object.fecha_termino|date:"d-m-Y"|default:"?" }}</dd>
+  <dt class="col-sm-3">Responsable</dt><dd class="col-sm-9">{% if object.responsable %}<a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a>{% else %}—{% endif %}</dd>
+  <dt class="col-sm-3">Actividades</dt><dd class="col-sm-9">{{ total_actividades }}{% for n, c in por_estado.items %} · {{ n }}: {{ c }}{% endfor %}</dd>
+</dl>

@@ -1,0 +1,24 @@
+{% extends "generico/ficha.html" %}
+{% block subtitulo %}
+<div class="d-flex flex-wrap gap-2 align-items-center">
+  <span class="badge text-bg-primary">{{ object.estado }}</span>
+  {% if object.tipo %}<span class="badge text-bg-light border">{{ object.tipo }}</span>{% endif %}
+  {% if object.proyecto %}<a class="small" href="{{ object.proyecto.get_absolute_url }}">Proyecto: {{ object.proyecto }}</a>{% endif %}
+  {% if object.actividad_padre %}<a class="small" href="{{ object.actividad_padre.get_absolute_url }}">Parte de: {{ object.actividad_padre }}</a>{% endif %}
+  {% if agenda %}<span class="small text-muted">{{ agenda.fecha|date:"d-m-Y" }}{% if agenda.hora_inicio %} {{ agenda.hora_inicio|time:"H:i" }}{% endif %}{% if agenda.lugar %} · {{ agenda.lugar }}{% endif %}</span>{% else %}<span class="small text-muted">Sin programar</span>{% endif %}
+</div>
+{% if faltantes and object.estado.codigo != "cancelada" and object.estado.codigo != "cerrada" %}<div class="small text-warning-emphasis mt-1">Falta: {{ faltantes|join:", " }}</div>{% endif %}
+{% if object.motivo_estado and object.estado.codigo in "suspendida cancelada reprogramada" %}<div class="small text-muted mt-1">Motivo: {{ object.motivo_estado }}</div>{% endif %}
+{% endblock %}
+{% block acciones %}
+{% if puede_programar %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:programar' object.pk %}">{% if agenda %}Reprogramar{% else %}Programar{% endif %}</a>{% endif %}
+{% if puede_confirmar %}<a class="btn btn-success btn-sm" href="{% url 'actividades:confirmar' object.pk %}">Confirmar</a>{% endif %}
+{% if puede_cerrar %}<a class="btn btn-dark btn-sm" href="?tab=resultados">Finalizar</a>{% endif %}
+{% if estados_siguientes %}
+<div class="dropdown"><button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" type="button">Estado</button>
+  <form class="dropdown-menu p-3" style="min-width: 16rem;" method="post" action="{% url 'actividades:estado' object.pk %}">{% csrf_token %}
+    <select class="form-select form-select-sm mb-2" name="estado" aria-label="Nuevo estado">{% for c, n in estados_siguientes %}<option value="{{ c }}">{{ n }}</option>{% endfor %}</select>
+    <input class="form-control form-control-sm mb-2" name="motivo" placeholder="Motivo (suspender/cancelar)" maxlength="250">
+    <button class="btn btn-primary btn-sm">Cambiar</button></form></div>
+{% endif %}
+{% endblock %}

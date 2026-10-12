@@ -1,5 +1,8 @@
+from django.core.paginator import Paginator
 from django.views.generic import TemplateView
 
+from . import busqueda
+from .models import EstadoActividad, EstadoRegistro, TipoActividad
 from .vistas_base import Permiso403Mixin
 
 
@@ -11,6 +14,18 @@ class Buscar(Permiso403Mixin, TemplateView):
         return u.is_authenticated and u.groups.exists()
 
     def get_context_data(self, **kw):
+        from apps.territorio.models import Comuna
+
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo="Búsqueda", termino=self.request.GET.get("q", "").strip(), resultados=[])
+        g = self.request.GET
+        hay_criterio = any(g.get(k) for k in ("q", "tipo", "estado", "zona", "desde", "hasta", "tipo_actividad", "registro", "con_actividades"))
+        resultados = busqueda.buscar(self.request.user, g) if hay_criterio else []
+        pagina = Paginator(resultados, 25).get_page(g.get("page"))
+        params = g.copy()
+        params.pop("page", None)
+        ctx.update(
+            titulo="Búsqueda", termino=g.get("q", "").strip(), pagina=pagina, total=len(resultados), hay_criterio=hay_criterio, querystring=params.urlencode(),
+            tipos=busqueda.TIPOS, estados=EstadoActividad.objects.all(), comunas=Comuna.objects.all(), tipos_actividad=TipoActividad.objects.all(),
+            registros=EstadoRegistro.objects.all(), datos=g,
+        )
         return ctx

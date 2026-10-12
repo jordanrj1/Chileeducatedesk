@@ -1,0 +1,7 @@
+<h2 class="h6">Actividades programadas o realizadas aquí</h2>
+{% if usos %}
+<div class="table-responsive"><table class="table table-sm">
+<thead><tr><th>Fecha</th><th>Horario</th><th>Actividad</th><th>Programación</th><th>Estado</th></tr></thead>
+<tbody>{% for u in usos %}<tr class="{% if not u.vigente %}text-muted{% endif %}"><td>{{ u.fecha|date:"d-m-Y" }}</td><td>{{ u.hora_inicio|time:"H:i" }}{% if u.hora_fin %}–{{ u.hora_fin|time:"H:i" }}{% endif %}</td>
+<td><a href="{{ u.actividad.get_absolute_url }}">{{ u.actividad.nombre }}</a></td><td>v{{ u.version }}{% if not u.vigente %} (anterior){% endif %}</td><td>{{ u.estado }}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="text-muted">Este lugar aún no se ha usado en ninguna actividad.</p>{% endif %}

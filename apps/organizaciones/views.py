@@ -49,6 +49,11 @@ class OrganizacionLista(ListaBase):
         return super().get_queryset().select_related("tipo", "estado_registro", "direccion__comuna")
 
 
+class OrganizacionExportar(OrganizacionLista):
+    exportar = True
+    permission_required = "organizaciones.exportar_organizacion"
+
+
 class OrganizacionNueva(ConDireccionMixin, Permiso403Mixin, CreateView):
     model = Organizacion
     form_class = OrganizacionForm
@@ -70,6 +75,9 @@ class OrganizacionNueva(ConDireccionMixin, Permiso403Mixin, CreateView):
         if not obj.estado_registro_id:
             obj.estado_registro = EstadoRegistro.objects.filter(codigo="activo").first()
         obj.save()
+        from apps.documentos.origen import registrar_origen
+
+        registrar_origen(obj, self.request.user)
         messages.success(self.request, "Organización registrada.")
         return HttpResponseRedirect(obj.get_absolute_url())
 
@@ -110,6 +118,9 @@ class OrganizacionFicha(FichaBase):
         ("contactos", "Contactos", "generico/_hijos.html"),
         ("carreras", "Carreras", "generico/_hijos.html"),
         ("personas", "Personas relacionadas", "generico/_hijos.html"),
+        ("actividades", "Actividades y proyectos", "organizaciones/pestanas/actividades.html", "actividades.view_actividadorganizacion"),
+        ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
+        ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "organizaciones.view_historicalorganizacion"),
     ]
 
@@ -130,6 +141,26 @@ class OrganizacionFicha(FichaBase):
                 "url_editar": reverse("organizaciones:contactos_editar", args=[pk, c.pk]), "url_alternar": reverse("organizaciones:contactos_alternar", args=[pk, c.pk]),
             })
         return {"titulo_pestana": "Contactos", "etiqueta_nuevo": "Contacto", "url_nuevo": reverse("organizaciones:contactos_nuevo", args=[pk]), "hijos": hijos, "vacio": "Sin contactos registrados."}
+
+    def ctx_actividades(self):
+        o = self.object
+        return {
+            "participaciones_org": o.actividades.select_related("actividad__estado", "tipo_intervencion").order_by("-actividad__creado_en"),
+            "proyectos_org": o.proyectos.select_related("proyecto", "tipo_intervencion"),
+            "interacciones": o.interacciones.select_related("canal").order_by("-fecha")[:30],
+            "colaboraciones": o.colaboraciones.select_related("actividad", "tipo_apoyo"),
+        }
+
+    def ctx_documentos(self):
+        docs = self.object.documentos.select_related("tipo")
+        if not self.request.user.has_perm("documentos.ver_restringido"):
+            docs = docs.filter(restringido=False)
+        return {"documentos": docs, "url_nuevo_doc": f"/documentos/nuevo?organizacion={self.object.pk}"}
+
+    def ctx_origen(self):
+        from apps.documentos.origen import contexto_origen
+
+        return contexto_origen(self.object, self.request.user)
 
     def ctx_carreras(self):
         pk = self.object.pk
@@ -195,3 +226,19 @@ class CarreraEditar(Permiso403Mixin, __import__("django.views.generic", fromlist
         form.save()
         messages.success(self.request, "Carrera guardada.")
         return HttpResponseRedirect(f"{self.object.organizacion.get_absolute_url()}?tab=carreras")
+
+
+class OrganizacionOpciones(Permiso403Mixin, __import__("django.views", fromlist=["View"]).View):
+    permission_required = "organizaciones.view_organizacion"
+
+    def get(self, request):
+        from django.db.models import Q
+        from django.http import HttpResponse
+        from django.utils.html import format_html_join
+
+        q = request.GET.get("q", "").strip()
+        qs = Organizacion.objects.filter(activo=True)
+        if q:
+            qs = qs.filter(Q(nombre__icontains=q) | Q(otro_identificador__icontains=q))
+        opciones = [("", "---------")] + [(o.pk, f"{o.nombre} ({o.tipo})") for o in qs[:25]]
+        return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))

@@ -1,21 +1,25 @@
-# Preguntas abiertas (bloquean o afectan F01–F06)
+# Preguntas abiertas (estado al 12-10-2026)
 
-## Para el usuario (programador)
-1. ¿Autorizas instalar Python (versión compatible con Django LTS) y PostgreSQL en esta Mac? Hoy hay Python 3.9.6 y no hay PostgreSQL ni Homebrew.
-2. ¿Se desarrolla en esta Mac y se prueba en Windows al final? Los `.bat` no se pueden probar aquí.
-3. ¿Tienes el Excel de requerimientos con las filas en amarillo? No está en el repo ni lo encontré en el disco. Lo necesito antes de F16, F18, F19.
-4. ¿Tienes el archivo oficial de regiones, provincias y comunas (códigos CUT)? Hace falta en la carga de territorio (F03/F04).
+Lo construido deja cada punto detrás de una opción fácil de cambiar. Nada se implementó en silencio.
 
-## Para Claudio / Manuel ([V], docs/CONTEXTO.md §4)
-- **#5 Acceso**: ¿solo el equipo donde corre o desde la red de la Fundación (y celulares)? Afecta F01 (`ALLOWED_HOSTS`, interfaz de waitress).
-- **#1 Administrador después del 30-11**: ¿quién? Afecta F03 (creación de usuarios) y F21 (traspaso).
-- **#9 Contraseña**: ¿basta con que la restablezca el Administrador?
-- **#2 Menores de edad**: qué datos se guardan, autorización del apoderado y plazo. Afecta F04 (campos de persona).
-- **#7 Proyecto/campaña**: ¿agrupador opcional? Afecta F07/F09, no F01–F06.
+## Para Claudio / Manuel
+| # | Tema | Cómo quedó hoy | Dónde cambiarlo |
+|---|---|---|---|
+| 1 | Quién administra después del 30-11 | Hay un rol Administrador; falta nombrar a la persona | `crear_usuario`, docs/entrega.md |
+| 2 | Menores de edad (datos, autorización del apoderado, plazo) | No hay campos especiales; los datos sensibles van tras `ver_sensibles` | Persona (F04) |
+| 3 | Confirmar con incompatibilidad crítica | **No** se permite. Con `CONFIRMAR_CON_CONFLICTO_CRITICO=True` se permite con motivo, y queda en auditoría | `.env` |
+| 4 | Reabrir una actividad cerrada | Solo con el permiso `reabrir_actividad` (nadie lo tiene por defecto) | Administración → Roles |
+| 5 | Acceso desde celular/red | Solo el equipo local (`127.0.0.1`) | docs/entrega.md |
+| 6 | Notificaciones internas o por correo | No hay; el dashboard muestra lo pendiente | — |
+| 7 | Proyecto como módulo | Resuelto por el tablero (F08) | — |
+| 8 | Alcance del matching | Resuelto por el tablero (F16) | — |
+| 9 | Recuperar contraseña | La restablece el Administrador | Administración → Usuarios |
+| 10 | Documentos que emite la Fundación y caducidad de verificaciones | Se registra tipo, folio, emisor y fecha de emisión; verificaciones con «vigente hasta» | Documentos / Persona |
+| 11 | ¿Quién ve Finanzas? | Solo Gestor; el Administrador puede recibir el permiso | Administración → Roles |
+| 12 | Estado «interesado» al importar un listado | Se usa «interesado» [P] | `importaciones/procesar.py` |
 
-## Contradicciones entre docs/CONTEXTO.md y docs/oficiales
-- **Estado "cerrada"**: docs/CONTEXTO.md §3 dice que no existe; doc 05 (Nivel 1) habla de "actividad cerrada" y RF-24/doc 03 de "registro cerrado". Propuesta: mantener *realizada* + resultados, y tratar "cerrar" como acción, no estado. Confirmar.
-- **"Zona"**: los docs 03/04 usan "zona" (actividad, lugar, matching); docs/CONTEXTO.md la reemplaza por territorio jerárquico (región→sector) [P]. Confirmar que "zona" = comuna/sector.
-- **Documentos**: doc 04 los asocia solo a actividad; docs/CONTEXTO.md agrega persona/organización [P].
-- **Administrador**: doc 02 lo marca "si se separa la función"; docs/CONTEXTO.md lo da por decidido. Coherente, pero depende de #1.
-- **Doc 01 vs 03**: matching es MVP en ambos; el tutor pudo marcarlo en amarillo [V#8].
+## Para el equipo de desarrollo
+- Falta el **Excel de requerimientos con las filas en amarillo** y el **archivo oficial CUT** de comunas.
+- `iniciar.bat`, `respaldar.bat` y la instalación en Windows no se pudieron probar en el equipo de desarrollo (Mac).
+- La validación con Claudio (F20) y la prueba real de restauración de un respaldo (F21) están pendientes.
+- Extensiones menores a la sección 7 de docs/CONTEXTO.md: `Interaccion.accion_cumplida`, `Actividad.motivo_estado`, campos de cierre de `Actividad`, `ActividadTerritorio.vigente`.

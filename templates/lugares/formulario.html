@@ -1,0 +1,7 @@
+{% extends "generico/formulario.html" %}
+{% block extra_form %}
+<fieldset class="mt-4"><legend class="h6">Dirección</legend>
+  {% if form_direccion.non_field_errors %}<div class="alert alert-danger">{{ form_direccion.non_field_errors }}</div>{% endif %}
+  <div class="row">{% for campo in form_direccion %}<div class="col-12 col-md-6">{% include "generico/_campo.html" %}</div>{% endfor %}</div>
+</fieldset>
+{% endblock %}

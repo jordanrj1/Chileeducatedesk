@@ -3,6 +3,7 @@ from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.views import View
 from django.views.generic import CreateView
 
 from apps.nucleo.models import EstadoRegistro, OrigenPersona
@@ -56,6 +57,11 @@ class PersonaLista(ListaBase):
         return super().get_queryset().select_related("estado_registro", "origen").prefetch_related("contactos__tipo")
 
 
+class PersonaExportar(PersonaLista):
+    exportar = True
+    permission_required = "personas.exportar_persona"
+
+
 class PersonaNueva(Permiso403Mixin, CreateView):
     model = Persona
     form_class = PersonaNuevaForm
@@ -88,6 +94,9 @@ class PersonaNueva(Permiso403Mixin, CreateView):
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=d["correo"], principal=True)
             if d.get("telefono"):
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"], principal=not d.get("correo"))
+            from apps.documentos.origen import registrar_origen
+
+            registrar_origen(persona, self.request.user)
         messages.success(self.request, "Persona registrada. Puedes completar el resto de su ficha cuando quieras.")
         return HttpResponseRedirect(persona.get_absolute_url())
 
@@ -125,8 +134,11 @@ class PersonaFicha(FichaBase):
         ("experiencia", "Experiencia", "generico/_hijos.html"),
         ("disponibilidad", "Disponibilidad", "generico/_hijos.html"),
         ("vinculos", "Organizaciones y cargos", "generico/_hijos.html"),
+        ("trayectoria", "Trayectoria", "personas/pestanas/trayectoria.html", "actividades.view_participacion"),
+        ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
         ("emergencia", "Contacto de emergencia", "generico/_hijos.html", "personas.ver_sensibles"),
         ("verificaciones", "Verificaciones", "generico/_hijos.html", "personas.ver_sensibles"),
+        ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "personas.view_historicalpersona"),
     ]
 
@@ -146,6 +158,28 @@ class PersonaFicha(FichaBase):
             "titulo_pestana": titulo, "etiqueta_nuevo": etiqueta, "url_nuevo": reverse(f"personas:{slug}_nuevo", args=[self.object.pk]),
             "hijos": _hijos(objs, pk=self.object.pk, slug=slug, **kw), "vacio": f"Sin {titulo.lower()} registrados.",
         }
+
+    def ctx_trayectoria(self):
+        p = self.object
+        return {
+            "participaciones": p.participaciones.select_related("actividad__estado", "actividad__proyecto", "rol", "estado").order_by("-actividad__creado_en"),
+            "reuniones": p.reuniones.select_related("reunion").order_by("-reunion__fecha"),
+            "tareas": p.tareas_asignadas.select_related("tarea").order_by("-tarea__creado_en"),
+            "proyectos": p.proyectos.select_related("proyecto"),
+            "vinculos": p.vinculos.select_related("organizacion"),
+            "invitaciones": p.invitaciones.select_related("actividad"),
+        }
+
+    def ctx_documentos(self):
+        docs = self.object.documentos.select_related("tipo")
+        if not self.request.user.has_perm("documentos.ver_restringido"):
+            docs = docs.filter(restringido=False)
+        return {"documentos": docs, "url_nuevo_doc": f"/documentos/nuevo?persona={self.object.pk}"}
+
+    def ctx_origen(self):
+        from apps.documentos.origen import contexto_origen
+
+        return contexto_origen(self.object, self.request.user)
 
     def ctx_contactos(self):
         return self._hijo_ctx("Contactos", "contactos", "Contacto", self.object.contactos.select_related("tipo"),
@@ -209,3 +243,17 @@ class DireccionPersonaNueva(Permiso403Mixin, CreateView):
         form.save_para(self.persona)
         messages.success(self.request, "Dirección guardada.")
         return HttpResponseRedirect(f"{self.persona.get_absolute_url()}?tab=direcciones")
+
+
+class PersonaOpciones(Permiso403Mixin, View):
+    """<option> de personas que calzan con `q` (para los selectores con búsqueda)."""
+
+    permission_required = "personas.view_persona"
+
+    def get(self, request):
+        from django.http import HttpResponse
+        from django.utils.html import format_html_join
+
+        qs = Persona.objects.filter(activo=True).buscar(request.GET.get("q", ""))[:25]
+        opciones = [("", "---------")] + [(p.pk, p.nombre_completo + (f" · {p.rut}" if p.rut else "")) for p in qs]
+        return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))

@@ -1,5 +1,6 @@
 """Alta, edición y des/activación de registros hijos de una ficha (contactos, formación, etc.). Nunca se borran."""
 from django.contrib import messages
+from django.db import IntegrityError, transaction
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
@@ -50,11 +51,17 @@ class HijoCrear(_HijoBase, Permiso403Mixin, CreateView):
 
     def get_form_kwargs(self):
         kw = super().get_form_kwargs()
+        kw["instance"] = self.modelo(**{self.campo_padre: self.padre})  # el padre ya está puesto al validar
         return kw
 
     def form_valid(self, form):
         setattr(form.instance, self.campo_padre, self.padre)
-        form.save()
+        try:
+            with transaction.atomic():
+                form.save()
+        except IntegrityError:
+            form.add_error(None, "Ya existe un registro igual.")
+            return self.form_invalid(form)
         messages.success(self.request, "Guardado.")
         return HttpResponseRedirect(self.url_padre())
 
@@ -81,7 +88,12 @@ class HijoEditar(_HijoBase, Permiso403Mixin, UpdateView):
         return f"Editar {self.etiqueta}"
 
     def form_valid(self, form):
-        form.save()
+        try:
+            with transaction.atomic():
+                form.save()
+        except IntegrityError:
+            form.add_error(None, "Ya existe un registro igual.")
+            return self.form_invalid(form)
         messages.success(self.request, "Guardado.")
         return HttpResponseRedirect(self.url_padre())
 

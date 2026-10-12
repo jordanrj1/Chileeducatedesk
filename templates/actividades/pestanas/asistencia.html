@@ -1,0 +1,14 @@
+<h2 class="h6">Asistencia</h2>
+{% if participaciones %}
+<form method="post" action="{% url 'actividades:asistencia' object.pk %}">{% csrf_token %}
+<div class="table-responsive"><table class="table table-sm align-middle">
+<thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th></tr></thead>
+<tbody>{% for p in participaciones %}<tr><td>{{ p.persona }}</td><td>{{ p.rol }}</td><td>{{ p.estado }}</td>
+<td>{% if puede_agregar and perms.actividades.change_participacion %}<select class="form-select form-select-sm" name="asistencia_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}" style="max-width:12rem;">
+<option value="" {% if p.asistencia is None %}selected{% endif %}>Sin registro</option><option value="si" {% if p.asistencia is True %}selected{% endif %}>Asistió</option><option value="no" {% if p.asistencia is False %}selected{% endif %}>No asistió</option></select>
+{% else %}{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% else %}—{% endif %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% if puede_agregar and perms.actividades.change_participacion %}
+<div class="form-check mb-2"><input type="hidden" name="sin_registro" value="0"><input class="form-check-input" type="checkbox" name="sin_registro" value="1" id="sr" {% if object.asistencia_sin_registro %}checked{% endif %}><label class="form-check-label" for="sr">No hay registro de asistencia (se indica explícitamente al cerrar)</label></div>
+<button class="btn btn-primary btn-sm">Registrar asistencia</button>{% endif %}
+</form>
+{% else %}<p class="text-muted">No hay participantes para registrar asistencia.</p>{% endif %}

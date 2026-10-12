@@ -1,0 +1,8 @@
+<h2 class="h6">Actividades en las que ha intervenido</h2>
+<ul class="list-group mb-3">{% for a in participaciones_org %}<li class="list-group-item"><a href="{{ a.actividad.get_absolute_url }}">{{ a.actividad }}</a> <span class="badge text-bg-secondary">{{ a.tipo_intervencion|default:"intervención" }}</span> <span class="badge text-bg-light border">{{ a.actividad.estado }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin actividades.</li>{% endfor %}</ul>
+<h2 class="h6">Proyectos</h2>
+<ul class="list-group mb-3">{% for p in proyectos_org %}<li class="list-group-item"><a href="{{ p.proyecto.get_absolute_url }}">{{ p.proyecto }}</a> {{ p.tipo_intervencion|default:"" }}</li>{% empty %}<li class="list-group-item text-muted">Sin proyectos.</li>{% endfor %}</ul>
+<h2 class="h6">Colaboraciones</h2>
+<ul class="list-group mb-3">{% for c in colaboraciones %}<li class="list-group-item"><a href="{{ c.get_absolute_url }}">{{ c.actividad }}</a> · {{ c.tipo_apoyo }} <span class="badge text-bg-secondary">{{ c.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin colaboraciones.</li>{% endfor %}</ul>
+<h2 class="h6">Últimos contactos</h2>
+<ul class="list-group">{% for i in interacciones %}<li class="list-group-item"><a href="{{ i.get_absolute_url }}">{{ i.fecha|date:"d-m-Y" }} · {{ i.canal }}</a> <span class="small text-muted">{{ i.resultado|truncatechars:80 }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin contactos registrados.</li>{% endfor %}</ul>

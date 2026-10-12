@@ -1,0 +1,4 @@
+<div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Contactos y seguimiento</h2>
+{% if puede_agregar and perms.coordinacion.add_interaccion %}<a class="btn btn-primary btn-sm" href="{% url 'coordinacion:interaccion_nueva' %}?solicitud={{ object.pk }}">+ Registrar interacción</a>{% endif %}</div>
+<ul class="list-group">{% for i in interacciones %}<li class="list-group-item"><a href="{{ i.get_absolute_url }}">{{ i.fecha|date:"d-m-Y H:i" }} · {{ i.canal }} · {{ i.persona|default:i.organizacion|default:"—" }}</a>
+<div class="small text-muted">{{ i.resultado }}{% if i.proxima_accion %} → {{ i.proxima_accion }}{% if i.proxima_fecha %} ({{ i.proxima_fecha|date:"d-m-Y" }}){% endif %}{% endif %}</div></li>{% empty %}<li class="list-group-item text-muted">Aún no se ha registrado ningún contacto.</li>{% endfor %}</ul>
