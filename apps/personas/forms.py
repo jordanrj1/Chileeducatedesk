@@ -88,7 +88,10 @@ class ContactoForm(BootstrapMixin, forms.ModelForm):
 
 
 class PersonaDireccionForm(DireccionForm):
-    tipo = forms.ChoiceField(choices=PersonaDireccion.TIPOS)
+    tipo = forms.ChoiceField(choices=PersonaDireccion.TIPOS, label="Tipo de dirección")
+
+    def __iter__(self):  # el bloque de dirección no repite «tipo»: se muestra aparte
+        return (c for c in super().__iter__() if c.name != "tipo")
 
     def save_para(self, persona):
         direccion = super().save()

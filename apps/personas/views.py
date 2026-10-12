@@ -228,7 +228,7 @@ class DireccionPersonaNueva(Permiso403Mixin, CreateView):
 
     form_class = PersonaDireccionForm
     permission_required = "personas.change_persona"
-    template_name = "generico/formulario.html"
+    template_name = "personas/direccion.html"
 
     def dispatch(self, request, *a, **kw):
         self.persona = get_object_or_404(Persona, pk=kw["pk"])

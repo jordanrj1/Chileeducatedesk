@@ -1,0 +1,5 @@
+{% extends "generico/formulario.html" %}
+{% block campos %}
+{% include "generico/_campo.html" with campo=form.tipo %}
+{% with form_direccion=form %}{% include "territorio/_direccion.html" %}{% endwith %}
+{% endblock %}

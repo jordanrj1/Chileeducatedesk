@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Territorio{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Territorio</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">Territorio</h1>
+<form class="row g-2 mb-3" method="get" style="max-width:32rem;"><div class="col"><input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar una comuna…" aria-label="Buscar comuna"></div><div class="col-auto"><button class="btn btn-outline-primary">Buscar</button></div></form>
+{% if q %}
+  <ul class="list-group" style="max-width:40rem;">{% for c in comunas %}<li class="list-group-item"><a href="{{ c.get_absolute_url }}">{{ c.nombre }}</a> <span class="small text-muted">{{ c.provincia.nombre }} · {{ c.provincia.region.nombre }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin resultados para «{{ q }}». <a href="/territorio">Ver todas las regiones</a></li>{% endfor %}</ul>
+{% elif regiones %}
+  <div class="list-group" style="max-width:40rem;">{% for r in regiones %}<a class="list-group-item list-group-item-action d-flex justify-content-between" href="{{ r.get_absolute_url }}">{{ r.nombre }} <span class="small text-muted">{{ r.n_provincias }} provincias · {{ r.n_comunas }} comunas</span></a>{% endfor %}</div>
+{% else %}
+  <p class="text-muted">El territorio aún no se ha cargado. El Administrador debe ejecutar <code>cargar_territorio</code> con el archivo oficial de códigos CUT.</p>
+{% endif %}
+{% endblock %}
