@@ -39,8 +39,8 @@ class Actividad(models.Model):
     resultado = models.TextField(blank=True)
     indicadores = models.TextField(blank=True)
     asistencia_sin_registro = models.BooleanField("asistencia sin registro (explícito)", default=False)
-    cerrada_en = models.DateTimeField(null=True, blank=True)
-    cerrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    finalizada_en = models.DateTimeField(null=True, blank=True)
+    finalizada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     creado_en = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()
@@ -52,8 +52,8 @@ class Actividad(models.Model):
         verbose_name_plural = "actividades"
         permissions = [
             ("reprogramar_actividad", "Puede programar y reprogramar actividades"),
-            ("cerrar_actividad", "Puede cerrar actividades"),
-            ("reabrir_actividad", "Puede reabrir actividades cerradas"),
+            ("cerrar_actividad", "Puede finalizar actividades"),
+            ("reabrir_actividad", "Puede reabrir actividades realizadas"),
             ("exportar_actividad", "Puede exportar actividades"),
         ]
 

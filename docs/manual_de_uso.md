@@ -36,14 +36,13 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 ## 6. Programar, reprogramar y confirmar
 - **Programar** fija fecha, hora y lugar (versión 1). **Reprogramar** crea una versión nueva y pide el **motivo**; la anterior queda en la pestaña *Agenda*.
 - **Confirmar** revisa la compatibilidad: falta de responsable/fecha/lugar, capacidad del lugar, lugar ocupado, personas con otra actividad al mismo tiempo y disponibilidad declarada. Los faltantes y conflictos graves impiden confirmar; las advertencias se pueden aceptar marcando «Confirmar de todos modos».
-- **Estado**: suspender o cancelar exige un motivo. Una actividad cancelada o cerrada ya no se modifica.
+- **Estado**: suspender o cancelar exige un motivo. Una actividad cancelada o finalizada (realizada) ya no se modifica.
 - **Calendario**: vista mensual/semanal/lista; filtra por estado y puede mostrar programaciones anteriores.
 
-## 7. Ejecutar y cerrar
-1. Cuando se realiza: **Estado → Realizada**.
-2. Pestaña **Asistencia**: marca quién asistió (o «no hay registro de asistencia»).
-3. Pestaña **Resultados**: resultado, observaciones, incidencias, indicadores. Sube fotos/minutas en **Documentos**.
-4. **Finalizar actividad**: queda **Cerrada** y consultable en el historial.
+## 7. Ejecutar y finalizar
+1. Después de la actividad, pestaña **Asistencia**: marca quién asistió (o «no hay registro de asistencia»).
+2. Pestaña **Resultados**: resultado, observaciones, incidencias, indicadores. Sube fotos/minutas en **Documentos**.
+3. **Finalizar actividad**: exige asistencia (o «sin registro») y resultado. Queda **Realizada**, de solo lectura y consultable en el historial.
 
 ## 8. Documentos
 - **Documentos → + Nuevo documento** (o desde una actividad, proyecto, persona u organización). Formatos: PDF, Word, Excel, imágenes, etc. (máx. 25 MB).

@@ -11,10 +11,9 @@ TRANSICIONES = {
     "reprogramada": {"confirmada", "suspendida", "cancelada", "realizada"},
     "suspendida": {"planificada", "cancelada"},
     "cancelada": set(),
-    "realizada": {"cerrada"},
-    "cerrada": set(),
+    "realizada": set(),  # se llega solo con «Finalizar actividad»; reabrir exige permiso especial [V#4]
 }
-ESTADOS_QUE_OCUPAN = ("planificada", "confirmada", "reprogramada", "realizada", "cerrada")
+ESTADOS_QUE_OCUPAN = ("planificada", "confirmada", "reprogramada", "realizada")
 MOTIVO_OBLIGATORIO = {"suspendida", "cancelada"}
 
 
@@ -126,7 +125,7 @@ def revisar(actividad, hoy=None):
                 res.append(Problema("info", "condiciones_lugar", f"Condiciones del lugar: {lugar.condiciones}"))
         if actividad.condiciones:
             res.append(Problema("info", "condiciones", f"Condiciones de la actividad: {actividad.condiciones}"))
-        if agenda.fecha < hoy and actividad.estado.codigo not in ("realizada", "cerrada"):
+        if agenda.fecha < hoy and actividad.estado.codigo != "realizada":
             res.append(Problema("advertencia", "fecha_pasada", f"La fecha programada ({agenda.fecha:%d-%m-%Y}) ya pasó."))
         personas = {p.persona_id: p.persona for p in activas if not p.es_beneficiario}
         if actividad.responsable_id and actividad.responsable_id not in personas:

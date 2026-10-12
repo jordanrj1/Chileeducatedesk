@@ -1,23 +1,24 @@
 <h2 class="h6">Resultados de la actividad</h2>
-{% if cerrada %}
-<div class="alert alert-secondary">Actividad cerrada el {{ object.cerrada_en|date:"d-m-Y H:i" }}{% if object.cerrada_por %} por {{ object.cerrada_por }}{% endif %}.</div>
+{% if finalizada %}
+<div class="alert alert-secondary">Actividad finalizada el {{ object.finalizada_en|date:"d-m-Y H:i"|default:"—" }}{% if object.finalizada_por %} por {{ object.finalizada_por }}{% endif %}. Queda como <strong>realizada</strong> y de solo lectura.</div>
 <dl class="row" style="max-width:48rem;">
   <dt class="col-sm-3">Resultado</dt><dd class="col-sm-9">{{ object.resultado|linebreaksbr }}</dd>
   <dt class="col-sm-3">Observaciones</dt><dd class="col-sm-9">{{ object.observaciones|default:"—"|linebreaksbr }}</dd>
   <dt class="col-sm-3">Incidencias</dt><dd class="col-sm-9">{{ object.incidencias|default:"—"|linebreaksbr }}</dd>
   <dt class="col-sm-3">Indicadores</dt><dd class="col-sm-9">{{ object.indicadores|default:"—"|linebreaksbr }}</dd>
+  <dt class="col-sm-3">Asistencia</dt><dd class="col-sm-9">{% if object.asistencia_sin_registro %}Sin registro (indicado explícitamente){% else %}Ver pestaña Asistencia{% endif %}</dd>
 </dl>
 {% if puede_reabrir %}<form method="post" action="{% url 'actividades:reabrir' object.pk %}" class="d-flex gap-2" style="max-width:36rem;">{% csrf_token %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo para reabrir" required><button class="btn btn-outline-danger btn-sm">Reabrir</button></form>{% endif %}
 {% else %}
 {% if puede_agregar %}
-<form method="post" action="{% url 'actividades:resultados' object.pk %}" style="max-width:48rem;">{% csrf_token %}
+<form method="post" action="{% url 'actividades:resultados' object.pk %}" style="max-width:48rem;" data-aviso-cambios>{% csrf_token %}
   {% for campo in form_resultado %}{% include "generico/_campo.html" %}{% endfor %}
-  <button class="btn btn-primary btn-sm">Guardar resultado</button>
+  <button class="btn btn-primary btn-sm">Registrar resultado</button>
 </form>
 {% else %}<p class="text-muted">{{ object.resultado|default:"Sin resultado registrado."|linebreaksbr }}</p>{% endif %}
-{% if puede_cerrar %}
-<hr><form method="post" action="{% url 'actividades:cerrar' object.pk %}">{% csrf_token %}
-  <p class="small text-muted">Para finalizar se requiere asistencia registrada (o «sin registro» explícito) y el resultado.</p>
-  <button class="btn btn-dark" onclick="return confirm('¿Finalizar la actividad? Quedará cerrada y disponible en el historial.')">Finalizar actividad</button></form>
-{% elif object.estado.codigo != "realizada" %}<p class="small text-muted mt-3">La actividad debe estar en estado «Realizada» para poder finalizarla.</p>{% endif %}
+{% if puede_finalizar %}
+<hr><form method="post" action="{% url 'actividades:finalizar' object.pk %}">{% csrf_token %}
+  <p class="small text-muted">Para finalizar se requiere la asistencia registrada (o «sin registro» explícito) y el resultado. La actividad quedará como <strong>realizada</strong>.</p>
+  <button class="btn btn-dark" onclick="return confirm('¿Finalizar la actividad? Quedará como realizada y ya no se podrá modificar.')">Finalizar actividad</button></form>
+{% elif object.estado.codigo != "cancelada" %}<p class="small text-muted mt-3">Para finalizar, la actividad debe estar planificada, confirmada o reprogramada.</p>{% endif %}
 {% endif %}

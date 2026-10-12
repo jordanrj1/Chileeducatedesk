@@ -153,8 +153,8 @@ class ActividadEditar(EditarBase):
     breadcrumb = [("Actividades", "/actividades")]
 
     def form_valid(self, form):
-        if self.object.estado.codigo in ("cerrada",):
-            messages.error(self.request, "La actividad está cerrada. Reábrela (con permiso) para corregirla.")
+        if self.object.estado.codigo == "realizada":
+            messages.error(self.request, "La actividad ya fue finalizada. Reábrela (con permiso) para corregirla.")
             return self.form_invalid(form)
         return super().form_valid(form)
 
@@ -187,17 +187,17 @@ class ActividadFicha(FichaBase):
         a = self.object
         u = self.request.user
         codigo = a.estado.codigo
-        siguientes = [c for c in TRANSICIONES.get(codigo, set()) if c not in ("confirmada", "cerrada")]
-        editable = codigo != "cerrada"
+        siguientes = [c for c in TRANSICIONES.get(codigo, set()) if c not in ("confirmada", "realizada")]
+        editable = codigo != "realizada"
         return {
             "url_editar": reverse("actividades:editar", args=[a.pk]) if editable else None,
             "url_volver": a.proyecto.get_absolute_url() if a.proyecto_id else "/actividades",
             "puede_agregar": u.has_perm("actividades.change_actividad") and editable,
-            "puede_programar": u.has_perm("actividades.reprogramar_actividad") and codigo not in ("cancelada", "realizada", "cerrada", "suspendida"),
+            "puede_programar": u.has_perm("actividades.reprogramar_actividad") and codigo not in ("cancelada", "realizada", "suspendida"),
             "puede_confirmar": u.has_perm("actividades.change_actividad") and "confirmada" in TRANSICIONES.get(codigo, set()),
             "estados_siguientes": [(c, EstadoActividad.objects.get(codigo=c).nombre) for c in siguientes] if u.has_perm("actividades.change_actividad") else [],
-            "puede_cerrar": u.has_perm("actividades.cerrar_actividad") and codigo == "realizada",
-            "puede_reabrir": u.has_perm("actividades.reabrir_actividad") and codigo == "cerrada",
+            "puede_finalizar": u.has_perm("actividades.cerrar_actividad") and "realizada" in TRANSICIONES.get(codigo, set()),
+            "puede_reabrir": u.has_perm("actividades.reabrir_actividad") and codigo == "realizada",
             "agenda": a.agenda_vigente,
             "faltantes": a.faltantes(),
         }
@@ -267,7 +267,7 @@ class ActividadFicha(FichaBase):
         return {"documentos": docs}
 
     def ctx_resultados(self):
-        return {"form_resultado": ResultadoForm(instance=self.object), "cerrada": self.object.estado.codigo == "cerrada"}
+        return {"form_resultado": ResultadoForm(instance=self.object), "finalizada": self.object.estado.codigo == "realizada"}
 
     def ctx_origen(self):
         from apps.documentos.origen import contexto_origen
@@ -370,8 +370,8 @@ class ResultadosVista(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo == "cerrada":
-            messages.error(request, "La actividad está cerrada.")
+        if a.estado.codigo == "realizada":
+            messages.error(request, "La actividad ya fue finalizada.")
             return self.volver(a, "resultados")
         form = ResultadoForm(request.POST, instance=a)
         if form.is_valid():
@@ -382,17 +382,17 @@ class ResultadosVista(_AccionActividad):
         return self.volver(a, "resultados")
 
 
-class CerrarVista(_AccionActividad):
+class FinalizarVista(_AccionActividad):
     permission_required = "actividades.cerrar_actividad"
 
     def post(self, request, pk):
         a = self.actividad(pk)
         try:
-            servicios.cerrar(a, request.user)
+            servicios.finalizar(a, request.user)
         except ReglaNegocio as e:
             _avisar(request, e)
             return self.volver(a, "resultados")
-        messages.success(request, "Actividad cerrada. Queda disponible en el historial.")
+        messages.success(request, "Actividad finalizada: quedó como realizada y disponible en el historial.")
         return self.volver(a, "resultados")
 
 
@@ -423,8 +423,8 @@ class ParticipanteNuevo(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo in ("cerrada", "cancelada"):
-            messages.error(request, "No se pueden agregar participantes a una actividad cerrada o cancelada.")
+        if a.estado.codigo in ("realizada", "cancelada"):
+            messages.error(request, "No se pueden agregar participantes a una actividad finalizada o cancelada.")
             return self.volver(a, "participantes")
         form = ParticipanteNuevoForm(request.POST, actividad=a)
         if form.is_valid():
@@ -511,8 +511,8 @@ class ParticipacionEditar(Permiso403Mixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
-        if self.object.actividad.estado.codigo == "cerrada":
-            messages.error(self.request, "La actividad está cerrada.")
+        if self.object.actividad.estado.codigo == "realizada":
+            messages.error(self.request, "La actividad ya fue finalizada.")
             return self.form_invalid(form)
         form.save()
         messages.success(self.request, "Participación actualizada.")
@@ -524,7 +524,7 @@ class AsistenciaVista(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo in ("cerrada", "cancelada"):
+        if a.estado.codigo in ("realizada", "cancelada"):
             messages.error(request, "No se puede registrar asistencia en esta actividad.")
             return self.volver(a, "asistencia")
         estados = {e.codigo: e for e in EstadoParticipacion.objects.filter(codigo__in=["asistio", "no_asistio"])}
@@ -551,7 +551,7 @@ class AsistenciaVista(_AccionActividad):
 
 
 # --- Calendario -------------------------------------------------------------------
-COLORES = {"planificada": "#6c757d", "confirmada": "#198754", "reprogramada": "#fd7e14", "suspendida": "#ffc107", "cancelada": "#dc3545", "realizada": "#0d6efd", "cerrada": "#0a58ca", "pendiente": "#adb5bd"}
+COLORES = {"planificada": "#6c757d", "confirmada": "#198754", "reprogramada": "#fd7e14", "suspendida": "#ffc107", "cancelada": "#dc3545", "realizada": "#0d6efd", "pendiente": "#adb5bd"}
 
 
 class Calendario(Permiso403Mixin, TemplateView):
@@ -624,7 +624,7 @@ class Candidatos(Permiso403Mixin, TemplateView):
             roles=RolParticipacion.objects.filter(activo=True), comunas=Comuna.objects.all(), tipos_org=TipoOrganizacion.objects.filter(activo=True),
             instituciones=Organizacion.objects.filter(tipo__codigo="institucion_educativa", activo=True),
             breadcrumb=[("Actividades", "/actividades"), (a.nombre, a.get_absolute_url())], datos=g,
-            puede_agregar=self.request.user.has_perm("actividades.add_participacion") and a.estado.codigo not in ("cerrada", "cancelada"),
+            puede_agregar=self.request.user.has_perm("actividades.add_participacion") and a.estado.codigo not in ("realizada", "cancelada"),
         )
         return ctx
 

@@ -343,56 +343,68 @@ def test_asistencia(cg, actividad, crear_persona, rol, estado_part):
     assert a.estado.codigo == "asistio" and b.estado.codigo == "no_asistio" and c.estado.codigo == "confirmado"
 
 
-# --- cierre ------------------------------------------------------------------------------
-def realizada(crear_actividad, **kw):
-    return crear_actividad("Realizada", estado="realizada", **kw)
+# --- finalizar (queda «realizada») ----------------------------------------------------------
+def confirmada(crear_actividad, **kw):
+    return crear_actividad("Por finalizar", estado="confirmada", **kw)
 
 
-def test_cerrar_exige_asistencia_y_resultado(crear_actividad, gestor, crear_persona, rol):
-    a = realizada(crear_actividad)
+def test_finalizar_exige_asistencia_y_resultado(crear_actividad, gestor):
+    a = confirmada(crear_actividad)
     with pytest.raises(ReglaNegocio) as e:
-        servicios.cerrar(a, gestor)
+        servicios.finalizar(a, gestor)
     assert len(e.value.mensajes) == 2
     a.asistencia_sin_registro = True
     a.resultado = "Se realizó con 12 asistentes"
     a.save()
-    servicios.cerrar(a, gestor)
+    servicios.finalizar(a, gestor)
     a.refresh_from_db()
-    assert a.estado.codigo == "cerrada" and a.cerrada_en and a.cerrada_por == gestor
+    assert a.estado.codigo == "realizada" and a.finalizada_en and a.finalizada_por == gestor
 
 
-def test_cerrar_con_asistencia_registrada(crear_actividad, gestor, crear_persona, rol):
-    a = realizada(crear_actividad, resultado="ok")
+def test_finalizar_con_asistencia_registrada(crear_actividad, gestor, crear_persona, rol):
+    a = confirmada(crear_actividad, resultado="ok")
     p = participar(a, crear_persona(), rol)
     p.asistencia = True
     p.save()
-    servicios.cerrar(a, gestor)
+    servicios.finalizar(a, gestor)
 
 
-def test_solo_se_cierra_una_realizada(actividad, gestor):
-    with pytest.raises(ReglaNegocio, match="realizada"):
-        servicios.cerrar(actividad, gestor)
+def test_no_existe_el_estado_cerrada():
+    assert not EstadoActividad.objects.filter(codigo="cerrada").exists()
 
 
-def test_cierre_por_pantalla_y_bloqueo_posterior(cg, crear_actividad, crear_persona, rol):
-    a = realizada(crear_actividad)
+@pytest.mark.parametrize("estado", ["pendiente", "suspendida", "cancelada", "realizada"])
+def test_solo_se_finaliza_una_actividad_en_curso(crear_actividad, gestor, estado):
+    a = crear_actividad(estado=estado, resultado="x", asistencia_sin_registro=True)
+    with pytest.raises(ReglaNegocio, match="No se puede finalizar"):
+        servicios.finalizar(a, gestor)
+
+
+def test_realizada_solo_se_alcanza_finalizando(actividad, gestor, lugar):
+    programar(actividad, gestor, lugar)
+    with pytest.raises(ReglaNegocio, match="Finalizar"):
+        servicios.cambiar_estado(actividad, "realizada", gestor)
+
+
+def test_finalizar_por_pantalla_y_bloqueo_posterior(cg, crear_actividad, crear_persona, rol):
+    a = confirmada(crear_actividad)
     cg.post(f"/actividades/{a.pk}/resultados", {"resultado": "Fue bien", "observaciones": "", "incidencias": "", "indicadores": "", "asistencia_sin_registro": "on"})
-    cg.post(f"/actividades/{a.pk}/cerrar")
+    cg.post(f"/actividades/{a.pk}/finalizar")
     a.refresh_from_db()
-    assert a.estado.codigo == "cerrada"
+    assert a.estado.codigo == "realizada"
     cg.post(f"/actividades/{a.pk}/resultados", {"resultado": "Cambiado", "asistencia_sin_registro": "on"})
     a.refresh_from_db()
     assert a.resultado == "Fue bien"
-    assert cg.get(f"/actividades/{a.pk}/editar").status_code == 200
-    r = cg.post(f"/actividades/{a.pk}/editar", {"nombre": "Otro nombre"})
+    cg.post(f"/actividades/{a.pk}/editar", {"nombre": "Otro nombre"})
     a.refresh_from_db()
-    assert a.nombre == "Realizada"
+    assert a.nombre == "Por finalizar"
     assert cg.post(f"/actividades/{a.pk}/participantes/nuevo", {}).status_code == 302  # rechazado con aviso
+    assert "Finalizar actividad" not in cg.get(f"/actividades/{a.pk}?tab=resultados").content.decode()
 
 
-def test_reabrir_requiere_permiso_especial(cg, ca, crear_actividad, gestor):
-    a = realizada(crear_actividad, resultado="x", asistencia_sin_registro=True)
-    servicios.cerrar(a, gestor)
+def test_reabrir_requiere_permiso_especial(cg, crear_actividad, gestor):
+    a = confirmada(crear_actividad, resultado="x", asistencia_sin_registro=True)
+    servicios.finalizar(a, gestor)
     assert cg.post(f"/actividades/{a.pk}/reabrir", {"motivo": "error de digitación"}).status_code == 403
     from django.contrib.auth.models import Permission
 
@@ -401,10 +413,10 @@ def test_reabrir_requiere_permiso_especial(cg, ca, crear_actividad, gestor):
     c.force_login(type(gestor).objects.get(pk=gestor.pk))
     assert c.post(f"/actividades/{a.pk}/reabrir", {"motivo": ""}).status_code == 302
     a.refresh_from_db()
-    assert a.estado.codigo == "cerrada"  # sin motivo no reabre
+    assert a.estado.codigo == "realizada"  # sin motivo no reabre
     c.post(f"/actividades/{a.pk}/reabrir", {"motivo": "error de digitación"})
     a.refresh_from_db()
-    assert a.estado.codigo == "realizada"
+    assert a.estado.codigo == "confirmada" and a.finalizada_en is None
 
 
 # --- otros --------------------------------------------------------------------------------------
