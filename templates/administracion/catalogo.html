@@ -9,11 +9,11 @@
 <tr><td>{{ o.nombre }}</td><td class="text-muted small">{{ o.codigo }}</td><td>{{ o.orden }}</td>
 <td>{% if o.activo %}<span class="badge text-bg-success">Activo</span>{% else %}<span class="badge text-bg-secondary">Inactivo</span>{% endif %}</td>
 <td class="small">{% for etiqueta, n in deps %}{{ n }} {{ etiqueta }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-<td class="text-end">{% if puede_editar %}<a class="btn btn-outline-primary btn-sm" href="/administracion/catalogos/{{ slug }}/{{ o.pk }}/editar">Editar</a>
-<form class="d-inline" method="post" action="/administracion/catalogos/{{ slug }}/{{ o.pk }}/alternar">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm">{% if o.activo %}Desactivar{% else %}Activar{% endif %}</button></form>{% endif %}</td></tr>
+<td class="text-end">{% if puede_editar %}<a class="btn btn-outline-primary btn-sm" href="/administracion/catalogos/{{ slug }}/{{ o.pk }}/editar">Editar</a>{% endif %}
+{% if puede_desactivar %}<form class="d-inline" method="post" action="/administracion/catalogos/{{ slug }}/{{ o.pk }}/alternar">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm">{% if o.activo %}Desactivar{% else %}Activar{% endif %}</button></form>{% endif %}</td></tr>
 {% empty %}<tr><td colspan="6" class="text-muted">Sin opciones.</td></tr>{% endfor %}</tbody></table></div>
 {% if puede_crear %}
-<h2 class="h6 mt-4">Nueva opción</h2>
+<h2 class="h6 mt-4">+ Agregar valor</h2>
 <form method="post" class="row g-2" style="max-width: 40rem;">{% csrf_token %}
 {% for campo in form %}<div class="col-12 col-md-4">{% include "generico/_campo.html" %}</div>{% endfor %}
 <div class="col-12"><button class="btn btn-primary btn-sm">Agregar</button></div></form>

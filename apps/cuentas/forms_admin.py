@@ -37,6 +37,8 @@ class UsuarioForm(BootstrapMixin, forms.ModelForm):
         self.fields["persona"].queryset = libres.order_by("apellido_paterno", "nombres")
         if self.crear:
             self.fields["password1"].required = self.fields["password2"].required = True
+            self.fields["persona"].required = True  # US-01: la cuenta se crea para una persona ya registrada
+            self.fields["persona"].help_text = "Obligatoria. Si la persona no existe, regístrala primero en Personas."
         else:
             del self.fields["password1"], self.fields["password2"]
 

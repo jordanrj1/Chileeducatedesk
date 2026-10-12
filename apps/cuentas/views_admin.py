@@ -46,6 +46,7 @@ class UsuarioLista(ListaBase):
         ("Rol", lambda u: ", ".join(g.name for g in u.groups.all())),
         ("Persona", lambda u: getattr(getattr(u, "perfil", None), "persona", "") or ""),
         ("Estado", lambda u: "Activo" if u.is_active else "Desactivado"),
+        ("Último ingreso", lambda u: u.last_login.astimezone().strftime("%d-%m-%Y %H:%M") if u.last_login else "Nunca"),
     ]
     orden_defecto = ("username",)
 

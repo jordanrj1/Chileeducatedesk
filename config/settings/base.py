@@ -100,6 +100,9 @@ from django.contrib.messages import constants as _mensajes
 
 MESSAGE_TAGS = {_mensajes.ERROR: "danger"}  # Bootstrap usa «danger», no «error»
 
+# A quién consultar si una cuenta está desactivada (AC-02). Ej.: «Manuel (correo@ejemplo.cl)».
+CONTACTO_ADMINISTRADOR = env("CONTACTO_ADMINISTRADOR", default="")
+
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/dashboard"
 LOGOUT_REDIRECT_URL = "/login"
