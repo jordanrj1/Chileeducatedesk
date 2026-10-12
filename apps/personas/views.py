@@ -124,6 +124,7 @@ def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente
 class PersonaFicha(FichaBase):
     model = Persona
     permission_required = "personas.view_persona"
+    pestanas_segunda_fase = ("verificaciones",)
     breadcrumb = [("Personas", "/personas")]
     permiso_editar = "personas.change_persona"
     pestanas = [

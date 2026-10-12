@@ -163,6 +163,7 @@ class ActividadFicha(FichaBase):
     model = Actividad
     permission_required = "actividades.view_actividad"
     template_name = "actividades/ficha.html"
+    pestanas_segunda_fase = ("beneficiarios", "sesiones")
     breadcrumb = [("Actividades", "/actividades")]
     permiso_editar = "actividades.change_actividad"
     pestanas = [
@@ -203,7 +204,11 @@ class ActividadFicha(FichaBase):
         }
 
     def _participantes(self, beneficiarios):
+        from apps.nucleo.fases import segunda_fase_activa
+
         qs = self.object.participaciones.select_related("persona", "rol", "estado")
+        if not segunda_fase_activa():
+            return list(qs) if not beneficiarios else []  # sin pestaña aparte: todos van en Participantes
         return [p for p in qs if p.es_beneficiario == beneficiarios]
 
     def ctx_participantes(self):

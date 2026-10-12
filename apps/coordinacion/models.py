@@ -13,6 +13,13 @@ def _creado_por():
     return models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
 
 
+class InteraccionQuerySet(models.QuerySet):
+    def proximas_acciones(self, hoy=None, dias=7):
+        """Próximas acciones no cumplidas que vencen en los próximos días (o ya vencieron): IN-02."""
+        hoy = hoy or timezone.localdate()
+        return self.filter(accion_cumplida=False, proxima_fecha__isnull=False, proxima_fecha__lte=hoy + timedelta(days=dias)).exclude(proxima_accion="").order_by("proxima_fecha")
+
+
 class Interaccion(models.Model):
     """Llamado, correo, mensaje o contacto con una persona u organización, con su próximo paso."""
 
@@ -28,6 +35,7 @@ class Interaccion(models.Model):
     proxima_fecha = models.DateField("fecha de la próxima acción", null=True, blank=True)
     accion_cumplida = models.BooleanField("próxima acción cumplida", default=False)
     creado_por = _creado_por()
+    objects = InteraccionQuerySet.as_manager()
 
     class Meta:
         ordering = ["-fecha"]

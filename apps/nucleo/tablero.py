@@ -34,13 +34,23 @@ def tarjetas(user):
                 [(str(p), p.get_absolute_url(), "en actividad próxima" if p.prioridad else "") for p in Persona.objects.cola_incompletos()],
                 "/personas?registro=incompleto",
             )
-        if user.has_perm("coordinacion.view_tarea"):
+        from .fases import segunda_fase_activa
+
+        if segunda_fase_activa() and user.has_perm("coordinacion.view_tarea"):
             from apps.coordinacion.models import Tarea
 
             agregar(
                 "Tareas por vencer",
                 [(t.titulo, t.get_absolute_url(), f"vence {t.fecha_limite:%d-%m-%Y}" if t.fecha_limite else "") for t in Tarea.objects.por_vencer(hoy)],
                 "/tareas",
+            )
+        elif user.has_perm("coordinacion.view_interaccion"):
+            from apps.coordinacion.models import Interaccion
+
+            agregar(
+                "Tareas por vencer",
+                [(i.proxima_accion, i.get_absolute_url(), f"para el {i.proxima_fecha:%d-%m-%Y}") for i in Interaccion.objects.proximas_acciones(hoy)],
+                vacio="Sin próximas acciones pendientes.",
             )
     except (ImportError, LookupError):  # módulos que se incorporan en etapas posteriores
         pass
