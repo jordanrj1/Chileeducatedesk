@@ -116,6 +116,11 @@ class OrganizacionAlternar(AlternarActivoBase):
     modelo = Organizacion
     permission_required = "organizaciones.change_organizacion"
 
+    def afectados(self, obj):
+        from apps.actividades.afectacion import de_organizacion
+
+        return de_organizacion(obj)
+
 
 class OrganizacionFicha(FichaBase):
     model = Organizacion
@@ -130,7 +135,7 @@ class OrganizacionFicha(FichaBase):
         ("info", "Información", "organizaciones/pestanas/info.html"),
         ("contactos", "Contactos", "generico/_hijos.html"),
         ("carreras", "Carreras", "generico/_hijos.html"),
-        ("personas", "Personas relacionadas", "generico/_hijos.html"),
+        ("personas", "Personas relacionadas", "organizaciones/pestanas/personas.html"),
         ("actividades", "Actividades y proyectos", "organizaciones/pestanas/actividades.html", "actividades.view_actividadorganizacion"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
@@ -201,7 +206,36 @@ class OrganizacionFicha(FichaBase):
         return {
             "titulo_pestana": "Personas relacionadas", "hijos": hijos, "etiqueta_nuevo": "Agregar persona con cargo",
             "url_nuevo": reverse("organizaciones:personas_nuevo", args=[pk]), "vacio": "Aún no hay personas vinculadas.",
+            "hay_autoridades": self.object.vinculos.filter(tipo_cargo="autoridad", fecha_termino__isnull=True).exists(),
         }
+
+
+class CerrarCargosAutoridad(Permiso403Mixin, __import__("django.views", fromlist=["View"]).View):
+    """OR-E6: cambio de administración. Se cierran los cargos de autoridad vigentes; los contactos de oficina siguen."""
+
+    permission_required = "personas.change_personaorganizacion"
+
+    def post(self, request, pk):
+        from datetime import date
+
+        from apps.nucleo.auditoria import registrar
+
+        org = get_object_or_404(Organizacion, pk=pk)
+        try:
+            hasta = date.fromisoformat(request.POST.get("hasta", ""))
+        except ValueError:
+            messages.error(request, "Indica la fecha de término.")
+            return HttpResponseRedirect(f"{org.get_absolute_url()}?tab=personas")
+        n = 0
+        for v in org.vinculos.filter(tipo_cargo="autoridad", fecha_termino__isnull=True):
+            if v.fecha_inicio and v.fecha_inicio > hasta:
+                continue
+            v.fecha_termino = hasta
+            v.save()
+            n += 1
+        registrar(request.user, "cargos_autoridad_cerrados", org, f"{n} cargos al {hasta:%d-%m-%Y}")
+        messages.success(request, f"{n} cargo(s) de autoridad cerrados al {hasta:%d-%m-%Y}. Los nuevos se agregan con «Agregar persona con cargo».")
+        return HttpResponseRedirect(f"{org.get_absolute_url()}?tab=personas")
 
 
 class CarreraNueva(Permiso403Mixin, CreateView):

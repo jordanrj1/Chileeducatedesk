@@ -278,3 +278,148 @@ def test_CO_E4_unir_valores_del_catalogo(ca, cg, persona):
     persona.refresh_from_db()
     mal.refresh_from_db()
     assert r.status_code == 302 and persona.origen == bien and not mal.activo
+
+
+# --- Iteración 3: desactivar con aviso, reasignar, capacidad ----------------------------------------------
+from datetime import date, time, timedelta  # noqa: E402
+
+from apps.actividades import servicios  # noqa: E402
+from apps.actividades.models import Participacion  # noqa: E402
+
+FUT = date.today() + timedelta(days=10)
+
+
+def test_NR06_AT_E11_desactivar_persona_con_actividades_futuras(cg, persona, crear_actividad, rol, estado_part):
+    a = crear_actividad("Taller futuro", estado="planificada")
+    Participacion.objects.create(actividad=a, persona=persona, rol=rol("voluntario"), estado=estado_part("confirmado"))
+    r = cg.post(f"/personas/{persona.pk}/alternar")
+    persona.refresh_from_db()
+    assert r.status_code == 200 and "Taller futuro" in r.content.decode() and persona.activo  # todavía no
+    cg.post(f"/personas/{persona.pk}/alternar", {"confirmar": "1"})
+    persona.refresh_from_db()
+    assert not persona.activo
+
+
+def test_NR06_sin_actividades_futuras_desactiva_directo(cg, persona, crear_actividad, rol, estado_part):
+    a = crear_actividad("Ya realizada", estado="realizada")
+    Participacion.objects.create(actividad=a, persona=persona, rol=rol("voluntario"), estado=estado_part("asistio"))
+    assert cg.post(f"/personas/{persona.pk}/alternar").status_code == 302
+
+
+def test_LU_E1_desactivar_lugar_con_actividades_futuras(cg, lugar, crear_actividad, gestor):
+    a = crear_actividad("En la sala")
+    servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
+    html = cg.post(f"/lugares/{lugar.pk}/alternar").content.decode()
+    assert "En la sala" in html and "Desactivar de todos modos" in html
+    cg.post(f"/lugares/{lugar.pk}/alternar", {"confirmar": "1"})
+    lugar.refresh_from_db()
+    assert not lugar.activo
+    from apps.actividades.reglas import revisar
+
+    assert "lugar_inactivo" in {p.codigo for p in revisar(a)}  # la actividad avisa
+
+
+def test_NR06_desactivar_organizacion(cg, universidad, crear_actividad):
+    from apps.actividades.models import ActividadOrganizacion
+
+    ActividadOrganizacion.objects.create(actividad=crear_actividad("Con la U", estado="confirmada"), organizacion=universidad)
+    assert "Con la U" in cg.post(f"/organizaciones/{universidad.pk}/alternar").content.decode()
+
+
+def test_AT_E6_reasignar_responsable_en_bloque(cg, crear_persona, crear_actividad):
+    sale, entra = crear_persona("Sale"), crear_persona("Entra")
+    a1 = crear_actividad("A1", responsable=sale, estado="planificada")
+    a2 = crear_actividad("A2", responsable=sale)
+    pasada = crear_actividad("Pasada", responsable=sale, estado="realizada")
+    assert "Reasignar sus actividades" in cg.get(sale.get_absolute_url()).content.decode()
+    r = cg.post(f"/personas/{sale.pk}/reasignar", {"actividades": [a1.pk, a2.pk], "nuevo": entra.pk, "motivo": "Deja la Fundación"})
+    for a in (a1, a2, pasada):
+        a.refresh_from_db()
+    assert r.status_code == 302 and a1.responsable == entra and a2.responsable == entra and pasada.responsable == sale
+    from apps.nucleo.models import Auditoria
+
+    assert Auditoria.objects.filter(accion="responsable_reasignado").exists()
+
+
+def test_AT_E9_misma_persona_con_dos_roles_cuenta_una_vez(actividad, lugar, gestor, crear_persona, rol, estado_part):
+    from apps.actividades.reglas import revisar
+
+    lugar.capacidad = 2
+    lugar.save()
+    actividad.responsable = crear_persona()
+    actividad.save()
+    servicios.programar(actividad, gestor, FUT, time(10), time(11), lugar, None)
+    ana, beto = crear_persona("Ana"), crear_persona("Beto")
+    Participacion.objects.create(actividad=actividad, persona=ana, rol=rol("participante"), estado=estado_part("confirmado"))
+    Participacion.objects.create(actividad=actividad, persona=ana, rol=rol("tutor"), estado=estado_part("confirmado"))
+    Participacion.objects.create(actividad=actividad, persona=beto, rol=rol("participante"), estado=estado_part("confirmado"))
+    assert "capacidad" not in {p.codigo for p in revisar(actividad)}  # 2 personas, no 3
+
+
+def test_AT_E10_roles_fuera_de_capacidad_por_ajuste(actividad, lugar, gestor, crear_persona, rol, estado_part, settings):
+    from apps.actividades.reglas import revisar
+
+    lugar.capacidad = 1
+    lugar.save()
+    actividad.responsable = crear_persona()
+    actividad.save()
+    servicios.programar(actividad, gestor, FUT, time(10), time(11), lugar, None)
+    Participacion.objects.create(actividad=actividad, persona=crear_persona(), rol=rol("participante"), estado=estado_part("confirmado"))
+    Participacion.objects.create(actividad=actividad, persona=crear_persona(), rol=rol("tutor"), estado=estado_part("confirmado"))
+    assert "capacidad" in {p.codigo for p in revisar(actividad)}
+    settings.ROLES_FUERA_DE_CAPACIDAD = ["tutor"]
+    assert "capacidad" not in {p.codigo for p in revisar(actividad)}
+
+
+def test_VA_E6_capacidad_exacta_es_compatible(actividad, lugar, gestor, crear_persona, rol, estado_part):
+    from apps.actividades.reglas import revisar
+
+    actividad.responsable = crear_persona()
+    actividad.save()
+    servicios.programar(actividad, gestor, FUT, time(10), time(11), lugar, None)
+    for _ in range(20):
+        Participacion.objects.create(actividad=actividad, persona=crear_persona(), rol=rol("participante"), estado=estado_part("confirmado"))
+    assert "capacidad_ok" in {p.codigo for p in revisar(actividad)}
+
+
+def test_LU_E2_bajar_capacidad_avisa_actividades_excedidas(cg, lugar, crear_actividad, gestor, crear_persona, rol, estado_part):
+    a = crear_actividad("Con 5 personas")
+    servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
+    for _ in range(5):
+        Participacion.objects.create(actividad=a, persona=crear_persona(), rol=rol("participante"), estado=estado_part("confirmado"))
+    r = cg.post(f"/lugares/{lugar.pk}/editar", {"nombre": lugar.nombre, "tipo": lugar.tipo_id, "capacidad": 3, "dir-comuna": lugar.direccion.comuna_id, "dir-calle": "X"}, follow=True)
+    assert "quedan excedidas" in r.content.decode() and "Con 5 personas" in r.content.decode()
+
+
+def test_LU_E11_lugares_con_mismo_nombre_muestran_la_comuna(cg, actividad, lugar):
+    from apps.lugares.models import Lugar
+    from apps.territorio.models import Comuna, Direccion
+
+    otra = Comuna.objects.create(provincia=lugar.direccion.comuna.provincia, codigo="99002", nombre="Otra Comuna")
+    Lugar.objects.create(nombre="Sala Ficticia", tipo=lugar.tipo, direccion=Direccion.objects.create(comuna=otra))
+    html = cg.get(f"/actividades/{actividad.pk}/programar").content.decode()
+    assert "Sala Ficticia — Comuna Ficticia (capacidad 20)" in html and "Sala Ficticia — Otra Comuna (capacidad sin registrar)" in html
+
+
+def test_OR_E6_cambio_de_administracion_cierra_autoridades(cg, crear_persona):
+    from apps.nucleo.models import TipoOrganizacion
+    from apps.organizaciones.models import Organizacion
+    from apps.personas.models import PersonaOrganizacion
+
+    muni = Organizacion.objects.create(nombre="Muni Ficticia", tipo=TipoOrganizacion.objects.get(codigo="municipalidad"))
+    alcalde = PersonaOrganizacion.objects.create(persona=crear_persona("Alcalde"), organizacion=muni, cargo="Alcalde", tipo_cargo="autoridad", fecha_inicio=date(2024, 12, 6))
+    oficina = PersonaOrganizacion.objects.create(persona=crear_persona("Secretaria"), organizacion=muni, cargo="Secretaria", tipo_cargo="funcional")
+    assert "Cerrar cargos de autoridad" in cg.get(f"{muni.get_absolute_url()}?tab=personas").content.decode()
+    cg.post(f"/organizaciones/{muni.pk}/cerrar-autoridades", {"hasta": "2028-12-05"})
+    alcalde.refresh_from_db()
+    oficina.refresh_from_db()
+    assert alcalde.fecha_termino == date(2028, 12, 5) and oficina.fecha_termino is None
+
+
+def test_CD_E3_autoridades_por_verificar_en_el_panel(cg, crear_persona, universidad):
+    from apps.personas.models import PersonaOrganizacion
+
+    PersonaOrganizacion.objects.create(persona=crear_persona("Concejal"), organizacion=universidad, cargo="Concejal", tipo_cargo="autoridad", fecha_inicio=date.today() - timedelta(days=500))
+    PersonaOrganizacion.objects.create(persona=crear_persona("Reciente"), organizacion=universidad, cargo="Decano", tipo_cargo="autoridad", fecha_inicio=date.today() - timedelta(days=30))
+    html = cg.get("/dashboard").content.decode()
+    assert "Verificar si sigue vigente: Concejal" in html and "Reciente" not in html

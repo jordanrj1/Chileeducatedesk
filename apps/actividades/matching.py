@@ -67,7 +67,9 @@ def buscar_personas(actividad, texto="", area="", institucion=None, carrera=None
 
 def buscar_lugares(actividad, cantidad=None, comuna=None, texto="", limite=40):
     agenda = actividad.agenda_vigente
-    cantidad = cantidad or len(participaciones_activas(actividad)) or None
+    from .reglas import personas_que_ocupan
+
+    cantidad = cantidad or len(personas_que_ocupan(actividad)) or None
     qs = Lugar.objects.filter(activo=True).select_related("direccion__comuna", "tipo")
     if comuna:
         qs = qs.filter(direccion__comuna_id=comuna)

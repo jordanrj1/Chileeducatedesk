@@ -317,12 +317,25 @@ class FichaBase(Permiso403Mixin, DetailView):
 
 
 class AlternarActivoBase(Permiso403Mixin, View):
-    """Desactiva o reactiva un registro. Nunca borra (docs/CONTEXTO.md §3)."""
+    """Desactiva o reactiva un registro. Nunca borra (docs/CONTEXTO.md §3).
+
+    NR-06: si al desactivar hay actividades futuras afectadas, primero las muestra y pide confirmar.
+    """
 
     modelo = None
 
+    def afectados(self, obj):
+        """[(texto, url)] de actividades futuras que dependen de este registro."""
+        return []
+
     def post(self, request, pk):
         obj = get_object_or_404(self.modelo, pk=pk)
+        if obj.activo and not request.POST.get("confirmar"):
+            afectados = self.afectados(obj)
+            if afectados:
+                from django.shortcuts import render
+
+                return render(request, "generico/desactivar.html", {"obj": obj, "afectados": afectados, "titulo": f"Desactivar «{obj}»", "breadcrumb": []})
         obj.activo = not obj.activo
         obj.save()
         messages.success(request, "Registro activado." if obj.activo else "Registro desactivado.")

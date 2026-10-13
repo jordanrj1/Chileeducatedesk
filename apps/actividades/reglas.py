@@ -52,6 +52,16 @@ def participaciones_activas(actividad):
     return [p for p in actividad.participaciones.select_related("persona", "rol", "estado") if p.activa]
 
 
+def personas_que_ocupan(actividad, activas=None):
+    """Personas distintas que ocupan cupo (AT-E9: alguien con dos roles cuenta una vez).
+
+    AT-E10 [V]: los roles de ROLES_FUERA_DE_CAPACIDAD (p. ej. tutor) no cuentan. Hoy cuentan todos.
+    """
+    fuera = set(getattr(settings, "ROLES_FUERA_DE_CAPACIDAD", []))
+    activas = participaciones_activas(actividad) if activas is None else activas
+    return {p.persona_id for p in activas if p.rol.codigo not in fuera}
+
+
 def conflictos_de_persona(persona, agenda, excluir_actividad=None):
     """Otras actividades que ocupan a la persona (como participante activa o responsable) en el mismo horario."""
     from django.db.models import Q
@@ -108,8 +118,9 @@ def revisar(actividad, hoy=None):
         if lugar:
             if not lugar.activo:
                 res.append(Problema("critico", "lugar_inactivo", f"El lugar «{lugar}» está desactivado."))
-            if lugar.capacidad is not None and len(activas) > lugar.capacidad:
-                res.append(Problema("critico", "capacidad", f"Hay {len(activas)} participantes y el lugar «{lugar}» tiene capacidad para {lugar.capacidad}."))
+            ocupan = len(personas_que_ocupan(actividad, activas))
+            if lugar.capacidad is not None and ocupan > lugar.capacidad:
+                res.append(Problema("critico", "capacidad", f"Hay {ocupan} participantes y el lugar «{lugar}» tiene capacidad para {lugar.capacidad}."))
             elif lugar.capacidad is None and activas:
                 res.append(Problema("advertencia", "capacidad_desconocida", f"El lugar «{lugar}» no tiene capacidad registrada."))
             mio = intervalo(agenda.hora_inicio, agenda.hora_fin)
@@ -152,7 +163,7 @@ def _compatibles(actividad, agenda, lugar, activas, codigos):
         elif not lugar and actividad.es_virtual:
             ok.append(Problema("ok", "virtual_ok", "Modalidad virtual: no requiere lugar."))
         if lugar and lugar.capacidad is not None and "capacidad" not in codigos:
-            ok.append(Problema("ok", "capacidad_ok", f"Capacidad compatible: {len(activas)} de {lugar.capacidad}."))
+            ok.append(Problema("ok", "capacidad_ok", f"Capacidad compatible: {len(personas_que_ocupan(actividad, activas))} de {lugar.capacidad}."))
         if activas and not codigos & {"persona_ocupada", "fuera_de_disponibilidad"}:
             ok.append(Problema("ok", "horarios_ok", "Sin choques de horario de las personas."))
     return ok

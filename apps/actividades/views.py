@@ -228,8 +228,10 @@ class ActividadFicha(FichaBase):
     def _capacidad(self):
         ag = self.object.agenda_vigente
         if ag and ag.lugar and ag.lugar.capacidad is not None:
-            partes = list(self.object.participaciones.select_related("estado"))
-            n = sum(1 for p in partes if p.activa)
+            from .reglas import personas_que_ocupan
+
+            partes = list(self.object.participaciones.select_related("estado", "rol"))
+            n = len(personas_que_ocupan(self.object, [p for p in partes if p.activa]))
             espera = sum(1 for p in partes if p.en_espera)
             return {"n": n, "capacidad": ag.lugar.capacidad, "excede": n > ag.lugar.capacidad, "lleno": n >= ag.lugar.capacidad, "espera": espera}
         return None

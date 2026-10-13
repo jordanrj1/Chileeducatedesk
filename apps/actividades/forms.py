@@ -1,6 +1,7 @@
 from django import forms
 from django.urls import reverse_lazy
 
+from apps.lugares.campos import LugarChoiceField
 from apps.lugares.models import Lugar
 from apps.nucleo.formularios import BootstrapMixin, SelectorField
 from apps.nucleo.models import EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion
@@ -42,7 +43,7 @@ class ProgramarForm(BootstrapMixin, forms.Form):
     hora_inicio = forms.TimeField(label="Hora de inicio", widget=forms.TimeInput)
     hora_fin = forms.TimeField(label="Hora de término", widget=forms.TimeInput, required=False)
     duracion = forms.IntegerField(label="o duración (minutos)", required=False, min_value=1, max_value=24 * 60, help_text="Si indicas la duración, se calcula la hora de término.")
-    lugar = forms.ModelChoiceField(Lugar.objects.filter(activo=True), required=False)
+    lugar = LugarChoiceField(required=False)
     modalidad = forms.ModelChoiceField(Modalidad.objects.filter(activo=True), required=False)
     motivo = forms.CharField(label="Motivo del cambio", max_length=250, required=False, help_text="Obligatorio al reprogramar.")
 
@@ -74,7 +75,7 @@ class SerieForm(BootstrapMixin, forms.Form):
     repeticiones = forms.IntegerField(min_value=2, max_value=52, initial=4, help_text="Entre 2 y 52.")
     hora_inicio = forms.TimeField(widget=forms.TimeInput)
     hora_fin = forms.TimeField(widget=forms.TimeInput, required=False)
-    lugar = forms.ModelChoiceField(Lugar.objects.filter(activo=True), required=False)
+    lugar = LugarChoiceField(required=False)
 
     def clean(self):
         d = super().clean()
@@ -177,7 +178,8 @@ class SesionForm(BootstrapMixin, forms.ModelForm):
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
-        self.fields["lugar"].queryset = Lugar.objects.filter(activo=True)
+        self.fields["lugar"] = LugarChoiceField(required=False)
+        self.fields["lugar"].widget.attrs["class"] = "form-select"
 
 
 class TerritorioForm(BootstrapMixin, forms.ModelForm):

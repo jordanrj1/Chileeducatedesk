@@ -1,4 +1,5 @@
 """Tarjetas del dashboard: qué tengo que hacer hoy."""
+from django.db import models
 from django.utils import timezone
 
 
@@ -88,6 +89,16 @@ def _por_vencer(user, hoy, dias=30):
 
         for o in Organizacion.objects.filter(activo=True, vigencia_hasta__isnull=False, vigencia_hasta__lte=limite):
             items.append((f"Vigencia legal de {o.nombre}", o.get_absolute_url(), f"hasta {o.vigencia_hasta:%d-%m-%Y}", o.vigencia_hasta))
+    if user.has_perm("personas.view_personaorganizacion"):
+        puede = True
+        from apps.personas.models import PersonaOrganizacion
+
+        hace_un_anio = hoy - timedelta(days=365)
+        for v in PersonaOrganizacion.objects.filter(tipo_cargo="autoridad", fecha_termino__isnull=True, persona__activo=True).filter(
+            models.Q(fecha_inicio__isnull=True) | models.Q(fecha_inicio__lt=hace_un_anio)
+        ).select_related("persona", "organizacion")[:20]:
+            items.append((f"Verificar si sigue vigente: {v.persona}, {v.cargo or 'autoridad'} en {v.organizacion}", f"{v.organizacion.get_absolute_url()}?tab=personas",
+                          f"desde {v.fecha_inicio:%d-%m-%Y}" if v.fecha_inicio else "sin fecha de inicio", v.fecha_inicio or hoy))
     if not puede:
         return None
     return [(t, u, d) for t, u, d, _ in sorted(items, key=lambda x: x[3])]

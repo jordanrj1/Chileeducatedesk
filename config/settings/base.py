@@ -97,6 +97,9 @@ SEGUNDA_FASE = env.bool("SEGUNDA_FASE", default=False)
 # Para habilitar solo algunos: reuniones, tareas, sesiones, beneficiarios, verificaciones, postulaciones, finanzas
 MODULOS_SEGUNDA_FASE = env.list("MODULOS_SEGUNDA_FASE", default=[])
 
+# AT-E10 [V]: códigos de roles que no ocupan cupo del lugar (p. ej. tutor,coordinador). Vacío = cuentan todos.
+ROLES_FUERA_DE_CAPACIDAD = env.list("ROLES_FUERA_DE_CAPACIDAD", default=[])
+
 # [V#3] ¿Se puede confirmar una actividad con incompatibilidad crítica, con motivo? Hoy: no.
 CONFIRMAR_CON_CONFLICTO_CRITICO = env.bool("CONFIRMAR_CON_CONFLICTO_CRITICO", default=False)
 
