@@ -689,3 +689,75 @@ def test_IN_E3_respuesta_ambigua_queda_como_interesado(cg, actividad, crear_pers
     cg.post("/invitaciones/nueva", datos)
     part = actividad.participaciones.get(persona=p)
     assert part.estado.codigo == "interesado" and Invitacion.objects.count() == 1
+
+
+# --- Iteración 6: documentos ----------------------------------------------------------------------------------------
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: E402
+
+from apps.documentos.models import Documento  # noqa: E402
+
+
+def _subir(c, actividad, contenido=b"%PDF-1 mismo contenido", nombre="acta.pdf", **extra):
+    from apps.nucleo.models import TipoDocumento
+
+    datos = {"nombre": nombre, "archivo": SimpleUploadedFile(nombre, contenido), "tipo": TipoDocumento.objects.get(codigo="acta").pk, "fecha": str(HOY), "actividad": actividad.pk}
+    datos.update(extra)
+    return c.post("/documentos/nuevo", datos)
+
+
+def test_DO_E3_mismo_archivo_dos_veces(cg, actividad):
+    _subir(cg, actividad)
+    r = _subir(cg, actividad, nombre="otro_nombre.pdf")
+    assert r.status_code == 200 and "Este archivo ya está en el sistema" in r.content.decode() and Documento.objects.count() == 1
+    assert _subir(cg, actividad, nombre="otro_nombre.pdf", subir_igual="1").status_code == 302 and Documento.objects.count() == 2
+    assert _subir(cg, actividad, contenido=b"%PDF-1 distinto", nombre="distinto.pdf").status_code == 302
+
+
+def test_DO_E6_reemplazar_archivo_conserva_versiones(cg, actividad):
+    _subir(cg, actividad, contenido=b"%PDF ilegible")
+    viejo = Documento.objects.get()
+    r = cg.post(f"/documentos/{viejo.pk}/reemplazar", {"archivo": SimpleUploadedFile("acta_v2.pdf", b"%PDF legible"), "motivo": "Escaneo torcido"})
+    nuevo = Documento.objects.exclude(pk=viejo.pk).get()
+    viejo.refresh_from_db()
+    assert r.status_code == 302 and nuevo.reemplaza == viejo and not viejo.activo and nuevo.actividad == actividad
+    assert "Versión anterior" in cg.get(nuevo.get_absolute_url()).content.decode()
+    assert "ver la versión actual" in cg.get(viejo.get_absolute_url()).content.decode()
+    assert viejo.archivo.storage.exists(viejo.archivo.name)  # el archivo anterior se conserva
+
+
+def test_DO_E4_reasignar_documento_queda_registrado(cg, actividad, persona, crear_persona):
+    from apps.nucleo.models import TipoDocumento
+
+    cg.post("/documentos/nuevo", {"nombre": "CV", "archivo": SimpleUploadedFile("cv.pdf", b"%PDF cv"), "tipo": TipoDocumento.objects.get(codigo="otro").pk, "fecha": str(HOY), "persona": persona.pk})
+    d = Documento.objects.get()
+    correcta = crear_persona("Correcta")
+    cg.post(f"/documentos/{d.pk}/editar", {"nombre": "CV", "tipo": d.tipo_id, "fecha": str(HOY), "persona": correcta.pk})
+    d.refresh_from_db()
+    assert d.persona == correcta and Auditoria.objects.filter(accion="documento_reasignado").exists()
+
+
+def test_DO_E9_archivar_pide_motivo(cg, actividad):
+    _subir(cg, actividad)
+    d = Documento.objects.get()
+    cg.post(f"/documentos/{d.pk}/alternar", {"motivo": "Era de otra actividad"})
+    assert Auditoria.objects.filter(accion="documento_archivado", detalle="Era de otra actividad").exists()
+
+
+def test_DO_E13_archivo_que_desaparecio(cg, actividad):
+    _subir(cg, actividad)
+    d = Documento.objects.get()
+    d.archivo.storage.delete(d.archivo.name)
+    assert "no se encuentra en el servidor" in cg.get(d.get_absolute_url()).content.decode()
+    assert cg.get(f"/documentos/{d.pk}/archivo").status_code == 404
+    assert Auditoria.objects.filter(accion="archivo_no_encontrado").count() >= 2
+
+
+def test_SE_E3_exportacion_con_aviso(cg, persona):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    libro = load_workbook(BytesIO(cg.get("/personas/exportar").content))
+    assert "Aviso" in libro.sheetnames and "datos personales" in libro["Aviso"]["A1"].value and "gestor_prueba" in libro["Aviso"]["A2"].value
+    libro = load_workbook(BytesIO(cg.get(f"/personas/{persona.pk}/datos-personales").content))
+    assert "Aviso" in libro.sheetnames

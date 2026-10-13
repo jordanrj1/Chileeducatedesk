@@ -48,6 +48,8 @@ class Documento(models.Model):
     fecha_emision = models.DateField("fecha de emisión", null=True, blank=True)
     fecha_vencimiento = models.DateField("vence el", null=True, blank=True, help_text="Para certificados y documentos con vigencia (DO-06).")
     activo = models.BooleanField(default=True)
+    huella = models.CharField("huella del archivo (SHA-256)", max_length=64, blank=True, db_index=True, editable=False)
+    reemplaza = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="reemplazado_por", verbose_name="versión anterior")
     subido_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     subido_en = models.DateTimeField(auto_now_add=True)
 
@@ -71,6 +73,34 @@ class Documento(models.Model):
 
     def get_absolute_url(self):
         return reverse("documentos:ficha", args=[self.pk])
+
+    @staticmethod
+    def calcular_huella(archivo):
+        """SHA-256 del contenido: detecta el mismo archivo aunque tenga otro nombre (DO-E3)."""
+        import hashlib
+
+        h = hashlib.sha256()
+        pos = archivo.tell() if hasattr(archivo, "tell") else 0
+        archivo.seek(0)
+        for bloque in iter(lambda: archivo.read(1024 * 1024), b""):
+            h.update(bloque)
+        archivo.seek(pos)
+        return h.hexdigest()
+
+    def save(self, *args, **kwargs):
+        if not self.huella and self.archivo:
+            try:
+                self.huella = self.calcular_huella(self.archivo)
+            except (FileNotFoundError, ValueError, OSError):
+                pass
+        super().save(*args, **kwargs)
+
+    @property
+    def archivo_existe(self):
+        try:
+            return bool(self.archivo) and self.archivo.storage.exists(self.archivo.name)
+        except Exception:
+            return False
 
     @property
     def vencido(self):

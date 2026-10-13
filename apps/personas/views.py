@@ -308,6 +308,9 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
             h.append(encabezados)
             for fila in filas:
                 h.append([_seguro(v) for v in fila])
+        from apps.nucleo.exportacion import agregar_aviso
+
+        agregar_aviso(libro, request.user)
         buffer = BytesIO()
         libro.save(buffer)
         registrar(request.user, "datos_personales_exportados", p, "derecho de acceso")

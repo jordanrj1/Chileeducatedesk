@@ -112,7 +112,7 @@ class DocumentoNuevo(Permiso403Mixin, CreateView):
     model = Documento
     form_class = DocumentoForm
     permission_required = "documentos.add_documento"
-    template_name = "generico/formulario.html"
+    template_name = "documentos/nuevo.html"
 
     def get_form_kwargs(self):
         kw = super().get_form_kwargs()
@@ -132,8 +132,16 @@ class DocumentoNuevo(Permiso403Mixin, CreateView):
         return ctx
 
     def form_valid(self, form):
+        huella = Documento.calcular_huella(form.cleaned_data["archivo"])
+        if not self.request.POST.get("subir_igual"):
+            iguales = Documento.objects.filter(huella=huella, activo=True)
+            if not self.request.user.has_perm("documentos.ver_restringido"):
+                iguales = iguales.filter(restringido=False)
+            if iguales.exists():  # DO-E3: el mismo archivo ya está
+                return self.render_to_response(self.get_context_data(form=form, iguales=iguales[:5]))
         obj = form.save(commit=False)
         obj.subido_por = self.request.user
+        obj.huella = huella
         obj.save()
         registrar(self.request.user, "documento_subido", obj, "restringido" if obj.restringido else "")
         for destino in (obj.actividad, obj.proyecto, obj.persona, obj.organizacion, obj.solicitud):
@@ -166,7 +174,14 @@ class DocumentoEditar(Permiso403Mixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
+        antes = Documento.objects.get(pk=self.object.pk)
         obj = form.save()
+        campos = ("actividad_id", "proyecto_id", "persona_id", "organizacion_id", "solicitud_id")
+        if any(getattr(antes, c) != getattr(obj, c) for c in campos):  # DO-E4: reasignación con registro
+            registrar(self.request.user, "documento_reasignado", obj, f"antes: {antes.actividad or antes.proyecto or antes.persona or antes.organizacion or antes.solicitud}")
+        if form.cleaned_data.get("archivo") and antes.archivo.name != obj.archivo.name:
+            obj.huella = Documento.calcular_huella(obj.archivo)
+            obj.save(update_fields=["huella"])
         messages.success(self.request, "Documento actualizado.")
         return HttpResponseRedirect(obj.get_absolute_url())
 
@@ -185,8 +200,12 @@ class DocumentoFicha(FichaBase):
         return obj
 
     def contexto_ficha(self):
-        return {"url_editar": reverse("documentos:editar", args=[self.object.pk]), "url_volver": "/documentos", "puede_agregar": self.request.user.has_perm("documentos.change_documento"),
-                "origenes": self.object.origenes.all()}
+        d = self.object
+        existe = d.archivo_existe
+        if not existe:
+            registrar(self.request.user, "archivo_no_encontrado", d, d.archivo.name)
+        return {"url_editar": reverse("documentos:editar", args=[d.pk]), "url_volver": "/documentos", "puede_agregar": self.request.user.has_perm("documentos.change_documento"),
+                "origenes": d.origenes.all(), "archivo_existe": existe, "versiones_siguientes": d.reemplazado_por.all()}
 
 
 class DocumentoAlternar(Permiso403Mixin, View):
@@ -198,10 +217,65 @@ class DocumentoAlternar(Permiso403Mixin, View):
         d = get_object_or_404(Documento, pk=pk)
         if d.restringido and not request.user.has_perm("documentos.ver_restringido"):
             raise PermissionDenied
+        motivo = request.POST.get("motivo", "").strip()
+        if d.activo and not motivo:  # DO-E9: retirar pide motivo
+            messages.error(request, "Indica por qué se archiva el documento.")
+            return HttpResponseRedirect(d.get_absolute_url())
         d.activo = not d.activo
         d.save(update_fields=["activo"])
+        registrar(request.user, "documento_restaurado" if d.activo else "documento_archivado", d, motivo)
         messages.success(request, "Documento restaurado." if d.activo else "Documento archivado; el archivo se conserva.")
         return HttpResponseRedirect(d.get_absolute_url())
+
+
+class DocumentoReemplazar(Permiso403Mixin, View):
+    """DO-E6: nueva versión del archivo (p. ej. un escaneo mejor). La anterior queda archivada y enlazada."""
+
+    permission_required = "documentos.change_documento"
+
+    def _form(self, data=None, files=None):
+        from django import forms as f
+
+        from .models import validar_archivo
+
+        class F(f.Form):
+            archivo = f.FileField(validators=[validar_archivo], label="Archivo nuevo")
+            motivo = f.CharField(max_length=200, label="Motivo")
+
+        form = F(data, files)
+        form.fields["archivo"].widget.attrs["class"] = "form-control"
+        form.fields["motivo"].widget.attrs["class"] = "form-control"
+        return form
+
+    def _doc(self, request, pk):
+        d = get_object_or_404(Documento, pk=pk)
+        if d.restringido and not request.user.has_perm("documentos.ver_restringido"):
+            raise PermissionDenied
+        return d
+
+    def get(self, request, pk):
+        d = self._doc(request, pk)
+        return render(request, "generico/formulario.html", {"form": self._form(), "titulo": f"Reemplazar archivo de «{d.nombre}»", "volver_url": d.get_absolute_url(), "breadcrumb": [("Documentos", "/documentos")]})
+
+    def post(self, request, pk):
+        from django.db import transaction
+
+        d = self._doc(request, pk)
+        form = self._form(request.POST, request.FILES)
+        if not form.is_valid():
+            return render(request, "generico/formulario.html", {"form": form, "titulo": f"Reemplazar archivo de «{d.nombre}»", "volver_url": d.get_absolute_url(), "breadcrumb": []}, status=400)
+        with transaction.atomic():
+            nuevo = Documento(
+                nombre=d.nombre, tipo=d.tipo, fecha=d.fecha, descripcion=d.descripcion, actividad=d.actividad, proyecto=d.proyecto, persona=d.persona,
+                organizacion=d.organizacion, solicitud=d.solicitud, restringido=d.restringido, folio=d.folio, emisor=d.emisor,
+                fecha_emision=d.fecha_emision, fecha_vencimiento=d.fecha_vencimiento, reemplaza=d, subido_por=request.user, archivo=form.cleaned_data["archivo"],
+            )
+            nuevo.save()
+            d.activo = False
+            d.save(update_fields=["activo"])
+            registrar(request.user, "documento_reemplazado", nuevo, f"versión anterior #{d.pk}: {form.cleaned_data['motivo']}")
+        messages.success(request, "Archivo reemplazado. La versión anterior queda archivada y enlazada.")
+        return HttpResponseRedirect(nuevo.get_absolute_url())
 
 
 class DocumentoArchivo(Permiso403Mixin, View):
@@ -215,7 +289,8 @@ class DocumentoArchivo(Permiso403Mixin, View):
             raise PermissionDenied
         try:
             f = d.archivo.open("rb")
-        except (FileNotFoundError, ValueError):
+        except (FileNotFoundError, ValueError, OSError):
+            registrar(request.user, "archivo_no_encontrado", d, d.archivo.name)  # DO-E13
             raise Http404("El archivo no está disponible en el servidor.")
         tipo = mimetypes.guess_type(d.archivo.name)[0] or "application/octet-stream"
         registrar(request.user, "documento_descargado", d, "restringido" if d.restringido else "")
