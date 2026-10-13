@@ -1,8 +1,15 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}Roles{% endblock %}
-{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">Roles</li>{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">Roles</li>{% endblock %}
 {% block contenido %}
-<h1 class="h4">Roles</h1>
-<table class="table" style="max-width:40rem;"><thead><tr><th>Rol</th><th>Usuarios</th><th>Permisos</th><th></th></tr></thead>
-<tbody>{% for g, nu, np in roles %}<tr><td>{{ g.name }}</td><td>{{ nu }}</td><td>{{ np }}</td><td>{% if perms.auth.change_group %}<a class="btn btn-outline-primary btn-sm" href="/administracion/roles/{{ g.pk }}">Configurar permisos</a>{% endif %}</td></tr>{% endfor %}</tbody></table>
+<header class="fche-pagina"><div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Configuración</p><h1 class="fche-pagina__titulo">Roles</h1>
+<p class="fche-pagina__bajada">Cada usuario tiene un rol; el rol define qué puede ver y hacer.</p></div></header>
+<div class="fche-mosaico">{% for g, nu, np in roles %}
+  <div class="fche-mosaico__item flex-column">
+    <div class="d-flex gap-3 align-items-center"><span class="fche-mosaico__icono">{% icono "candado" 20 %}</span><span class="fche-mosaico__titulo fs-6">{{ g.name }}</span></div>
+    <div class="d-flex gap-4 small text-muted"><span><strong class="text-body fche-num">{{ nu }}</strong> usuario{{ nu|pluralize }}</span><span><strong class="text-body fche-num">{{ np }}</strong> permiso{{ np|pluralize }}</span></div>
+    {% if perms.auth.change_group %}<a class="btn btn-outline-primary btn-sm align-self-start" href="/administracion/roles/{{ g.pk }}">Configurar permisos</a>{% endif %}
+  </div>{% endfor %}
+</div>
 {% endblock %}

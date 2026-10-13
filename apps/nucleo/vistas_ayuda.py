@@ -18,15 +18,21 @@ def _en_linea(texto):
     return t
 
 
-def markdown_simple(md):
+def markdown_simple(md, indice=None):
+    """Markdown mínimo del manual. Si se pasa `indice` (lista), se llena con (ancla, título) de cada sección «##»."""
+    from django.utils.text import slugify
+
     html, lista = [], None
     for linea in md.splitlines():
         if lista and not re.match(r"^\s*(-|\d+\.)\s", linea):
             html.append(f"</{lista}>")
             lista = None
         if m := re.match(r"^(#{1,3})\s+(.*)", linea):
-            nivel = len(m.group(1)) + 1
-            html.append(f"<h{nivel} class='h{nivel + 2} mt-3'>{_en_linea(m.group(2))}</h{nivel}>")
+            nivel = len(m.group(1))
+            ancla = slugify(m.group(2)) or f"seccion-{len(html)}"
+            if nivel == 2 and indice is not None:
+                indice.append((ancla, m.group(2)))
+            html.append(f"<h{nivel} id='{ancla}'>{_en_linea(m.group(2))}</h{nivel}>")
         elif m := re.match(r"^\s*(-|\d+\.)\s+(.*)", linea):
             tipo = "ol" if m.group(1)[0].isdigit() else "ul"
             if lista != tipo:
@@ -51,6 +57,8 @@ class Ayuda(Permiso403Mixin, TemplateView):
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ruta = Path(settings.BASE_DIR) / "docs" / "manual_de_uso.md"
-        ctx["manual"] = markdown_simple(ruta.read_text(encoding="utf-8")) if ruta.exists() else "El manual no está disponible."
+        indice = []
+        ctx["manual"] = markdown_simple(ruta.read_text(encoding="utf-8"), indice) if ruta.exists() else "El manual no está disponible."
+        ctx["indice"] = indice
         ctx["titulo"] = "Ayuda"
         return ctx

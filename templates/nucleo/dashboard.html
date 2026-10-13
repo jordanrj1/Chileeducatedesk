@@ -1,27 +1,102 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}Inicio{% endblock %}
+{% block descripcion %}Resumen del día: actividades próximas, pendientes y accesos rápidos.{% endblock %}
+{% block migas %}{% endblock %}
 {% block contenido %}
-<h1 class="h4 mb-3">Qué tengo que hacer hoy</h1>
-<div class="row g-3">
+<header class="fche-pagina">
+  <div class="fche-pagina__texto">
+    <p class="fche-pagina__antetitulo">{{ hoy|date:"l j \d\e F" }}</p>
+    <h1 class="fche-pagina__titulo">{{ saludo }}{% if user.first_name %}, {{ user.first_name }}{% endif %}</h1>
+    <p class="fche-pagina__bajada">Qué tengo que hacer hoy: lo que viene esta semana y lo que necesita atención.</p>
+  </div>
+</header>
+
+{% if sistema %}
+<section class="alert alert-warning mb-4" aria-labelledby="estado-sistema">
+  <div class="d-flex gap-2 align-items-start">{% icono "alerta" 20 %}
+    <div class="flex-grow-1"><h2 class="h6 mb-1" id="estado-sistema">{{ sistema.titulo }}</h2>
+      <ul class="mb-0 ps-3">{% for nombre, url, detalle in sistema.items %}<li>{% if url != "#" %}<a href="{{ url }}">{{ nombre }}</a>{% else %}{{ nombre }}{% endif %} <span class="small">· {{ detalle }}</span></li>{% endfor %}</ul>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if proximas or tarjetas %}
+<div class="fche-kpis" role="list" aria-label="Resumen">
+  {% if proximas %}
+  <a class="fche-kpi" role="listitem" href="/calendario">
+    <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "calendario" 18 %}</span>Próximos 7 días</span>
+    <span class="fche-kpi__valor">{{ proximas.total }}</span>
+    <span class="fche-kpi__nota">actividad{{ proximas.total|pluralize:"es" }} programada{{ proximas.total|pluralize }}</span>
+  </a>
+  {% endif %}
+  {% for t in tarjetas|slice:":4" %}
+  <a class="fche-kpi {% if t.total %}fche-kpi--atencion{% else %}fche-kpi--ok{% endif %}" role="listitem" href="{% if t.url %}{{ t.url }}{% else %}#tarjeta-{{ forloop.counter }}{% endif %}">
+    <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono t.icono 18 %}</span>{{ t.titulo }}</span>
+    <span class="fche-kpi__valor">{{ t.total }}</span>
+    <span class="fche-kpi__nota">{% if t.total %}requiere{{ t.total|pluralize:"n" }} atención{% else %}al día{% endif %}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-4 mb-4">
+  {% if proximas %}
+  <div class="col-12 col-xl-8">
+    <section class="fche-tarjeta fche-pendiente" aria-labelledby="proximas-titulo">
+      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo" id="proximas-titulo">{% icono "calendario" 18 "text-primary" %}Próximas actividades</h2><a class="small" href="/calendario">Ver calendario</a></div>
+      {% if proximas.items %}
+      <ul class="fche-pendiente__lista">
+        {% for ag in proximas.items %}
+        <li>
+          <div class="d-flex gap-3 align-items-center min-w-0">
+            <span class="text-center flex-shrink-0" style="width:2.75rem;"><span class="d-block small text-uppercase fw-semibold {% if ag.fecha == proximas.hoy %}text-primary{% else %}text-muted{% endif %}" style="font-size:.68rem;letter-spacing:.06em;">{% if ag.fecha == proximas.hoy %}Hoy{% else %}{{ ag.fecha|date:"D" }}{% endif %}</span><span class="d-block fw-bold fs-5 lh-1 fche-num">{{ ag.fecha|date:"j" }}</span></span>
+            <div class="min-w-0"><a href="{{ ag.actividad.get_absolute_url }}">{{ ag.actividad.nombre }}</a>
+              <div class="small text-muted">{% if ag.hora_inicio %}{{ ag.hora_inicio|time:"H:i" }}{% else %}Sin hora{% endif %}{% if ag.lugar %} · {{ ag.lugar }}{% endif %}{% if ag.ultimo_minuto %} · <span class="text-warning-emphasis">cambio de último minuto</span>{% endif %}</div></div>
+          </div>
+          <span class="fche-pendiente__detalle">{% estado ag.actividad.estado %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="fche-pendiente__vacio">{% icono "calendario" 18 %}No hay actividades programadas para los próximos 7 días.</div>{% endif %}
+    </section>
+  </div>
+  {% endif %}
+  <div class="col-12 {% if proximas %}col-xl-4{% endif %}">
+    <section class="fche-tarjeta h-100" aria-labelledby="accesos-titulo">
+      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo" id="accesos-titulo">{% icono "rayo" 18 "text-primary" %}Acciones rápidas</h2></div>
+      <div class="fche-tarjeta__cuerpo"><div class="fche-accesos">
+        {% if perms.solicitudes.add_solicitud %}<a class="fche-acceso" href="/solicitudes/nueva"><span class="fche-acceso__icono">{% icono "solicitudes" 17 %}</span>+ Solicitud</a>
+        <a class="fche-acceso" href="/solicitudes/nueva?oportunidad=1"><span class="fche-acceso__icono">{% icono "tendencia" 17 %}</span>+ Oportunidad</a>{% endif %}
+        {% if perms.actividades.add_actividad %}<a class="fche-acceso" href="/actividades/nueva"><span class="fche-acceso__icono">{% icono "actividades" 17 %}</span>+ Actividad</a>{% endif %}
+        {% if perms.personas.add_persona %}<a class="fche-acceso" href="/personas/nueva"><span class="fche-acceso__icono">{% icono "persona_mas" 17 %}</span>+ Persona</a>{% endif %}
+        {% if perms.organizaciones.add_organizacion %}<a class="fche-acceso" href="/organizaciones/nueva"><span class="fche-acceso__icono">{% icono "organizaciones" 17 %}</span>+ Organización</a>{% endif %}
+        {% if perms.lugares.add_lugar %}<a class="fche-acceso" href="/lugares/nuevo"><span class="fche-acceso__icono">{% icono "lugares" 17 %}</span>+ Lugar</a>{% endif %}
+      </div></div>
+    </section>
+  </div>
+</div>
+
+<h2 class="h6 mb-3">Pendientes</h2>
+<div class="row g-4">
 {% for t in tarjetas %}
-  <div class="col-12 col-md-6">
-    <div class="card h-100"><div class="card-header d-flex justify-content-between"><strong>{{ t.titulo }}</strong>{% if t.url %}<a class="small" href="{{ t.url }}">Ver todo</a>{% endif %}</div>
-      <ul class="list-group list-group-flush">
-        {% for nombre, url, detalle in t.items %}<li class="list-group-item d-flex justify-content-between"><a href="{{ url }}">{{ nombre }}</a><span class="text-muted small">{{ detalle }}</span></li>
-        {% empty %}<li class="list-group-item text-muted">{{ t.vacio }}</li>{% endfor %}
-      </ul></div>
+  <div class="col-12 col-lg-6 col-xxl-4" id="tarjeta-{{ forloop.counter }}">
+    <section class="fche-tarjeta fche-pendiente" aria-label="{{ t.titulo }}">
+      <div class="fche-tarjeta__cabecera">
+        <h3 class="fche-tarjeta__titulo">{% icono t.icono 18 "text-muted" %}<strong>{{ t.titulo }}</strong>{% if t.total %} <span class="fche-contador">{{ t.total }}</span>{% endif %}</h3>
+        {% if t.url and t.total %}<a class="small text-nowrap" href="{{ t.url }}">Ver todo</a>{% endif %}
+      </div>
+      {% if t.items %}
+      <ul class="fche-pendiente__lista">
+        {% for nombre, url, detalle in t.items %}<li><a href="{{ url }}">{{ nombre }}</a>{% if detalle %}<span class="fche-pendiente__detalle">{{ detalle }}</span>{% endif %}</li>{% endfor %}
+      </ul>
+      {% if t.total > t.items|length %}<div class="fche-tarjeta__pie small text-muted">y {{ t.total|add:"-8" }} más{% if t.url %} · <a href="{{ t.url }}">ver todos</a>{% endif %}</div>{% endif %}
+      {% else %}<div class="fche-pendiente__vacio">{% icono "ok" 18 %}{{ t.vacio }}</div>{% endif %}
+    </section>
   </div>
 {% empty %}
-  <p class="text-muted">Aún no hay información que mostrar.</p>
+  <div class="col-12"><div class="fche-vacio"><span class="fche-vacio__icono">{% icono "ok" 22 %}</span><p class="fche-vacio__titulo">Aún no hay información que mostrar.</p></div></div>
 {% endfor %}
-</div>
-<h2 class="h6 mt-4">Acciones rápidas</h2>
-<div class="d-flex flex-wrap gap-2">
-  {% if perms.solicitudes.add_solicitud %}<a class="btn btn-outline-primary btn-sm" href="/solicitudes/nueva">+ Solicitud</a>
-  <a class="btn btn-outline-primary btn-sm" href="/solicitudes/nueva?oportunidad=1">+ Oportunidad</a>{% endif %}
-  {% if perms.actividades.add_actividad %}<a class="btn btn-outline-primary btn-sm" href="/actividades/nueva">+ Actividad</a>{% endif %}
-  {% if perms.personas.add_persona %}<a class="btn btn-outline-primary btn-sm" href="/personas/nueva">+ Persona</a>{% endif %}
-  {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva">+ Organización</a>{% endif %}
-  {% if perms.lugares.add_lugar %}<a class="btn btn-outline-primary btn-sm" href="/lugares/nuevo">+ Lugar</a>{% endif %}
 </div>
 {% endblock %}

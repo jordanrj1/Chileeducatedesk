@@ -136,3 +136,4 @@ def iniciales(texto):
 def tono_avatar(texto):
     """Color estable por nombre, para avatares de iniciales."""
     return f"tono-{sum(ord(c) for c in str(texto or '')) % 6}"
+
