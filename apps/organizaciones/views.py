@@ -125,6 +125,7 @@ class OrganizacionAlternar(AlternarActivoBase):
 
 class OrganizacionFicha(FichaBase):
     model = Organizacion
+    template_name = "organizaciones/ficha.html"
     permission_required = "organizaciones.view_organizacion"
     breadcrumb = [("Organizaciones", "/organizaciones")]
     permiso_editar = "organizaciones.change_organizacion"

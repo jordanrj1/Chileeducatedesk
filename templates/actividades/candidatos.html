@@ -1,34 +1,42 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}Candidatos{% endblock %}
-{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">Candidatos</li>{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">Candidatos</li>{% endblock %}
 {% block contenido %}
-<h1 class="h4">{{ titulo }}</h1>
-<p class="text-muted">El sistema sugiere y explica; la decisión es tuya. No se asigna nada automáticamente.
-{% if agenda %}Programación: {{ agenda.fecha|date:"d-m-Y" }} {{ agenda.hora_inicio|time:"H:i" }}.{% else %}La actividad aún no tiene fecha: no se podrá revisar disponibilidad.{% endif %}</p>
-<ul class="nav nav-pills mb-3">
-  <li class="nav-item"><a class="nav-link {% if tipo == 'personas' %}active{% endif %}" href="?tipo=personas">Personas</a></li>
-  <li class="nav-item"><a class="nav-link {% if tipo == 'lugares' %}active{% endif %}" href="?tipo=lugares">Lugares</a></li>
-  <li class="nav-item"><a class="nav-link {% if tipo == 'organizaciones' %}active{% endif %}" href="?tipo=organizaciones">Organizaciones</a></li></ul>
-<form class="row g-2 mb-3" method="get"><input type="hidden" name="tipo" value="{{ tipo }}"><input type="hidden" name="buscar" value="1">
-  <div class="col-12 col-md-3"><input class="form-control" name="q" value="{{ datos.q }}" placeholder="Nombre…" aria-label="Nombre"></div>
+<header class="fche-pagina">
+  <div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Buscar candidatos</p><h1 class="fche-pagina__titulo">{{ titulo }}</h1>
+  <p class="fche-pagina__bajada">El sistema sugiere y explica; la decisión es tuya. No se asigna nada automáticamente.
+  {% if agenda %}Programación: <strong>{{ agenda.fecha|date:"d-m-Y" }} {{ agenda.hora_inicio|time:"H:i" }}</strong>.{% else %}La actividad aún no tiene fecha: no se podrá revisar disponibilidad.{% endif %}</p></div>
+  <div class="fche-pagina__acciones"><a href="{{ actividad.get_absolute_url }}" class="btn btn-outline-secondary btn-sm volver">{% icono "volver" 15 %}Volver a la actividad</a></div>
+</header>
+<ul class="nav nav-pills mb-3" aria-label="Qué buscar">
+  <li class="nav-item"><a class="nav-link {% if tipo == 'personas' %}active{% endif %}" href="?tipo=personas">{% icono "personas" 15 %} Personas</a></li>
+  <li class="nav-item"><a class="nav-link {% if tipo == 'lugares' %}active{% endif %}" href="?tipo=lugares">{% icono "lugares" 15 %} Lugares</a></li>
+  <li class="nav-item"><a class="nav-link {% if tipo == 'organizaciones' %}active{% endif %}" href="?tipo=organizaciones">{% icono "organizaciones" 15 %} Organizaciones</a></li></ul>
+<form class="fche-filtros" method="get"><input type="hidden" name="tipo" value="{{ tipo }}"><input type="hidden" name="buscar" value="1">
+  <div class="fche-filtros__busqueda">{% icono "buscar" 16 %}<input class="form-control" name="q" value="{{ datos.q }}" placeholder="Nombre…" aria-label="Nombre"></div>
   {% if tipo == "personas" %}
-  <div class="col-6 col-md-2"><input class="form-control" name="area" value="{{ datos.area }}" placeholder="Área o profesión" aria-label="Área"></div>
-  <div class="col-6 col-md-2"><select class="form-select" name="institucion" aria-label="Institución"><option value="">Institución</option>{% for i in instituciones %}<option value="{{ i.pk }}" {% if datos.institucion == i.pk|stringformat:"s" %}selected{% endif %}>{{ i.nombre }}</option>{% endfor %}</select></div>
-  <div class="col-auto form-check align-self-center"><input class="form-check-input" type="checkbox" name="solo_disponibles" value="1" id="sd" {% if datos.solo_disponibles %}checked{% endif %}><label class="form-check-label" for="sd">Ocultar con conflicto</label></div>
+  <div class="fche-filtros__campo"><input class="form-control" name="area" value="{{ datos.area }}" placeholder="Área o profesión" aria-label="Área"></div>
+  <div class="fche-filtros__campo"><select class="form-select" name="institucion" aria-label="Institución"><option value="">Institución</option>{% for i in instituciones %}<option value="{{ i.pk }}" {% if datos.institucion == i.pk|stringformat:"s" %}selected{% endif %}>{{ i.nombre }}</option>{% endfor %}</select></div>
+  <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="solo_disponibles" value="1" id="sd" {% if datos.solo_disponibles %}checked{% endif %}><label class="form-check-label small" for="sd">Ocultar con conflicto</label></div>
   {% elif tipo == "lugares" %}
-  <div class="col-6 col-md-2"><input class="form-control" type="number" min="1" name="cantidad" value="{{ datos.cantidad }}" placeholder="Participantes" aria-label="Participantes"></div>
+  <div class="fche-filtros__campo"><input class="form-control" type="number" min="1" name="cantidad" value="{{ datos.cantidad }}" placeholder="Participantes" aria-label="Participantes"></div>
   {% else %}
-  <div class="col-6 col-md-3"><select class="form-select" name="tipo_org" aria-label="Tipo"><option value="">Tipo de organización</option>{% for t in tipos_org %}<option value="{{ t.pk }}" {% if datos.tipo_org == t.pk|stringformat:"s" %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}</select></div>
+  <div class="fche-filtros__campo"><select class="form-select" name="tipo_org" aria-label="Tipo"><option value="">Tipo de organización</option>{% for t in tipos_org %}<option value="{{ t.pk }}" {% if datos.tipo_org == t.pk|stringformat:"s" %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}</select></div>
   {% endif %}
-  <div class="col-6 col-md-2"><select class="form-select" name="comuna" aria-label="Zona"><option value="">Zona (comuna)</option>{% for c in comunas %}<option value="{{ c.pk }}" {% if datos.comuna == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}</select></div>
-  <div class="col-auto"><button class="btn btn-primary">Buscar</button></div></form>
+  <div class="fche-filtros__campo"><select class="form-select" name="comuna" aria-label="Zona"><option value="">Zona (comuna)</option>{% for c in comunas %}<option value="{{ c.pk }}" {% if datos.comuna == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}</select></div>
+  <div class="fche-filtros__acciones"><button class="btn btn-primary">{% icono "buscar" 16 %}Buscar</button></div></form>
 {% if buscado %}
   {% if resultados %}
-  <ul class="list-group">{% for c in resultados %}
-    <li class="list-group-item d-flex justify-content-between align-items-start gap-2">
-      <div><div><strong>{% if c.estado == "ok" %}✓{% elif c.estado == "conflicto" %}⚠{% else %}○{% endif %}</strong> <a href="{{ c.objeto.get_absolute_url }}" target="_blank">{{ c.objeto }}</a></div>
-        <ul class="small text-muted mb-0">{% for r in c.razones %}<li>{{ r }}</li>{% endfor %}</ul></div>
-      <div>
+  <p class="fche-resumen-lista"><span><strong>{{ resultados|length }}</strong> candidato(s) · ✓ sin conflicto · ⚠ con conflicto · ○ sin información suficiente</span></p>
+  <ul class="fche-items">{% for c in resultados %}
+    <li>
+      <div class="d-flex gap-3 min-w-0">
+        <span class="fche-nivel__icono {% if c.estado == 'ok' %}text-success{% elif c.estado == 'conflicto' %}text-warning-emphasis{% else %}text-muted{% endif %}" style="background:{% if c.estado == 'ok' %}#e7f6ec{% elif c.estado == 'conflicto' %}#fff3d1{% else %}#f1f3f7{% endif %}" aria-label="{% if c.estado == 'ok' %}Sin conflicto{% elif c.estado == 'conflicto' %}Con conflicto{% else %}Sin información{% endif %}"><strong>{% if c.estado == "ok" %}✓{% elif c.estado == "conflicto" %}⚠{% else %}○{% endif %}</strong></span>
+        <div class="min-w-0"><a class="fche-items__titulo" href="{{ c.objeto.get_absolute_url }}" target="_blank">{{ c.objeto }}</a>
+          <ul class="fche-items__detalle mb-0 ps-3">{% for r in c.razones %}<li>{{ r }}</li>{% endfor %}</ul></div>
+      </div>
+      <div class="fche-items__acciones">
         {% if tipo == "personas" and puede_agregar %}
         <form method="post" action="{% url 'actividades:participante_usar' actividad.pk c.objeto.pk %}" class="d-flex gap-1">{% csrf_token %}
           <select class="form-select form-select-sm" name="rol" aria-label="Rol">{% for r in roles %}<option value="{{ r.pk }}">{{ r.nombre }}</option>{% endfor %}</select>
@@ -36,7 +44,6 @@
         {% elif tipo == "lugares" %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:programar' actividad.pk %}?lugar={{ c.objeto.pk }}">Usar este lugar</a>
         {% elif tipo == "organizaciones" and puede_agregar %}<form method="post" action="{% url 'actividades:organizacion_usar' actividad.pk c.objeto.pk %}">{% csrf_token %}<button class="btn btn-outline-primary btn-sm">Agregar</button></form>{% endif %}
       </div></li>{% endfor %}</ul>
-  {% else %}<p class="text-muted">Sin candidatos con esos criterios. Prueba a quitar la zona, la institución o el área, o a buscar solo por nombre.</p>{% endif %}
-{% else %}<p class="text-muted">Indica criterios y pulsa Buscar.</p>{% endif %}
-<a href="{{ actividad.get_absolute_url }}" class="btn btn-outline-secondary btn-sm mt-3 volver">← Volver a la actividad</a>
+  {% else %}<div class="fche-vacio"><span class="fche-vacio__icono">{% icono "buscar" 22 %}</span><p class="fche-vacio__titulo">Sin candidatos con esos criterios</p><p class="fche-vacio__texto">Prueba a quitar la zona, la institución o el área, o a buscar solo por nombre.</p></div>{% endif %}
+{% else %}<div class="fche-vacio"><span class="fche-vacio__icono">{% icono "usuarios_check" 22 %}</span><p class="fche-vacio__titulo">Indica criterios y pulsa Buscar</p><p class="fche-vacio__texto">Para cada candidato verás por qué encaja y si tiene algún conflicto con la fecha.</p></div>{% endif %}
 {% endblock %}

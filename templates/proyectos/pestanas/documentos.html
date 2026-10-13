@@ -1,4 +1,4 @@
-<div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Documentos del proyecto</h2>
-{% if puede_agregar and perms.documentos.add_documento %}<a class="btn btn-primary btn-sm" href="{% url 'documentos:nuevo' %}?proyecto={{ object.pk }}">Subir nuevo</a>
-<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:asociar' %}?proyecto={{ object.pk }}">Asociar existente</a>{% endif %}</div>
+{% load fche %}<div class="fche-seccion"><h2 class="h6">Documentos del proyecto</h2>
+{% if puede_agregar and perms.documentos.add_documento %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'documentos:nuevo' %}?proyecto={{ object.pk }}">{% icono "subir" 15 %}Subir nuevo</a>
+<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:asociar' %}?proyecto={{ object.pk }}">{% icono "enlace" 15 %}Asociar existente</a></div>{% endif %}</div>
 {% include "documentos/_lista.html" %}

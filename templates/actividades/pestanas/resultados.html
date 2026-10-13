@@ -1,10 +1,10 @@
-<h2 class="h6">Resultados de la actividad</h2>
+{% load fche %}<h2 class="h6 mb-3">Resultados de la actividad</h2>
 {% if finalizada %}
-<div class="alert alert-secondary">Actividad <strong>realizada</strong>{% if agenda %} el {{ agenda.fecha|date:"d-m-Y" }}{% endif %}; finalizada en el sistema el {{ object.finalizada_en|date:"d-m-Y H:i"|default:"—" }}{% if object.finalizada_por %} por {{ object.finalizada_por }}{% endif %}.
-Los datos de la actividad ya no se editan; el resultado y la asistencia se pueden corregir y quedan en el historial.</div>
-{% if puede_reabrir %}<form method="post" action="{% url 'actividades:reabrir' object.pk %}" class="d-flex gap-2 mb-3" style="max-width:36rem;">{% csrf_token %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo para reabrir" required><button class="btn btn-outline-danger btn-sm">Reabrir</button></form>{% endif %}
+<div class="alert alert-secondary d-flex gap-2">{% icono "ok" 18 %}<div>Actividad <strong>realizada</strong>{% if agenda %} el {{ agenda.fecha|date:"d-m-Y" }}{% endif %}; finalizada en el sistema el {{ object.finalizada_en|date:"d-m-Y H:i"|default:"—" }}{% if object.finalizada_por %} por {{ object.finalizada_por }}{% endif %}.
+Los datos de la actividad ya no se editan; el resultado y la asistencia se pueden corregir y quedan en el historial.</div></div>
+{% if puede_reabrir %}<form method="post" action="{% url 'actividades:reabrir' object.pk %}" class="d-flex gap-2 mb-4" style="max-width:36rem;">{% csrf_token %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo para reabrir" aria-label="Motivo para reabrir" required><button class="btn btn-outline-danger btn-sm text-nowrap">Reabrir</button></form>{% endif %}
 {% endif %}
-{% if antes_de_fecha %}<p class="text-muted">El resultado se registra desde el día de la actividad ({{ agenda.fecha|date:"d-m-Y" }}).</p>
+{% if antes_de_fecha %}<div class="alert alert-info d-flex gap-2">{% icono "reloj" 18 %}<div>El resultado se registra desde el día de la actividad ({{ agenda.fecha|date:"d-m-Y" }}).</div></div>
 {% elif puede_resultado %}
 <form method="post" action="{% url 'actividades:resultados' object.pk %}" style="max-width:48rem;" data-aviso-cambios>{% csrf_token %}
   {% for campo in form_resultado %}{% include "generico/_campo.html" %}{% endfor %}
@@ -12,8 +12,12 @@ Los datos de la actividad ya no se editan; el resultado y la asistencia se puede
 </form>
 {% else %}<p class="text-muted">{{ object.resultado|default:"Sin resultado registrado."|linebreaksbr }}</p>{% endif %}
 {% if puede_finalizar %}
-<hr><form method="post" action="{% url 'actividades:finalizar' object.pk %}">{% csrf_token %}
-  <p class="small text-muted">Para finalizar se requiere la asistencia registrada (o «sin registro» explícito) y el resultado. La actividad quedará como <strong>realizada</strong>.</p>
-  {% if sin_asistencia and not object.asistencia_sin_registro %}<p class="small text-warning-emphasis">{{ sin_asistencia }} participante(s) aún no tienen asistencia registrada.</p>{% endif %}
-  <button class="btn btn-dark" onclick="return confirm('¿Finalizar la actividad? Quedará como realizada.')">Finalizar actividad</button></form>
+<form method="post" action="{% url 'actividades:finalizar' object.pk %}" class="fche-tarjeta mt-4" style="max-width:48rem;">{% csrf_token %}
+  <div class="fche-tarjeta__cuerpo">
+    <h3 class="h6 mb-2">Finalizar actividad</h3>
+    <p class="small text-muted mb-2">Para finalizar se requiere la asistencia registrada (o «sin registro» explícito) y el resultado. La actividad quedará como <strong>realizada</strong>.</p>
+    {% if sin_asistencia and not object.asistencia_sin_registro %}<p class="small text-warning-emphasis d-flex gap-1 align-items-center mb-0">{% icono "alerta" 14 %}{{ sin_asistencia }} participante(s) aún no tienen asistencia registrada.</p>{% endif %}
+  </div>
+  <div class="fche-form__acciones"><button class="btn btn-dark" onclick="return confirm('¿Finalizar la actividad? Quedará como realizada.')">Finalizar actividad</button></div>
+</form>
 {% elif not finalizada and object.estado.codigo != "cancelada" and not antes_de_fecha %}<p class="small text-muted mt-3">Para finalizar, la actividad debe estar planificada, confirmada o reprogramada.</p>{% endif %}

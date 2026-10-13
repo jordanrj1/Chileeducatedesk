@@ -105,6 +105,7 @@ class SolicitudEditar(EditarBase):
 
 class SolicitudFicha(FichaBase):
     model = Solicitud
+    template_name = "solicitudes/ficha.html"
     permission_required = "solicitudes.view_solicitud"
     breadcrumb = [("Solicitudes", "/solicitudes")]
     permiso_editar = "solicitudes.change_solicitud"

@@ -1,16 +1,16 @@
 {% extends "generico/formulario.html" %}
 {% block campos %}
-<ul class="nav nav-pills mb-3">
+<ul class="nav nav-pills mb-2" aria-label="Tipo de ficha">
   <li class="nav-item"><a class="nav-link {% if modo == 'rapida' %}active{% endif %}" href="?modo=rapida">Ficha rápida</a></li>
   <li class="nav-item"><a class="nav-link {% if modo == 'completa' %}active{% endif %}" href="?modo=completa">Ficha completa</a></li>
 </ul>
-<p class="small text-muted">{% if modo == 'rapida' %}Nombre y un dato de contacto; el resto lo completas después.{% else %}Solo el nombre es obligatorio.{% endif %}</p>
+<p class="small text-muted mb-4">{% if modo == 'rapida' %}Nombre y un dato de contacto; el resto lo completas después.{% else %}Solo el nombre es obligatorio.{% endif %}</p>
 <input type="hidden" name="modo" value="{{ modo }}">
 {% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
 {% if candidatos %}
-<div class="alert alert-warning mt-3" role="alert">
+<div class="alert alert-warning mt-2 mb-3" role="alert">
   <strong>Esta persona podría ya existir.</strong> Revisa antes de crear un duplicado:
-  <div class="table-responsive"><table class="table table-sm mb-2 mt-2">
+  <div class="table-responsive my-2 bg-white"><table class="table table-sm mb-0">
     <thead><tr><th>Persona existente</th><th>RUT o documento</th><th>Contacto</th><th>Por qué coincide</th><th></th></tr></thead>
     <tbody>{% for p, razones in candidatos %}<tr><td>{{ p.nombre_completo }}{% if not p.activo %} <span class="badge text-bg-secondary">desactivada</span>{% endif %}</td>
       <td>{{ p.rut|default:p.numero_documento|default:"—" }}</td>
@@ -25,4 +25,4 @@
 </div>
 {% endif %}
 {% endblock %}
-{% block extra_form %}<button type="submit" name="despues" value="1" class="btn btn-outline-primary mt-3">Guardar y completar después</button>{% endblock %}
+{% block acciones_form %}<button type="submit" name="despues" value="1" class="btn btn-outline-primary">Guardar y completar después</button>{% endblock %}

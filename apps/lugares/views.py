@@ -142,6 +142,7 @@ class LugarAlternar(AlternarActivoBase):
 
 class LugarFicha(FichaBase):
     model = Lugar
+    template_name = "lugares/ficha.html"
     permission_required = "lugares.view_lugar"
     breadcrumb = [("Lugares", "/lugares")]
     permiso_editar = "lugares.change_lugar"

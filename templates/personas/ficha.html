@@ -1,0 +1,11 @@
+{% extends "generico/ficha.html" %}
+{% load fche %}
+{% block subtitulo %}
+<div class="d-flex flex-wrap gap-2 align-items-center">
+  {% if object.estado_registro %}{% estado object.estado_registro %}{% endif %}
+  {% if not object.activo %}{% estado "inactivo" "Inactiva" %}{% endif %}
+  {% if object.profesion %}<span class="d-inline-flex align-items-center gap-1">{% icono "persona" 15 %}{{ object.profesion }}</span>{% endif %}
+  {% if correo_principal %}<a class="d-inline-flex align-items-center gap-1" href="mailto:{{ correo_principal }}">{% icono "correo" 15 %}{{ correo_principal }}</a>{% endif %}
+  {% if telefono_principal %}<span class="d-inline-flex align-items-center gap-1">{% icono "telefono" 15 %}{{ telefono_principal }}</span>{% endif %}
+</div>
+{% endblock %}

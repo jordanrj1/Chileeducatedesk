@@ -1,18 +1,21 @@
-<div class="d-flex justify-content-between align-items-center mb-2">
-  <h2 class="h6 mb-0">{{ titulo_pestana }} ({{ participaciones|length }})</h2>
-  {% if puede_agregar and perms.actividades.add_participacion %}<div class="d-flex gap-2">
+{% load fche %}<div class="fche-seccion">
+  <h2 class="h6">{{ titulo_pestana }} <span class="fche-contador">{{ participaciones|length }}</span></h2>
+  {% if puede_agregar and perms.actividades.add_participacion %}<div class="fche-seccion__acciones">
     <a class="btn btn-primary btn-sm" href="{% url 'actividades:participante_nuevo' object.pk %}">+ Agregar</a>
-    {% if perms.personas.add_persona %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_rapido' object.pk %}">Crear persona nueva</a>{% endif %}
-    <a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:candidatos' object.pk %}">Buscar candidatos</a>
-    {% if perms.importaciones.importar_listado %}<a class="btn btn-outline-secondary btn-sm" href="/importaciones/nueva?actividad={{ object.pk }}">Cargar listado</a>{% endif %}</div>{% endif %}
+    {% if perms.personas.add_persona %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_rapido' object.pk %}">{% icono "persona_mas" 15 %}Crear persona nueva</a>{% endif %}
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:candidatos' object.pk %}">{% icono "usuarios_check" 15 %}Buscar candidatos</a>
+    {% if perms.importaciones.importar_listado %}<a class="btn btn-outline-secondary btn-sm" href="/importaciones/nueva?actividad={{ object.pk }}">{% icono "importaciones" 15 %}Cargar listado</a>{% endif %}</div>{% endif %}
 </div>
-{% if capacidad_alerta %}<div class="alert {% if capacidad_alerta.excede %}alert-danger{% elif capacidad_alerta.lleno %}alert-warning{% else %}alert-light border{% endif %} py-2">Cupos ocupados: {{ capacidad_alerta.n }} de {{ capacidad_alerta.capacidad }}{% if capacidad_alerta.espera %} · en lista de espera: {{ capacidad_alerta.espera }}{% endif %}{% if capacidad_alerta.excede %} — <strong>excede la capacidad</strong>{% elif capacidad_alerta.lleno %} — <strong>sin cupos</strong>: los nuevos pueden quedar «En lista de espera»{% endif %}</div>{% endif %}
+{% if capacidad_alerta %}<div class="alert {% if capacidad_alerta.excede %}alert-danger{% elif capacidad_alerta.lleno %}alert-warning{% else %}alert-light border{% endif %} py-2">
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center"><span>Cupos ocupados: {{ capacidad_alerta.n }} de {{ capacidad_alerta.capacidad }}{% if capacidad_alerta.espera %} · en lista de espera: {{ capacidad_alerta.espera }}{% endif %}{% if capacidad_alerta.excede %} — <strong>excede la capacidad</strong>{% elif capacidad_alerta.lleno %} — <strong>sin cupos</strong>: los nuevos pueden quedar «En lista de espera»{% endif %}</span>
+  <div class="progress flex-grow-1" style="max-width:14rem;height:.45rem;" role="progressbar" aria-label="Cupos ocupados" aria-valuenow="{{ capacidad_alerta.n }}" aria-valuemin="0" aria-valuemax="{{ capacidad_alerta.capacidad }}"><div class="progress-bar {% if capacidad_alerta.excede %}bg-danger{% elif capacidad_alerta.lleno %}bg-warning{% endif %}" style="width:{% widthratio capacidad_alerta.n capacidad_alerta.capacidad 100 %}%"></div></div></div></div>{% endif %}
 {% if participaciones %}
 <div class="table-responsive"><table class="table table-sm align-middle">
-<thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th><th>Observaciones</th><th></th></tr></thead>
+<thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th><th>Observaciones</th><th><span class="visually-hidden">Acciones</span></th></tr></thead>
 <tbody>{% for p in participaciones %}<tr class="{% if not p.activa %}text-muted{% endif %}{% if p.estado.codigo == 'registro_erroneo' %} text-decoration-line-through{% endif %}">
-<td><a href="{{ p.persona.get_absolute_url }}">{{ p.persona }}</a></td><td>{{ p.rol }}</td><td>{{ p.estado }}</td>
-<td>{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% else %}—{% endif %}</td><td class="small">{{ p.observaciones }}</td>
-<td class="text-nowrap">{% if puede_agregar and perms.actividades.change_participacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_editar' object.pk p.pk %}">Editar</a>
+<td><a href="{{ p.persona.get_absolute_url }}">{{ p.persona }}</a></td><td>{{ p.rol }}</td><td>{% estado p.estado %}</td>
+<td>{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% else %}<span class="text-muted">—</span>{% endif %}</td><td class="small">{{ p.observaciones }}</td>
+<td class="text-nowrap text-end">{% if puede_agregar and perms.actividades.change_participacion %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:participante_editar' object.pk p.pk %}">Editar</a>
 {% if p.estado.codigo != "registro_erroneo" %}<a class="btn btn-outline-danger btn-sm" href="{% url 'actividades:participante_quitar' object.pk p.pk %}" title="Se relacionó por error">Quitar</a>{% endif %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
-{% else %}<p class="text-muted">Aún no hay {{ grupo }} registrados.</p>{% endif %}
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "personas" 18 %}</span><p class="fche-vacio__texto">Aún no hay {{ grupo }} registrados.</p>
+{% if puede_agregar and perms.actividades.add_participacion %}<a class="btn btn-primary btn-sm" href="{% url 'actividades:participante_nuevo' object.pk %}">+ Agregar</a>{% endif %}</div>{% endif %}

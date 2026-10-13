@@ -1,25 +1,26 @@
-<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
-  <span class="badge text-bg-primary">{{ object.estado }}</span>
-  {% if puede_proyecto %}<form method="post" action="{% url 'solicitudes:crear_proyecto' object.pk %}">{% csrf_token %}<button class="btn btn-success btn-sm">Crear proyecto</button></form>{% endif %}
-  {% if puede_actividad %}<form method="post" action="{% url 'solicitudes:crear_actividad' object.pk %}">{% csrf_token %}<button class="btn btn-outline-success btn-sm">Crear actividad</button></form>{% endif %}
+{% load fche %}{% if puede_proyecto or puede_actividad or puede_convertir or object.estado.codigo == "descartada" and perms.solicitudes.change_solicitud %}
+<div class="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom align-items-center">
+  {% if puede_proyecto %}<form method="post" action="{% url 'solicitudes:crear_proyecto' object.pk %}">{% csrf_token %}<button class="btn btn-success btn-sm">{% icono "proyectos" 15 %}Crear proyecto</button></form>{% endif %}
+  {% if puede_actividad %}<form method="post" action="{% url 'solicitudes:crear_actividad' object.pk %}">{% csrf_token %}<button class="btn btn-outline-success btn-sm">{% icono "actividades" 15 %}Crear actividad</button></form>{% endif %}
   {% if puede_convertir %}
   <form method="post" action="{% url 'solicitudes:estado' object.pk %}">{% csrf_token %}<input type="hidden" name="estado" value="en_seguimiento"><button class="btn btn-outline-secondary btn-sm">Pasar a seguimiento</button></form>
-  <form method="post" action="{% url 'solicitudes:estado' object.pk %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="estado" value="descartada"><input class="form-control form-control-sm" name="motivo" placeholder="Motivo" required><button class="btn btn-outline-danger btn-sm">Descartar</button></form>
+  <form method="post" action="{% url 'solicitudes:estado' object.pk %}" class="d-flex gap-1 ms-md-auto">{% csrf_token %}<input type="hidden" name="estado" value="descartada"><input class="form-control form-control-sm" name="motivo" placeholder="Motivo" aria-label="Motivo para descartar" required><button class="btn btn-outline-danger btn-sm">Descartar</button></form>
   {% endif %}
   {% if object.estado.codigo == "descartada" and perms.solicitudes.change_solicitud %}
-  <form method="post" action="{% url 'solicitudes:reabrir' object.pk %}" class="d-flex gap-1">{% csrf_token %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo para reabrir" required><button class="btn btn-outline-primary btn-sm">Reabrir</button></form>
+  <form method="post" action="{% url 'solicitudes:reabrir' object.pk %}" class="d-flex gap-1">{% csrf_token %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo para reabrir" aria-label="Motivo para reabrir" required><button class="btn btn-outline-primary btn-sm">Reabrir</button></form>
   {% endif %}
-  {% if object.dias_abierta is not None %}<span class="small text-muted">Abierta hace {{ object.dias_abierta }} días</span>{% endif %}
 </div>
-<dl class="row" style="max-width: 48rem;">
-  <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">{{ object.fecha|date:"d-m-Y" }}</dd>
-  <dt class="col-sm-3">Origen</dt><dd class="col-sm-9">{{ object.get_origen_display }}</dd>
-  <dt class="col-sm-3">Canal</dt><dd class="col-sm-9">{{ object.canal|default:"—" }}</dd>
-  <dt class="col-sm-3">Persona</dt><dd class="col-sm-9">{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% elif not object.organizacion %}<span class="text-warning-emphasis">Por identificar</span>{% else %}—{% endif %}</dd>
-  <dt class="col-sm-3">Organización</dt><dd class="col-sm-9">{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd>
-  <dt class="col-sm-3">Motivo</dt><dd class="col-sm-9">{{ object.motivo|default:"—" }}</dd>
-  <dt class="col-sm-3">Descripción</dt><dd class="col-sm-9">{{ object.descripcion|default:"—"|linebreaksbr }}</dd>
-  <dt class="col-sm-3">Observaciones</dt><dd class="col-sm-9">{{ object.observaciones|default:"—"|linebreaksbr }}</dd>
-  <dt class="col-sm-3">Proyecto</dt><dd class="col-sm-9">{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd>
-  <dt class="col-sm-3">Actividad</dt><dd class="col-sm-9">{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a>{% else %}—{% endif %}</dd>
+{% endif %}
+<dl class="fche-datos">
+  <div><dt>Estado</dt><dd>{% estado object.estado %}</dd></div>
+  <div><dt>Fecha</dt><dd>{{ object.fecha|date:"d-m-Y" }}</dd></div>
+  <div><dt>Origen</dt><dd>{{ object.get_origen_display }}</dd></div>
+  <div><dt>Canal</dt><dd>{{ object.canal|default:"—" }}</dd></div>
+  <div><dt>Persona</dt><dd>{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% elif not object.organizacion %}<span class="text-warning-emphasis">Por identificar</span>{% else %}—{% endif %}</dd></div>
+  <div><dt>Organización</dt><dd>{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd></div>
+  <div><dt>Proyecto</dt><dd>{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd></div>
+  <div><dt>Actividad</dt><dd>{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a>{% else %}—{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Motivo</dt><dd>{{ object.motivo|default:"—" }}</dd></div>
+  <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
+  <div class="fche-datos__ancho"><dt>Observaciones</dt><dd>{{ object.observaciones|default:"—"|linebreaksbr }}</dd></div>
 </dl>

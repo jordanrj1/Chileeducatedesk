@@ -87,7 +87,7 @@ TONOS = {
     "borrador": "gris", "adjudicada": "verde",
     # Textos visibles (cuando la columna trae la etiqueta y no el código)
     "en_preparacion": "gris", "en_ejecucion": "verde", "en_revision": "amarillo", "acepto": "verde",
-    "anulado": "rojo", "desactivado": "gris", "inactivo": "gris", "bloqueado_por_intentos_fallidos": "rojo", "vigente": "verde", "anterior": "gris",
+    "anulado": "rojo", "desactivado": "gris", "inactivo": "gris", "bloqueado_por_intentos_fallidos": "rojo", "vigente": "verde", "anterior": "gris", "verificado": "verde", "sin_verificar": "gris", "vencida": "rojo",
 }
 
 COLUMNAS_ESTADO = {"Estado", "Registro", "Acceso"}

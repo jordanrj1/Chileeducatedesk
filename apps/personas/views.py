@@ -157,6 +157,7 @@ def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente
 
 class PersonaFicha(FichaBase):
     model = Persona
+    template_name = "personas/ficha.html"
     permission_required = "personas.view_persona"
     pestanas_segunda_fase = {"verificaciones": "verificaciones"}
     breadcrumb = [("Personas", "/personas")]
@@ -196,6 +197,8 @@ class PersonaFicha(FichaBase):
         return {
             "url_editar": reverse("personas:editar", args=[p.pk]),
             "url_volver": "/personas",
+            "correo_principal": _principal(p, ["correo"]),
+            "telefono_principal": _principal(p, ["telefono_movil", "telefono_fijo"]),
             "puede_agregar": self.request.user.has_perm("personas.change_persona"),
         }
 

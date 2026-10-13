@@ -79,6 +79,7 @@ class ProyectoEditar(EditarBase):
 
 class ProyectoFicha(FichaBase):
     model = Proyecto
+    template_name = "proyectos/ficha.html"
     permission_required = "proyectos.view_proyecto"
     breadcrumb = [("Proyectos", "/proyectos")]
     permiso_editar = "proyectos.change_proyecto"

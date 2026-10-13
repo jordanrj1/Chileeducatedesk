@@ -1,13 +1,16 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}{{ titulo }}{% endblock %}
-{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">Quitar</li>{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">Quitar</li>{% endblock %}
 {% block contenido %}
-<h1 class="h4">{{ titulo }}</h1>
-<p>Úsalo solo si <strong>{{ p.persona }}</strong> se relacionó con «{{ p.actividad }}» por error. No se borra: queda como «registro erróneo» con el motivo, en el historial.</p>
-<form method="post" style="max-width:36rem;">{% csrf_token %}
-  <label class="form-label" for="motivo">Motivo</label>
-  <input class="form-control mb-3" id="motivo" name="motivo" maxlength="200" required placeholder="Ej.: era otra persona con el mismo nombre">
-  <button class="btn btn-danger">Quitar de la actividad</button>
-  <a class="btn btn-outline-secondary volver" href="{{ p.actividad.get_absolute_url }}?tab=participantes">← Volver</a>
+<header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">{{ titulo }}</h1>
+<p class="fche-pagina__bajada">Úsalo solo si <strong>{{ p.persona }}</strong> se relacionó con «{{ p.actividad }}» por error. No se borra: queda como «registro erróneo» con el motivo, en el historial.</p></div></header>
+<form method="post" class="fche-tarjeta" style="max-width:40rem;">{% csrf_token %}
+  <div class="fche-form__cuerpo">
+    <div class="fche-campo"><label class="form-label" for="motivo">Motivo<span class="fche-requerido">*</span></label>
+    <input class="form-control" id="motivo" name="motivo" maxlength="200" required placeholder="Ej.: era otra persona con el mismo nombre"></div>
+  </div>
+  <div class="fche-form__acciones"><button class="btn btn-danger">Quitar de la actividad</button>
+  <a class="btn btn-outline-secondary volver" href="{{ p.actividad.get_absolute_url }}?tab=participantes">Cancelar</a></div>
 </form>
 {% endblock %}

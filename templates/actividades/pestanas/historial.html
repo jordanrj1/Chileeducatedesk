@@ -1,6 +1,12 @@
-<h2 class="h6">Cambios de la actividad</h2>
+{% load fche %}<div class="row g-4">
+<div class="col-12 col-xl-7">
+<h2 class="h6 mb-3">Cambios de la actividad</h2>
 {% include "generico/_historial.html" %}
-<h2 class="h6 mt-4">Cambios en participantes</h2>
-{% if cambios_participacion %}<ul class="list-group">{% for h in cambios_participacion %}<li class="list-group-item small">{{ h.history_date|date:"d-m-Y H:i" }} · {{ h.history_user|default:"—" }} · {{ h.persona }} — {% if h.history_type == "+" %}agregada{% else %}modificada{% endif %} ({{ h.estado }}{% if h.asistencia is True %}, asistió{% elif h.asistencia is False %}, no asistió{% endif %})</li>{% endfor %}</ul>{% else %}<p class="text-muted">Sin cambios.</p>{% endif %}
-<h2 class="h6 mt-4">Versiones de la agenda</h2>
-<ul class="list-group">{% for v in agendas %}<li class="list-group-item small {% if not v.vigente %}text-muted{% endif %}">v{{ v.version }} · {{ v.fecha|date:"d-m-Y" }} {{ v.hora_inicio|time:"H:i" }} · {{ v.lugar|default:"sin lugar" }} · {{ v.motivo_cambio|default:"programación inicial" }} · {{ v.creado_en|date:"d-m-Y H:i" }}</li>{% empty %}<li class="list-group-item text-muted">Sin programaciones.</li>{% endfor %}</ul>
+</div>
+<div class="col-12 col-xl-5">
+<h2 class="h6 mb-2">Cambios en participantes</h2>
+{% if cambios_participacion %}<ul class="fche-items mb-4">{% for h in cambios_participacion %}<li class="small"><span>{{ h.persona }} — {% if h.history_type == "+" %}agregada{% else %}modificada{% endif %} ({{ h.estado }}{% if h.asistencia is True %}, asistió{% elif h.asistencia is False %}, no asistió{% endif %})</span><span class="text-muted text-nowrap">{{ h.history_date|date:"d-m-Y H:i" }} · {{ h.history_user|default:"—" }}</span></li>{% endfor %}</ul>{% else %}<p class="text-muted">Sin cambios.</p>{% endif %}
+<h2 class="h6 mb-2">Versiones de la agenda</h2>
+<ul class="fche-items">{% for v in agendas %}<li class="small {% if not v.vigente %}text-muted{% endif %}"><span><strong>v{{ v.version }}</strong> · {{ v.fecha|date:"d-m-Y" }} {{ v.hora_inicio|time:"H:i" }} · {{ v.lugar|default:"sin lugar" }} · {{ v.motivo_cambio|default:"programación inicial" }}</span><span class="text-nowrap">{{ v.creado_en|date:"d-m-Y H:i" }}</span></li>{% empty %}<li class="text-muted">Sin programaciones.</li>{% endfor %}</ul>
+</div>
+</div>

@@ -1,17 +1,18 @@
-<dl class="row" style="max-width: 44rem;">
-  <dt class="col-sm-4">RUT <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd class="col-sm-8">{{ object.rut|default:"—" }}</dd>
-  {% if object.numero_documento %}<dt class="col-sm-4">{{ object.get_tipo_documento_display }} <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd class="col-sm-8">{{ object.numero_documento }}</dd>{% endif %}
-  <dt class="col-sm-4">Profesión u oficio</dt><dd class="col-sm-8">{{ object.profesion|default:"—" }}</dd>
-  <dt class="col-sm-4">Sitio web</dt><dd class="col-sm-8">{% if object.sitio_web %}<a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a>{% else %}—{% endif %}</dd>
-  <dt class="col-sm-4">Origen</dt><dd class="col-sm-8">{{ object.origen|default:"—" }}</dd>
-  <dt class="col-sm-4">Registro</dt><dd class="col-sm-8">{{ object.estado_registro|default:"—" }}</dd>
-  <dt class="col-sm-4">Estado</dt><dd class="col-sm-8">{% if object.activo %}Activa{% else %}Inactiva{% endif %}</dd>
-  <dt class="col-sm-4">Observaciones</dt><dd class="col-sm-8">{{ object.observaciones|default:"—"|linebreaksbr }}</dd>
-  <dt class="col-sm-4">Registrada</dt><dd class="col-sm-8">{{ object.creado_en|date:"d-m-Y" }}</dd>
+{% load fche %}<dl class="fche-datos mb-4">
+  <div><dt>RUT <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ object.rut|default:"—" }}</dd></div>
+  {% if object.numero_documento %}<div><dt>{{ object.get_tipo_documento_display }} <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ object.numero_documento }}</dd></div>{% endif %}
+  <div><dt>Profesión u oficio</dt><dd>{{ object.profesion|default:"—" }}</dd></div>
+  <div><dt>Sitio web</dt><dd>{% if object.sitio_web %}<a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a>{% else %}—{% endif %}</dd></div>
+  <div><dt>Origen</dt><dd>{{ object.origen|default:"—" }}</dd></div>
+  <div><dt>Registro</dt><dd>{% if object.estado_registro %}{% estado object.estado_registro %}{% else %}—{% endif %}</dd></div>
+  <div><dt>Estado</dt><dd>{% if object.activo %}Activa{% else %}Inactiva{% endif %}</dd></div>
+  <div><dt>Registrada</dt><dd>{{ object.creado_en|date:"d-m-Y" }}</dd></div>
+  <div class="fche-datos__ancho"><dt>Observaciones</dt><dd>{{ object.observaciones|default:"—"|linebreaksbr }}</dd></div>
 </dl>
-{% if perms.personas.exportar_persona %}<a class="btn btn-outline-secondary btn-sm mb-2" href="{% url 'personas:datos_personales' object.pk %}" title="Para responder si la persona pide conocer sus datos">Exportar sus datos personales</a>{% endif %}
+{% if perms.personas.exportar_persona or puede_agregar %}<div class="d-flex flex-wrap gap-2 pt-3 border-top">
+{% if perms.personas.exportar_persona %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'personas:datos_personales' object.pk %}" title="Para responder si la persona pide conocer sus datos">{% icono "descargar" 15 %}Exportar sus datos personales</a>{% endif %}
 {% if puede_agregar %}
 <form method="post" action="{% url 'personas:alternar' object.pk %}">{% csrf_token %}
   <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Desactivar persona{% else %}Reactivar persona{% endif %}</button>
 </form>
-{% endif %}
+{% endif %}</div>{% endif %}

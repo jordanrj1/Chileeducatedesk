@@ -1,7 +1,7 @@
 {% extends "generico/formulario.html" %}
 {% block extra_form %}
 {% if abiertas %}
-<div class="alert alert-warning mt-3" role="alert">
+<div class="alert alert-warning mt-2 mb-3" role="alert">
   <strong>Ya hay una solicitud abierta con ese contacto.</strong> ¿Es la misma?
   <ul class="mb-2 mt-2">{% for s in abiertas %}<li><a href="{{ s.get_absolute_url }}">{{ s.titulo }}</a> — {{ s.estado }}, desde el {{ s.fecha|date:"d-m-Y" }}. Si es la misma, registra ahí una interacción.</li>{% endfor %}</ul>
   <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Es otra: registrarla</button>

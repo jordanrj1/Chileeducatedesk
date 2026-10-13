@@ -1,8 +1,8 @@
-<div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Origen de la información</h2>
-{% if puede_origen %}<a class="btn btn-primary btn-sm" href="{{ url_origen_nuevo }}">+ Registrar origen</a>{% endif %}</div>
-<ul class="list-group">{% for o in origenes %}<li class="list-group-item d-flex justify-content-between align-items-start">
-<div><div>{{ o.get_fuente_display }}{% if o.documento %} · <a href="{{ o.documento.get_absolute_url }}">{{ o.documento }}</a>{% endif %}</div>
-<div class="small text-muted">{{ o.fecha|date:"d-m-Y" }} · {{ o.registrado_por|default:"sistema" }}{% if o.detalle %} · {{ o.detalle }}{% endif %}{% if o.lote %} · lote {{ o.lote }}{% endif %}</div></div>
-<div class="d-flex gap-1 align-items-center"><span class="badge text-bg-{% if o.estado_verificacion == 'verificado' %}success{% elif o.estado_verificacion == 'por_revisar' %}warning{% else %}secondary{% endif %}">{{ o.get_estado_verificacion_display }}</span>
+{% load fche %}<div class="fche-seccion"><h2 class="h6">Origen de la información</h2>
+{% if puede_origen %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_origen_nuevo }}">+ Registrar origen</a></div>{% endif %}</div>
+<ul class="fche-items">{% for o in origenes %}<li>
+<div class="fche-items__texto"><div class="fche-items__titulo">{{ o.get_fuente_display }}{% if o.documento %} · <a href="{{ o.documento.get_absolute_url }}">{{ o.documento }}</a>{% endif %}</div>
+<div class="fche-items__detalle">{{ o.fecha|date:"d-m-Y" }} · {{ o.registrado_por|default:"sistema" }}{% if o.detalle %} · {{ o.detalle }}{% endif %}{% if o.lote %} · lote {{ o.lote }}{% endif %}</div></div>
+<div class="fche-items__acciones align-items-center">{% estado o.estado_verificacion o.get_estado_verificacion_display %}
 {% if perms.documentos.change_origendato %}<form method="post" action="{% url 'documentos:origen_verificar' o.pk %}" class="d-flex gap-1">{% csrf_token %}<select class="form-select form-select-sm" name="estado" aria-label="Verificación">{% for v, n in o.VERIFICACION %}<option value="{{ v }}" {% if v == o.estado_verificacion %}selected{% endif %}>{{ n }}</option>{% endfor %}</select><button class="btn btn-outline-secondary btn-sm">Cambiar</button></form>{% endif %}</div></li>
-{% empty %}<li class="list-group-item text-muted">Sin origen registrado.</li>{% endfor %}</ul>
+{% empty %}<li class="text-muted">Sin origen registrado.</li>{% endfor %}</ul>

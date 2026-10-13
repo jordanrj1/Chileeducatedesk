@@ -1,9 +1,13 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}{{ titulo }}{% endblock %}
-{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">Duplicar</li>{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">Duplicar</li>{% endblock %}
 {% block contenido %}
-<h1 class="h4">{{ titulo }}</h1>
-<p>Se crea una actividad nueva con los mismos datos (tipo, objetivo, responsable, condiciones, zona y organizaciones), <strong>sin participantes ni fechas</strong>.</p>
-<form method="post">{% csrf_token %}<button class="btn btn-primary">Duplicar</button>
-<a class="btn btn-outline-secondary volver" href="{{ actividad.get_absolute_url }}">← Volver</a></form>
+<header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">{{ titulo }}</h1></div></header>
+<form method="post" class="fche-tarjeta" style="max-width:44rem;">{% csrf_token %}
+  <div class="fche-tarjeta__cuerpo d-flex gap-3"><span class="fche-mosaico__icono">{% icono "copiar" 20 %}</span>
+  <p class="mb-0">Se crea una actividad nueva con los mismos datos (tipo, objetivo, responsable, condiciones, zona y organizaciones), <strong>sin participantes ni fechas</strong>.</p></div>
+  <div class="fche-form__acciones"><button class="btn btn-primary">{% icono "copiar" 15 %}Duplicar</button>
+  <a class="btn btn-outline-secondary volver" href="{{ actividad.get_absolute_url }}">Cancelar</a></div>
+</form>
 {% endblock %}

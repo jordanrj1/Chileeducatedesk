@@ -21,6 +21,7 @@
   </div>
   <div class="fche-form__acciones">
     <button type="submit" class="btn btn-primary">{% block texto_guardar %}Guardar{% endblock %}</button>
+    {% block acciones_form %}{% endblock %}
     <a href="{{ volver_url }}" class="btn btn-outline-secondary volver">Cancelar</a>
     <span class="fche-form__nota d-none d-md-inline">Los cambios quedan en el historial</span>
   </div>

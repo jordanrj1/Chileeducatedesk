@@ -1,7 +1,7 @@
 {% extends "generico/formulario.html" %}
 {% block extra_form %}
 {% if iguales %}
-<div class="alert alert-warning mt-3" role="alert"><strong>Este archivo ya está en el sistema</strong> (mismo contenido):
+<div class="alert alert-warning mt-2 mb-3" role="alert"><strong>Este archivo ya está en el sistema</strong> (mismo contenido):
   <ul class="mb-2 mt-2">{% for d in iguales %}<li><a href="{{ d.get_absolute_url }}" target="_blank">{{ d.nombre }}</a> · {{ d.tipo }} · {{ d.actividad|default:d.proyecto|default:d.persona|default:d.organizacion|default:d.solicitud }}</li>{% endfor %}</ul>
   <p class="small mb-2">Para usarlo también aquí sin duplicarlo, usa «Asociar existente» desde la ficha. Si de verdad es otro documento, vuelve a elegir el archivo y súbelo igual.</p>
   <button class="btn btn-warning btn-sm" name="subir_igual" value="1" type="submit">Subir igual</button>
