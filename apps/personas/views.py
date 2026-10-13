@@ -31,6 +31,7 @@ class PersonaLista(ListaBase):
     model = Persona
     permission_required = "personas.view_persona"
     titulo = "Personas"
+    descripcion = "Voluntarios, profesionales, beneficiarios y contactos registrados."
     url_crear = "/personas/nueva"
     permiso_crear = "personas.add_persona"
     etiqueta_crear = "+ Nueva persona"

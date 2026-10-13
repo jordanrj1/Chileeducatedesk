@@ -113,6 +113,28 @@
     if (sucio) { e.preventDefault(); e.returnValue = ""; }
   });
 
+  // Atajo de teclado: «/» o Ctrl/⌘+K llevan al buscador global (salvo que se esté escribiendo en un campo).
+  document.addEventListener("keydown", function (e) {
+    var destino = e.target, escribiendo = destino.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(destino.tagName);
+    var atajo = (e.key === "/" && !escribiendo) || ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K"));
+    if (!atajo) return;
+    var buscador = document.getElementById("buscador-global");
+    if (!buscador) return;
+    e.preventDefault();
+    buscador.focus();
+    buscador.select();
+  });
+
+  // Avisos de éxito: se cierran solos después de unos segundos (los errores y advertencias se quedan).
+  document.addEventListener("DOMContentLoaded", function () {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-autocerrar]"), function (aviso) {
+      window.setTimeout(function () {
+        if (window.bootstrap && window.bootstrap.Alert) window.bootstrap.Alert.getOrCreateInstance(aviso).close();
+        else aviso.remove();
+      }, 6000);
+    });
+  });
+
   // Error de una sección cargada con HTMX: mensaje claro y botón para reintentar.
   var ultima = null;
   document.addEventListener("htmx:beforeRequest", function (e) { ultima = e.detail.elt; });

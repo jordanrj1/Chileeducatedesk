@@ -1,57 +1,121 @@
-{% load static %}<!doctype html>
+{% load static fche %}<!doctype html>
 <html lang="es-CL">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titulo %}FCHE{% endblock %} · Fundación Chile Edúcate</title>
+  <meta name="description" content="{% block descripcion %}{{ descripcion|default:'Sistema interno de gestión de actividades, personas y organizaciones de la Fundación Chile Edúcate.' }}{% endblock %}">
+  <meta name="robots" content="noindex, nofollow">{# sistema interno: no debe aparecer en buscadores #}
+  <meta name="referrer" content="same-origin">
+  <meta name="application-name" content="FCHE">
+  <meta name="theme-color" content="#0d1830">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/fche.css' %}">
+  {% block cabeza %}{% endblock %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' hx-indicator="#cargando"{% if hubo_guardado %} data-guardado="1"{% endif %}>
 {% if user.is_authenticated %}
-<div class="d-flex flex-column flex-md-row min-vh-100">
-  <nav class="fche-menu bg-dark text-white p-3" aria-label="Menú principal">
-    <a href="{% url 'dashboard' %}" class="d-block h5 text-white text-decoration-none mb-3">FCHE</a>
-    <ul class="nav flex-md-column">
-      {% for etiqueta, ruta, activa in menu %}
-      <li class="nav-item"><a class="nav-link text-white-50 {% if activa %}active text-white{% endif %}" href="{{ ruta }}">{{ etiqueta }}</a></li>
-      {% endfor %}
-    </ul>
-  </nav>
-  <div class="flex-grow-1 d-flex flex-column">
-    <header class="border-bottom bg-white p-2 d-flex flex-wrap gap-2 align-items-center">
-      <form class="flex-grow-1" role="search" action="{% url 'buscar' %}" method="get">
-        <input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Buscar personas, organizaciones, actividades, lugares, documentos…" aria-label="Buscador global">
+<a class="fche-saltar" href="#contenido">Saltar al contenido</a>
+<div class="fche-app">
+  <aside class="fche-lateral offcanvas-lg offcanvas-start" tabindex="-1" id="menu-lateral" aria-label="Menú lateral">
+    <div class="fche-lateral__interior">
+      <div class="d-flex align-items-center justify-content-between pe-2">
+        <a href="{% url 'dashboard' %}" class="fche-marca" aria-label="FCHE · ir al inicio">
+          <span class="fche-marca__sello" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></span>
+          <span class="fche-marca__texto"><span class="fche-marca__nombre">FCHE</span><span class="fche-marca__bajada">Fundación Chile Edúcate</span></span>
+        </a>
+        <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#menu-lateral" aria-label="Cerrar menú"></button>
+      </div>
+      <nav aria-label="Menú principal">
+        {% for grupo, enlaces in menu_grupos %}
+        <div class="fche-menu-grupo">
+          {% if grupo %}<div class="fche-menu-grupo__titulo">{{ grupo }}</div>{% endif %}
+          <ul>
+            {% for etiqueta, ruta, activa, icono_menu in enlaces %}
+            <li><a class="fche-menu-enlace{% if activa %} active{% endif %}" href="{{ ruta }}"{% if activa %} aria-current="page"{% endif %}>{% icono icono_menu 18 %}<span>{{ etiqueta }}</span></a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </nav>
+      <div class="fche-lateral__pie">Sistema interno · uso exclusivo del equipo</div>
+    </div>
+  </aside>
+
+  <div class="fche-principal">
+    <header class="fche-barra">
+      <button class="fche-barra__menu d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#menu-lateral" aria-controls="menu-lateral" aria-label="Abrir menú">{% icono "menu" 20 %}</button>
+      <form class="fche-buscador" role="search" action="{% url 'buscar' %}" method="get">
+        {% icono "buscar" 17 %}
+        <input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Buscar personas, organizaciones, actividades, lugares, documentos…" aria-label="Buscador global" aria-keyshortcuts="/" autocomplete="off" id="buscador-global">
+        <kbd aria-hidden="true">/</kbd>
       </form>
-      <span id="cargando" class="htmx-indicator spinner-border spinner-border-sm text-secondary" role="status" aria-label="Cargando"></span>
-      <div class="dropdown">
-        <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">{{ user.get_full_name|default:user.get_username }}</button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="/mi-cuenta">Mi cuenta</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><form action="{% url 'logout' %}" method="post" data-cerrar-sesion>{% csrf_token %}<button class="dropdown-item" type="submit">Cerrar sesión</button></form></li>
-        </ul>
+      <div class="fche-barra__acciones">
+        <span id="cargando" class="htmx-indicator spinner-border" role="status" aria-label="Cargando"></span>
+        {% if menu_nuevo %}
+        <div class="dropdown">
+          <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Crear nuevo registro">{% icono "mas" 16 %}<span class="fche-nuevo__texto">Nuevo</span></button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><h2 class="dropdown-header">Crear</h2></li>
+            {% for etiqueta, ruta, icono_nuevo in menu_nuevo %}<li><a class="dropdown-item" href="{{ ruta }}">{% icono icono_nuevo 16 %}{{ etiqueta|slice:"2:" }}</a></li>{% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <div class="dropdown">
+          <button class="fche-usuario" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menú de usuario">
+            {% with nombre=user.get_full_name|default:user.get_username %}
+            <span class="fche-avatar {{ nombre|tono_avatar }}" aria-hidden="true">{{ nombre|iniciales }}</span>
+            <span class="fche-usuario__texto"><span class="fche-usuario__nombre">{{ nombre }}</span><span class="fche-usuario__rol">{{ rol_usuario }}</span></span>
+            {% endwith %}
+            {% icono "abajo" 14 "text-muted d-none d-sm-inline" %}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/mi-cuenta">{% icono "persona" 16 %}Mi cuenta</a></li>
+            <li><a class="dropdown-item" href="/ayuda">{% icono "ayuda" 16 %}Ayuda</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><form action="{% url 'logout' %}" method="post" data-cerrar-sesion>{% csrf_token %}<button class="dropdown-item" type="submit">{% icono "salir" 16 %}Cerrar sesión</button></form></li>
+          </ul>
+        </div>
       </div>
     </header>
-    <main class="p-3 flex-grow-1">
-      <nav aria-label="breadcrumb"><ol class="breadcrumb">
+
+    <main class="fche-contenido" id="contenido" tabindex="-1">
+      {% block migas %}
+      <nav class="fche-migas" aria-label="Ruta de navegación"><ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Inicio</a></li>
         {% block breadcrumb %}{% endblock %}
       </ol></nav>
-      <div id="error-htmx" class="alert alert-danger d-flex justify-content-between align-items-center" role="alert" hidden>
-        <span>No se pudo cargar esta sección. Revisa la conexión o inténtalo de nuevo.</span>
+      {% endblock %}
+      <div id="error-htmx" class="alert alert-danger d-flex justify-content-between align-items-center gap-2" role="alert" hidden>
+        <span class="d-flex align-items-center gap-2">{% icono "error" 18 %}No se pudo cargar esta sección. Revisa la conexión o inténtalo de nuevo.</span>
         <button type="button" class="btn btn-outline-danger btn-sm" id="reintentar">Reintentar</button>
       </div>
-      {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }}" role="status">{{ m }}</div>{% endfor %}{% endif %}
+      {% if messages %}{% for m in messages %}{% if m.level_tag != "success" %}
+      <div class="alert alert-{{ m.tags|default:'info' }} alert-dismissible d-flex align-items-start gap-2" role="{% if m.level_tag == 'error' or m.level_tag == 'danger' %}alert{% else %}status{% endif %}">
+        {% if m.level_tag == "warning" %}{% icono "alerta" 18 %}{% elif m.level_tag == "error" or m.level_tag == "danger" %}{% icono "error" 18 %}{% else %}{% icono "info" 18 %}{% endif %}
+        <div>{{ m }}</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      </div>
+      {% endif %}{% endfor %}{% endif %}
       {% block contenido %}{% endblock %}
     </main>
   </div>
 </div>
+{% if messages %}
+<div class="fche-avisos" aria-live="polite">
+  {% for m in messages %}{% if m.level_tag == "success" %}
+  <div class="alert alert-success" role="status" data-autocerrar>{% icono "ok" 18 %}<div>{{ m }}</div><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button></div>
+  {% endif %}{% endfor %}
+</div>
+{% endif %}
 {% else %}
-<main class="container py-5">{% block publico %}{% endblock %}</main>
+{% block publico %}{% endblock %}
 {% endif %}
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
 <script src="{% static 'js/fche.js' %}"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

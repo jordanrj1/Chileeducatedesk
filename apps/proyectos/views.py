@@ -14,6 +14,7 @@ class ProyectoLista(ListaBase):
     model = Proyecto
     permission_required = "proyectos.view_proyecto"
     titulo = "Proyectos"
+    descripcion = "Proyectos de la fundación con su estado, zona y actividades."
     url_crear = "/proyectos/nuevo"
     permiso_crear = "proyectos.add_proyecto"
     etiqueta_crear = "+ Nuevo proyecto"

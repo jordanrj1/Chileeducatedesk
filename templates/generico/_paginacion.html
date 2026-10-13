@@ -1,7 +1,10 @@
 {% if is_paginated %}
-<nav aria-label="Páginas"><ul class="pagination">
-  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Anterior</a></li>{% endif %}
-  <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ paginator.num_pages }} ({{ paginator.count }} registros)</span></li>
-  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Siguiente</a></li>{% endif %}
-</ul></nav>
+<div class="fche-paginacion">
+  <span>Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de <strong>{{ paginator.count }} registros</strong></span>
+  <nav aria-label="Páginas"><ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}" rel="prev">‹ Anterior</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ page_obj.next_page_number }}" rel="next">Siguiente ›</a></li>{% endif %}
+  </ul></nav>
+</div>
 {% endif %}

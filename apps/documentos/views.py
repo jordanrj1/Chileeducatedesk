@@ -26,6 +26,7 @@ class DocumentoLista(ListaBase):
     model = Documento
     permission_required = "documentos.view_documento"
     titulo = "Documentos"
+    descripcion = "Archivos, evidencias y respaldos asociados a actividades, proyectos, personas y organizaciones."
     url_crear = "/documentos/nuevo"
     permiso_crear = "documentos.add_documento"
     etiqueta_crear = "+ Nuevo documento"

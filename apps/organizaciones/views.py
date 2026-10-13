@@ -34,6 +34,7 @@ class OrganizacionLista(ListaBase):
     model = Organizacion
     permission_required = "organizaciones.view_organizacion"
     titulo = "Organizaciones"
+    descripcion = "Instituciones, juntas de vecinos, empresas y otras organizaciones con las que trabaja la fundación."
     url_crear = "/organizaciones/nueva"
     permiso_crear = "organizaciones.add_organizacion"
     etiqueta_crear = "+ Nueva organización"

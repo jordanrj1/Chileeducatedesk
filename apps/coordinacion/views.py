@@ -80,6 +80,7 @@ class ReunionLista(ListaBase):
     model = Reunion
     permission_required = "coordinacion.view_reunion"
     titulo = "Reuniones"
+    descripcion = "Reuniones de coordinación con sus asistentes y acuerdos."
     url_crear = "/reuniones/nueva"
     permiso_crear = "coordinacion.add_reunion"
     etiqueta_crear = "+ Nueva reunión"
@@ -140,6 +141,7 @@ class TareaLista(ListaBase):
     model = Tarea
     permission_required = "coordinacion.view_tarea"
     titulo = "Tareas"
+    descripcion = "Tareas del equipo con responsables y fecha límite."
     url_crear = "/tareas/nueva"
     permiso_crear = "coordinacion.add_tarea"
     etiqueta_crear = "+ Nueva tarea"

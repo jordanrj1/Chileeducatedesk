@@ -58,6 +58,7 @@ class ActividadLista(ListaBase):
     model = Actividad
     permission_required = "actividades.view_actividad"
     titulo = "Actividades"
+    descripcion = "Talleres, charlas y jornadas: su estado, fecha, lugar y responsable."
     url_crear = "/actividades/nueva"
     permiso_crear = "actividades.add_actividad"
     etiqueta_crear = "+ Nueva actividad"

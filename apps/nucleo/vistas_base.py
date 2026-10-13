@@ -47,6 +47,7 @@ class ListaBase(Permiso403Mixin, ListView):
     template_name = "generico/lista.html"
     paginate_by = 25
     titulo = ""
+    descripcion = ""  # una frase bajo el título: para qué sirve este listado
     breadcrumb = ()  # [(etiqueta, url|None)]
     campos_busqueda = ()  # lookups con icontains
     filtros = ()
@@ -133,6 +134,7 @@ class ListaBase(Permiso403Mixin, ListView):
         params.pop("page", None)
         ctx.update(
             titulo=self.titulo,
+            descripcion=self.descripcion,
             breadcrumb=self.breadcrumb,
             filas=filas,
             encabezados=[e for e, _ in self.columnas],
@@ -244,6 +246,14 @@ def cambios_historial(obj, limite=50):
     return salida
 
 
+# Icono de la cabecera de cada ficha; personas y organizaciones muestran sus iniciales.
+ICONOS_FICHA = {
+    "actividad": "actividades", "proyecto": "proyectos", "lugar": "lugares", "documento": "documentos", "solicitud": "solicitudes",
+    "region": "territorio", "comuna": "territorio", "reunion": "reuniones", "tarea": "tareas", "movimiento": "finanzas", "lote": "importaciones",
+    "interaccion": "reuniones", "invitacion": "correo", "colaboracion": "usuarios_check",
+}
+
+
 class FichaBase(Permiso403Mixin, DetailView):
     """Ficha con pestañas internas. Cada pestaña: (clave, etiqueta, plantilla). Contexto en `ctx_<clave>()`."""
 
@@ -286,6 +296,8 @@ class FichaBase(Permiso403Mixin, DetailView):
             pestana=actual,
             plantilla_pestana=plantilla,
             titulo=self.encabezado(),
+            tipo_ficha=str(self.object._meta.verbose_name).capitalize(),
+            icono_ficha=ICONOS_FICHA.get(self.object._meta.model_name),
             breadcrumb=self.breadcrumb,
             puede_editar=bool(self.permiso_editar and self.request.user.has_perm(self.permiso_editar)),
         )

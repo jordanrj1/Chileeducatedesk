@@ -1,14 +1,15 @@
-<div class="mb-3">
+{% load fche %}<div class="fche-campo{% if campo.errors %} fche-campo--error{% endif %}">
   {% if campo.field.widget.input_type == 'checkbox' %}
     <div class="form-check">{{ campo }} <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label></div>
   {% else %}
-    <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %} <span class="text-danger" aria-hidden="true">*</span>{% endif %}</label>
+    <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %}<span class="fche-requerido" aria-hidden="true">*</span><span class="visually-hidden"> (obligatorio)</span>{% endif %}</label>
     {% if campo.field.widget.attrs.selector_url %}
-    <input class="form-control form-control-sm mb-1" type="search" name="q" placeholder="Escribe para buscar…" aria-label="Buscar para {{ campo.label }}"
-           hx-get="{{ campo.field.widget.attrs.selector_url }}" hx-trigger="input changed delay:300ms" hx-target="#{{ campo.id_for_label }}" hx-swap="innerHTML">
+    <div class="fche-campo__buscar">{% icono "buscar" 15 %}
+    <input class="form-control form-control-sm" type="search" name="q" placeholder="Escribe para buscar…" aria-label="Buscar para {{ campo.label }}" autocomplete="off"
+           hx-get="{{ campo.field.widget.attrs.selector_url }}" hx-trigger="input changed delay:300ms" hx-target="#{{ campo.id_for_label }}" hx-swap="innerHTML"></div>
     {% endif %}
     {{ campo }}
   {% endif %}
   {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
-  {% for e in campo.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+  {% for e in campo.errors %}<div class="fche-campo__error text-danger">{% icono "error" 14 %}{{ e }}</div>{% endfor %}
 </div>

@@ -19,6 +19,7 @@ class SolicitudLista(ListaBase):
     model = Solicitud
     permission_required = "solicitudes.view_solicitud"
     titulo = "Solicitudes y oportunidades"
+    descripcion = "Pedidos y oportunidades que llegan a la fundación y su seguimiento."
     url_crear = "/solicitudes/nueva"
     permiso_crear = "solicitudes.add_solicitud"
     etiqueta_crear = "+ Nueva solicitud"
