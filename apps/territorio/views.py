@@ -17,7 +17,7 @@ from . import consultas
 from .forms import AliasForm, SectorForm
 from .models import Comuna, Provincia, Region, Sector
 from .reconocer import mismo_sector, sectores_parecidos
-from .resumen import personas_residentes, resumen_territorio
+from .resumen import personas_residentes, presencia_por_comuna, resumen_territorio
 
 RAIZ = [("Territorio", "/territorio")]
 
@@ -32,7 +32,7 @@ def _valor(request):
 
 
 class TerritorioIndice(Permiso403Mixin, TemplateView):
-    """Navegación región → provincia → comuna, o búsqueda directa de una comuna."""
+    """«Dónde trabajamos»: primero las comunas con presencia de la Fundación, luego todas las regiones; o búsqueda directa de una comuna."""
 
     permission_required = "territorio.view_comuna"
     template_name = "territorio/indice.html"
@@ -44,7 +44,8 @@ class TerritorioIndice(Permiso403Mixin, TemplateView):
         if q:
             ctx["comunas"] = Comuna.objects.filter(nombre__unaccent__icontains=q).select_related("provincia__region")[:60]
         else:
-            ctx["regiones"] = Region.objects.annotate(n_provincias=Count("provincias", distinct=True), n_comunas=Count("provincias__comunas"))
+            ctx["regiones"] = regiones = Region.objects.annotate(n_provincias=Count("provincias", distinct=True), n_comunas=Count("provincias__comunas"))
+            ctx["presencia"] = presencia_por_comuna() if regiones else []  # sin territorio cargado no hay nada que contar
         return ctx
 
 
@@ -55,7 +56,10 @@ class RegionDetalle(Permiso403Mixin, TemplateView):
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         region = get_object_or_404(Region, pk=self.kwargs["pk"])
-        ctx.update(region=region, titulo=region.nombre, breadcrumb=RAIZ, provincias=region.provincias.prefetch_related("comunas"))
+        ctx.update(
+            region=region, titulo=region.nombre, breadcrumb=RAIZ, provincias=region.provincias.prefetch_related("comunas"),
+            presencia=presencia_por_comuna(region=region),
+        )
         return ctx
 
 

@@ -541,6 +541,13 @@ a.fche-mosaico__item:hover { border-color: var(--fche-primario-borde); box-shado
 .fche-mosaico__icono { display: grid; place-items: center; flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: .75rem; background: var(--fche-primario-suave); color: var(--fche-primario); }
 .fche-mosaico__titulo { display: block; font-weight: 650; }
 .fche-mosaico__texto { display: block; margin-top: .15rem; font-size: .82rem; color: var(--fche-texto-suave); }
+/* Comunas con presencia: una tarjeta por comuna con sus cifras */
+.fche-presencia { margin: 1.5rem 0 2rem; }
+.fche-mosaico--presencia { grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); list-style: none; margin: 0; padding: 0; }
+.fche-mosaico--presencia > li { display: flex; }
+.fche-mosaico--presencia > li > .fche-mosaico__item { flex: 1; min-width: 0; }
+.fche-cifras { display: flex; flex-wrap: wrap; gap: .1rem .9rem; margin-top: .6rem; font-size: .85rem; color: var(--fche-texto-suave); }
+.fche-cifras strong { color: var(--fche-texto); font-weight: 650; font-variant-numeric: tabular-nums; }
 
 /* ---------- 7. Páginas ---------- */
 /* Ingreso */
