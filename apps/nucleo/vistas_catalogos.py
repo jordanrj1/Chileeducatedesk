@@ -39,7 +39,7 @@ def _form(modelo):
     class F(BootstrapMixin, forms.ModelForm):
         class Meta:
             model = modelo
-            fields = ["nombre", "orden", "activo"]
+            fields = ["nombre", *getattr(modelo, "campos_extra", []), "orden", "activo"]
 
     return F
 

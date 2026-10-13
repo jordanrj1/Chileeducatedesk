@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.personas",
     "apps.organizaciones",
     "apps.lugares",
+    "apps.comunidades",
     "apps.proyectos",
     "apps.actividades",
     "apps.solicitudes",

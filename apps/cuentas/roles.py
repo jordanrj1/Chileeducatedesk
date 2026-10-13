@@ -1,10 +1,11 @@
 """Permisos iniciales de los dos roles (docs/CONTEXTO.md §9). Se pueden ajustar luego desde Administración > Roles."""
 from django.contrib.auth.models import Group, Permission
 
-OPERATIVAS = ["nucleo", "territorio", "personas", "organizaciones", "lugares", "proyectos", "actividades", "solicitudes", "coordinacion", "documentos", "importaciones"]
+OPERATIVAS = ["nucleo", "territorio", "personas", "organizaciones", "lugares", "proyectos", "actividades", "solicitudes", "coordinacion", "documentos", "importaciones", "comunidades"]
 CATALOGOS_MODELOS = {
     "estadoactividad", "estadosolicitud", "estadoparticipacion", "rolparticipacion", "tipoorganizacion", "tipoactividad",
     "tipocontacto", "canal", "modalidad", "origenpersona", "estadoregistro", "tipolugar", "tipodocumento", "tipointervencion",
+    "perfilpersona", "areatematica",
 }
 
 
