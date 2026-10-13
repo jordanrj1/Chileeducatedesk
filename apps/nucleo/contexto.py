@@ -18,15 +18,22 @@ MENU = [
 ]
 
 
+def _hubo_guardado(request):
+    """Marca la página cuando se acaba de guardar algo: el navegador descarta los borradores enviados (AC-E3)."""
+    from django.contrib.messages import get_messages
+
+    return any(m.level_tag == "success" for m in get_messages(request))
+
+
 def navegacion(request):
     user = getattr(request, "user", None)
     from .fases import modulo_activo, modulos_activos
 
     modulos = modulos_activos()
     if not user or not user.is_authenticated:
-        return {"menu": [], "modulos": modulos}
+        return {"menu": [], "modulos": modulos, "hubo_guardado": False}
     ruta = request.path
     visibles = [(e, r) for e, r, perm, *modulo in MENU if (not perm or user.has_perm(perm)) and (not modulo or modulo_activo(modulo[0]))]
     coinciden = [r for _, r in visibles if ruta == r or (r != "/dashboard" and ruta.startswith(r.rstrip("/") + "/"))]
     activa = max(coinciden, key=len) if coinciden else None  # la ruta más específica
-    return {"menu": [(e, r, r == activa) for e, r in visibles], "modulos": modulos}
+    return {"menu": [(e, r, r == activa) for e, r in visibles], "modulos": modulos, "hubo_guardado": _hubo_guardado(request)}

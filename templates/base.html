@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/fche.css' %}">
 </head>
-<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' hx-indicator="#cargando">
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' hx-indicator="#cargando"{% if hubo_guardado %} data-guardado="1"{% endif %}>
 {% if user.is_authenticated %}
 <div class="d-flex flex-column flex-md-row min-vh-100">
   <nav class="fche-menu bg-dark text-white p-3" aria-label="Menú principal">
@@ -29,7 +29,7 @@
         <ul class="dropdown-menu dropdown-menu-end">
           <li><a class="dropdown-item" href="/mi-cuenta">Mi cuenta</a></li>
           <li><hr class="dropdown-divider"></li>
-          <li><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="dropdown-item" type="submit">Cerrar sesión</button></form></li>
+          <li><form action="{% url 'logout' %}" method="post" data-cerrar-sesion>{% csrf_token %}<button class="dropdown-item" type="submit">Cerrar sesión</button></form></li>
         </ul>
       </div>
     </header>

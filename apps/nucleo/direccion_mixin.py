@@ -28,6 +28,9 @@ class ConDireccionMixin:
         form = self.get_form()
         form_dir = self._form_dir()
         omitir = (not self.direccion_requerida) and self._vacio(form_dir)
+        if form.is_valid() and hasattr(self, "version_en_conflicto") and self.version_en_conflicto():
+            form.add_error(None, self.MENSAJE_VERSION)
+            return self.render_to_response(self.get_context_data(form=form, form_direccion=form_dir))
         if form.is_valid() and (omitir or form_dir.is_valid()):
             with transaction.atomic():
                 if not omitir:

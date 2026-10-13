@@ -5,6 +5,7 @@
 <h1 class="h4 mb-3">{{ titulo }}</h1>
 <form method="post" enctype="multipart/form-data" data-aviso-cambios novalidate>
   {% csrf_token %}
+  {% if version_registro %}<input type="hidden" name="_version" value="{{ version_registro }}">{% endif %}
   {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
   {% block campos %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endblock %}
   {% block extra_form %}{% endblock %}
@@ -13,4 +14,5 @@
     <a href="{{ volver_url }}" class="btn btn-outline-secondary volver">← Volver</a>
   </div>
 </form>
+{% block despues_form %}{% endblock %}
 {% endblock %}

@@ -8,7 +8,7 @@ from django.views.generic import CreateView
 from apps.nucleo.direccion_mixin import ConDireccionMixin
 from apps.nucleo.models import EstadoRegistro, TipoOrganizacion
 from apps.nucleo.vistas_base import (
-    AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
+    ControlVersionMixin, AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
 )
 from apps.personas.duplicados import candidatos  # noqa: F401  (reutilizado por los selectores)
 
@@ -82,7 +82,7 @@ class OrganizacionNueva(ConDireccionMixin, Permiso403Mixin, CreateView):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
-class OrganizacionEditar(ConDireccionMixin, Permiso403Mixin, __import__("django.views.generic", fromlist=["UpdateView"]).UpdateView):
+class OrganizacionEditar(ControlVersionMixin, ConDireccionMixin, Permiso403Mixin, __import__("django.views.generic", fromlist=["UpdateView"]).UpdateView):
     model = Organizacion
     form_class = OrganizacionForm
     permission_required = "organizaciones.change_organizacion"

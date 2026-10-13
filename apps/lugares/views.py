@@ -7,7 +7,7 @@ from django.views.generic import CreateView, UpdateView
 
 from apps.nucleo.direccion_mixin import ConDireccionMixin
 from apps.nucleo.models import TipoLugar
-from apps.nucleo.vistas_base import AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo
+from apps.nucleo.vistas_base import ControlVersionMixin, AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo
 from apps.territorio.models import Comuna
 
 from .forms import LugarForm
@@ -76,7 +76,7 @@ class LugarNuevo(_Formulario, CreateView):
         return "/lugares"
 
 
-class LugarEditar(_Formulario, UpdateView):
+class LugarEditar(ControlVersionMixin, _Formulario, UpdateView):
     permission_required = "lugares.change_lugar"
     titulo = "Editar lugar"
 

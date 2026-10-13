@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import CreateView, DetailView, UpdateView
 
-from .vistas_base import Permiso403Mixin
+from .vistas_base import ControlVersionMixin, Permiso403Mixin
 
 
 class Nuevo(Permiso403Mixin, CreateView):
@@ -49,7 +49,7 @@ class Nuevo(Permiso403Mixin, CreateView):
         pass
 
 
-class Editar(Permiso403Mixin, UpdateView):
+class Editar(ControlVersionMixin, Permiso403Mixin, UpdateView):
     template_name = "generico/formulario.html"
     titulo = ""
 
@@ -59,6 +59,9 @@ class Editar(Permiso403Mixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
+        if self.version_en_conflicto():
+            form.add_error(None, self.MENSAJE_VERSION)
+            return self.form_invalid(form)
         with transaction.atomic():
             obj = form.save()
             self.hook(form, obj)

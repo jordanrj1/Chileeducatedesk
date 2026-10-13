@@ -107,6 +107,10 @@ MESSAGE_TAGS = {_mensajes.ERROR: "danger"}  # Bootstrap usa «danger», no «err
 # A quién consultar si una cuenta está desactivada (AC-02). Ej.: «Manuel (correo@ejemplo.cl)».
 CONTACTO_ADMINISTRADOR = env("CONTACTO_ADMINISTRADOR", default="")
 
+# AC-E1: bloqueo temporal tras varios intentos fallidos [P]
+INTENTOS_MAXIMOS = env.int("INTENTOS_MAXIMOS", default=5)
+BLOQUEO_MINUTOS = env.int("BLOQUEO_MINUTOS", default=15)
+
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/dashboard"
 LOGOUT_REDIRECT_URL = "/login"
