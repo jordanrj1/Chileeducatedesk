@@ -1,7 +1,7 @@
 <p class="small text-muted">Otras formas de escribir este sector. Sirven para reconocerlo y no crearlo dos veces.</p>
-<ul class="list-group mb-3" style="max-width:32rem;">{% for a in object.alias.all %}<li class="list-group-item">{{ a.nombre }}</li>{% empty %}<li class="list-group-item text-muted">Sin nombres alternativos.</li>{% endfor %}</ul>
+<ul class="fche-items mb-3" style="max-width:36rem;">{% for a in object.alias.all %}<li>{{ a.nombre }}</li>{% empty %}<li class="text-muted">Sin nombres alternativos.</li>{% endfor %}</ul>
 {% if perms.territorio.change_sector %}
-<form method="post" action="{{ url_alias }}" class="d-flex gap-2" style="max-width:32rem;">{% csrf_token %}
+<form method="post" action="{{ url_alias }}" class="d-flex gap-2" style="max-width:36rem;">{% csrf_token %}
   <input class="form-control" name="nombre" maxlength="120" required placeholder="Ej.: SPC Etapa 2" aria-label="Nombre alternativo">
-  <button class="btn btn-outline-primary">Agregar nombre alternativo</button></form>
+  <button class="btn btn-outline-primary text-nowrap">Agregar nombre alternativo</button></form>
 {% endif %}
