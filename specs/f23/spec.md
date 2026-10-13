@@ -71,6 +71,8 @@ El parámetro `?comuna=<id>` prellena la comuna en «nueva organización» y «n
 - **Persona residente:** `PersonaDireccion` vigente, tipo «residencia», con dirección en la comuna (o en el sector o sus hijos).
 - **Actividades de un territorio:** `territorio.consultas.actividades_de`, es decir, agenda vigente en un lugar del territorio o territorio indicado en la actividad.
 - **Últimos 12 meses:** agenda vigente con fecha entre hoy menos 365 días y hoy.
+- **Solo activos:** indicadores, contadores y listas de comunidades, organizaciones y lugares del contenedor cuentan solo registros activos, para que el número del indicador coincida con su pestaña [P]. Los inactivos siguen en los listados de cada módulo.
+- **Integrante no residente:** integrante vigente de una comunidad activa del territorio, sin residencia vigente en él.
 - **Rendimiento:** cada pestaña del contenedor usa un número fijo de consultas, independiente de cuántas filas haya. Las pruebas lo verifican con `django_assert_max_num_queries`.
 
 ## Criterios de aceptación

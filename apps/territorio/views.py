@@ -1,7 +1,9 @@
+from itertools import groupby
+
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
-from django.db.models import Count
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,6 +17,7 @@ from . import consultas
 from .forms import AliasForm, SectorForm
 from .models import Comuna, Provincia, Region, Sector
 from .reconocer import mismo_sector, sectores_parecidos
+from .resumen import personas_residentes, resumen_territorio
 
 RAIZ = [("Territorio", "/territorio")]
 
@@ -56,99 +59,235 @@ class RegionDetalle(Permiso403Mixin, TemplateView):
         return ctx
 
 
-class _FichaTerritorio(FichaBase):
-    """Pestañas con contador (TE-04)."""
+LIMITE_PERSONAS = 200  # por grupo en la pestaña Personas; el resto, en el listado de Personas con el filtro de comuna
+SECTOR_CON_PADRES = "sector__sector_padre__sector_padre"  # el nombre de un sector incluye el de su padre y su abuelo
 
-    def contadores(self):
-        return {}
+
+class _FichaTerritorio(FichaBase):
+    """Comuna o sector como contenedor del banco (F23): resumen, agrupaciones, personas y alcance; cada pestaña con su contador (TE-04).
+
+    Cada pestaña usa un número fijo de consultas, sin importar cuántos registros tenga el territorio.
+    Las subclases definen `comuna` (la comuna del contenedor) y `ambito()` (`{"comuna": ...}` o `{"sectores": [ids]}`).
+    """
+
+    template_name = "territorio/ficha.html"
+    descripcion_ambito = ""  # «esta comuna», «este sector y los que contiene»
+
+    # --- qué es de este territorio (solo registros activos, igual que el resumen) ---
+    def _comunidades(self):
+        from apps.comunidades.models import Comunidad
+
+        sectores = self.ambito().get("sectores")
+        filtro = {"sector_id__in": sectores} if sectores else {"comuna": self.comuna}
+        return Comunidad.objects.filter(activo=True, **filtro).select_related(SECTOR_CON_PADRES, "organizacion")
+
+    def _lugares(self):
+        return consultas.lugares_de(**self.ambito()).filter(activo=True).select_related(f"direccion__{SECTOR_CON_PADRES}")
+
+    def _organizaciones(self):
+        return consultas.organizaciones_de(**self.ambito()).filter(activo=True)
+
+    def _actividades(self):
+        return consultas.actividades_de(**self.ambito())
+
+    def _residentes(self):
+        return personas_residentes(**self.ambito())
+
+    def _integrantes_no_residentes(self):
+        """Integrantes vigentes de comunidades activas del territorio que no residen en él."""
+        from apps.personas.models import Persona
+
+        sectores = self.ambito().get("sectores")
+        filtro = {"comunidades__comunidad__sector_id__in": sectores} if sectores else {"comunidades__comunidad__comuna": self.comuna}
+        return (
+            Persona.objects.filter(activo=True, comunidades__vigente=True, comunidades__comunidad__activo=True, **filtro)
+            .exclude(pk__in=self._residentes().values("pk"))
+            .distinct()
+        )
+
+    def _cuenta(self, clave, queryset):
+        """Conteo que se usa en el contador de la pestaña y dentro de ella: se calcula una sola vez por respuesta."""
+        cache = self.__dict__.setdefault("_cuentas", {})
+        if clave not in cache:
+            cache[clave] = queryset.count()
+        return cache[clave]
+
+    def conteos(self):
+        """{pestaña: función que da su contador}; solo se calculan los de las pestañas visibles."""
+        return {
+            "lugares": lambda: self._lugares().count(),
+            "organizaciones": lambda: self._organizaciones().count(),
+            "comunidades": lambda: self._comunidades().count(),
+            "actividades": lambda: self._actividades().count(),
+            "personas": lambda: self._cuenta("residentes", self._residentes()) + self._cuenta("no_residentes", self._integrantes_no_residentes()),
+        }
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        n = self.contadores()
-        ctx["pestanas"] = [(c, f"{e} ({n[c]})" if c in n else e) for c, e in ctx["pestanas"]]
+        conteos = self.conteos()
+        ctx["pestanas"] = [(c, f"{e} ({conteos[c]()})" if c in conteos else e) for c, e in ctx["pestanas"]]
         ctx["puede_agregar"] = self.request.user.has_perm("territorio.add_sector")
         return ctx
+
+    def contexto_ficha(self):
+        return {"comuna_contenedor": self.comuna, "nombre_ambito": self.object.nombre}
+
+    # --- pestañas ---
+    def ctx_resumen(self):
+        from apps.actividades.alcance import alcance
+
+        r = resumen_territorio(**self.ambito())
+        total_alcanzado = None
+        if self.request.user.has_perm("actividades.view_participacion"):
+            total_alcanzado = alcance(self._actividades())["total_alcanzado"]
+        vacio = not any(r[k] for k in ("comunidades", "organizaciones", "personas", "lugares", "actividades_total"))
+        return {"resumen": r, "total_alcanzado": total_alcanzado, "indicadores": self._indicadores(r, total_alcanzado), "resumen_vacio": vacio}
+
+    def _indicadores(self, r, total_alcanzado):
+        """Indicadores del resumen; cada uno enlaza a su pestaña si quien mira puede verla."""
+        visibles = {p[0] for p in self.pestanas_visibles()}
+        tipos = len(r["organizaciones_por_tipo"])
+        filas = [
+            ("comunidades", "Comunidades", r["comunidades"], "comunidades", "activas en el territorio"),
+            ("organizaciones", "Organizaciones", r["organizaciones"], "organizaciones", f"de {tipos} tipo{'s' if tipos != 1 else ''}" if tipos else "aún sin registrar"),
+            ("personas", "Residentes", r["personas"], "personas", "personas con residencia vigente aquí"),
+            ("lugares", "Lugares", r["lugares"], "lugares", "salas, sedes y espacios"),
+            ("actividades", "Actividades", r["actividades_12m"], "actividades", f"últimos 12 meses · {r['actividades_total']} en total"),
+        ]
+        if total_alcanzado is not None:
+            filas.append(("alcance", "Total alcanzado", total_alcanzado, "usuarios_check", "asistentes registrados y sin registro"))
+        return [{"clave": c, "titulo": t, "valor": v, "icono": i, "nota": n, "enlace": c in visibles} for c, t, v, i, n in filas]
+
+    def ctx_personas(self):
+        """Residentes e integrantes no residentes: solo nombre, perfiles y comunidad (sin RUT, contactos ni datos sensibles)."""
+        from apps.comunidades.models import ComunidadMiembro
+
+        membresias = ComunidadMiembro.objects.filter(vigente=True, comunidad__activo=True).select_related("comunidad").order_by("comunidad__nombre")
+        sectores = self.ambito().get("sectores")
+        del_territorio = membresias.filter(**({"comunidad__sector_id__in": sectores} if sectores else {"comunidad__comuna": self.comuna}))
+
+        def listar(personas, comunidades):
+            return list(personas.prefetch_related("perfiles", Prefetch("comunidades", queryset=comunidades, to_attr="membresias"))[:LIMITE_PERSONAS])
+
+        return {
+            "residentes": listar(self._residentes(), membresias),
+            "integrantes_no_residentes": listar(self._integrantes_no_residentes(), del_territorio),
+            "n_residentes": self._cuenta("residentes", self._residentes()),
+            "n_no_residentes": self._cuenta("no_residentes", self._integrantes_no_residentes()),
+            "limite_personas": LIMITE_PERSONAS,
+        }
+
+    def ctx_alcance(self):
+        from apps.actividades.alcance import alcance
+
+        return {"alcance": alcance(self._actividades()), "contexto_alcance": f"las actividades de {self.descripcion_ambito}"}
 
     def ctx_lugares(self):
         return {"lugares": self._lugares()}
 
     def ctx_organizaciones(self):
-        return {"organizaciones": self._organizaciones()}
+        """Organizaciones activas agrupadas por tipo, en el orden del catálogo: [(TipoOrganizacion, total, [Organizacion])]."""
+        orgs = self._organizaciones().select_related(f"direccion__{SECTOR_CON_PADRES}").order_by("tipo__orden", "tipo__nombre", "nombre", "pk")
+        grupos = [(tipo, list(lista)) for tipo, lista in groupby(orgs, key=lambda o: o.tipo)]
+        return {"grupos_organizaciones": [(tipo, len(lista), lista) for tipo, lista in grupos]}
+
+    def ctx_comunidades(self):
+        return {"comunidades": self._comunidades(), "url_nueva_comunidad": f"/comunidades/nueva?comuna={self.comuna.pk}"}
 
     def ctx_actividades(self):
-        return {"actividades": self._actividades(), "comuna_ficha": getattr(self.object, "provincia_id", None) and self.object, "sectores_ficha": self._ids() if hasattr(self, "_ids") else None}
+        """BU-E7: distingue «realizada en» (su lugar está aquí) de «dirigida a» (solo indica el territorio), sin consultas por fila."""
+        from apps.actividades.models import ActividadTerritorio, AgendaActividad
+
+        actividades = list(self._actividades())
+        ids = [a.pk for a in actividades]
+        sectores = self.ambito().get("sectores")
+        if sectores:
+            agendas = AgendaActividad.objects.filter(lugar__direccion__sector_id__in=sectores)
+            territorios = ActividadTerritorio.objects.filter(sector_id__in=sectores)
+        else:
+            agendas = AgendaActividad.objects.filter(lugar__direccion__comuna=self.comuna)
+            territorios = ActividadTerritorio.objects.filter(Q(comuna=self.comuna) | Q(sector__comuna=self.comuna))
+        realizadas = {ag.actividad_id: ag.lugar for ag in agendas.filter(vigente=True, actividad_id__in=ids).select_related("lugar")}
+        dirigidas = set(territorios.filter(vigente=True, actividad_id__in=ids).values_list("actividad_id", flat=True))
+        for a in actividades:
+            partes = [f"Realizada en {realizadas[a.pk]}"] if a.pk in realizadas else []
+            if a.pk in dirigidas:
+                partes.append("Dirigida a este territorio")
+            a.relacion_territorial = " · ".join(partes)
+        return {"actividades": actividades}
 
 
 class ComunaFicha(_FichaTerritorio):
     model = Comuna
     permission_required = "territorio.view_comuna"
+    descripcion_ambito = "esta comuna"
     pestanas = [
+        ("resumen", "Resumen", "territorio/pestanas/resumen.html"),
         ("sectores", "Sectores", "territorio/pestanas/sectores.html"),
-        ("lugares", "Lugares", "territorio/pestanas/lugares.html", "lugares.view_lugar"),
-        ("organizaciones", "Organizaciones", "territorio/pestanas/organizaciones.html", "organizaciones.view_organizacion"),
         ("comunidades", "Comunidades", "territorio/pestanas/comunidades.html", "comunidades.view_comunidad"),
+        ("organizaciones", "Organizaciones", "territorio/pestanas/organizaciones.html", "organizaciones.view_organizacion"),
+        ("personas", "Personas", "territorio/pestanas/personas.html", "personas.view_persona"),
+        ("lugares", "Lugares", "territorio/pestanas/lugares.html", "lugares.view_lugar"),
         ("actividades", "Actividades", "territorio/pestanas/actividades.html", "actividades.view_actividad"),
+        ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
     ]
 
     def get_queryset(self):
         return Comuna.objects.select_related("provincia__region")
 
-    def _comunidades(self):
-        return self.object.comunidades.filter(activo=True).select_related("sector", "organizacion")
+    @property
+    def comuna(self):
+        return self.object
 
-    def ctx_comunidades(self):
-        return {"comunidades": self._comunidades(), "url_nueva_comunidad": f"/comunidades/nueva?comuna={self.object.pk}"}
+    def ambito(self):
+        return {"comuna": self.object}
 
     @property
     def breadcrumb(self):
         r = self.object.provincia.region
         return RAIZ + [(r.nombre, r.get_absolute_url())]
 
-    def _lugares(self):
-        return consultas.lugares_de(comuna=self.object)
-
-    def _organizaciones(self):
-        return consultas.organizaciones_de(comuna=self.object)
-
-    def _actividades(self):
-        return consultas.actividades_de(comuna=self.object)
-
-    def contadores(self):
-        return {"sectores": self.object.sectores.count(), "lugares": self._lugares().count(), "organizaciones": self._organizaciones().count(),
-                "comunidades": self._comunidades().count(), "actividades": self._actividades().count()}
+    def conteos(self):
+        return {"sectores": lambda: self.object.sectores.count(), **super().conteos()}
 
     def contexto_ficha(self):
         from apps.organizaciones.models import Organizacion
 
-        return {"url_volver": self.object.provincia.region.get_absolute_url(), "municipalidad": Organizacion.objects.filter(comuna_municipal=self.object).first()}
+        municipalidad = Organizacion.objects.filter(comuna_municipal=self.object).order_by("-activo", "pk").first()
+        return {**super().contexto_ficha(), "url_volver": self.object.provincia.region.get_absolute_url(), "municipalidad": municipalidad}
 
     def ctx_sectores(self):
         return {"raices": self.object.sectores.filter(sector_padre__isnull=True).prefetch_related("hijos__hijos", "alias"), "form": SectorForm(comuna=self.object), "url_crear": reverse("territorio:sector_nuevo", args=[self.object.pk])}
 
 
 class SectorFicha(_FichaTerritorio):
+    """El sector como contenedor: todo se calcula sobre el sector y los que contiene (etapas, villas…)."""
+
     model = Sector
     permission_required = "territorio.view_sector"
+    descripcion_ambito = "este sector y los que contiene"
     pestanas = [
+        ("resumen", "Resumen", "territorio/pestanas/resumen.html"),
         ("sectores", "Sectores dentro", "territorio/pestanas/sectores.html"),
         ("nombres", "Nombres alternativos", "territorio/pestanas/nombres.html"),
-        ("lugares", "Lugares", "territorio/pestanas/lugares.html", "lugares.view_lugar"),
-        ("organizaciones", "Organizaciones", "territorio/pestanas/organizaciones.html", "organizaciones.view_organizacion"),
         ("comunidades", "Comunidades", "territorio/pestanas/comunidades.html", "comunidades.view_comunidad"),
+        ("organizaciones", "Organizaciones", "territorio/pestanas/organizaciones.html", "organizaciones.view_organizacion"),
+        ("personas", "Personas", "territorio/pestanas/personas.html", "personas.view_persona"),
+        ("lugares", "Lugares", "territorio/pestanas/lugares.html", "lugares.view_lugar"),
         ("actividades", "Actividades", "territorio/pestanas/actividades.html", "actividades.view_actividad"),
+        ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
     ]
     permiso_editar = "territorio.change_sector"
 
-    def _comunidades(self):
-        from apps.comunidades.models import Comunidad
-
-        return Comunidad.objects.filter(activo=True, sector_id__in=self._ids()).select_related("sector", "organizacion")
-
-    def ctx_comunidades(self):
-        return {"comunidades": self._comunidades(), "url_nueva_comunidad": f"/comunidades/nueva?comuna={self.object.comuna_id}"}
-
     def get_queryset(self):
-        return Sector.objects.select_related("comuna__provincia__region", "sector_padre")
+        return Sector.objects.select_related("comuna__provincia__region", "sector_padre__sector_padre")
+
+    @property
+    def comuna(self):
+        return self.object.comuna
+
+    def ambito(self):
+        return {"sectores": self._ids()}
 
     @property
     def breadcrumb(self):
@@ -159,25 +298,15 @@ class SectorFicha(_FichaTerritorio):
             self._ids_cache = self.object.descendientes_ids()
         return self._ids_cache
 
-    def _lugares(self):
-        return consultas.lugares_de(sectores=self._ids())
-
-    def _organizaciones(self):
-        return consultas.organizaciones_de(sectores=self._ids())
-
-    def _actividades(self):
-        return consultas.actividades_de(sectores=self._ids())
-
-    def contadores(self):
-        return {"sectores": self.object.hijos.count(), "nombres": self.object.alias.count(), "lugares": self._lugares().count(), "organizaciones": self._organizaciones().count(),
-                "comunidades": self._comunidades().count(), "actividades": self._actividades().count()}
+    def conteos(self):
+        return {"sectores": lambda: self.object.hijos.count(), "nombres": lambda: self.object.alias.count(), **super().conteos()}
 
     def contexto_ficha(self):
-        return {"url_editar": reverse("territorio:sector_editar", args=[self.object.pk]), "url_volver": self.object.comuna.get_absolute_url()}
+        return {**super().contexto_ficha(), "es_sector": True, "url_editar": reverse("territorio:sector_editar", args=[self.object.pk]), "url_volver": self.object.comuna.get_absolute_url()}
 
     def ctx_sectores(self):
         form = SectorForm(comuna=self.object.comuna, initial={"sector_padre": self.object.pk})
-        return {"raices": self.object.hijos.prefetch_related("hijos", "alias"), "form": form, "url_crear": reverse("territorio:sector_nuevo", args=[self.object.comuna_id])}
+        return {"raices": self.object.hijos.prefetch_related("hijos__hijos", "alias"), "form": form, "url_crear": reverse("territorio:sector_nuevo", args=[self.object.comuna_id])}
 
     def ctx_nombres(self):
         return {"form_alias": AliasForm(), "url_alias": reverse("territorio:alias_nuevo", args=[self.object.pk])}

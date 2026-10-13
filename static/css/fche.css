@@ -487,6 +487,11 @@ a.fche-kpi:hover { border-color: var(--fche-primario-borde); box-shadow: 0 6px 1
 .fche-kpi--atencion .fche-kpi__icono { background: #fff3d1; color: #8a5a00; }
 .fche-kpi--alerta .fche-kpi__icono { background: #fdecec; color: #b42318; }
 .fche-kpi--ok .fche-kpi__icono { background: #e7f6ec; color: #13703a; }
+/* Indicadores de un contenedor territorial (5 o 6): filas parejas en vez de dejar uno solo abajo */
+.fche-kpis--contenedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fche-kpis--contenedor .fche-kpi__cabecera { flex-wrap: wrap; }
+@media (min-width: 768px) { .fche-kpis--contenedor { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1600px) { .fche-kpis--contenedor { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
 /* Accesos rápidos */
 .fche-accesos { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .75rem; }

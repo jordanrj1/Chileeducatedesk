@@ -1,5 +1,4 @@
-{% load fche %}{% if municipalidad %}<p class="small d-flex align-items-center gap-1">{% icono "organizaciones" 15 %}Municipalidad: <a href="{{ municipalidad.get_absolute_url }}">{{ municipalidad }}</a></p>{% endif %}
-<div class="row g-4">
+{% load fche %}<div class="row g-4">
 <div class="col-12 {% if puede_agregar %}col-xl-7{% endif %}">
 <h2 class="h6 mb-2">Sectores</h2>
 {% if raices %}

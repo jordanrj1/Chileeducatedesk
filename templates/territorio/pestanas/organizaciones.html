@@ -1,1 +1,15 @@
-<ul class="fche-items">{% for o in organizaciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ o.get_absolute_url }}">{{ o.nombre }}</a> <div class="fche-items__detalle">{{ o.tipo }}</div></div></li>{% empty %}<li class="text-muted">No hay organizaciones registradas aquí.</li>{% endfor %}</ul>
+{% load fche %}
+<div class="fche-seccion"><div><h2 class="h6">Organizaciones por tipo</h2>
+  <p class="small text-muted mb-0">Activas con su dirección en {{ nombre_ambito }}{% if not es_sector %}, más la municipalidad de la comuna{% endif %}.</p></div>
+  {% if perms.organizaciones.add_organizacion %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="/organizaciones/nueva?comuna={{ comuna_contenedor.pk }}">+ Organización</a></div>{% endif %}</div>
+{% for tipo, total, organizaciones in grupos_organizaciones %}
+<section class="{% if not forloop.last %}mb-4{% endif %}" id="tipo-{{ tipo.codigo }}" aria-labelledby="titulo-tipo-{{ tipo.codigo }}">
+  <h3 class="h6 mb-2" id="titulo-tipo-{{ tipo.codigo }}">{{ tipo.nombre }} <span class="fche-contador">{{ total }}</span></h3>
+  <ul class="fche-items">{% for o in organizaciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ o.get_absolute_url }}">{{ o.nombre }}</a>
+    {% if o.direccion.sector %}<div class="fche-items__detalle">{{ o.direccion.sector }}</div>{% endif %}</div></li>{% endfor %}</ul>
+</section>
+{% empty %}
+<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "organizaciones" 18 %}</span>
+  <p class="fche-vacio__texto">Aún no hay organizaciones registradas aquí. Registra la junta de vecinos, el establecimiento educacional o la municipalidad con su dirección en {{ nombre_ambito }} y aparecerán agrupadas por tipo.</p>
+  {% if perms.organizaciones.add_organizacion %}<a class="btn btn-primary btn-sm" href="/organizaciones/nueva?comuna={{ comuna_contenedor.pk }}">+ Organización</a>{% endif %}</div>
+{% endfor %}

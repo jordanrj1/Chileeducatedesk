@@ -1,2 +1,9 @@
-{% load territorio_extras fche %}<ul class="fche-items">{% for a in actividades %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ a.get_absolute_url }}">{{ a.nombre }}</a>{% if a.tipo %} <span class="small text-muted">{{ a.tipo }}</span>{% endif %}
-  <div class="fche-items__detalle">{% relacion_territorial a comuna_ficha sectores_ficha %}</div></div>{% estado a.estado %}</li>{% empty %}<li class="text-muted">Aún no hay actividades aquí.</li>{% endfor %}</ul>
+{% load fche %}
+{% if actividades %}
+<ul class="fche-items">{% for a in actividades %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ a.get_absolute_url }}">{{ a.nombre }}</a>{% if a.tipo %} <span class="small text-muted">{{ a.tipo }}</span>{% endif %}
+  <div class="fche-items__detalle">{{ a.relacion_territorial }}</div></div>{% estado a.estado %}</li>{% endfor %}</ul>
+{% else %}
+<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "actividades" 18 %}</span>
+  <p class="fche-vacio__texto">Aún no hay actividades aquí. Una actividad aparece cuando se programa en un lugar de {{ nombre_ambito }} o cuando se indica este territorio como destino.</p>
+  {% if perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="/actividades/nueva?comuna={{ comuna_contenedor.pk }}">+ Actividad</a>{% endif %}</div>
+{% endif %}

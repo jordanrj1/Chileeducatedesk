@@ -1,0 +1,23 @@
+{% extends "generico/ficha.html" %}
+{% load fche %}
+{% block subtitulo %}
+<div class="d-flex flex-wrap gap-2 align-items-center">
+  {% if es_sector %}
+  <span class="badge text-bg-light border">{{ object.get_tipo_display }}</span>
+  <span class="d-inline-flex align-items-center gap-1">{% icono "territorio" 15 %}<span><a href="{{ comuna_contenedor.get_absolute_url }}">{{ comuna_contenedor }}</a>{% if object.sector_padre %} › <a href="{{ object.sector_padre.get_absolute_url }}">{{ object.sector_padre }}</a>{% endif %}</span></span>
+  {% else %}
+  <span class="d-inline-flex align-items-center gap-1">{% icono "territorio" 15 %}<span><a href="{{ object.provincia.region.get_absolute_url }}">{{ object.provincia.region }}</a> › {{ object.provincia }}</span></span>
+  <span class="d-inline-flex align-items-center gap-1">{% icono "organizaciones" 15 %}<span>Municipalidad:
+    {% if municipalidad %}<a href="{{ municipalidad.get_absolute_url }}">{{ municipalidad }}</a>
+    {% elif perms.organizaciones.add_organizacion %}<a href="/organizaciones/nueva?comuna={{ object.pk }}&amp;tipo=municipalidad">+ Registrar municipalidad</a>
+    {% else %}sin registrar{% endif %}</span>
+  </span>
+  {% endif %}
+</div>
+{% endblock %}
+{% block acciones %}
+{% if perms.comunidades.add_comunidad %}<a class="btn btn-outline-primary btn-sm" href="/comunidades/nueva?comuna={{ comuna_contenedor.pk }}">+ Comunidad</a>{% endif %}
+{% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva?comuna={{ comuna_contenedor.pk }}">+ Organización</a>{% endif %}
+{% if perms.lugares.add_lugar %}<a class="btn btn-outline-primary btn-sm" href="/lugares/nuevo?comuna={{ comuna_contenedor.pk }}">+ Lugar</a>{% endif %}
+{% if perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="/actividades/nueva?comuna={{ comuna_contenedor.pk }}">+ Actividad</a>{% endif %}
+{% endblock %}

@@ -14,7 +14,8 @@ class SectorForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *args, comuna=None, **kw):
         super().__init__(*args, **kw)
         self.comuna = comuna or getattr(self.instance, "comuna", None)
-        qs = Sector.objects.filter(comuna=self.comuna) if self.comuna else Sector.objects.none()
+        # el nombre de cada opción incluye el de su padre y su abuelo: se traen en la misma consulta
+        qs = Sector.objects.filter(comuna=self.comuna).select_related("sector_padre__sector_padre") if self.comuna else Sector.objects.none()
         if self.instance.pk:
             qs = qs.exclude(pk__in=self.instance.descendientes_ids())  # no puede quedar dentro de sí mismo
         self.fields["sector_padre"].queryset = qs
