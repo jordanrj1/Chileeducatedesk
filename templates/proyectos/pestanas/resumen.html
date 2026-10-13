@@ -1,6 +1,7 @@
 {% load fche %}<dl class="fche-datos">
   <div><dt>Estado</dt><dd>{% estado object.estado object.get_estado_display %}</dd></div>
   <div><dt>Zona</dt><dd>{{ object.zona|default:"—" }}</dd></div>
+  <div><dt>Área temática</dt><dd>{{ object.area_tematica|default:"—" }}</dd></div>
   <div><dt>Fechas</dt><dd>{{ object.fecha_inicio|date:"d-m-Y"|default:"?" }} a {{ object.fecha_termino|date:"d-m-Y"|default:"?" }}</dd></div>
   <div><dt>Responsable</dt><dd>{% if object.responsable %}<a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a>{% else %}—{% endif %}</dd></div>
   <div class="fche-datos__ancho"><dt>Actividades</dt><dd><strong class="fche-num">{{ total_actividades }}</strong>{% for n, c in por_estado.items %} · {{ n }}: {{ c }}{% endfor %}</dd></div>

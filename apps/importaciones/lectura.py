@@ -30,6 +30,14 @@ SINONIMOS = {
     "capacidad": {"capacidad", "aforo", "cupos"},
     "condiciones": {"condiciones", "equipamiento"},
     "sitio_web": {"sitio web", "web", "pagina web", "página web"},
+    # F22: datos ampliados de personas y estudiantes
+    "fecha_nacimiento": {"fecha de nacimiento", "fecha nacimiento", "nacimiento", "f nacimiento", "fecha de nac", "fec nac", "cumpleanos"},
+    "nacionalidad": {"nacionalidad", "pais de origen"},
+    "sede": {"sede", "campus"},
+    "jornada": {"jornada"},
+    "nivel_actual": {"ano que cursa", "año que cursa", "nivel", "curso", "ano de carrera", "año de carrera", "año", "ano"},
+    "asignatura": {"asignatura", "ramo", "catedra", "cátedra", "practica", "práctica"},
+    "nivel_educacional": {"nivel educacional", "escolaridad", "nivel de estudios"},
 }
 INVERSO = {}
 for canon, nombres in SINONIMOS.items():
@@ -89,7 +97,10 @@ class ErrorLectura(Exception):
 COLUMNAS_POR_TIPO = {
     "personas": [("nombre_completo", "Nombre completo"), ("nombres", "Nombres"), ("apellido_paterno", "Apellido paterno"), ("apellido_materno", "Apellido materno"),
                  ("apellidos", "Apellidos (ambos)"), ("rut", "RUT"), ("correo", "Correo"), ("telefono", "Teléfono"), ("institucion", "Institución"),
-                 ("carrera", "Carrera"), ("profesion", "Profesión"), ("observaciones", "Observaciones")],
+                 ("carrera", "Carrera"), ("sede", "Sede o campus"), ("jornada", "Jornada"), ("nivel_actual", "Año que cursa"), ("asignatura", "Asignatura o práctica"),
+                 ("fecha_nacimiento", "Fecha de nacimiento"), ("nacionalidad", "Nacionalidad"), ("nivel_educacional", "Nivel educacional"),
+                 ("comuna", "Comuna de residencia"), ("calle", "Dirección (calle)"), ("numero", "Número"),
+                 ("profesion", "Profesión"), ("observaciones", "Observaciones")],
     "organizaciones": [("nombres", "Nombre"), ("tipo", "Tipo"), ("rut", "RUT"), ("correo", "Correo"), ("telefono", "Teléfono"), ("comuna", "Comuna"), ("calle", "Dirección"), ("sitio_web", "Sitio web")],
     "lugares": [("nombres", "Nombre"), ("tipo", "Tipo"), ("calle", "Calle"), ("numero", "Número"), ("comuna", "Comuna"), ("capacidad", "Capacidad"), ("condiciones", "Condiciones")],
 }

@@ -8,7 +8,7 @@ from django.views.generic import CreateView
 
 from django.db.models import Q
 
-from apps.nucleo.models import EstadoRegistro, OrigenPersona, RolParticipacion
+from apps.nucleo.models import AreaTematica, EstadoRegistro, OrigenPersona, PerfilPersona, RolParticipacion
 from apps.organizaciones.models import Organizacion
 from apps.territorio.models import Comuna
 from apps.nucleo.vistas_base import (
@@ -27,6 +27,33 @@ def _principal(persona, codigos):
     return ""
 
 
+def _opciones_comunidad():
+    from apps.comunidades.models import Comunidad
+
+    return [(str(c.pk), c.nombre) for c in Comunidad.objects.filter(activo=True)]
+
+
+def _filtrar_edad(qs, tramo):
+    """Tramos de edad a partir de la fecha de nacimiento (F22)."""
+    from django.utils import timezone
+
+    hoy = timezone.localdate()
+
+    def hace(anios):
+        try:
+            return hoy.replace(year=hoy.year - anios)
+        except ValueError:  # 29 de febrero
+            return hoy.replace(year=hoy.year - anios, day=28)
+
+    if tramo == "sin":
+        return qs.filter(fecha_nacimiento__isnull=True)
+    limites = {"menor": (0, 17), "18_29": (18, 29), "30_59": (30, 59), "60": (60, 150)}
+    if tramo not in limites:
+        raise ValueError(tramo)
+    desde, hasta = limites[tramo]
+    return qs.filter(fecha_nacimiento__lte=hace(desde), fecha_nacimiento__gt=hace(hasta + 1)) if desde else qs.filter(fecha_nacimiento__gt=hace(hasta + 1))
+
+
 class PersonaLista(ListaBase):
     model = Persona
     permission_required = "personas.view_persona"
@@ -41,6 +68,7 @@ class PersonaLista(ListaBase):
         ("RUT 🔒", "rut"),
         ("Correo", lambda p: _principal(p, ["correo"])),
         ("Teléfono", lambda p: _principal(p, ["telefono_movil", "telefono_fijo"])),
+        ("Edad", lambda p: p.edad if p.edad is not None else ""),
         ("Registro", "estado_registro"),
         ("Origen", "origen"),
     ]
@@ -54,6 +82,13 @@ class PersonaLista(ListaBase):
         Filtro("organizacion", "Organización", "", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(activo=True)[:300]],
                aplicar=lambda qs, v: qs.filter(Q(vinculos__organizacion_id=v) | Q(formaciones__organizacion_id=v)).distinct()),
         Filtro("comuna", "Comuna", "", opciones_modelo(Comuna), aplicar=lambda qs, v: qs.filter(direcciones__vigente=True, direcciones__direccion__comuna_id=v).distinct()),
+        # F22: el banco de personas se filtra por perfil, interés, comunidad y edad
+        Filtro("perfil", "Perfil", "", lambda: [(str(p.pk), p.nombre) for p in PerfilPersona.objects.filter(activo=True)], aplicar=lambda qs, v: qs.filter(perfiles__id=v).distinct()),
+        Filtro("interes", "Interés", "", lambda: [(str(a.pk), a.nombre) for a in AreaTematica.objects.filter(activo=True)], aplicar=lambda qs, v: qs.filter(areas_interes__id=v).distinct()),
+        Filtro("comunidad", "Comunidad", "", lambda: _opciones_comunidad(),
+               aplicar=lambda qs, v: qs.filter(comunidades__comunidad_id=v, comunidades__vigente=True).distinct()),
+        Filtro("edad", "Edad", "", lambda: [("menor", "Menores de 18"), ("18_29", "18 a 29"), ("30_59", "30 a 59"), ("60", "60 o más"), ("sin", "Sin fecha de nacimiento")],
+               aplicar=lambda qs, v: _filtrar_edad(qs, v)),
     ]
     texto_vacio = "Aún no hay personas registradas."
     url_exportar = "/personas/exportar"
@@ -347,12 +382,22 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
         libro = Workbook()
         hojas = [("Datos", ["Campo", "Valor"], [
             ("Nombres", p.nombres), ("Apellido paterno", p.apellido_paterno), ("Apellido materno", p.apellido_materno), ("RUT", p.rut),
+            ("Nombre social", p.nombre_social), ("Fecha de nacimiento", f"{p.fecha_nacimiento:%d-%m-%Y}" if p.fecha_nacimiento else ""), ("Nacionalidad", p.nacionalidad),
+            ("Perfiles", ", ".join(str(x) for x in p.perfiles.all())), ("Nivel educacional", p.get_nivel_educacional_display()),
+            ("Situación ocupacional", p.get_situacion_ocupacional_display()), ("Áreas de interés", ", ".join(str(x) for x in p.areas_interes.all())),
+            ("Habilidades", p.habilidades), ("Idiomas", p.idiomas), ("Canal preferido", p.canal_preferido or ""),
             ("Profesión u oficio", p.profesion), ("Sitio web", p.sitio_web), ("Origen", p.origen or ""), ("Estado del registro", p.estado_registro or ""),
             ("Observaciones", p.observaciones), ("Registrada el", f"{p.creado_en:%d-%m-%Y}"),
         ])]
         hojas.append(("Contactos", ["Tipo", "Valor", "Vigente"], [(c.tipo, c.valor, "Sí" if c.vigente else "No") for c in p.contactos.select_related("tipo")]))
         hojas.append(("Direcciones", ["Tipo", "Dirección", "Vigente"], [(d.get_tipo_display(), d.direccion, "Sí" if d.vigente else "No") for d in p.direcciones.select_related("direccion__comuna")]))
-        hojas.append(("Formación", ["Institución", "Carrera", "Estado"], [(f.organizacion, f.carrera or "", f.get_estado_display()) for f in p.formaciones.select_related("organizacion", "carrera")]))
+        hojas.append(("Formación", ["Institución", "Carrera", "Estado", "Sede", "Jornada", "Año que cursa", "Asignatura", "Horas comprometidas"], [
+            (f.organizacion, f.carrera or "", f.get_estado_display(), f.sede, f.get_jornada_display(), f.nivel_actual or "", f.asignatura, f.horas_comprometidas or "")
+            for f in p.formaciones.select_related("organizacion", "carrera")]))
+        hojas.append(("Comunidades", ["Comunidad", "Rol", "Desde", "Hasta", "Vigente"], [
+            (m.comunidad, m.get_rol_display(), m.desde or "", m.hasta or "", "Sí" if m.vigente else "No") for m in p.comunidades.select_related("comunidad")]))
+        hojas.append(("Consentimientos", ["Tipo", "Otorgado", "Fecha", "Medio", "Revocado el"], [
+            (c.get_tipo_display(), "Sí" if c.otorgado else "No", c.fecha, c.get_medio_display(), c.revocado_en or "") for c in p.consentimientos.all()]))
         hojas.append(("Cargos", ["Organización", "Cargo", "Desde", "Hasta"], [(v.organizacion, v.cargo, v.fecha_inicio or "", v.fecha_termino or "") for v in p.vinculos.select_related("organizacion")]))
         hojas.append(("Participaciones", ["Actividad", "Rol", "Estado", "Asistencia"], [
             (x.actividad, x.rol, x.estado, {True: "Asistió", False: "No asistió", None: ""}[x.asistencia]) for x in p.participaciones.select_related("actividad", "rol", "estado")
@@ -360,6 +405,16 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
         if request.user.has_perm("personas.ver_sensibles"):
             hojas.append(("Emergencia", ["Nombre", "Parentesco", "Teléfono"], [(c.nombre, c.parentesco, c.telefono) for c in p.contactos_emergencia.all()]))
             hojas.append(("Verificaciones", ["Tipo", "Fecha", "Vigente hasta"], [(v.tipo, v.fecha, v.vigente_hasta or "") for v in p.verificaciones.all()]))
+            hojas.append(("Apoderados", ["Apoderado", "Parentesco", "Tutor legal"], [(a.apoderado, a.parentesco, "Sí" if a.tutor_legal else "No") for a in p.apoderados.select_related("apoderado")]))
+            ps = getattr(p, "perfil_sensible", None)
+            if ps:
+                hojas.append(("Datos sensibles", ["Campo", "Valor"], [
+                    ("Género", ps.get_genero_display()), ("Pueblo originario", ps.get_pueblo_originario_display()),
+                    ("Discapacidad", {True: "Sí", False: "No", None: ""}[ps.discapacidad]), ("Necesidades de apoyo", ps.necesidades_apoyo),
+                    ("Condiciones de salud", ps.condiciones_salud), ("Alergias", ps.alergias), ("Previsión", ps.get_prevision_salud_display()),
+                    ("Jefatura de hogar", {True: "Sí", False: "No", None: ""}[ps.jefatura_hogar]), ("Integrantes del hogar", ps.integrantes_hogar or ""),
+                    ("Tramo RSH", ps.get_tramo_rsh_display()),
+                ]))
         libro.remove(libro.active)
         for titulo, encabezados, filas in hojas:
             h = libro.create_sheet(titulo)

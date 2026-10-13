@@ -88,9 +88,11 @@ class ProyectoFicha(FichaBase):
         ("resumen", "Resumen", "proyectos/pestanas/resumen.html"),
         ("equipo", "Equipo", "generico/_hijos.html"),
         ("organizaciones", "Organizaciones", "generico/_hijos.html"),
+        ("comunidades", "Comunidades", "generico/_hijos.html", "comunidades.view_comunidad"),
         ("beneficiarios", "Beneficiarios", "proyectos/pestanas/beneficiarios.html"),
         ("actividades", "Actividades", "proyectos/pestanas/actividades.html", "actividades.view_actividad"),
         ("postulacion", "Postulación", "generico/_hijos.html"),
+        ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
         ("documentos", "Documentos", "proyectos/pestanas/documentos.html", "documentos.view_documento"),
         ("presupuesto", "Presupuesto", "proyectos/pestanas/presupuesto.html", "finanzas.view_movimiento"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
@@ -125,6 +127,16 @@ class ProyectoFicha(FichaBase):
     def ctx_organizaciones(self):
         qs = self.object.organizaciones.select_related("organizacion", "tipo_intervencion", "contacto")
         return self._hijos(qs, "organizaciones", lambda o: f"{o.organizacion}" + (f" · {o.tipo_intervencion}" if o.tipo_intervencion else ""), lambda o: o.observaciones, "Organizaciones", "Organización", "Sin organizaciones relacionadas.")
+
+    def ctx_comunidades(self):
+        qs = self.object.comunidades_destino.select_related("comunidad__comuna", "comunidad__sector")
+        return self._hijos(qs, "comunidades", lambda c: str(c.comunidad), lambda c: " · ".join(x for x in [c.comunidad.territorio, c.observaciones] if x),
+                           "Comunidades destinatarias", "Comunidad", "Aún no se indica a qué comunidades va dirigido el proyecto.")
+
+    def ctx_alcance(self):
+        from apps.actividades.alcance import alcance
+
+        return {"alcance": alcance(self.object.actividades.all()), "contexto_alcance": "las actividades de este proyecto"}
 
     def ctx_postulacion(self):
         qs = self.object.postulaciones.all()

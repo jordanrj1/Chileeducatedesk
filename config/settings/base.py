@@ -97,6 +97,8 @@ AUTHENTICATION_BACKENDS = ["apps.cuentas.backends.CorreoOUsuarioBackend"]
 SEGUNDA_FASE = env.bool("SEGUNDA_FASE", default=False)
 # Para habilitar solo algunos: reuniones, tareas, sesiones, beneficiarios, verificaciones, postulaciones, finanzas
 MODULOS_SEGUNDA_FASE = env.list("MODULOS_SEGUNDA_FASE", default=[])
+# F22: datos sensibles de personas (Ley 21.719). Con False desaparece la sección y su edición [V: validar con el tutor].
+DATOS_SENSIBLES = env.bool("DATOS_SENSIBLES", default=True)
 
 # AT-E10 [V]: códigos de roles que no ocupan cupo del lugar (p. ej. tutor,coordinador). Vacío = cuentan todos.
 ROLES_FUERA_DE_CAPACIDAD = env.list("ROLES_FUERA_DE_CAPACIDAD", default=[])

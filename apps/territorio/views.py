@@ -86,11 +86,18 @@ class ComunaFicha(_FichaTerritorio):
         ("sectores", "Sectores", "territorio/pestanas/sectores.html"),
         ("lugares", "Lugares", "territorio/pestanas/lugares.html", "lugares.view_lugar"),
         ("organizaciones", "Organizaciones", "territorio/pestanas/organizaciones.html", "organizaciones.view_organizacion"),
+        ("comunidades", "Comunidades", "territorio/pestanas/comunidades.html", "comunidades.view_comunidad"),
         ("actividades", "Actividades", "territorio/pestanas/actividades.html", "actividades.view_actividad"),
     ]
 
     def get_queryset(self):
         return Comuna.objects.select_related("provincia__region")
+
+    def _comunidades(self):
+        return self.object.comunidades.filter(activo=True).select_related("sector", "organizacion")
+
+    def ctx_comunidades(self):
+        return {"comunidades": self._comunidades(), "url_nueva_comunidad": f"/comunidades/nueva?comuna={self.object.pk}"}
 
     @property
     def breadcrumb(self):
@@ -107,7 +114,8 @@ class ComunaFicha(_FichaTerritorio):
         return consultas.actividades_de(comuna=self.object)
 
     def contadores(self):
-        return {"sectores": self.object.sectores.count(), "lugares": self._lugares().count(), "organizaciones": self._organizaciones().count(), "actividades": self._actividades().count()}
+        return {"sectores": self.object.sectores.count(), "lugares": self._lugares().count(), "organizaciones": self._organizaciones().count(),
+                "comunidades": self._comunidades().count(), "actividades": self._actividades().count()}
 
     def contexto_ficha(self):
         from apps.organizaciones.models import Organizacion
@@ -126,9 +134,18 @@ class SectorFicha(_FichaTerritorio):
         ("nombres", "Nombres alternativos", "territorio/pestanas/nombres.html"),
         ("lugares", "Lugares", "territorio/pestanas/lugares.html", "lugares.view_lugar"),
         ("organizaciones", "Organizaciones", "territorio/pestanas/organizaciones.html", "organizaciones.view_organizacion"),
+        ("comunidades", "Comunidades", "territorio/pestanas/comunidades.html", "comunidades.view_comunidad"),
         ("actividades", "Actividades", "territorio/pestanas/actividades.html", "actividades.view_actividad"),
     ]
     permiso_editar = "territorio.change_sector"
+
+    def _comunidades(self):
+        from apps.comunidades.models import Comunidad
+
+        return Comunidad.objects.filter(activo=True, sector_id__in=self._ids()).select_related("sector", "organizacion")
+
+    def ctx_comunidades(self):
+        return {"comunidades": self._comunidades(), "url_nueva_comunidad": f"/comunidades/nueva?comuna={self.object.comuna_id}"}
 
     def get_queryset(self):
         return Sector.objects.select_related("comuna__provincia__region", "sector_padre")
@@ -152,7 +169,8 @@ class SectorFicha(_FichaTerritorio):
         return consultas.actividades_de(sectores=self._ids())
 
     def contadores(self):
-        return {"sectores": self.object.hijos.count(), "nombres": self.object.alias.count(), "lugares": self._lugares().count(), "organizaciones": self._organizaciones().count(), "actividades": self._actividades().count()}
+        return {"sectores": self.object.hijos.count(), "nombres": self.object.alias.count(), "lugares": self._lugares().count(), "organizaciones": self._organizaciones().count(),
+                "comunidades": self._comunidades().count(), "actividades": self._actividades().count()}
 
     def contexto_ficha(self):
         return {"url_editar": reverse("territorio:sector_editar", args=[self.object.pk]), "url_volver": self.object.comuna.get_absolute_url()}

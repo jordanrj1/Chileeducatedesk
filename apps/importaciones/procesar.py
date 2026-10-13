@@ -14,19 +14,41 @@ from apps.nucleo.models import EstadoParticipacion, EstadoRegistro, TipoContacto
 from apps.nucleo.utilidades import normalizar_telefono, separar_nombre, separar_rut, telefono_normalizado_valido
 from apps.organizaciones.models import Carrera, Organizacion
 from apps.personas.duplicados import candidatos
-from apps.personas.models import Contacto, Persona, PersonaFormacion
+from apps.personas.models import Contacto, Persona, PersonaDireccion, PersonaFormacion
 from apps.territorio.models import Comuna, Direccion
 
 from .models import Lote, LoteItem
 
 CAMPOS = {
-    "listado_actividad": ["nombres", "apellido_paterno", "apellido_materno", "rut", "correo", "telefono"],
-    "personas": ["nombres", "apellido_paterno", "apellido_materno", "rut", "correo", "telefono"],
+    "listado_actividad": ["nombres", "apellido_paterno", "apellido_materno", "rut", "correo", "telefono", "fecha_nacimiento", "comuna"],
+    "personas": ["nombres", "apellido_paterno", "apellido_materno", "rut", "correo", "telefono", "fecha_nacimiento", "comuna"],
     "organizaciones": ["nombre", "tipo", "rut", "correo", "telefono", "comuna"],
     "lugares": ["nombre", "tipo", "calle", "numero", "comuna", "capacidad"],
 }
 CORREO = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 UMBRAL = 0.5
+
+
+def fecha_planilla(texto):
+    """Fecha escrita como en Chile (dd-mm-aaaa, dd/mm/aa) o como la exporta Excel (aaaa-mm-dd [hh:mm:ss]). None si no se entiende."""
+    from datetime import date
+
+    t = (texto or "").strip().split(" ")[0].replace("/", "-").replace(".", "-")
+    partes = t.split("-")
+    if len(partes) != 3 or not all(x.isdigit() for x in partes):
+        return None
+    try:
+        if len(partes[0]) == 4:
+            return date(int(partes[0]), int(partes[1]), int(partes[2]))
+        anio = int(partes[2])
+        if len(partes[2]) == 2:
+            anio += 2000 if anio <= timezone.localdate().year % 100 else 1900
+        return date(anio, int(partes[1]), int(partes[0]))
+    except ValueError:
+        return None
+
+
+JORNADAS = {"diurna": "diurna", "diurno": "diurna", "vespertina": "vespertina", "vespertino": "vespertina", "online": "en_linea", "en linea": "en_linea", "en línea": "en_linea", "virtual": "en_linea"}
 
 
 def _normalizar_persona(d):
@@ -70,6 +92,14 @@ def _analizar_persona(d, vistos):
         errores.append("Correo no válido.")
     if d.get("telefono") and not telefono_normalizado_valido(d["telefono"]):
         errores.append("Teléfono no interpretable (usa +56 9 …).")
+    if d.get("fecha_nacimiento"):
+        fecha = fecha_planilla(d["fecha_nacimiento"])
+        if not fecha or fecha > timezone.localdate():
+            errores.append("Fecha de nacimiento no reconocida (usa dd-mm-aaaa).")
+        else:
+            d["fecha_nacimiento"] = fecha.strftime("%d-%m-%Y")
+    if d.get("nivel_actual") and not str(d["nivel_actual"]).strip().rstrip("°º.").isdigit():
+        d["nivel_actual"] = "".join(c for c in str(d["nivel_actual"]) if c.isdigit())[:2]
     for clave in (("rut", d.get("rut")), ("correo", d.get("correo"))):
         if clave[1]:
             if clave in vistos:
@@ -257,6 +287,8 @@ def analizar(tipo, filas_crudas, decisiones=None, crear_carreras=False):
         fila = {"fila": i, "datos": datos, "estado": estado, "errores": errores, "coincidencias": cands, "existente": existente, "avisos": [], "diferencias": []}
         if tipo in ("personas", "listado_actividad") and estado != "error":
             fila["avisos"] = _avisos_formacion(datos, crear_carreras)
+            if datos.get("comuna") and not _comuna(datos["comuna"]):
+                fila["avisos"].append(f"La comuna «{datos['comuna']}» no está registrada: no se guardará su dirección.")
             if existente:
                 fila["diferencias"] = _diferencias(Persona.objects.get(pk=existente), datos)
                 if not Persona.objects.filter(pk=existente, activo=True).exists():
@@ -293,7 +325,12 @@ def _formacion(lote, f, persona, d):
         LoteItem.objects.create(lote=lote, tipo_objeto="carrera", objeto_id=carrera.pk, fila=f["fila"])
     if PersonaFormacion.objects.filter(persona=persona, organizacion=org, carrera=carrera).exists():
         return
-    fm = PersonaFormacion.objects.create(persona=persona, organizacion=org, carrera=carrera)
+    nivel = "".join(c for c in str(d.get("nivel_actual") or "") if c.isdigit())[:2]
+    fm = PersonaFormacion.objects.create(
+        persona=persona, organizacion=org, carrera=carrera, sede=(d.get("sede") or "").strip()[:120],
+        jornada=JORNADAS.get((d.get("jornada") or "").strip().lower(), ""), nivel_actual=int(nivel) if nivel else None,
+        asignatura=(d.get("asignatura") or "").strip()[:200],
+    )
     LoteItem.objects.create(lote=lote, tipo_objeto="formacion", objeto_id=fm.pk, fila=f["fila"])
 
 
@@ -334,14 +371,29 @@ def _persona(lote, f, usuario):
         return _existente(lote, f, usuario), False
     rut = separar_rut(d["rut"]) if d.get("rut") else (None, None)
     completa = d.get("apellido_paterno") and (d.get("correo") or d.get("telefono"))
+    niveles = {n.lower(): c for c, n in Persona.NIVELES_EDUCACIONALES}
     p = Persona.objects.create(
         nombres=d["nombres"], apellido_paterno=d.get("apellido_paterno", ""), apellido_materno=d.get("apellido_materno", ""), rut_numero=rut[0], rut_dv=rut[1],
         profesion=d.get("profesion", ""), creado_por=usuario, estado_registro=EstadoRegistro.objects.filter(codigo="activo" if completa else "incompleto").first(),
+        fecha_nacimiento=fecha_planilla(d.get("fecha_nacimiento")), nacionalidad=(d.get("nacionalidad") or "").strip()[:60],
+        nivel_educacional=niveles.get((d.get("nivel_educacional") or "").strip().lower(), ""),
     )
     LoteItem.objects.create(lote=lote, tipo_objeto="persona", objeto_id=p.pk, fila=f["fila"])
     _contactos_persona(lote, f["fila"], p, d)
     _formacion(lote, f, p, d)
+    _residencia(lote, f, p, d)
     return p, True
+
+
+def _residencia(lote, f, persona, d):
+    """Comuna y calle de la planilla: dirección de residencia (F22)."""
+    comuna = _comuna(d.get("comuna"))
+    if not comuna:
+        return
+    direccion = Direccion.objects.create(calle=(d.get("calle") or "").strip()[:160], numero=(d.get("numero") or "").strip()[:20], comuna=comuna)
+    LoteItem.objects.create(lote=lote, tipo_objeto="direccion", objeto_id=direccion.pk, fila=f["fila"])
+    pd = PersonaDireccion.objects.create(persona=persona, direccion=direccion, tipo="residencia")
+    LoteItem.objects.create(lote=lote, tipo_objeto="persona_direccion", objeto_id=pd.pk, fila=f["fila"])
 
 
 def _organizacion(lote, f, usuario):
@@ -435,7 +487,8 @@ def revertir(lote, usuario):
 
     if lote.estado != "confirmado":
         raise ValueError("Solo se puede revertir un lote confirmado.")
-    modelos = {"participacion": Participacion, "contacto": Contacto, "formacion": PersonaFormacion, "persona": Persona, "organizacion": Organizacion, "lugar": Lugar, "direccion": Direccion, "carrera": Carrera}
+    modelos = {"participacion": Participacion, "contacto": Contacto, "formacion": PersonaFormacion, "persona_direccion": PersonaDireccion, "persona": Persona,
+               "organizacion": Organizacion, "lugar": Lugar, "direccion": Direccion, "carrera": Carrera}
     n = {"eliminados": 0, "conservados": 0, "editados": 0, "restaurados": 0}
 
     def editado_despues(obj):

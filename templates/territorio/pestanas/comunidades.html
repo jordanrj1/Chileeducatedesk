@@ -1,0 +1,4 @@
+{% load fche %}<div class="fche-seccion"><div><h2 class="h6">Comunidades</h2><p class="small text-muted mb-0">Grupos de personas de este territorio a quienes se dirigen las actividades.</p></div>
+{% if perms.comunidades.add_comunidad %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_comunidad }}">+ Nueva comunidad</a></div>{% endif %}</div>
+<ul class="fche-items">{% for c in comunidades %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ c.get_absolute_url }}">{{ c.nombre }}</a>
+<div class="fche-items__detalle">{{ c.get_tipo_display }}{% if c.sector %} · {{ c.sector }}{% endif %}{% if c.organizacion %} · {{ c.organizacion }}{% endif %}{% if c.poblacion_estimada %} · ~{{ c.poblacion_estimada }} personas{% endif %}</div></div></li>{% empty %}<li class="text-muted">No hay comunidades registradas aquí.</li>{% endfor %}</ul>

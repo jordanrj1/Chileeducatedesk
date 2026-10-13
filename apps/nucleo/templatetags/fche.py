@@ -61,6 +61,7 @@ ICONOS = {
     "subir": '<path d="M12 20V9M7 14l5-5 5 5M4 5h16"/>',
     "comunidades": '<path d="M3 21V11l5-4 5 4v10"/><path d="M13 21v-6l4-3 4 3v6"/><path d="M2 21h20M6.5 21v-4h3v4"/>',
     "minuta": '<path d="M8 3h8l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 9h8M8 13h8M8 17h5"/>',
+    "minutas": '<path d="M8 3h8l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 9h8M8 13h8M8 17h5"/>',
     "escudo": '<path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/>',
 }
 

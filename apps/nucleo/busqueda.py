@@ -5,8 +5,8 @@ from datetime import date
 from django.db.models import Q
 
 TIPOS = [
-    ("persona", "Personas"), ("organizacion", "Organizaciones"), ("proyecto", "Proyectos"), ("actividad", "Actividades"),
-    ("lugar", "Lugares"), ("reunion", "Reuniones"), ("documento", "Documentos"),
+    ("persona", "Personas"), ("organizacion", "Organizaciones"), ("comunidad", "Comunidades"), ("proyecto", "Proyectos"), ("actividad", "Actividades"),
+    ("sesion", "Minutas"), ("lugar", "Lugares"), ("reunion", "Reuniones"), ("documento", "Documentos"),
 ]
 LIMITE_POR_TIPO = 200
 
@@ -149,8 +149,42 @@ def _documentos(u, f):
         yield Resultado("documento", d.nombre, d.get_absolute_url(), str(d.tipo), "", f"{d.fecha:%d-%m-%Y}")
 
 
+def _comunidades(u, f):
+    from apps.comunidades.models import Comunidad
+
+    qs = Comunidad.objects.select_related("comuna", "sector")
+    if f["q"]:
+        qs = qs.filter(Q(nombre__unaccent__icontains=f["q"]) | Q(descripcion__unaccent__icontains=f["q"]) | Q(diagnostico__unaccent__icontains=f["q"])
+                       | Q(sector__nombre__unaccent__icontains=f["q"]))
+    if f["comuna"]:
+        qs = qs.filter(comuna_id=f["comuna"])
+    for c in qs[:LIMITE_POR_TIPO]:
+        yield Resultado("comunidad", c.nombre, c.get_absolute_url(), f"{c.get_tipo_display()} · {c.territorio}", "" if c.activo else "Desactivado")
+
+
+def _sesiones(u, f):
+    """Minutas: busca en lo que se hizo, avanzó y acordó en cada sesión."""
+    from apps.actividades.models import SesionActividad
+
+    if not f["q"]:
+        return
+    campos = ("nombre", "objetivo", "desarrollo", "avances", "acuerdos", "incidencias", "proximos_pasos")
+    cond = Q()
+    for c in campos:
+        cond |= Q(**{f"{c}__unaccent__icontains": f["q"]})
+    qs = SesionActividad.objects.filter(cond).select_related("actividad")
+    if f["desde"]:
+        qs = qs.filter(fecha__gte=f["desde"])
+    if f["hasta"]:
+        qs = qs.filter(fecha__lte=f["hasta"])
+    for s in qs.order_by("-fecha")[:LIMITE_POR_TIPO]:
+        texto = next((getattr(s, c) for c in campos[1:] if f["q"].lower() in (getattr(s, c) or "").lower()), s.avances or s.desarrollo)
+        yield Resultado("sesion", f"{s} · {s.actividad}", s.get_absolute_url(), (texto or "")[:160], "", f"{s.fecha:%d-%m-%Y}" if s.fecha else "")
+
+
 PROVEEDORES = {
     "persona": ("personas.view_persona", _personas), "organizacion": ("organizaciones.view_organizacion", _organizaciones),
+    "comunidad": ("comunidades.view_comunidad", _comunidades), "sesion": ("actividades.view_sesionactividad", _sesiones),
     "proyecto": ("proyectos.view_proyecto", _proyectos), "actividad": ("actividades.view_actividad", _actividades),
     "lugar": ("lugares.view_lugar", _lugares), "reunion": ("coordinacion.view_reunion", _reuniones), "documento": ("documentos.view_documento", _documentos),
 }
