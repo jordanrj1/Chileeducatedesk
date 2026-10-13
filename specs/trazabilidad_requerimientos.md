@@ -58,3 +58,13 @@ Estado al 12-10-2026. ✅ hecho y probado · 🟡 hecho con decisión por valida
 | NF | NF-01…09 | ✅ | NF-07 sin internet: estáticos locales |
 | 2ª fase | reuniones, tareas, sesiones, beneficiarios, verificaciones, finanzas | ⏸ | construidos; se muestran con `SEGUNDA_FASE=True` |
 | 2ª fase | talleres reutilizables, requisitos de fondos, divisiones electorales | ⬜ | no construidos |
+
+## Vacíos detectados en la revisión de dudas
+| Vacío | Estado | Dónde |
+|---|---|---|
+| Cupos y lista de espera | 🟡 | estado «En lista de espera» [P]; no ocupa cupo |
+| Constancias de participación | 🟡 | imprimible desde Asistencia [P] |
+| Informes a fondos | ⬜ | depende de los requisitos de cada fondo (2ª fase) |
+| Avisos de caducidad | ✅ | panel: «Datos por vencer» (documentos, verificaciones, vigencia legal) |
+| Derechos sobre los datos | 🟡 | acceso: exportar en Excel ✅ · rectificación: edición ✅ · eliminación: por decidir |
+| Continuidad | 🟡 | manual y guía de entrega listos; falta definir el Administrador |

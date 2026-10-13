@@ -20,9 +20,14 @@ Lo construido deja cada punto detrás de una opción fácil de cambiar. Nada se 
 | 13 | ¿Cuándo se habilita la segunda fase? | Oculta (`SEGUNDA_FASE=False`) | `.env` |
 | 14 | Series de actividades (AG-07) | Cada repetición es una actividad dentro de la original [P] | — |
 | 15 | ¿A quién consultar si una cuenta está desactivada? | Configurable | `CONTACTO_ADMINISTRADOR` en `.env` |
+| 16 | Derecho a eliminar datos personales | No implementado: choca con «no borrar lo que tiene historia». Opción propuesta: anonimizar | docs/cuestionario_manuel.md |
+| 17 | Texto, firma y timbre de la constancia | Formato propuesto [P] | `templates/actividades/constancia.html` |
+| 18 | Lista de espera | Estado «En lista de espera» que no ocupa cupo [P] | Catálogo de estados de participación |
 
 ## Para el equipo de desarrollo
 - Falta el **Excel de requerimientos con las filas en amarillo** y el **archivo oficial CUT** de comunas.
 - `iniciar.bat`, `respaldar.bat` y la instalación en Windows no se pudieron probar en el equipo de desarrollo (Mac).
 - La validación con Claudio (F20) y la prueba real de restauración de un respaldo (F21) están pendientes.
 - Extensiones menores a la sección 7 de docs/CONTEXTO.md: `Interaccion.accion_cumplida`, `Actividad.motivo_estado`, campos de cierre de `Actividad`, `ActividadTerritorio.vigente`.
+
+Cuestionario completo para el tutor: [docs/cuestionario_manuel.md](../docs/cuestionario_manuel.md).
