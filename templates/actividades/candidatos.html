@@ -32,7 +32,7 @@
   <ul class="fche-items">{% for c in resultados %}
     <li>
       <div class="d-flex gap-3 min-w-0">
-        <span class="fche-nivel__icono {% if c.estado == 'ok' %}text-success{% elif c.estado == 'conflicto' %}text-warning-emphasis{% else %}text-muted{% endif %}" style="background:{% if c.estado == 'ok' %}#e7f6ec{% elif c.estado == 'conflicto' %}#fff3d1{% else %}#f1f3f7{% endif %}" aria-label="{% if c.estado == 'ok' %}Sin conflicto{% elif c.estado == 'conflicto' %}Con conflicto{% else %}Sin información{% endif %}"><strong>{% if c.estado == "ok" %}✓{% elif c.estado == "conflicto" %}⚠{% else %}○{% endif %}</strong></span>
+        <span class="fche-nivel__icono {% if c.estado == 'ok' %}text-success{% elif c.estado == 'conflicto' %}text-warning-emphasis{% else %}text-muted{% endif %}" style="padding:.25rem;background:{% if c.estado == 'ok' %}#e7f6ec{% elif c.estado == 'conflicto' %}#fff3d1{% else %}#f1f3f7{% endif %}" aria-label="{% if c.estado == 'ok' %}Sin conflicto{% elif c.estado == 'conflicto' %}Con conflicto{% else %}Sin información{% endif %}"><strong>{% if c.estado == "ok" %}✓{% elif c.estado == "conflicto" %}⚠{% else %}○{% endif %}</strong></span>
         <div class="min-w-0"><a class="fche-items__titulo" href="{{ c.objeto.get_absolute_url }}" target="_blank">{{ c.objeto }}</a>
           <ul class="fche-items__detalle mb-0 ps-3">{% for r in c.razones %}<li>{{ r }}</li>{% endfor %}</ul></div>
       </div>

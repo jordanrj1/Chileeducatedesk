@@ -51,7 +51,7 @@
         {% for ag in proximas.items %}
         <li>
           <div class="d-flex gap-3 align-items-center min-w-0">
-            <span class="text-center flex-shrink-0" style="width:2.75rem;"><span class="d-block small text-uppercase fw-semibold {% if ag.fecha == proximas.hoy %}text-primary{% else %}text-muted{% endif %}" style="font-size:.68rem;letter-spacing:.06em;">{% if ag.fecha == proximas.hoy %}Hoy{% else %}{{ ag.fecha|date:"D" }}{% endif %}</span><span class="d-block fw-bold fs-5 lh-1 fche-num">{{ ag.fecha|date:"j" }}</span></span>
+            <span class="text-center flex-shrink-0" style="width:2.75rem;"><span class="d-block small text-uppercase fw-semibold {% if ag.fecha == proximas.hoy %}text-primary{% else %}text-muted{% endif %}" style="font-size:.75rem;letter-spacing:.04em;">{% if ag.fecha == proximas.hoy %}Hoy{% else %}{{ ag.fecha|date:"D" }}{% endif %}</span><span class="d-block fw-bold fs-5 lh-1 fche-num">{{ ag.fecha|date:"j" }}</span></span>
             <div class="min-w-0"><a href="{{ ag.actividad.get_absolute_url }}">{{ ag.actividad.nombre }}</a>
               <div class="small text-muted">{% if ag.hora_inicio %}{{ ag.hora_inicio|time:"H:i" }}{% else %}Sin hora{% endif %}{% if ag.lugar %} · {{ ag.lugar }}{% endif %}{% if ag.ultimo_minuto %} · <span class="text-warning-emphasis">cambio de último minuto</span>{% endif %}</div></div>
           </div>
