@@ -15,6 +15,7 @@ MENU = [
     ("Finanzas", "/finanzas", "finanzas.view_movimiento", "finanzas"),
     ("Catálogos", "/administracion/catalogos/", "nucleo.view_estadoactividad"),
     ("Administración", "/administracion/", "auth.view_user"),
+    ("Ayuda", "/ayuda", None),
 ]
 
 

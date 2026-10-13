@@ -33,6 +33,8 @@ Fuentes, de más a menos reciente: **«FCHE — Requerimientos por módulo»** (
 - **Cuentas:** desde la pantalla, una cuenta se crea solo para una persona ya registrada. La primera cuenta se crea por consola (`crear_usuario`).
 - **Territorio:** dirección en cascada y nombres alternativos de sector (`SectorAlias`).
 - **Documentos:** se puede asociar un documento existente a otra ficha sin copiar el archivo; tienen fecha de vencimiento; transcribir datos con el documento al lado (origen «por revisar»).
+- **Escenarios hipotéticos:** el catálogo de escenarios se aplicó; estado de cada ID en `docs/escenarios_estado.md`. Pruebas con el ID del escenario en `apps/nucleo/test_escenarios_catalogo.py`.
+- **Ajustes en `.env` además de los anteriores:** `MODULOS_SEGUNDA_FASE`, `ROLES_FUERA_DE_CAPACIDAD`, `FERIADOS`, `INTENTOS_MAXIMOS`, `BLOQUEO_MINUTOS`, `SIN_RESPUESTA_DIAS`, `RESPALDO_MAX_DIAS`, `CONTACTO_ADMINISTRADOR`.
 - **Commits:** sin líneas de coautoría ni marcas de herramientas.
 - Apps además de la sección 6: `proyectos`, `coordinacion`, `finanzas`, `importaciones`.
 - Sigue sin estar en el repositorio el Excel con las filas en amarillo ni el archivo oficial CUT.

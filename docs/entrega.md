@@ -34,6 +34,20 @@ Por defecto solo el equipo donde corre (`127.0.0.1`). Para la red de la Fundaci�
 - [ ] Recorrido completo con Claudio: persona → proyecto → actividad → participantes → programar → confirmar → realizar → asistencia → resultado → cerrar → historial.
 - [ ] Definir quién administra después del 30-11-2026 [V#1] y traspasar credenciales.
 
+## Que el sistema arranque solo (OP-E5)
+- **Windows:** Programador de tareas → «Crear tarea» → Desencadenador «Al iniciar el sistema» → Acción «Iniciar un programa»: `C:\fche\iniciar.bat` → marcar «Ejecutar tanto si el usuario inició sesión como si no». PostgreSQL ya arranca solo como servicio de Windows.
+- **Mac:** Preferencias del Sistema → General → Ítems de inicio → agregar `iniciar.sh` (o un `launchd` con `RunAtLoad`).
+- `iniciar` comprueba la base antes de arrancar y, si hay cambios de base pendientes, **respalda antes de aplicarlos** (OP-E3, OP-E7).
+
+## Mudar el sistema a otro computador (OP-E6)
+1. En el equipo antiguo: `respaldar.bat`. Copia la carpeta de respaldos (incluye `fche_config_….env`, la base y los documentos).
+2. En el nuevo: instalar Python y PostgreSQL, copiar la carpeta del proyecto y restaurar `.env` desde `fche_config_….env`.
+3. Restaurar la base y los documentos con el procedimiento de «Respaldos».
+4. `iniciar.bat`, revisar `/salud` e ingresar con una cuenta conocida.
+
+## Protección de los respaldos (SE-E4)
+Los respaldos contienen todos los datos personales y la configuración. Guárdalos en un disco **cifrado** (BitLocker en Windows, FileVault en Mac) y nunca en una carpeta compartida.
+
 ## Si algo falla
 - `/salud` responde `{"estado": "ok"}` cuando la base funciona.
 - Los registros de errores están en `logs/fche.log`.

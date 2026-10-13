@@ -905,3 +905,68 @@ def test_IG_E12_formatos_no_permitidos(cg, actividad, rol):
         r = cg.post("/importaciones/nueva", {"tipo": "listado_actividad", "actividad": actividad.pk, "rol": rol("estudiante").pk, "archivo": SimpleUploadedFile(nombre, b"x")})
         assert r.status_code == 200, nombre
     assert not Lote.objects.exists()
+
+
+# --- Iteración 8: operación, ayuda y búsqueda ---------------------------------------------------------------------
+def test_OP_E4_aviso_de_respaldo_atrasado(cg):
+    from django.utils import timezone
+
+    html = cg.get("/dashboard").content.decode()
+    assert "Estado del sistema" in html and "No hay registro de ningún respaldo" in html
+    r = Auditoria.objects.create(accion="respaldo")
+    Auditoria.objects.filter(pk=r.pk).update(fecha=timezone.now() - timedelta(days=5))
+    assert "hace 5 días" in cg.get("/dashboard").content.decode()
+    Auditoria.objects.create(accion="respaldo")
+    assert "Estado del sistema" not in cg.get("/dashboard").content.decode() or "respaldo" not in cg.get("/dashboard").content.decode().split("Estado del sistema")[1][:400]
+
+
+def test_OP_E2_poco_espacio_en_disco(cg, monkeypatch):
+    import shutil
+    from collections import namedtuple
+
+    Uso = namedtuple("Uso", "total used free")
+    monkeypatch.setattr(shutil, "disk_usage", lambda ruta: Uso(100 * 1024**3, 95 * 1024**3, 5 * 1024**3))
+    assert "Queda poco espacio en disco" in cg.get("/dashboard").content.decode()
+
+
+def test_OP_E3_comprobar_base(monkeypatch):
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+    from django.db.utils import OperationalError
+
+    call_command("comprobar_bd")
+    monkeypatch.setattr("apps.nucleo.management.commands.comprobar_bd.connection.cursor", lambda: (_ for _ in ()).throw(OperationalError("caída")))
+    with pytest.raises(CommandError, match="no responde"):
+        call_command("comprobar_bd")
+
+
+def test_OP_E7_scripts_respaldan_antes_de_migrar():
+    from pathlib import Path
+
+    for archivo in ("iniciar.bat", "iniciar.sh"):
+        texto = Path(archivo).read_text()
+        assert "migrate --check" in texto and "respaldar" in texto and "comprobar_bd" in texto, archivo
+        assert texto.index("respaldar") < texto.index("migrate --noinput"), archivo
+
+
+def test_CO_E5_ayuda_dentro_del_sistema(cg, cs):
+    html = cg.get("/ayuda").content.decode()
+    assert "Manual de uso" in html and "<li>" in html and 'href="/ayuda"' in html
+    assert cs.get("/ayuda").status_code == 200  # cualquier usuario con sesión
+
+
+def test_BU_E7_realizada_en_y_dirigida_a(cg, comuna, lugar, crear_actividad, gestor):
+    from apps.actividades.models import ActividadTerritorio
+
+    en = crear_actividad("En la sala")
+    servicios.programar(en, gestor, FUT, time(10), time(11), lugar, None)
+    dirigida = crear_actividad("Para la comuna")
+    ActividadTerritorio.objects.create(actividad=dirigida, comuna=comuna)
+    html = cg.get(f"{comuna.get_absolute_url()}?tab=actividades").content.decode()
+    assert "Realizada en Sala Ficticia" in html and "Dirigida a este territorio" in html
+
+
+def test_BU_E4_muchos_resultados_sugiere_afinar(cg, crear_persona):
+    for i in range(205):
+        crear_persona(f"Masivo{i:03d}")
+    assert "afina la búsqueda" in cg.get("/buscar?q=masivo&tipo=persona").content.decode()

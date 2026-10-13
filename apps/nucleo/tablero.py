@@ -76,6 +76,9 @@ def tarjetas(user):
             esperando += [(f"Apoyo de {c.organizacion} · {c.actividad}", c.get_absolute_url(), f"hace {(hoy - timezone.localtime(c.creado_en).date()).days} días", timezone.localtime(c.creado_en).date())
                           for c in Colaboracion.objects.filter(estado="enviada", creado_en__date__lte=limite).select_related("organizacion", "actividad")]
             agregar("Sin respuesta", [(t, u, d) for t, u, d, _ in sorted(esperando, key=lambda x: x[3])], vacio="Ninguna invitación espera respuesta hace más de una semana.")
+        sistema = _estado_sistema(user)
+        if sistema:
+            agregar("Estado del sistema", sistema)
         avisos = _por_vencer(user, hoy)
         if avisos is not None:
             agregar("Datos por vencer", avisos, "/documentos?vencimiento=por_vencer", vacio="Nada vence en los próximos 30 días.")
@@ -125,3 +128,29 @@ def _por_vencer(user, hoy, dias=30):
     if not puede:
         return None
     return [(t, u, d) for t, u, d, _ in sorted(items, key=lambda x: x[3])]
+
+
+def _estado_sistema(user):
+    """OP-E4 y OP-E2: respaldo atrasado y poco espacio en disco. Solo aparece si hay algo que atender."""
+    import shutil
+    from pathlib import Path
+
+    from django.conf import settings
+
+    from .models import Auditoria
+
+    items = []
+    max_dias = getattr(settings, "RESPALDO_MAX_DIAS", 2)
+    ultimo = Auditoria.objects.filter(accion="respaldo").order_by("-fecha").values_list("fecha", flat=True).first()
+    if ultimo is None:
+        items.append(("No hay registro de ningún respaldo", "/administracion/auditoria?accion=respaldo" if user.has_perm("nucleo.view_auditoria") else "#", "programa respaldar.bat"))
+    elif (timezone.now() - ultimo).days > max_dias:
+        items.append((f"El último respaldo es del {timezone.localtime(ultimo):%d-%m-%Y}", "/administracion/auditoria?accion=respaldo" if user.has_perm("nucleo.view_auditoria") else "#", f"hace {(timezone.now() - ultimo).days} días"))
+    try:
+        uso = shutil.disk_usage(Path(settings.MEDIA_ROOT).parent if not Path(settings.MEDIA_ROOT).exists() else settings.MEDIA_ROOT)
+        libre = uso.free / uso.total
+        if libre < 0.10 or uso.free < 2 * 1024**3:
+            items.append((f"Queda poco espacio en disco: {uso.free / 1024**3:.1f} GB libres", "#", f"{libre:.0%} libre"))
+    except OSError:
+        pass
+    return items

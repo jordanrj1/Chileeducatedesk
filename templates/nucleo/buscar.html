@@ -17,7 +17,7 @@
 {% if not hay_criterio %}<p class="text-muted">Escribe algo o elige filtros para buscar en personas, organizaciones, proyectos, actividades, lugares, reuniones y documentos.</p>
 {% elif total == 0 %}<p class="text-muted">Sin resultados{% if termino %} para «{{ termino }}»{% endif %}. Prueba con menos filtros.</p>
 {% else %}
-<p class="text-muted small">{{ total }} resultado(s)</p>
+<p class="text-muted small">{{ total }} resultado(s){% if hay_tope %} — son muchos: se muestran los primeros {{ limite }} de cada tipo; afina la búsqueda con más palabras o filtros.{% endif %}</p>
 {% for nombre, total_grupo, items in agrupados %}
 <h2 class="h6 mt-3">{{ nombre }} <span class="badge text-bg-secondary">{{ total_grupo }}</span></h2>
 <ul class="list-group">{% for r in items %}

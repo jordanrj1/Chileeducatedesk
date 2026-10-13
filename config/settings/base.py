@@ -106,6 +106,9 @@ FERIADOS = env.list("FERIADOS", default=[])
 # IN-E1: días sin respuesta antes de avisar en el panel
 SIN_RESPUESTA_DIAS = env.int("SIN_RESPUESTA_DIAS", default=7)
 
+# OP-E4: el panel avisa si el último respaldo tiene más de estos días
+RESPALDO_MAX_DIAS = env.int("RESPALDO_MAX_DIAS", default=2)
+
 # [V#3] ¿Se puede confirmar una actividad con incompatibilidad crítica, con motivo? Hoy: no.
 CONFIRMAR_CON_CONFLICTO_CRITICO = env.bool("CONFIRMAR_CON_CONFLICTO_CRITICO", default=False)
 

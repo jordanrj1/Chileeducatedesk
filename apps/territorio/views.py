@@ -76,7 +76,7 @@ class _FichaTerritorio(FichaBase):
         return {"organizaciones": self._organizaciones()}
 
     def ctx_actividades(self):
-        return {"actividades": self._actividades()}
+        return {"actividades": self._actividades(), "comuna_ficha": getattr(self.object, "provincia_id", None) and self.object, "sectores_ficha": self._ids() if hasattr(self, "_ids") else None}
 
 
 class ComunaFicha(_FichaTerritorio):

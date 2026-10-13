@@ -42,6 +42,10 @@ def test_respaldo_genera_dump_y_zip_y_borra_antiguos(tmp_path, settings):
     zips = list(destino.glob("fche_documentos_*.zip"))
     assert len(dumps) == 1 and dumps[0].stat().st_size > 1000 and not viejo.exists()
     assert zipfile.ZipFile(zips[0]).namelist() == ["documentos/ficticio.txt"]
+    from django.conf import settings as s
+
+    if (Path(s.BASE_DIR) / ".env").exists():
+        assert list(destino.glob("fche_config_*.env"))  # OP-E8
     from apps.nucleo.models import Auditoria
 
     assert Auditoria.objects.filter(accion="respaldo").exists()
