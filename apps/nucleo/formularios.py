@@ -9,7 +9,9 @@ class BootstrapMixin:
         fijar_valores_selectores(self)
         for campo in self.fields.values():
             w = campo.widget
-            if isinstance(w, (forms.CheckboxInput, forms.CheckboxSelectMultiple)):
+            if isinstance(w, forms.CheckboxSelectMultiple):
+                continue  # Django pone la clase también en el contenedor: se estiliza con .fche-opciones
+            if isinstance(w, forms.CheckboxInput):
                 clase = "form-check-input"
             elif isinstance(w, (forms.Select, forms.SelectMultiple)):
                 clase = "form-select"

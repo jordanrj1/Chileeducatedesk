@@ -635,3 +635,10 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-barra-dato { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr 3rem; gap: .75rem; align-items: center; font-size: .85rem; padding: .3rem 0; }
 .fche-barra-dato__pista { height: .5rem; border-radius: 1rem; background: #eef1f5; overflow: hidden; }
 .fche-barra-dato__relleno { height: 100%; border-radius: 1rem; background: linear-gradient(90deg, #3b6cf0, #2450d4); }
+
+/* El atributo hidden manda sobre las utilidades de Bootstrap (d-flex, etc.) */
+[hidden], #error-htmx[hidden] { display: none !important; }
+/* Inicio: accesos rápidos compactos en dos columnas */
+.fche-accesos--compacto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1199.98px) { .fche-accesos--compacto { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); } }
+.fche-opciones input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--fche-primario); }

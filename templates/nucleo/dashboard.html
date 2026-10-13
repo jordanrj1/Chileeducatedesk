@@ -41,10 +41,10 @@
 </div>
 {% endif %}
 
-<div class="row g-4 mb-4">
+<div class="row g-4 mb-4 align-items-start">
   {% if proximas %}
   <div class="col-12 col-xl-8">
-    <section class="fche-tarjeta fche-pendiente" aria-labelledby="proximas-titulo">
+    <section class="fche-tarjeta" aria-labelledby="proximas-titulo">
       <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo" id="proximas-titulo">{% icono "calendario" 18 "text-primary" %}Próximas actividades</h2><a class="small" href="/calendario">Ver calendario</a></div>
       {% if proximas.items %}
       <ul class="fche-pendiente__lista">
@@ -64,9 +64,9 @@
   </div>
   {% endif %}
   <div class="col-12 {% if proximas %}col-xl-4{% endif %}">
-    <section class="fche-tarjeta h-100" aria-labelledby="accesos-titulo">
+    <section class="fche-tarjeta" aria-labelledby="accesos-titulo">
       <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo" id="accesos-titulo">{% icono "rayo" 18 "text-primary" %}Acciones rápidas</h2></div>
-      <div class="fche-tarjeta__cuerpo"><div class="fche-accesos">
+      <div class="fche-tarjeta__cuerpo"><div class="fche-accesos fche-accesos--compacto">
         {% if perms.solicitudes.add_solicitud %}<a class="fche-acceso" href="/solicitudes/nueva"><span class="fche-acceso__icono">{% icono "solicitudes" 17 %}</span>+ Solicitud</a>
         <a class="fche-acceso" href="/solicitudes/nueva?oportunidad=1"><span class="fche-acceso__icono">{% icono "tendencia" 17 %}</span>+ Oportunidad</a>{% endif %}
         {% if perms.actividades.add_actividad %}<a class="fche-acceso" href="/actividades/nueva"><span class="fche-acceso__icono">{% icono "actividades" 17 %}</span>+ Actividad</a>{% endif %}
