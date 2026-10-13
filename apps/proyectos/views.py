@@ -81,7 +81,7 @@ class ProyectoFicha(FichaBase):
     permission_required = "proyectos.view_proyecto"
     breadcrumb = [("Proyectos", "/proyectos")]
     permiso_editar = "proyectos.change_proyecto"
-    pestanas_segunda_fase = ("beneficiarios", "postulacion", "presupuesto")
+    pestanas_segunda_fase = {"beneficiarios": "beneficiarios", "postulacion": "postulaciones", "presupuesto": "finanzas"}
     pestanas = [
         ("resumen", "Resumen", "proyectos/pestanas/resumen.html"),
         ("equipo", "Equipo", "generico/_hijos.html"),

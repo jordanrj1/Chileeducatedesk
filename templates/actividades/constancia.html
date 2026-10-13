@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Constancia{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ p.actividad.get_absolute_url }}?tab=asistencia">{{ p.actividad }}</a></li><li class="breadcrumb-item active">Constancia</li>{% endblock %}
+{% block contenido %}
+<div class="d-print-none mb-3 d-flex gap-2"><button class="btn btn-primary btn-sm" onclick="window.print()">Imprimir o guardar como PDF</button>
+<a class="btn btn-outline-secondary btn-sm volver" href="{{ p.actividad.get_absolute_url }}?tab=asistencia">← Volver</a>
+<span class="small text-muted align-self-center">Formato propuesto [P]: el texto y la firma se validan con Claudio.</span></div>
+<article class="border p-4 bg-white" style="max-width:46rem;">
+  <h1 class="h4 text-center mb-4">Constancia de participación</h1>
+  <p>{{ fundacion.nombre|default:"Fundación Chile Edúcate" }} deja constancia de que <strong>{{ p.persona.nombre_completo }}</strong>{% if p.persona.rut %}, RUT {{ p.persona.rut }},{% endif %}
+  participó en calidad de <strong>{{ p.rol.nombre|lower }}</strong> en la actividad <strong>«{{ p.actividad.nombre }}»</strong>{% if p.actividad.proyecto %}, del proyecto «{{ p.actividad.proyecto }}»{% endif %}{% if agenda %},
+  realizada el {{ agenda.fecha|date:"j \d\e F \d\e Y" }}{% if agenda.lugar %} en {{ agenda.lugar }}, {{ agenda.lugar.direccion.comuna }}{% endif %}{% endif %}.</p>
+  <p>Se extiende la presente constancia para los fines que la persona interesada estime convenientes.</p>
+  <p class="mt-5 mb-0">{{ hoy|date:"j \d\e F \d\e Y" }}</p>
+  <div class="mt-5 pt-4" style="max-width:18rem; border-top:1px solid #000;">Firma y timbre</div>
+</article>
+{% endblock %}

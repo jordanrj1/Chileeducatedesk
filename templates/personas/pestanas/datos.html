@@ -8,6 +8,7 @@
   <dt class="col-sm-4">Observaciones</dt><dd class="col-sm-8">{{ object.observaciones|default:"—"|linebreaksbr }}</dd>
   <dt class="col-sm-4">Registrada</dt><dd class="col-sm-8">{{ object.creado_en|date:"d-m-Y" }}</dd>
 </dl>
+{% if perms.personas.exportar_persona %}<a class="btn btn-outline-secondary btn-sm mb-2" href="{% url 'personas:datos_personales' object.pk %}" title="Para responder si la persona pide conocer sus datos">Exportar sus datos personales</a>{% endif %}
 {% if puede_agregar %}
 <form method="post" action="{% url 'personas:alternar' object.pk %}">{% csrf_token %}
   <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Desactivar persona{% else %}Reactivar persona{% endif %}</button>

@@ -34,9 +34,9 @@ def tarjetas(user):
                 [(str(p), p.get_absolute_url(), "en actividad próxima" if p.prioridad else "") for p in Persona.objects.cola_incompletos()],
                 "/personas?registro=incompleto",
             )
-        from .fases import segunda_fase_activa
+        from .fases import modulo_activo
 
-        if segunda_fase_activa() and user.has_perm("coordinacion.view_tarea"):
+        if modulo_activo("tareas") and user.has_perm("coordinacion.view_tarea"):
             from apps.coordinacion.models import Tarea
 
             agregar(
@@ -52,6 +52,42 @@ def tarjetas(user):
                 [(i.proxima_accion, i.get_absolute_url(), f"para el {i.proxima_fecha:%d-%m-%Y}") for i in Interaccion.objects.proximas_acciones(hoy)],
                 vacio="Sin próximas acciones pendientes.",
             )
+        avisos = _por_vencer(user, hoy)
+        if avisos is not None:
+            agregar("Datos por vencer", avisos, "/documentos?vencimiento=por_vencer", vacio="Nada vence en los próximos 30 días.")
     except (ImportError, LookupError):  # módulos que se incorporan en etapas posteriores
         pass
     return res
+
+
+def _por_vencer(user, hoy, dias=30):
+    """Datos que caducan: documentos con vencimiento, verificaciones de personas y vigencia legal de organizaciones."""
+    from datetime import timedelta
+
+    from .fases import modulo_activo
+
+    limite = hoy + timedelta(days=dias)
+    items, puede = [], False
+    if user.has_perm("documentos.view_documento"):
+        puede = True
+        from apps.documentos.models import Documento
+
+        docs = Documento.objects.filter(activo=True, fecha_vencimiento__isnull=False, fecha_vencimiento__lte=limite)
+        if not user.has_perm("documentos.ver_restringido"):
+            docs = docs.filter(restringido=False)
+        items += [(f"Documento: {d.nombre}", d.get_absolute_url(), ("venció " if d.vencido else "vence ") + f"{d.fecha_vencimiento:%d-%m-%Y}", d.fecha_vencimiento) for d in docs]
+    if modulo_activo("verificaciones") and user.has_perm("personas.ver_sensibles"):
+        puede = True
+        from apps.personas.models import VerificacionPersona
+
+        for v in VerificacionPersona.objects.filter(vigente=True, vigente_hasta__isnull=False, vigente_hasta__lte=limite).select_related("persona"):
+            items.append((f"Verificación de {v.persona}: {v.tipo}", f"{v.persona.get_absolute_url()}?tab=verificaciones", f"hasta {v.vigente_hasta:%d-%m-%Y}", v.vigente_hasta))
+    if user.has_perm("organizaciones.view_organizacion"):
+        puede = True
+        from apps.organizaciones.models import Organizacion
+
+        for o in Organizacion.objects.filter(activo=True, vigencia_hasta__isnull=False, vigencia_hasta__lte=limite):
+            items.append((f"Vigencia legal de {o.nombre}", o.get_absolute_url(), f"hasta {o.vigencia_hasta:%d-%m-%Y}", o.vigencia_hasta))
+    if not puede:
+        return None
+    return [(t, u, d) for t, u, d, _ in sorted(items, key=lambda x: x[3])]

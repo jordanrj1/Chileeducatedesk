@@ -1,23 +1,37 @@
-"""Módulos de «segunda fase» (Requerimientos por módulo): existen en el código, pero se muestran solo con SEGUNDA_FASE=True."""
+"""Módulos de «segunda fase» (Requerimientos por módulo): existen en el código y se muestran según el ajuste.
+
+SEGUNDA_FASE=True muestra todos. MODULOS_SEGUNDA_FASE=reuniones,tareas muestra solo esos, con el resto oculto.
+"""
 import re
 
 from django.conf import settings
 from django.http import Http404
 
-RUTAS_SEGUNDA_FASE = [
-    re.compile(p)
-    for p in (
-        r"^/reuniones(/|$)",
-        r"^/tareas(/|$)",
-        r"^/finanzas(/|$)",
-        r"^/actividades/\d+/sesiones/",
-        r"^/personas/\d+/verificaciones/",
-        r"^/proyectos/\d+/(beneficiarios|postulaciones)/",
-    )
+MODULOS = ("reuniones", "tareas", "sesiones", "beneficiarios", "verificaciones", "postulaciones", "finanzas")
+
+RUTAS = [
+    (re.compile(r"^/reuniones(/|$)"), "reuniones"),
+    (re.compile(r"^/tareas(/|$)"), "tareas"),
+    (re.compile(r"^/finanzas(/|$)"), "finanzas"),
+    (re.compile(r"^/actividades/\d+/sesiones/"), "sesiones"),
+    (re.compile(r"^/personas/\d+/verificaciones/"), "verificaciones"),
+    (re.compile(r"^/proyectos/\d+/beneficiarios/"), "beneficiarios"),
+    (re.compile(r"^/proyectos/\d+/postulaciones/"), "postulaciones"),
 ]
 
 
+def modulo_activo(clave):
+    if getattr(settings, "SEGUNDA_FASE", False):
+        return True
+    return clave in {m.strip() for m in getattr(settings, "MODULOS_SEGUNDA_FASE", []) if m.strip()}
+
+
+def modulos_activos():
+    return {m: modulo_activo(m) for m in MODULOS}
+
+
 def segunda_fase_activa():
+    """True solo si toda la segunda fase está visible."""
     return bool(getattr(settings, "SEGUNDA_FASE", False))
 
 
@@ -26,6 +40,7 @@ class SegundaFaseMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if not segunda_fase_activa() and any(p.match(request.path) for p in RUTAS_SEGUNDA_FASE):
-            raise Http404("Módulo no habilitado en esta etapa.")
+        for patron, modulo in RUTAS:
+            if patron.match(request.path) and not modulo_activo(modulo):
+                raise Http404("Módulo no habilitado en esta etapa.")
         return self.get_response(request)

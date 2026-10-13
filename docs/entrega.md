@@ -19,7 +19,11 @@ Por defecto solo el equipo donde corre (`127.0.0.1`). Para la red de la Fundaci�
 - `respaldar.bat` (o `./respaldar.sh`) genera en `RESPALDO_DIR` un `fche_bd_AAAAMMDD_HHMMSS.dump` (pg_dump) y un `fche_documentos_….zip`, y elimina los de más de 30 días.
 - Programarlo a diario en el **Programador de tareas de Windows** (acción: iniciar `respaldar.bat`, 02:00).
 - Guardar además una copia **fuera del equipo** (disco externo o nube institucional).
-- **Probar la restauración** al menos una vez: `pg_restore -c -d fche archivo.dump` y descomprimir el zip de documentos en `MEDIA_ROOT`.
+- **Restaurar** (procedimiento probado el 12-10-2026 con un respaldo real; coincidieron todas las tablas):
+  1. Primero en una base aparte, para revisar sin riesgo: `createdb fche_revision` y `pg_restore --no-owner -d fche_revision archivo.dump`.
+  2. Si está bien, detener el sistema y restaurar sobre la base real: `pg_restore --no-owner --clean --if-exists -d fche archivo.dump`.
+  3. Descomprimir `fche_documentos_….zip` dentro de `MEDIA_ROOT`.
+  4. Iniciar el sistema y revisar `/salud`.
 
 ## Antes de entregar (lista de verificación)
 - [ ] `python manage.py test`/`pytest` sin fallos.

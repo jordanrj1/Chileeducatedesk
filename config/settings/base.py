@@ -94,6 +94,8 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTHENTICATION_BACKENDS = ["apps.cuentas.backends.CorreoOUsuarioBackend"]
 # Segunda fase (reuniones, tareas, sesiones, beneficiarios, verificaciones, finanzas): ocultos por defecto.
 SEGUNDA_FASE = env.bool("SEGUNDA_FASE", default=False)
+# Para habilitar solo algunos: reuniones, tareas, sesiones, beneficiarios, verificaciones, postulaciones, finanzas
+MODULOS_SEGUNDA_FASE = env.list("MODULOS_SEGUNDA_FASE", default=[])
 
 # [V#3] ¿Se puede confirmar una actividad con incompatibilidad crítica, con motivo? Hoy: no.
 CONFIRMAR_CON_CONFLICTO_CRITICO = env.bool("CONFIRMAR_CON_CONFLICTO_CRITICO", default=False)
