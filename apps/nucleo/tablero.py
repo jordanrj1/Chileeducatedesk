@@ -19,6 +19,15 @@ def tarjetas(user):
                 [(a.nombre, a.get_absolute_url(), ", ".join(a.faltantes())) for a in Actividad.objects.incompletas()],
                 "/actividades?incompleta=1",
             )
+            from datetime import timedelta as _td
+
+            from apps.actividades.models import AgendaActividad
+
+            vacias = []
+            for ag in AgendaActividad.objects.filter(vigente=True, fecha__gte=hoy, fecha__lte=hoy + _td(days=7), actividad__estado__codigo__in=["planificada", "confirmada", "reprogramada"]).select_related("actividad").order_by("fecha"):
+                if not any(p.activa for p in ag.actividad.participaciones.select_related("estado")):
+                    vacias.append((ag.actividad.nombre, ag.actividad.get_absolute_url(), f"el {ag.fecha:%d-%m-%Y}"))
+            agregar("Próximas sin participantes", vacias, vacio="Todas las actividades de la semana tienen participantes.")
         if user.has_perm("solicitudes.view_solicitud"):
             from apps.solicitudes.models import Solicitud
 

@@ -423,3 +423,195 @@ def test_CD_E3_autoridades_por_verificar_en_el_panel(cg, crear_persona, universi
     PersonaOrganizacion.objects.create(persona=crear_persona("Reciente"), organizacion=universidad, cargo="Decano", tipo_cargo="autoridad", fecha_inicio=date.today() - timedelta(days=30))
     html = cg.get("/dashboard").content.decode()
     assert "Verificar si sigue vigente: Concejal" in html and "Reciente" not in html
+
+
+# --- Iteración 4: actividades, agenda y botones según el estado -------------------------------------------------
+from apps.actividades.reglas import ReglaNegocio, revisar  # noqa: E402
+from apps.nucleo.models import Auditoria  # noqa: E402
+
+HOY = date.today()
+
+
+def test_AT_E1_duplicar_actividad(cg, crear_actividad, crear_persona, universidad, comuna, lugar, gestor, rol, estado_part):
+    from apps.actividades.models import ActividadOrganizacion, ActividadTerritorio
+
+    resp = crear_persona("Resp")
+    a = crear_actividad("Taller 2025", responsable=resp, objetivo="Alfabetizar")
+    ActividadTerritorio.objects.create(actividad=a, comuna=comuna)
+    ActividadOrganizacion.objects.create(actividad=a, organizacion=universidad)
+    servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
+    Participacion.objects.create(actividad=a, persona=crear_persona(), rol=rol("voluntario"), estado=estado_part("confirmado"))
+    assert "Duplicar" in cg.get(a.get_absolute_url()).content.decode()
+    assert a.__class__.objects.count() == 1 and cg.get(f"/actividades/{a.pk}/duplicar").status_code == 200  # GET no crea nada
+    r = cg.post(f"/actividades/{a.pk}/duplicar")
+    copia = a.__class__.objects.exclude(pk=a.pk).get()
+    assert r.status_code == 302 and copia.nombre == "Copia de Taller 2025" and copia.responsable == resp and copia.objetivo == "Alfabetizar"
+    assert copia.territorios.count() == 1 and copia.organizaciones.count() == 1
+    assert copia.participaciones.count() == 0 and copia.agendas.count() == 0 and copia.estado.codigo == "pendiente"
+
+
+def test_AT_E7_panel_avisa_actividad_proxima_sin_participantes(cg, crear_actividad, gestor, lugar):
+    a = crear_actividad("Mañana vacía")
+    servicios.programar(a, gestor, HOY + timedelta(days=1), time(10), time(11), lugar, None)
+    html = cg.get("/dashboard").content.decode()
+    assert "Próximas sin participantes" in html and "Mañana vacía" in html
+
+
+def test_AT_E8_aviso_al_agregar_quien_excede(cg, crear_actividad, gestor, lugar, crear_persona, rol, estado_part):
+    lugar.capacidad = 1
+    lugar.save()
+    a = crear_actividad("Chica", estado="planificada")
+    servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
+    Participacion.objects.create(actividad=a, persona=crear_persona(), rol=rol("participante"), estado=estado_part("confirmado"))
+    r = cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": crear_persona().pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk}, follow=True)
+    assert "Ahora hay 2 personas para una capacidad de 1" in r.content.decode()
+
+
+def test_AG_E10_reprogramar_el_mismo_dia_es_ultimo_minuto(cg, crear_actividad, gestor, lugar):
+    a = crear_actividad("Hoy")
+    servicios.programar(a, gestor, HOY, time(18), time(19), lugar, None)
+    nueva = servicios.programar(a, gestor, HOY, time(19), time(20), lugar, None, "Se atrasó la sala")
+    assert nueva.ultimo_minuto and Auditoria.objects.filter(accion="reprogramada_ultimo_minuto").exists()
+    assert "Último minuto" in cg.get(f"/actividades/{a.pk}?tab=agenda").content.decode()
+    otra = crear_actividad("Lejana")
+    servicios.programar(otra, gestor, FUT, time(18), time(19), lugar, None)
+    assert not servicios.programar(otra, gestor, FUT + timedelta(days=1), time(18), time(19), lugar, None, "x").ultimo_minuto
+
+
+def test_AG_E11_reprogramar_una_suspendida_la_reanuda(crear_actividad, gestor, lugar):
+    a = crear_actividad("Suspendida")
+    servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
+    servicios.cambiar_estado(a, "suspendida", gestor, "lluvia")
+    with pytest.raises(ReglaNegocio, match="motivo"):
+        servicios.programar(a, gestor, FUT + timedelta(days=7), time(10), time(11), lugar, None)
+    servicios.programar(a, gestor, FUT + timedelta(days=7), time(10), time(11), lugar, None, "Pasó la lluvia")
+    a.refresh_from_db()
+    assert a.estado.codigo == "planificada" and "Reanudada" in a.motivo_estado and a.agendas.count() == 2
+
+
+def test_AG_E8_fin_de_semana_y_feriado_informativos(crear_actividad, gestor, lugar, settings):
+    sabado = HOY + timedelta(days=(5 - HOY.weekday()) % 7 or 7)
+    a = crear_actividad("Sábado")
+    servicios.programar(a, gestor, sabado, time(10), time(11), lugar, None)
+    p = {x.codigo: x for x in revisar(a)}
+    assert p["fin_de_semana"].nivel == "info"
+    settings.FERIADOS = [sabado.isoformat()]
+    assert {x.codigo for x in revisar(a)} >= {"feriado"}
+
+
+def test_VA_E7_lugar_de_otra_organizacion_pide_confirmar(crear_actividad, gestor, lugar, universidad):
+    from apps.actividades.models import ActividadOrganizacion
+
+    lugar.organizacion_propietaria = universidad
+    lugar.save()
+    a = crear_actividad("En sala ajena")
+    servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
+    assert "lugar_sin_confirmar" in {x.codigo for x in revisar(a)}
+    ActividadOrganizacion.objects.create(actividad=a, organizacion=universidad)
+    assert "lugar_sin_confirmar" not in {x.codigo for x in revisar(a)}
+
+
+def test_VA_E9_advertencias_ignoradas_quedan_registradas(cg, crear_actividad, crear_persona, gestor, lugar):
+    a = crear_actividad("Sin gente", responsable=crear_persona())
+    servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
+    cg.post(f"/actividades/{a.pk}/confirmar", {"acepto": "1", "motivo_advertencias": "Los inscribimos esta semana"})
+    reg = Auditoria.objects.get(accion="confirmada_con_advertencias")
+    assert "No hay participantes" in reg.detalle and "Los inscribimos esta semana" in reg.detalle
+
+
+def test_VA_E3_sin_candidatos_sugiere_aflojar_filtros(cg, actividad):
+    html = cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=personas&buscar=1&q=zzzz").content.decode()
+    assert "Sin candidatos" in html and "quitar" in html.lower()
+
+
+def test_LU_E8_actividad_virtual_con_enlace(cg, crear_actividad):
+    from apps.nucleo.models import Modalidad
+
+    a = crear_actividad("Live", modalidad=Modalidad.objects.get(codigo="virtual"))
+    cg.post(f"/actividades/{a.pk}/programar", {"fecha": FUT, "hora_inicio": "19:00", "modalidad": Modalidad.objects.get(codigo="virtual").pk, "enlace": "https://reunion.ejemplo.invalid/abc"})
+    assert a.agenda_vigente.enlace == "https://reunion.ejemplo.invalid/abc"
+    assert "enlace virtual" in cg.get(a.get_absolute_url()).content.decode()
+    assert "virtual_ok" in {x.codigo for x in revisar(a)}
+
+
+def test_seccion3_asistencia_y_finalizar_desde_la_fecha(cg, crear_actividad, gestor, lugar, crear_persona, rol, estado_part):
+    a = crear_actividad("Futura", responsable=crear_persona(), resultado="x", asistencia_sin_registro=True)
+    servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
+    p = Participacion.objects.create(actividad=a, persona=crear_persona(), rol=rol("participante"), estado=estado_part("confirmado"))
+    cg.post(f"/actividades/{a.pk}/asistencia", {f"asistencia_{p.pk}": "si"})
+    p.refresh_from_db()
+    assert p.asistencia is None
+    with pytest.raises(ReglaNegocio, match="desde ese día"):
+        servicios.finalizar(a, gestor)
+    html = cg.get(f"{a.get_absolute_url()}?tab=asistencia").content.decode()
+    assert "desde el día de la actividad" in html
+
+
+def test_RE_E3_asistencia_tardia_despues_de_finalizar(cg, crear_actividad, gestor, lugar, crear_persona, rol, estado_part):
+    a = crear_actividad("Hoy", responsable=crear_persona(), resultado="ok", asistencia_sin_registro=True)
+    servicios.programar(a, gestor, HOY, time(10), time(11), lugar, None)
+    p = Participacion.objects.create(actividad=a, persona=crear_persona(), rol=rol("participante"), estado=estado_part("confirmado"))
+    servicios.finalizar(a, gestor)
+    cg.post(f"/actividades/{a.pk}/asistencia", {f"asistencia_{p.pk}": "si"})
+    p.refresh_from_db()
+    assert p.asistencia is True and Auditoria.objects.filter(accion="asistencia_tardia").exists()
+    # en una realizada solo entra la «persona que llegó»
+    nueva = crear_persona("Tarde")
+    cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": nueva.pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk})
+    assert not a.participaciones.filter(persona=nueva).exists()
+    cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": nueva.pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk, "llego": "1"})
+    assert a.participaciones.get(persona=nueva).asistencia is True and Auditoria.objects.filter(accion="registro_tardio").exists()
+
+
+def test_RE_E5_finalizar_avisa_quienes_quedaron_sin_asistencia(cg, crear_actividad, gestor, lugar, crear_persona, rol, estado_part):
+    a = crear_actividad("Hoy", responsable=crear_persona(), resultado="ok")
+    servicios.programar(a, gestor, HOY, time(10), time(11), lugar, None)
+    ps = [Participacion.objects.create(actividad=a, persona=crear_persona(), rol=rol("participante"), estado=estado_part("confirmado")) for _ in range(3)]
+    ps[0].asistencia = True
+    ps[0].save()
+    r = cg.post(f"/actividades/{a.pk}/finalizar", follow=True)
+    assert "2 participante(s) quedaron sin registro de asistencia" in r.content.decode()
+
+
+def test_RE_E8_se_ve_la_fecha_real_y_la_de_registro(cg, crear_actividad, gestor, lugar, crear_persona):
+    a = crear_actividad("Pasada", responsable=crear_persona(), resultado="ok", asistencia_sin_registro=True)
+    servicios.programar(a, gestor, HOY - timedelta(days=60), time(10), time(11), lugar, None)
+    servicios.finalizar(a, gestor)
+    html = cg.get(f"{a.get_absolute_url()}?tab=resultados").content.decode()
+    assert f"realizada</strong> el {(HOY - timedelta(days=60)):%d-%m-%Y}" in html and "finalizada en el sistema el" in html
+
+
+def test_RE_E9_quien_rechazo_pero_asistio(cg, crear_actividad, crear_persona, rol, estado_part):
+    a = crear_actividad("Confirmada", estado="confirmada")
+    p = Participacion.objects.create(actividad=a, persona=crear_persona("Rechazó"), rol=rol("participante"), estado=estado_part("rechazo"))
+    assert "Rechazó" in cg.get(f"{a.get_absolute_url()}?tab=asistencia").content.decode()
+    cg.post(f"/actividades/{a.pk}/asistencia", {f"asistencia_{p.pk}": "si"})
+    p.refresh_from_db()
+    assert p.asistencia is True and p.estado.codigo == "asistio" and p.history.filter(estado__codigo="rechazo").exists()
+
+
+def test_HI_E2_quitar_participante_por_error(cg, actividad, persona, rol, estado_part):
+    p = Participacion.objects.create(actividad=actividad, persona=persona, rol=rol("voluntario"), estado=estado_part("confirmado"))
+    assert cg.post(f"/actividades/{actividad.pk}/participantes/{p.pk}/quitar", {"motivo": ""}).status_code == 302
+    p.refresh_from_db()
+    assert p.estado.codigo == "confirmado"
+    cg.post(f"/actividades/{actividad.pk}/participantes/{p.pk}/quitar", {"motivo": "Era otra persona"})
+    p.refresh_from_db()
+    assert p.estado.codigo == "registro_erroneo" and not p.activa and "Era otra persona" in p.observaciones
+    assert Participacion.objects.filter(pk=p.pk).exists() and Auditoria.objects.filter(accion="participacion_quitada").exists()
+
+
+def test_AT_E13_cancelar_jornada_no_toca_hijas_realizadas(crear_actividad, gestor):
+    jornada = crear_actividad("Jornada", estado="planificada")
+    hija = crear_actividad("Charla", estado="realizada", actividad_padre=jornada)
+    servicios.cambiar_estado(jornada, "cancelada", gestor, "se cayó el auspicio")
+    hija.refresh_from_db()
+    assert hija.estado.codigo == "realizada"
+
+
+def test_AT_E14_cancelar_una_sesion_de_la_serie(cg, actividad, lugar, gestor):
+    servicios.crear_serie(actividad, gestor, FUT, 7, 8, time(18), time(19), lugar)
+    cuarta = list(actividad.hijas.order_by("agendas__fecha"))[3]
+    servicios.cambiar_estado(cuarta, "cancelada", gestor, "feriado")
+    estados = [h.estado.codigo for h in actividad.hijas.all()]
+    assert estados.count("cancelada") == 1 and estados.count("planificada") == 7

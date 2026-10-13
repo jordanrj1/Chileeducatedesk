@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">Quitar</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">{{ titulo }}</h1>
+<p>Úsalo solo si <strong>{{ p.persona }}</strong> se relacionó con «{{ p.actividad }}» por error. No se borra: queda como «registro erróneo» con el motivo, en el historial.</p>
+<form method="post" style="max-width:36rem;">{% csrf_token %}
+  <label class="form-label" for="motivo">Motivo</label>
+  <input class="form-control mb-3" id="motivo" name="motivo" maxlength="200" required placeholder="Ej.: era otra persona con el mismo nombre">
+  <button class="btn btn-danger">Quitar de la actividad</button>
+  <a class="btn btn-outline-secondary volver" href="{{ p.actividad.get_absolute_url }}?tab=participantes">← Volver</a>
+</form>
+{% endblock %}

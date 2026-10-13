@@ -45,7 +45,8 @@ class ProgramarForm(BootstrapMixin, forms.Form):
     duracion = forms.IntegerField(label="o duración (minutos)", required=False, min_value=1, max_value=24 * 60, help_text="Si indicas la duración, se calcula la hora de término.")
     lugar = LugarChoiceField(required=False)
     modalidad = forms.ModelChoiceField(Modalidad.objects.filter(activo=True), required=False)
-    motivo = forms.CharField(label="Motivo del cambio", max_length=250, required=False, help_text="Obligatorio al reprogramar.")
+    enlace = forms.URLField(label="Enlace (si es virtual)", required=False, assume_scheme="https")
+    motivo = forms.CharField(label="Motivo del cambio", max_length=250, required=False, help_text="Obligatorio al reprogramar o reanudar.")
 
     def clean(self):
         d = super().clean()

@@ -36,7 +36,7 @@
         {% elif tipo == "lugares" %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:programar' actividad.pk %}?lugar={{ c.objeto.pk }}">Usar este lugar</a>
         {% elif tipo == "organizaciones" and puede_agregar %}<form method="post" action="{% url 'actividades:organizacion_usar' actividad.pk c.objeto.pk %}">{% csrf_token %}<button class="btn btn-outline-primary btn-sm">Agregar</button></form>{% endif %}
       </div></li>{% endfor %}</ul>
-  {% else %}<p class="text-muted">Sin candidatos con esos criterios.</p>{% endif %}
+  {% else %}<p class="text-muted">Sin candidatos con esos criterios. Prueba a quitar la zona, la institución o el área, o a buscar solo por nombre.</p>{% endif %}
 {% else %}<p class="text-muted">Indica criterios y pulsa Buscar.</p>{% endif %}
 <a href="{{ actividad.get_absolute_url }}" class="btn btn-outline-secondary btn-sm mt-3 volver">← Volver a la actividad</a>
 {% endblock %}

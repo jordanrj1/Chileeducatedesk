@@ -26,7 +26,7 @@ from .forms import (
     SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
 )
 from .models import Actividad, AgendaActividad, Participacion
-from .reglas import TRANSICIONES, ReglaNegocio, revisar
+from .reglas import TRANSICIONES, ReglaNegocio, antes_de_la_fecha, personas_que_ocupan, revisar
 
 
 def _avisar(request, error):
@@ -188,9 +188,12 @@ class ActividadFicha(FichaBase):
         return super().get_queryset().select_related("proyecto", "tipo", "estado", "modalidad", "responsable", "actividad_padre")
 
     def acciones_extra(self):
+        res = []
         if self.request.user.has_perm("coordinacion.add_interaccion"):
-            return [("Registrar interacción", f"/interacciones/nueva?actividad={self.object.pk}")]
-        return []
+            res.append(("Registrar interacción", f"/interacciones/nueva?actividad={self.object.pk}"))
+        if self.request.user.has_perm("actividades.add_actividad"):
+            res.append(("Duplicar", f"/actividades/{self.object.pk}/duplicar"))
+        return res
 
     def contexto_ficha(self):
         a = self.object
@@ -205,7 +208,10 @@ class ActividadFicha(FichaBase):
             "puede_programar": u.has_perm("actividades.reprogramar_actividad") and codigo not in ("cancelada", "realizada", "suspendida"),
             "puede_confirmar": u.has_perm("actividades.change_actividad") and "confirmada" in TRANSICIONES.get(codigo, set()),
             "estados_siguientes": [(c, EstadoActividad.objects.get(codigo=c).nombre) for c in siguientes] if u.has_perm("actividades.change_actividad") else [],
-            "puede_finalizar": u.has_perm("actividades.cerrar_actividad") and "realizada" in TRANSICIONES.get(codigo, set()),
+            "antes_de_fecha": antes_de_la_fecha(a),
+            "puede_asistencia": u.has_perm("actividades.change_participacion") and codigo not in ("cancelada", "pendiente", "suspendida") and not antes_de_la_fecha(a),
+            "puede_resultado": u.has_perm("actividades.change_actividad") and codigo not in ("cancelada", "pendiente", "suspendida") and not antes_de_la_fecha(a),
+            "puede_finalizar": u.has_perm("actividades.cerrar_actividad") and "realizada" in TRANSICIONES.get(codigo, set()) and not antes_de_la_fecha(a),
             "puede_reabrir": u.has_perm("actividades.reabrir_actividad") and codigo == "realizada",
             "agenda": a.agenda_vigente,
             "faltantes": a.faltantes(),
@@ -274,7 +280,8 @@ class ActividadFicha(FichaBase):
         }
 
     def ctx_asistencia(self):
-        return {"participaciones": [p for p in self.object.participaciones.select_related("persona", "rol", "estado") if p.activa or p.asistencia is not None]}
+        # RE-E9: se listan todos (también quien había rechazado): manda la asistencia real
+        return {"participaciones": [p for p in self.object.participaciones.select_related("persona", "rol", "estado") if p.estado.codigo != "registro_erroneo"]}
 
     def ctx_documentos(self):
         u = self.request.user
@@ -284,7 +291,9 @@ class ActividadFicha(FichaBase):
         return {"documentos": docs}
 
     def ctx_resultados(self):
-        return {"form_resultado": ResultadoForm(instance=self.object), "finalizada": self.object.estado.codigo == "realizada"}
+        a = self.object
+        sin_asistencia = [p for p in a.participaciones.select_related("estado") if p.activa and p.asistencia is None]
+        return {"form_resultado": ResultadoForm(instance=a), "finalizada": a.estado.codigo == "realizada", "sin_asistencia": len(sin_asistencia)}
 
     def ctx_origen(self):
         from apps.documentos.origen import contexto_origen
@@ -323,7 +332,7 @@ class ProgramarVista(_AccionActividad):
     def get(self, request, pk):
         a = self.actividad(pk)
         v = a.agenda_vigente
-        ini = {"fecha": v.fecha, "hora_inicio": v.hora_inicio, "hora_fin": v.hora_fin, "lugar": v.lugar_id, "modalidad": v.modalidad_id or a.modalidad_id} if v else {"modalidad": a.modalidad_id}
+        ini = {"fecha": v.fecha, "hora_inicio": v.hora_inicio, "hora_fin": v.hora_fin, "lugar": v.lugar_id, "modalidad": v.modalidad_id or a.modalidad_id, "enlace": v.enlace} if v else {"modalidad": a.modalidad_id}
         if request.GET.get("lugar", "").isdigit():
             ini["lugar"] = int(request.GET["lugar"])
         return render(request, "actividades/programar.html", self._contexto(a, ProgramarForm(initial=ini)))
@@ -334,7 +343,7 @@ class ProgramarVista(_AccionActividad):
         if form.is_valid():
             d = form.cleaned_data
             try:
-                servicios.programar(a, request.user, d["fecha"], d["hora_inicio"], d.get("hora_fin"), d.get("lugar"), d.get("modalidad"), d.get("motivo", ""))
+                servicios.programar(a, request.user, d["fecha"], d["hora_inicio"], d.get("hora_fin"), d.get("lugar"), d.get("modalidad"), d.get("motivo", ""), d.get("enlace", ""))
             except ReglaNegocio as e:
                 _avisar(request, e)
             else:
@@ -394,7 +403,10 @@ class ConfirmarVista(_AccionActividad):
     def post(self, request, pk):
         a = self.actividad(pk)
         try:
-            servicios.confirmar(a, request.user, acepta_advertencias=request.POST.get("acepto") == "1", motivo_conflicto=request.POST.get("motivo_conflicto", ""))
+            servicios.confirmar(
+                a, request.user, acepta_advertencias=request.POST.get("acepto") == "1", motivo_conflicto=request.POST.get("motivo_conflicto", ""),
+                motivo_advertencias=request.POST.get("motivo_advertencias", ""),
+            )
         except ReglaNegocio as e:
             _avisar(request, e)
             return render(request, "actividades/confirmar.html", self._contexto(self.actividad(pk)), status=409)
@@ -421,12 +433,14 @@ class ResultadosVista(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo == "realizada":
-            messages.error(request, "La actividad ya fue finalizada.")
+        if a.estado.codigo in ("cancelada", "pendiente", "suspendida") or antes_de_la_fecha(a):
+            messages.error(request, "El resultado se registra desde el día de la actividad.")
             return self.volver(a, "resultados")
         form = ResultadoForm(request.POST, instance=a)
         if form.is_valid():
-            form.save()
+            form.save()  # queda en el historial de la actividad
+            if a.estado.codigo == "realizada":
+                registrar(request.user, "resultado_corregido", a, "después de finalizar")
             messages.success(request, "Resultados guardados.")
         else:
             messages.error(request, "No se pudo guardar.")
@@ -438,12 +452,15 @@ class FinalizarVista(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
+        sin = [p for p in a.participaciones.select_related("estado") if p.activa and p.asistencia is None]
         try:
             servicios.finalizar(a, request.user)
         except ReglaNegocio as e:
             _avisar(request, e)
             return self.volver(a, "resultados")
         messages.success(request, "Actividad finalizada: quedó como realizada y disponible en el historial.")
+        if sin and not a.asistencia_sin_registro:  # RE-E5
+            messages.warning(request, f"{len(sin)} participante(s) quedaron sin registro de asistencia. Puedes completarlo en la pestaña Asistencia.")
         return self.volver(a, "resultados")
 
 
@@ -462,6 +479,60 @@ class ReabrirVista(_AccionActividad):
 
 
 # --- Participantes ----------------------------------------------------------------
+def _puede_sumar_participante(request, a, llego):
+    """Cancelada: no. Realizada: solo «persona que llegó» (registro tardío). Resto: sí."""
+    if a.estado.codigo == "cancelada" or (a.estado.codigo == "realizada" and not llego):
+        messages.error(request, "En una actividad cancelada no se agregan personas; en una realizada, solo «persona que llegó».")
+        return False
+    return True
+
+
+def _avisar_capacidad(request, a):
+    """AT-E8: aviso al agregar a quien excede la capacidad del lugar."""
+    ag = a.agenda_vigente
+    if ag and ag.lugar and ag.lugar.capacidad is not None:
+        n = len(personas_que_ocupan(a))
+        if n > ag.lugar.capacidad:
+            messages.warning(request, f"Ahora hay {n} personas para una capacidad de {ag.lugar.capacidad}. Considera dejar a las últimas «En lista de espera» o cambiar de lugar.")
+
+
+class ParticipanteQuitar(_AccionActividad):
+    """HI-E2: quitar a quien se relacionó por error. No se borra: queda «Registro erróneo» con el motivo."""
+
+    permission_required = "actividades.change_participacion"
+
+    def _p(self, pk, part_pk):
+        return get_object_or_404(Participacion.objects.select_related("persona", "actividad"), pk=part_pk, actividad_id=pk)
+
+    def get(self, request, pk, part_pk):
+        p = self._p(pk, part_pk)
+        return render(request, "actividades/quitar.html", {"p": p, "titulo": f"Quitar a {p.persona}", "breadcrumb": [(p.actividad.nombre, p.actividad.get_absolute_url())]})
+
+    def post(self, request, pk, part_pk):
+        p = self._p(pk, part_pk)
+        motivo = request.POST.get("motivo", "").strip()
+        if not motivo:
+            messages.error(request, "Indica por qué se quita.")
+            return HttpResponseRedirect(request.path)
+        p.estado = EstadoParticipacion.objects.get(codigo="registro_erroneo")
+        p.observaciones = f"Quitada por error: {motivo}"[:250]
+        p.save()
+        registrar(request.user, "participacion_quitada", p, motivo)
+        messages.success(request, f"{p.persona} quitada de la actividad. Queda en el historial como registro erróneo.")
+        return self.volver(p.actividad, "participantes")
+
+
+class ActividadDuplicar(_AccionActividad):
+    permission_required = "actividades.add_actividad"
+
+    def get(self, request, pk):
+        a = self.actividad(pk)
+        return render(request, "actividades/duplicar.html", {"actividad": a, "titulo": f"Duplicar «{a.nombre}»", "breadcrumb": [(a.nombre, a.get_absolute_url())]})
+
+    def post(self, request, pk):
+        nueva = servicios.duplicar(self.actividad(pk), request.user)
+        messages.success(request, "Actividad duplicada (sin participantes ni fechas). Ajusta el nombre y prográmala.")
+        return HttpResponseRedirect(reverse("actividades:editar", args=[nueva.pk]))
 class ParticipanteNuevo(_AccionActividad):
     permission_required = "actividades.add_participacion"
 
@@ -480,11 +551,10 @@ class ParticipanteNuevo(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo in ("realizada", "cancelada"):
-            messages.error(request, "No se pueden agregar participantes a una actividad finalizada o cancelada.")
+        llego = request.POST.get("llego") == "1"
+        if not _puede_sumar_participante(request, a, llego):
             return self.volver(a, "participantes")
         form = ParticipanteNuevoForm(request.POST, actividad=a)
-        llego = request.POST.get("llego") == "1"
         if form.is_valid():
             p = form.save(commit=False)
             p.actividad = a
@@ -494,6 +564,9 @@ class ParticipanteNuevo(_AccionActividad):
                 p.estado = EstadoParticipacion.objects.get(codigo="asistio")
             p.save()
             messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}" + (" y marcada como asistente." if llego else "."))
+            _avisar_capacidad(request, a)
+            if a.estado.codigo == "realizada":
+                registrar(request.user, "registro_tardio", p, "persona que llegó, agregada después de finalizar")
             from apps.nucleo.fases import modulo_activo
 
             return self.volver(a, "asistencia" if llego else ("beneficiarios" if p.es_beneficiario and modulo_activo("beneficiarios") else "participantes"))
@@ -518,6 +591,8 @@ class ParticipanteRapido(_AccionActividad):
             from django.core.exceptions import PermissionDenied
 
             raise PermissionDenied
+        if not _puede_sumar_participante(request, a, request.POST.get("llego") == "1"):
+            return self.volver(a, "participantes")
         form = PersonaRapidaForm(request.POST)
         if not form.is_valid():
             return render(request, "actividades/participante_rapido.html", self._ctx(a, form), status=400)
@@ -543,6 +618,7 @@ class ParticipanteRapido(_AccionActividad):
                 estado=EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"),
             )
         messages.success(request, f"{persona} creada y agregada. Completa su ficha cuando puedas.")
+        _avisar_capacidad(request, a)
         return self.volver(a, "asistencia" if llego else "participantes")
 
 
@@ -556,11 +632,14 @@ class ParticipanteUsar(_AccionActividad):
         persona = get_object_or_404(Persona, pk=persona_pk)
         rol = get_object_or_404(RolParticipacion, pk=request.POST.get("rol"))
         llego = request.POST.get("llego") == "1"
+        if not _puede_sumar_participante(request, a, llego):
+            return self.volver(a, "participantes")
         obj, creada = Participacion.objects.get_or_create(
             actividad=a, persona=persona, rol=rol,
             defaults={"estado": EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"), "creado_por": request.user, "asistencia": True if llego else None},
         )
         messages.success(request, f"{persona} agregada." if creada else f"{persona} ya participaba con ese rol.")
+        _avisar_capacidad(request, a)
         return self.volver(a, "participantes")
 
 
@@ -594,8 +673,11 @@ class AsistenciaVista(_AccionActividad):
 
     def post(self, request, pk):
         a = self.actividad(pk)
-        if a.estado.codigo in ("realizada", "cancelada"):
+        if a.estado.codigo in ("cancelada", "pendiente", "suspendida"):
             messages.error(request, "No se puede registrar asistencia en esta actividad.")
+            return self.volver(a, "asistencia")
+        if antes_de_la_fecha(a):
+            messages.error(request, f"La asistencia se registra desde el día de la actividad ({a.agenda_vigente.fecha:%d-%m-%Y}).")
             return self.volver(a, "asistencia")
         estados = {e.codigo: e for e in EstadoParticipacion.objects.filter(codigo__in=["asistio", "no_asistio"])}
         n = 0
@@ -616,6 +698,8 @@ class AsistenciaVista(_AccionActividad):
             if request.POST.get("sin_registro") is not None:
                 a.asistencia_sin_registro = request.POST.get("sin_registro") == "1"
                 a.save(update_fields=["asistencia_sin_registro"])
+        if a.estado.codigo == "realizada" and n:
+            registrar(request.user, "asistencia_tardia", a, f"{n} cambios después de finalizar")  # RE-E3
         messages.success(request, f"Asistencia guardada ({n} cambios).")
         return self.volver(a, "asistencia")
 

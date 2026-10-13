@@ -36,7 +36,8 @@ def test_recorrido_completo_normal(cg, lugar, universidad):
     cg.post(f"/actividades/{actividad.pk}/participantes/rapido", {"nombres": "Elisa", "apellido_paterno": "Estudiante", "rol": RolParticipacion.objects.get(codigo="estudiante").pk})
     assert actividad.participaciones.count() == 2
     # 5. Programar
-    cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": FECHA, "hora_inicio": "18:00", "hora_fin": "20:00", "lugar": lugar.pk})
+    # (se programa para hoy: asistencia, resultado y finalizar se habilitan desde el día de la actividad)
+    cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": date.today(), "hora_inicio": "18:00", "hora_fin": "20:00", "lugar": lugar.pk})
     actividad.refresh_from_db()
     assert actividad.estado.codigo == "planificada" and actividad.faltantes() == []
     # 6. Confirmar (revisa compatibilidad)

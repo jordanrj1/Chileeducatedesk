@@ -334,7 +334,8 @@ def test_cancelar_participante_libera_cupo_y_conserva_historia(cg, actividad, cr
     assert part.history.count() == 2
 
 
-def test_asistencia(cg, actividad, crear_persona, rol, estado_part):
+def test_asistencia(cg, crear_actividad, crear_persona, rol, estado_part):
+    actividad = crear_actividad("Confirmada", estado="confirmada")
     a, b, c = (participar(actividad, crear_persona(), rol) for _ in range(3))
     cg.post(f"/actividades/{actividad.pk}/asistencia", {f"asistencia_{a.pk}": "si", f"asistencia_{b.pk}": "no", f"asistencia_{c.pk}": ""})
     for p in (a, b, c):
@@ -392,9 +393,13 @@ def test_finalizar_por_pantalla_y_bloqueo_posterior(cg, crear_actividad, crear_p
     cg.post(f"/actividades/{a.pk}/finalizar")
     a.refresh_from_db()
     assert a.estado.codigo == "realizada"
-    cg.post(f"/actividades/{a.pk}/resultados", {"resultado": "Cambiado", "asistencia_sin_registro": "on"})
+    # Catálogo §3: después de finalizar, el resultado se puede corregir y queda registrado
+    cg.post(f"/actividades/{a.pk}/resultados", {"resultado": "Fue bien (corregido)", "asistencia_sin_registro": "on"})
     a.refresh_from_db()
-    assert a.resultado == "Fue bien"
+    assert a.resultado == "Fue bien (corregido)"
+    from apps.nucleo.models import Auditoria
+
+    assert Auditoria.objects.filter(accion="resultado_corregido").exists()
     cg.post(f"/actividades/{a.pk}/editar", {"nombre": "Otro nombre"})
     a.refresh_from_db()
     assert a.nombre == "Por finalizar"
@@ -555,7 +560,8 @@ def test_cargar_listado_desde_la_actividad(cg, actividad):
     assert 'value="listado_actividad" selected' in html and f'value="{actividad.pk}" selected' in html
 
 
-def test_agregar_persona_que_llego(cg, actividad, crear_persona, rol, estado_part):
+def test_agregar_persona_que_llego(cg, crear_actividad, crear_persona, rol, estado_part):
+    actividad = crear_actividad("En curso", estado="confirmada")
     assert "+ Agregar persona que llegó" in cg.get(f"/actividades/{actividad.pk}?tab=asistencia").content.decode()
     p = crear_persona("Llegó")
     r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk, "llego": "1"})

@@ -136,6 +136,12 @@ def revisar(actividad, hoy=None):
                 res.append(Problema("info", "condiciones_lugar", f"Condiciones del lugar: {lugar.condiciones}"))
         if actividad.condiciones:
             res.append(Problema("info", "condiciones", f"Condiciones de la actividad: {actividad.condiciones}"))
+        if agenda.fecha.weekday() >= 5:
+            res.append(Problema("info", "fin_de_semana", f"La fecha cae en {'sábado' if agenda.fecha.weekday() == 5 else 'domingo'}."))
+        if agenda.fecha.isoformat() in set(getattr(settings, "FERIADOS", [])):
+            res.append(Problema("info", "feriado", f"El {agenda.fecha:%d-%m-%Y} es feriado."))
+        if lugar and lugar.organizacion_propietaria_id and not actividad.organizaciones.filter(organizacion_id=lugar.organizacion_propietaria_id, vigente=True).exists():
+            res.append(Problema("advertencia", "lugar_sin_confirmar", f"El lugar pertenece a «{lugar.organizacion_propietaria}», que no figura en la actividad: confirma con ellos que está disponible."))
         if agenda.fecha < hoy and actividad.estado.codigo != "realizada":
             res.append(Problema("advertencia", "fecha_pasada", f"La fecha programada ({agenda.fecha:%d-%m-%Y}) ya pasó."))
         personas = {p.persona_id: p.persona for p in activas if not p.es_beneficiario}
@@ -167,6 +173,13 @@ def _compatibles(actividad, agenda, lugar, activas, codigos):
         if activas and not codigos & {"persona_ocupada", "fuera_de_disponibilidad"}:
             ok.append(Problema("ok", "horarios_ok", "Sin choques de horario de las personas."))
     return ok
+
+
+def antes_de_la_fecha(actividad, hoy=None):
+    """True si la actividad tiene fecha y todavía no llega (asistencia, resultado y finalizar se habilitan desde ese día)."""
+    hoy = hoy or date.today()
+    ag = actividad.agenda_vigente
+    return bool(ag and ag.fecha > hoy)
 
 
 def conflicto_critico_permitido():
