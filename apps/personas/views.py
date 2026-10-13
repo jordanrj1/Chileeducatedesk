@@ -252,6 +252,54 @@ class PersonaFicha(FichaBase):
                               texto=lambda v: v.tipo, detalle=lambda v: f"{v.fecha:%d-%m-%Y}" + (f" · vigente hasta {v.vigente_hasta:%d-%m-%Y}" if v.vigente_hasta else "") + (" · VENCIDA" if v.vencida else ""))
 
 
+class PersonaDatosPersonales(Permiso403Mixin, View):
+    """Derecho de acceso: todos los datos de una persona en un Excel, para entregárselos si los pide.
+
+    Los datos sensibles solo se incluyen con el permiso correspondiente. Queda en la auditoría.
+    """
+
+    permission_required = "personas.exportar_persona"
+
+    def get(self, request, pk):
+        from io import BytesIO
+
+        from django.http import HttpResponse
+        from openpyxl import Workbook
+
+        from apps.nucleo.auditoria import registrar
+        from apps.nucleo.exportacion import _seguro
+
+        p = get_object_or_404(Persona, pk=pk)
+        libro = Workbook()
+        hojas = [("Datos", ["Campo", "Valor"], [
+            ("Nombres", p.nombres), ("Apellido paterno", p.apellido_paterno), ("Apellido materno", p.apellido_materno), ("RUT", p.rut),
+            ("Profesión u oficio", p.profesion), ("Sitio web", p.sitio_web), ("Origen", p.origen or ""), ("Estado del registro", p.estado_registro or ""),
+            ("Observaciones", p.observaciones), ("Registrada el", f"{p.creado_en:%d-%m-%Y}"),
+        ])]
+        hojas.append(("Contactos", ["Tipo", "Valor", "Vigente"], [(c.tipo, c.valor, "Sí" if c.vigente else "No") for c in p.contactos.select_related("tipo")]))
+        hojas.append(("Direcciones", ["Tipo", "Dirección", "Vigente"], [(d.get_tipo_display(), d.direccion, "Sí" if d.vigente else "No") for d in p.direcciones.select_related("direccion__comuna")]))
+        hojas.append(("Formación", ["Institución", "Carrera", "Estado"], [(f.organizacion, f.carrera or "", f.get_estado_display()) for f in p.formaciones.select_related("organizacion", "carrera")]))
+        hojas.append(("Cargos", ["Organización", "Cargo", "Desde", "Hasta"], [(v.organizacion, v.cargo, v.fecha_inicio or "", v.fecha_termino or "") for v in p.vinculos.select_related("organizacion")]))
+        hojas.append(("Participaciones", ["Actividad", "Rol", "Estado", "Asistencia"], [
+            (x.actividad, x.rol, x.estado, {True: "Asistió", False: "No asistió", None: ""}[x.asistencia]) for x in p.participaciones.select_related("actividad", "rol", "estado")
+        ]))
+        if request.user.has_perm("personas.ver_sensibles"):
+            hojas.append(("Emergencia", ["Nombre", "Parentesco", "Teléfono"], [(c.nombre, c.parentesco, c.telefono) for c in p.contactos_emergencia.all()]))
+            hojas.append(("Verificaciones", ["Tipo", "Fecha", "Vigente hasta"], [(v.tipo, v.fecha, v.vigente_hasta or "") for v in p.verificaciones.all()]))
+        libro.remove(libro.active)
+        for titulo, encabezados, filas in hojas:
+            h = libro.create_sheet(titulo)
+            h.append(encabezados)
+            for fila in filas:
+                h.append([_seguro(v) for v in fila])
+        buffer = BytesIO()
+        libro.save(buffer)
+        registrar(request.user, "datos_personales_exportados", p, "derecho de acceso")
+        r = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        r["Content-Disposition"] = f'attachment; filename="datos_persona_{p.pk}.xlsx"'
+        return r
+
+
 class PersonaAlternar(AlternarActivoBase):
     modelo = Persona
     permission_required = "personas.change_persona"

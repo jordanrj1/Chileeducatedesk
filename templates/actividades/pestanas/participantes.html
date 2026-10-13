@@ -6,7 +6,7 @@
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:candidatos' object.pk %}">Buscar candidatos</a>
     {% if perms.importaciones.importar_listado %}<a class="btn btn-outline-secondary btn-sm" href="/importaciones/nueva?actividad={{ object.pk }}">Cargar listado</a>{% endif %}</div>{% endif %}
 </div>
-{% if capacidad_alerta %}<div class="alert {% if capacidad_alerta.excede %}alert-danger{% else %}alert-light border{% endif %} py-2">Participantes activos: {{ capacidad_alerta.n }} · capacidad del lugar: {{ capacidad_alerta.capacidad }}{% if capacidad_alerta.excede %} — <strong>excede la capacidad</strong>{% endif %}</div>{% endif %}
+{% if capacidad_alerta %}<div class="alert {% if capacidad_alerta.excede %}alert-danger{% elif capacidad_alerta.lleno %}alert-warning{% else %}alert-light border{% endif %} py-2">Cupos ocupados: {{ capacidad_alerta.n }} de {{ capacidad_alerta.capacidad }}{% if capacidad_alerta.espera %} · en lista de espera: {{ capacidad_alerta.espera }}{% endif %}{% if capacidad_alerta.excede %} — <strong>excede la capacidad</strong>{% elif capacidad_alerta.lleno %} — <strong>sin cupos</strong>: los nuevos pueden quedar «En lista de espera»{% endif %}</div>{% endif %}
 {% if participaciones %}
 <div class="table-responsive"><table class="table table-sm align-middle">
 <thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th><th>Observaciones</th><th></th></tr></thead>

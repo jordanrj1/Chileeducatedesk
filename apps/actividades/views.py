@@ -228,8 +228,10 @@ class ActividadFicha(FichaBase):
     def _capacidad(self):
         ag = self.object.agenda_vigente
         if ag and ag.lugar and ag.lugar.capacidad is not None:
-            n = sum(1 for p in self.object.participaciones.select_related("estado") if p.activa)
-            return {"n": n, "capacidad": ag.lugar.capacidad, "excede": n > ag.lugar.capacidad}
+            partes = list(self.object.participaciones.select_related("estado"))
+            n = sum(1 for p in partes if p.activa)
+            espera = sum(1 for p in partes if p.en_espera)
+            return {"n": n, "capacidad": ag.lugar.capacidad, "excede": n > ag.lugar.capacidad, "lleno": n >= ag.lugar.capacidad, "espera": espera}
         return None
 
     def ctx_info(self):
@@ -614,6 +616,26 @@ class AsistenciaVista(_AccionActividad):
                 a.save(update_fields=["asistencia_sin_registro"])
         messages.success(request, f"Asistencia guardada ({n} cambios).")
         return self.volver(a, "asistencia")
+
+
+class Constancia(Permiso403Mixin, TemplateView):
+    """Constancia de participación imprimible [P]. Solo para quien tiene la asistencia registrada."""
+
+    permission_required = "actividades.view_participacion"
+    template_name = "actividades/constancia.html"
+
+    def get_context_data(self, **kw):
+        from django.utils import timezone
+
+        ctx = super().get_context_data(**kw)
+        p = get_object_or_404(Participacion.objects.select_related("persona", "rol", "actividad__proyecto"), pk=self.kwargs["part_pk"], actividad_id=self.kwargs["pk"])
+        if p.asistencia is not True:
+            raise Http404("Solo se emite constancia a quien tiene la asistencia registrada.")
+        from apps.organizaciones.models import Organizacion
+
+        registrar(self.request.user, "constancia_emitida", p, str(p.persona))
+        ctx.update(p=p, agenda=p.actividad.agenda_vigente, fundacion=Organizacion.objects.filter(es_propia=True).first(), hoy=timezone.localdate(), titulo="Constancia de participación")
+        return ctx
 
 
 # --- Calendario -------------------------------------------------------------------

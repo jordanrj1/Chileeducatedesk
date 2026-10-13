@@ -147,7 +147,12 @@ class Participacion(models.Model):
 
     @property
     def activa(self):
-        return self.estado.codigo not in ("rechazo", "cancelo", "no_asistio")
+        """Ocupa cupo. «En lista de espera» no ocupa cupo hasta que se confirme [P]."""
+        return self.estado.codigo not in ("rechazo", "cancelo", "no_asistio", "lista_espera")
+
+    @property
+    def en_espera(self):
+        return self.estado.codigo == "lista_espera"
 
     @property
     def es_beneficiario(self):

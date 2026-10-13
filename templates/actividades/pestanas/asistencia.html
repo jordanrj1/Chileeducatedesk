@@ -7,7 +7,7 @@
 <div class="table-responsive"><table class="table table-sm align-middle">
 <thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th></tr></thead>
 <tbody>{% for p in participaciones %}<tr><td>{{ p.persona }}</td><td>{{ p.rol }}</td><td>{{ p.estado }}</td>
-<td>{% if puede_agregar and perms.actividades.change_participacion %}<select class="form-select form-select-sm" name="asistencia_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}" style="max-width:12rem;">
+<td>{% if p.asistencia is True %}<a class="small float-end" href="{% url 'actividades:constancia' object.pk p.pk %}">Constancia</a>{% endif %}{% if puede_agregar and perms.actividades.change_participacion %}<select class="form-select form-select-sm" name="asistencia_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}" style="max-width:12rem;">
 <option value="" {% if p.asistencia is None %}selected{% endif %}>Sin registro</option><option value="si" {% if p.asistencia is True %}selected{% endif %}>Asistió</option><option value="no" {% if p.asistencia is False %}selected{% endif %}>No asistió</option></select>
 {% else %}{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% else %}—{% endif %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
 {% if puede_agregar and perms.actividades.change_participacion %}
