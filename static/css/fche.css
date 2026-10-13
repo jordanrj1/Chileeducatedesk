@@ -608,3 +608,30 @@ body.htmx-request #cargando { display: inline-block; }
   .fche-documento { box-shadow: none; border: 0; padding: 0; }
 }
 .min-w-0 { min-width: 0; }
+
+/* Formularios por secciones (F22) */
+.fche-bloque { margin: 0 0 1.5rem; padding: 0 0 .5rem; border: 0; border-bottom: 1px solid var(--fche-borde); }
+.fche-bloque:last-of-type { border-bottom: 0; margin-bottom: .5rem; }
+.fche-bloque__titulo { float: none; width: auto; margin: 0 0 .25rem; font-size: 1rem; font-weight: 700; color: var(--fche-texto); }
+.fche-bloque__ayuda { margin: 0 0 1rem; font-size: .82rem; color: var(--fche-texto-suave); }
+.fche-bloque__titulo + .fche-form__rejilla { margin-top: .85rem; }
+.fche-form { max-width: 60rem; }
+/* Opciones múltiples como fichas seleccionables */
+.fche-opciones > div { display: flex; flex-wrap: wrap; gap: .45rem; }
+.fche-opciones > div > div { margin: 0; }
+.fche-opciones label { display: inline-flex; align-items: center; gap: .45rem; padding: .32rem .75rem; border: 1px solid var(--fche-borde-fuerte); border-radius: 2rem; background: #fff; font-size: .85rem; cursor: pointer; transition: background-color var(--fche-transicion), border-color var(--fche-transicion); }
+.fche-opciones label:hover { border-color: #a9c0f8; background: #f7f9ff; }
+.fche-opciones label:has(input:checked) { border-color: var(--fche-primario); background: var(--fche-primario-suave); color: var(--fche-primario-oscuro); font-weight: 600; }
+.fche-opciones input { margin: 0; }
+/* Minuta de sesión */
+.fche-minuta dt { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fche-texto-suave); margin-bottom: .25rem; }
+.fche-minuta dd { margin: 0 0 1.1rem; white-space: pre-line; }
+.fche-sesion { display: grid; grid-template-columns: 3.25rem 1fr auto; gap: 1rem; align-items: start; padding: 1rem 1.1rem; }
+.fche-sesion + .fche-sesion { border-top: 1px solid var(--fche-borde); }
+.fche-sesion__numero { display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: .9rem; background: var(--fche-primario-suave); color: var(--fche-primario-oscuro); font-weight: 800; font-size: 1.15rem; }
+.fche-sesion.is-inactivo .fche-sesion__numero { background: #eef1f5; color: var(--fche-texto-suave); }
+@media (max-width: 575.98px) { .fche-sesion { grid-template-columns: 2.6rem 1fr; } .fche-sesion__numero { width: 2.6rem; height: 2.6rem; } .fche-sesion > :last-child { grid-column: 1 / -1; } }
+/* Barras de alcance */
+.fche-barra-dato { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr 3rem; gap: .75rem; align-items: center; font-size: .85rem; padding: .3rem 0; }
+.fche-barra-dato__pista { height: .5rem; border-radius: 1rem; background: #eef1f5; overflow: hidden; }
+.fche-barra-dato__relleno { height: 100%; border-radius: 1rem; background: linear-gradient(90deg, #3b6cf0, #2450d4); }

@@ -9,6 +9,7 @@ MENU = [
     ("Tareas", "/tareas", "coordinacion.view_tarea", "tareas", "Operación", "tareas"),
     ("Personas", "/personas", "personas.view_persona", "personas", "Registro"),
     ("Organizaciones", "/organizaciones", "organizaciones.view_organizacion", "organizaciones", "Registro"),
+    ("Comunidades", "/comunidades", "comunidades.view_comunidad", "comunidades", "Registro"),
     ("Lugares", "/lugares", "lugares.view_lugar", "lugares", "Registro"),
     ("Territorio", "/territorio", "territorio.view_comuna", "territorio", "Registro"),
     ("Documentos", "/documentos", "documentos.view_documento", "documentos", "Registro"),
@@ -25,6 +26,7 @@ NUEVO = [
     ("+ Actividad", "/actividades/nueva", "actividades.add_actividad", "actividades"),
     ("+ Persona", "/personas/nueva", "personas.add_persona", "persona_mas"),
     ("+ Organización", "/organizaciones/nueva", "organizaciones.add_organizacion", "organizaciones"),
+    ("+ Comunidad", "/comunidades/nueva", "comunidades.add_comunidad", "comunidades"),
     ("+ Lugar", "/lugares/nuevo", "lugares.add_lugar", "lugares"),
     ("+ Documento", "/documentos/nuevo", "documentos.add_documento", "documentos"),
 ]

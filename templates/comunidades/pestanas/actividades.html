@@ -1,0 +1,11 @@
+{% load fche %}<div class="row g-4">
+<div class="col-12 col-xl-7">
+<h2 class="h6 mb-2">Actividades dirigidas a esta comunidad <span class="fche-contador">{{ dirigidas|length }}</span></h2>
+<ul class="fche-items">{% for d in dirigidas %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ d.actividad.get_absolute_url }}">{{ d.actividad }}</a>
+<div class="fche-items__detalle">{{ d.actividad.tipo|default:"" }}{% if d.beneficiarios_estimados %} · {{ d.beneficiarios_estimados }} beneficiarios estimados{% endif %}</div></div>{% estado d.actividad.estado %}</li>{% empty %}<li class="text-muted">Aún no hay actividades dirigidas a esta comunidad.</li>{% endfor %}</ul>
+</div>
+<div class="col-12 col-xl-5">
+<h2 class="h6 mb-2">Proyectos</h2>
+<ul class="fche-items">{% for p in proyectos %}<li><a class="fche-items__titulo" href="{{ p.proyecto.get_absolute_url }}">{{ p.proyecto }}</a>{% estado p.proyecto.estado p.proyecto.get_estado_display %}</li>{% empty %}<li class="text-muted">Sin proyectos dirigidos a esta comunidad.</li>{% endfor %}</ul>
+</div>
+</div>

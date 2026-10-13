@@ -250,7 +250,7 @@ def cambios_historial(obj, limite=50):
 ICONOS_FICHA = {
     "actividad": "actividades", "proyecto": "proyectos", "lugar": "lugares", "documento": "documentos", "solicitud": "solicitudes",
     "region": "territorio", "comuna": "territorio", "reunion": "reuniones", "tarea": "tareas", "movimiento": "finanzas", "lote": "importaciones",
-    "interaccion": "reuniones", "invitacion": "correo", "colaboracion": "usuarios_check",
+    "interaccion": "reuniones", "invitacion": "correo", "colaboracion": "usuarios_check", "comunidad": "comunidades", "sesionactividad": "minuta",
 }
 
 

@@ -1,5 +1,7 @@
 from django.urls import path
 
+from apps.comunidades.forms import MembresiaDesdePersonaForm
+from apps.comunidades.models import ComunidadMiembro
 from apps.nucleo.hijos import urls_hijo
 
 from . import forms, models, views
@@ -18,11 +20,16 @@ urlpatterns = [
     path("personas/<int:pk>/reasignar", views.PersonaReasignar.as_view(), name="reasignar"),
     path("personas/<int:pk>/datos-personales", views.PersonaDatosPersonales.as_view(), name="datos_personales"),
     path("personas/<int:pk>/direcciones/nuevo", views.DireccionPersonaNueva.as_view(), name="direcciones_nuevo"),
+    path("personas/<int:pk>/sensibles/editar", views.PerfilSensibleEditar.as_view(), name="sensibles_editar"),
     *urls_hijo("personas", "contactos", "Contacto", modelo=models.Contacto, form_class=forms.ContactoForm, tab="contactos", etiqueta="contacto", **P),
     *urls_hijo("personas", "formacion", "Formacion", modelo=models.PersonaFormacion, form_class=forms.FormacionForm, tab="formacion", etiqueta="formación", **P),
     *urls_hijo("personas", "experiencia", "Experiencia", modelo=models.Experiencia, form_class=forms.ExperienciaForm, tab="experiencia", etiqueta="experiencia", **P),
     *urls_hijo("personas", "disponibilidad", "Disponibilidad", modelo=models.DisponibilidadPersona, form_class=forms.DisponibilidadForm, tab="disponibilidad", etiqueta="horario", **P),
     *urls_hijo("personas", "vinculos", "Vinculo", modelo=models.PersonaOrganizacion, form_class=forms.VinculoForm, tab="vinculos", etiqueta="vínculo", **P),
     *urls_hijo("personas", "emergencia", "Emergencia", modelo=models.ContactoEmergencia, form_class=forms.EmergenciaForm, tab="emergencia", etiqueta="contacto de emergencia", permiso_extra="personas.ver_sensibles", **P),
+    *urls_hijo("personas", "apoderados", "Apoderado", modelo=models.Apoderado, form_class=forms.ApoderadoForm, tab="apoderados", etiqueta="apoderado", permiso_extra="personas.ver_sensibles", **P),
+    *urls_hijo("personas", "consentimientos", "Consentimiento", modelo=models.Consentimiento, form_class=forms.ConsentimientoForm, tab="consentimientos", etiqueta="consentimiento",
+               antes_de_guardar=lambda vista, obj: setattr(obj, "registrado_por", vista.request.user), **P),
+    *urls_hijo("personas", "comunidades", "Comunidad", modelo=ComunidadMiembro, form_class=MembresiaDesdePersonaForm, tab="comunidades", etiqueta="comunidad", **P),
     *urls_hijo("personas", "verificaciones", "Verificacion", modelo=models.VerificacionPersona, form_class=forms.VerificacionForm, tab="verificaciones", etiqueta="verificación", permiso_extra="personas.ver_sensibles", **P),
 ]

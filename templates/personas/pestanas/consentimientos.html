@@ -1,0 +1,15 @@
+{% load fche %}<div class="fche-seccion"><div><h2 class="h6">Consentimientos y autorizaciones</h2><p class="small text-muted mb-0">Sin consentimiento la persona no se excluye: solo no se guardan sus datos sensibles y se avisa antes de usar su imagen.</p></div>
+{% if puede_agregar_consentimiento %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'personas:consentimientos_nuevo' object.pk %}">+ Registrar consentimiento</a></div>{% endif %}</div>
+<div class="fche-mosaico mb-4">{% for e in estado_consentimientos %}
+  <div class="fche-mosaico__item"><span class="fche-mosaico__icono" style="{% if e.vigente %}background:#e7f6ec;color:#13703a{% elif e.ultimo %}background:#fdecec;color:#b42318{% else %}background:#fff3d1;color:#7a4f00{% endif %}">{% if e.vigente %}{% icono "ok" 18 %}{% elif e.ultimo %}{% icono "error" 18 %}{% else %}{% icono "alerta" 18 %}{% endif %}</span>
+  <span><span class="fche-mosaico__titulo">{{ e.nombre }}</span><span class="fche-mosaico__texto">{% if e.vigente %}Otorgado el {{ e.ultimo.fecha|date:"d-m-Y" }}{% elif e.ultimo and e.ultimo.revocado_en %}Revocado el {{ e.ultimo.revocado_en|date:"d-m-Y" }}{% elif e.ultimo %}Rechazado el {{ e.ultimo.fecha|date:"d-m-Y" }}{% else %}Sin registrar{% endif %}</span></span></div>
+{% endfor %}</div>
+{% if consentimientos %}
+<div class="table-responsive"><table class="table table-sm align-middle">
+<thead><tr><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Medio</th><th>Otorgado por</th><th>Respaldo</th><th><span class="visually-hidden">Acciones</span></th></tr></thead>
+<tbody>{% for c in consentimientos %}<tr class="{% if not c.vigente %}text-muted{% endif %}"><td>{{ c.get_tipo_display }}</td>
+<td>{% if c.revocado_en %}{% estado "revocado" "Revocado" %}{% elif c.otorgado %}{% estado "otorgado" "Otorgado" %}{% else %}{% estado "rechazado" "Rechazado" %}{% endif %}</td>
+<td class="text-nowrap">{{ c.fecha|date:"d-m-Y" }}{% if c.revocado_en %}<br><span class="small">revocado {{ c.revocado_en|date:"d-m-Y" }}</span>{% endif %}</td><td>{{ c.get_medio_display }}</td>
+<td>{{ c.otorgado_por|default:"La persona" }}</td><td>{% if c.documento %}<a href="{{ c.documento.get_absolute_url }}">{{ c.documento }}</a>{% else %}—{% endif %}</td>
+<td class="text-end">{% if perms.personas.change_consentimiento %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'personas:consentimientos_editar' object.pk c.pk %}">Editar o revocar</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% endif %}

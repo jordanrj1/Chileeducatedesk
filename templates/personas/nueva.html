@@ -4,9 +4,9 @@
   <li class="nav-item"><a class="nav-link {% if modo == 'rapida' %}active{% endif %}" href="?modo=rapida">Ficha rápida</a></li>
   <li class="nav-item"><a class="nav-link {% if modo == 'completa' %}active{% endif %}" href="?modo=completa">Ficha completa</a></li>
 </ul>
-<p class="small text-muted mb-4">{% if modo == 'rapida' %}Nombre y un dato de contacto; el resto lo completas después.{% else %}Solo el nombre es obligatorio.{% endif %}</p>
+<p class="small text-muted mb-4">{% if modo == 'rapida' %}Nombre y un dato de contacto; el resto lo completas después.{% else %}Solo el nombre es obligatorio. Mientras más completa la ficha, más útil es el banco de personas para armar actividades e informes.{% endif %}</p>
 <input type="hidden" name="modo" value="{{ modo }}">
-{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
+{% include "generico/_campos.html" %}
 {% if candidatos %}
 <div class="alert alert-warning mt-2 mb-3" role="alert">
   <strong>Esta persona podría ya existir.</strong> Revisa antes de crear un duplicado:

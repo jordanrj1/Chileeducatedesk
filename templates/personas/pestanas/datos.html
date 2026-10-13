@@ -1,8 +1,18 @@
 {% load fche %}<dl class="fche-datos mb-4">
   <div><dt>RUT <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ object.rut|default:"—" }}</dd></div>
   {% if object.numero_documento %}<div><dt>{{ object.get_tipo_documento_display }} <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ object.numero_documento }}</dd></div>{% endif %}
+  <div><dt>Fecha de nacimiento</dt><dd>{{ object.fecha_nacimiento|date:"d-m-Y"|default:"—" }}{% if object.edad is not None %} <span class="text-muted">({{ object.edad }} años)</span>{% endif %}</dd></div>
+  <div><dt>Nacionalidad</dt><dd>{{ object.nacionalidad|default:"—" }}</dd></div>
+  <div><dt>Nombre social</dt><dd>{{ object.nombre_social|default:"—" }}</dd></div>
+  <div class="fche-datos__ancho"><dt>Perfil en la Fundación</dt><dd>{% for p in object.perfiles.all %}<span class="badge text-bg-primary me-1">{{ p }}</span>{% empty %}—{% endfor %}</dd></div>
+  <div><dt>Nivel educacional</dt><dd>{{ object.get_nivel_educacional_display|default:"—" }}</dd></div>
+  <div><dt>Situación ocupacional</dt><dd>{{ object.get_situacion_ocupacional_display|default:"—" }}</dd></div>
   <div><dt>Profesión u oficio</dt><dd>{{ object.profesion|default:"—" }}</dd></div>
   <div><dt>Sitio web</dt><dd>{% if object.sitio_web %}<a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a>{% else %}—{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Áreas de interés</dt><dd>{% for a in object.areas_interes.all %}<span class="badge text-bg-light border me-1">{{ a }}</span>{% empty %}—{% endfor %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Habilidades y conocimientos</dt><dd>{{ object.habilidades|default:"—"|linebreaksbr }}</dd></div>
+  <div><dt>Idiomas</dt><dd>{{ object.idiomas|default:"—" }}</dd></div>
+  <div><dt>Canal de contacto preferido</dt><dd>{{ object.canal_preferido|default:"—" }}</dd></div>
   <div><dt>Origen</dt><dd>{{ object.origen|default:"—" }}</dd></div>
   <div><dt>Registro</dt><dd>{% if object.estado_registro %}{% estado object.estado_registro %}{% else %}—{% endif %}</dd></div>
   <div><dt>Estado</dt><dd>{% if object.activo %}Activa{% else %}Inactiva{% endif %}</dd></div>

@@ -7,13 +7,12 @@ import re
 from django.conf import settings
 from django.http import Http404
 
-MODULOS = ("reuniones", "tareas", "sesiones", "beneficiarios", "verificaciones", "postulaciones", "finanzas")
+MODULOS = ("reuniones", "tareas", "beneficiarios", "verificaciones", "postulaciones", "finanzas")  # «sesiones» siempre visible desde F22
 
 RUTAS = [
     (re.compile(r"^/reuniones(/|$)"), "reuniones"),
     (re.compile(r"^/tareas(/|$)"), "tareas"),
     (re.compile(r"^/finanzas(/|$)"), "finanzas"),
-    (re.compile(r"^/actividades/\d+/sesiones/"), "sesiones"),
     (re.compile(r"^/personas/\d+/verificaciones/"), "verificaciones"),
     (re.compile(r"^/proyectos/\d+/beneficiarios/"), "beneficiarios"),
     (re.compile(r"^/proyectos/\d+/postulaciones/"), "postulaciones"),

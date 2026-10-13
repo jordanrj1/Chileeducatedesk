@@ -22,6 +22,9 @@ class _HijoBase:
     campo_vigente = "vigente"
     template_name = "generico/formulario.html"
 
+    def antes_de_guardar(self, obj):
+        """Gancho para completar datos del registro nuevo (p. ej., quién lo registró)."""
+
     def get_permission_required(self):
         return self.permisos_requeridos()
 
@@ -56,6 +59,7 @@ class HijoCrear(_HijoBase, Permiso403Mixin, CreateView):
 
     def form_valid(self, form):
         setattr(form.instance, self.campo_padre, self.padre)
+        self.antes_de_guardar(form.instance)
         try:
             with transaction.atomic():
                 form.save()

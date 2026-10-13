@@ -1,0 +1,10 @@
+{% with secciones=form.secciones_ui %}{% if secciones %}
+{% for titulo_seccion, ayuda_seccion, campos in secciones %}
+<fieldset class="fche-bloque">
+  <legend class="fche-bloque__titulo">{{ titulo_seccion }}</legend>
+  {% if ayuda_seccion %}<p class="fche-bloque__ayuda">{{ ayuda_seccion }}</p>{% endif %}
+  <div class="fche-form__rejilla">{% for campo in campos %}{% include "generico/_campo.html" %}{% endfor %}</div>
+</fieldset>
+{% endfor %}
+{% else %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endif %}{% endwith %}
+{% if form.fields.nacionalidad %}<datalist id="nacionalidades"><option value="Chilena"><option value="Venezolana"><option value="Peruana"><option value="Colombiana"><option value="Haitiana"><option value="Boliviana"><option value="Argentina"><option value="Ecuatoriana"></datalist>{% endif %}

@@ -1,0 +1,19 @@
+{% load fche %}<div class="alert alert-info d-flex gap-2 small">{% icono "candado" 18 %}<div><strong>Datos sensibles (Ley 21.719).</strong> Solo los ve quien tiene permiso de datos sensibles y se guardan únicamente con consentimiento explícito.
+{% if consentimiento_sensibles %}Consentimiento vigente desde el {{ consentimiento_sensibles.fecha|date:"d-m-Y" }} ({{ consentimiento_sensibles.get_medio_display|lower }}).{% else %}<strong>Aún no hay consentimiento registrado.</strong>{% endif %}</div></div>
+<div class="fche-seccion"><h2 class="h6">Datos sensibles</h2>
+{% if puede_editar_sensibles %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'personas:sensibles_editar' object.pk %}">{% icono "editar" 15 %}{% if perfil %}Editar{% else %}Registrar{% endif %}</a></div>{% endif %}</div>
+{% if perfil %}
+<dl class="fche-datos">
+  <div><dt>Género</dt><dd>{{ perfil.get_genero_display|default:"—" }}</dd></div>
+  <div><dt>Pueblo originario</dt><dd>{{ perfil.get_pueblo_originario_display|default:"—" }}</dd></div>
+  <div><dt>Discapacidad</dt><dd>{% if perfil.discapacidad is True %}Sí{% elif perfil.discapacidad is False %}No{% else %}—{% endif %}</dd></div>
+  <div><dt>Previsión de salud</dt><dd>{{ perfil.get_prevision_salud_display|default:"—" }}</dd></div>
+  <div class="fche-datos__ancho"><dt>Necesidades de apoyo o accesibilidad</dt><dd>{{ perfil.necesidades_apoyo|default:"—"|linebreaksbr }}</dd></div>
+  <div class="fche-datos__ancho"><dt>Condiciones de salud relevantes</dt><dd>{{ perfil.condiciones_salud|default:"—"|linebreaksbr }}</dd></div>
+  <div><dt>Alergias y restricciones alimentarias</dt><dd>{{ perfil.alergias|default:"—" }}</dd></div>
+  <div><dt>Jefe o jefa de hogar</dt><dd>{% if perfil.jefatura_hogar is True %}Sí{% elif perfil.jefatura_hogar is False %}No{% else %}—{% endif %}</dd></div>
+  <div><dt>Integrantes del hogar</dt><dd>{{ perfil.integrantes_hogar|default:"—" }}</dd></div>
+  <div><dt>Tramo RSH</dt><dd>{{ perfil.get_tramo_rsh_display|default:"—" }}</dd></div>
+  <div><dt>Actualizado</dt><dd>{{ perfil.actualizado_en|date:"d-m-Y H:i" }}</dd></div>
+</dl>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "candado" 18 %}</span><p class="fche-vacio__texto mb-0">Sin datos sensibles registrados.</p></div>{% endif %}

@@ -1,4 +1,8 @@
-{% load fche %}<h2 class="h6 mb-2">Actividades en las que ha participado <span class="fche-contador">{{ participaciones|length }}</span></h2>
+{% load fche %}<div class="fche-kpis">
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "actividades" 16 %}</span>Participaciones</span><span class="fche-kpi__valor">{{ participaciones|length }}</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "reloj" 16 %}</span>Horas acumuladas</span><span class="fche-kpi__valor">{{ horas_acumuladas|floatformat:"-1" }}</span><span class="fche-kpi__nota">en actividades a las que asistió</span></div>
+</div>
+<h2 class="h6 mb-2">Actividades en las que ha participado <span class="fche-contador">{{ participaciones|length }}</span></h2>
 <ul class="fche-items mb-4">{% for p in participaciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ p.actividad.get_absolute_url }}">{{ p.actividad }}</a>
 <div class="fche-items__detalle">{{ p.rol }}{% if p.actividad.proyecto %} · Proyecto: {{ p.actividad.proyecto }}{% endif %} · actividad {{ p.actividad.estado|lower }}</div></div>
 <div class="fche-items__acciones">{% estado p.estado %}{% if p.asistencia is True %} {% estado "asistio" "Asistió" %}{% elif p.asistencia is False %} {% estado "no_asistio" "No asistió" %}{% endif %}</div></li>{% empty %}<li class="text-muted">Aún no participa en ninguna actividad.</li>{% endfor %}</ul>

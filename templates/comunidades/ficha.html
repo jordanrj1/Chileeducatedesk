@@ -1,0 +1,14 @@
+{% extends "generico/ficha.html" %}
+{% load fche %}
+{% block subtitulo %}
+<div class="d-flex flex-wrap gap-2 align-items-center">
+  {% if not object.activo %}{% estado "inactiva" "Inactiva" %}{% endif %}
+  <span class="badge text-bg-light border">{{ object.get_tipo_display }}</span>
+  <span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ object.comuna.get_absolute_url }}">{{ object.territorio }}</a></span>
+  <span class="d-inline-flex align-items-center gap-1">{% icono "personas" 15 %}{{ n_integrantes }} integrante{{ n_integrantes|pluralize }} registrado{{ n_integrantes|pluralize }}{% if object.poblacion_estimada %} de ~{{ object.poblacion_estimada }}{% endif %}</span>
+  {% if object.organizacion %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.organizacion.get_absolute_url }}">{% icono "organizaciones" 15 %}{{ object.organizacion }}</a>{% endif %}
+</div>
+{% endblock %}
+{% block acciones %}
+{% if perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="/actividades/nueva?comunidad={{ object.pk }}">+ Actividad para esta comunidad</a>{% endif %}
+{% endblock %}

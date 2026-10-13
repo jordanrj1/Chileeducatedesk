@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load fche %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">{{ sesion }}</li>{% endblock %}
+{% block contenido %}
+<header class="fche-pagina">
+  <div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Minuta de sesión · {{ actividad.nombre }}</p>
+    <h1 class="fche-pagina__titulo">{{ sesion }}</h1>
+    <p class="fche-pagina__bajada d-flex flex-wrap gap-3">
+      <span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}{{ sesion.fecha|date:"l d-m-Y"|default:"Sin fecha" }}{% if sesion.hora_inicio %} · {{ sesion.hora_inicio|time:"H:i" }}{% if sesion.hora_fin %}–{{ sesion.hora_fin|time:"H:i" }}{% endif %}{% endif %}</span>
+      {% if sesion.lugar %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}{{ sesion.lugar }}</span>{% endif %}
+      {% if sesion.redactada_por %}<span class="d-inline-flex align-items-center gap-1">{% icono "editar" 15 %}Redactó {{ sesion.redactada_por.get_full_name|default:sesion.redactada_por.get_username }}</span>{% endif %}
+    </p></div>
+  <div class="fche-pagina__acciones">
+    {% if puede_editar %}<a class="btn btn-primary btn-sm" href="{% url 'actividades:sesiones_editar' actividad.pk sesion.pk %}">{% icono "editar" 15 %}Editar minuta</a>{% endif %}
+    <a class="btn btn-outline-secondary btn-sm volver" href="{{ actividad.get_absolute_url }}?tab=sesiones">{% icono "volver" 15 %}Volver</a>
+  </div>
+</header>
+<div class="fche-kpis">
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "personas" 16 %}</span>Asistentes</span><span class="fche-kpi__valor">{{ sesion.total_asistentes }}</span><span class="fche-kpi__nota">{{ presentes }} registrados + {{ sesion.asistentes_sin_registro|default:0 }} sin registro</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "usuarios_check" 16 %}</span>Facilitadores</span><span class="fche-kpi__valor">{{ facilitadores|length }}</span><span class="fche-kpi__nota">{% for f in facilitadores %}{{ f }}{% if not forloop.last %}, {% endif %}{% empty %}sin indicar{% endfor %}</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "documentos" 16 %}</span>Evidencias</span><span class="fche-kpi__valor">{{ evidencias|length }}</span></div>
+</div>
+<div class="row g-4">
+  <div class="col-12 col-xl-7">
+    <section class="fche-tarjeta">
+      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">{% icono "minuta" 18 "text-primary" %}Minuta</h2></div>
+      <div class="fche-tarjeta__cuerpo">
+        {% if sesion.objetivo or sesion.desarrollo or sesion.avances or sesion.acuerdos or sesion.incidencias or sesion.proximos_pasos %}
+        <dl class="fche-minuta mb-0">
+          {% if sesion.objetivo %}<dt>Objetivo</dt><dd>{{ sesion.objetivo }}</dd>{% endif %}
+          {% if sesion.desarrollo %}<dt>Desarrollo</dt><dd>{{ sesion.desarrollo }}</dd>{% endif %}
+          {% if sesion.avances %}<dt>Avances</dt><dd>{{ sesion.avances }}</dd>{% endif %}
+          {% if sesion.acuerdos %}<dt>Acuerdos</dt><dd>{{ sesion.acuerdos }}</dd>{% endif %}
+          {% if sesion.incidencias %}<dt>Incidencias</dt><dd>{{ sesion.incidencias }}</dd>{% endif %}
+          {% if sesion.proximos_pasos %}<dt>Próximos pasos</dt><dd>{{ sesion.proximos_pasos }}</dd>{% endif %}
+        </dl>
+        {% else %}<div class="fche-vacio fche-vacio--compacto border-0"><span class="fche-vacio__icono">{% icono "minuta" 18 %}</span><p class="fche-vacio__texto">Aún no se escribe la minuta de esta sesión.</p>{% if puede_editar %}<a class="btn btn-primary btn-sm" href="{% url 'actividades:sesiones_editar' actividad.pk sesion.pk %}">Escribir minuta</a>{% endif %}</div>{% endif %}
+      </div>
+    </section>
+    {% if sesion.asistentes_sin_registro %}
+    <section class="fche-tarjeta mt-4">
+      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">Asistentes sin registro individual: {{ sesion.asistentes_sin_registro }}</h2></div>
+      <div class="fche-tarjeta__cuerpo small">
+        <p class="mb-1"><strong>Por edad:</strong> 0–17: {{ sesion.conteo_menores|default:"—" }} · 18–29: {{ sesion.conteo_jovenes|default:"—" }} · 30–59: {{ sesion.conteo_adultos|default:"—" }} · 60+: {{ sesion.conteo_mayores|default:"—" }}</p>
+        <p class="mb-0"><strong>Por género:</strong> mujeres {{ sesion.conteo_mujeres|default:"—" }} · hombres {{ sesion.conteo_hombres|default:"—" }} · otro o no informado {{ sesion.conteo_otros|default:"—" }}</p>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+  <div class="col-12 col-xl-5">
+    <section class="fche-tarjeta">
+      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">{% icono "usuarios_check" 18 "text-primary" %}Asistencia de la sesión</h2></div>
+      {% if filas %}
+      <form method="post" action="{% url 'actividades:sesion_asistencia' actividad.pk sesion.pk %}">{% csrf_token %}
+        <ul class="fche-pendiente__lista">{% for p, valor in filas %}
+          <li><span class="min-w-0"><a href="{{ p.persona.get_absolute_url }}">{{ p.persona }}</a><span class="d-block small text-muted">{{ p.rol }}</span></span>
+          {% if puede_asistencia %}<select class="form-select form-select-sm" style="max-width:9.5rem" name="asistio_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}">
+            <option value="" {% if valor is None %}selected{% endif %}>Sin registro</option><option value="si" {% if valor is True %}selected{% endif %}>Asistió</option><option value="no" {% if valor is False %}selected{% endif %}>No asistió</option></select>
+          {% else %}<span class="small">{% if valor is True %}Asistió{% elif valor is False %}No asistió{% else %}—{% endif %}</span>{% endif %}</li>{% endfor %}</ul>
+        {% if puede_asistencia %}<div class="fche-tarjeta__pie"><button class="btn btn-primary btn-sm">Guardar asistencia de la sesión</button></div>{% endif %}
+      </form>
+      {% else %}<div class="fche-pendiente__vacio">La actividad aún no tiene participantes registrados.</div>{% endif %}
+    </section>
+    <section class="fche-tarjeta mt-4">
+      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">{% icono "documentos" 18 "text-primary" %}Evidencias</h2>
+        {% if perms.documentos.add_documento %}<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:nuevo' %}?sesion={{ sesion.pk }}&actividad={{ actividad.pk }}">{% icono "subir" 14 %}Subir</a>{% endif %}</div>
+      <ul class="fche-pendiente__lista">{% for d in evidencias %}<li><a href="{{ d.get_absolute_url }}">{{ d.nombre }}</a><span class="fche-pendiente__detalle">{{ d.tipo }} · {{ d.fecha|date:"d-m-Y" }}</span></li>{% empty %}<li class="text-muted small">Fotos, listas de asistencia firmadas, presentaciones…</li>{% endfor %}</ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

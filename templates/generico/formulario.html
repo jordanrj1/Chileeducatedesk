@@ -16,7 +16,7 @@
   <div class="fche-form__cuerpo">
     {% if form.non_field_errors %}<div class="alert alert-danger d-flex gap-2" role="alert">{% icono "error" 18 %}<div>{{ form.non_field_errors }}</div></div>
     {% elif form.errors %}<div class="alert alert-danger d-flex gap-2 fche-errores" role="alert">{% icono "error" 18 %}<div>Revisa {{ form.errors|length }} campo{{ form.errors|length|pluralize }} marcado{{ form.errors|length|pluralize }} en rojo.</div></div>{% endif %}
-    {% block campos %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endblock %}
+    {% block campos %}{% include "generico/_campos.html" %}{% endblock %}
     {% block extra_form %}{% endblock %}
   </div>
   <div class="fche-form__acciones">

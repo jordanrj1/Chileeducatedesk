@@ -1,0 +1,31 @@
+{% load fche %}{% with a=alcance %}
+<p class="small text-muted">Resumen de {{ contexto_alcance|default:"esta actividad" }}{% if a.actividades > 1 %} ({{ a.actividades }} actividades){% endif %}. Cuenta personas únicas; los asistentes sin registro vienen de las minutas de cada sesión.</p>
+<div class="fche-kpis">
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "comunidades" 16 %}</span>Total alcanzado</span><span class="fche-kpi__valor">{{ a.total_alcanzado }}</span><span class="fche-kpi__nota">{{ a.asistieron }} registradas + {{ a.sin_registro }} sin registro</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "usuarios_check" 16 %}</span>Equipo ejecutor</span><span class="fche-kpi__valor">{{ a.equipo }}</span><span class="fche-kpi__nota">{{ a.horas_equipo|floatformat:"-1" }} h de trabajo</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "personas" 16 %}</span>Asistentes registrados</span><span class="fche-kpi__valor">{{ a.asistentes }}</span><span class="fche-kpi__nota">{{ a.personas }} personas en total</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "minuta" 16 %}</span>Sesiones</span><span class="fche-kpi__valor">{{ a.sesiones }}</span><span class="fche-kpi__nota">{{ a.horas|floatformat:"-1" }} h de participación</span></div>
+</div>
+<div class="row g-4">
+  <div class="col-12 col-lg-6">
+    <h2 class="h6 mb-2">Instituciones de procedencia del equipo</h2>
+    {% if a.instituciones %}<ul class="fche-items">{% for org, n in a.instituciones %}<li><a class="fche-items__titulo" href="{{ org.get_absolute_url }}">{{ org }}</a><span class="fche-contador">{{ n }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="text-muted small">Sin datos: se completa con la formación de los participantes.</p>{% endif %}
+  </div>
+  <div class="col-12 col-lg-6">
+    <h2 class="h6 mb-2">Comunidades de procedencia</h2>
+    {% if a.comunidades %}<ul class="fche-items">{% for c, n in a.comunidades %}<li><a class="fche-items__titulo" href="{{ c.get_absolute_url }}">{{ c }}</a><span class="fche-contador">{{ n }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="text-muted small">Sin datos: se completa con el padrón de las comunidades a las que va dirigida.</p>{% endif %}
+  </div>
+  <div class="col-12 col-lg-6">
+    <h2 class="h6 mb-2">Edad de quienes asistieron</h2>
+    {% for n, v in a.edades_registradas %}<div class="fche-barra-dato"><span>{{ n }} <span class="text-muted small">(registradas)</span></span><span class="fche-barra-dato__pista"><span class="fche-barra-dato__relleno d-block" style="width:{% widthratio v a.asistieron|add:a.sin_registro|default:1 100 %}%"></span></span><strong class="fche-num text-end">{{ v }}</strong></div>{% endfor %}
+    {% for n, v in a.sin_registro_edades %}{% if v %}<div class="fche-barra-dato"><span>{{ n }} <span class="text-muted small">(sin registro)</span></span><span class="fche-barra-dato__pista"><span class="fche-barra-dato__relleno d-block" style="width:{% widthratio v a.asistieron|add:a.sin_registro|default:1 100 %}%"></span></span><strong class="fche-num text-end">{{ v }}</strong></div>{% endif %}{% endfor %}
+  </div>
+  <div class="col-12 col-lg-6">
+    <h2 class="h6 mb-2">Participaciones por rol</h2>
+    {% if a.roles %}<ul class="fche-items">{% for rol, n in a.roles %}<li><span>{{ rol }} <span class="small text-muted">· {{ rol.get_grupo_display|lower }}</span></span><span class="fche-contador">{{ n }}</span></li>{% endfor %}</ul>{% else %}<p class="text-muted small">Sin participaciones.</p>{% endif %}
+    {% if a.sin_registro %}<p class="small text-muted mt-3 mb-1">Asistentes sin registro por género:</p><p class="small">{% for n, v in a.sin_registro_generos %}{{ n }}: <strong>{{ v }}</strong>{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+  </div>
+</div>
+{% endwith %}

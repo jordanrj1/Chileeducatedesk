@@ -59,6 +59,9 @@ ICONOS = {
     "usuarios_check": '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 11l2 2 4-4"/>',
     "dato_vacio": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 14h8"/>',
     "subir": '<path d="M12 20V9M7 14l5-5 5 5M4 5h16"/>',
+    "comunidades": '<path d="M3 21V11l5-4 5 4v10"/><path d="M13 21v-6l4-3 4 3v6"/><path d="M2 21h20M6.5 21v-4h3v4"/>',
+    "minuta": '<path d="M8 3h8l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 9h8M8 13h8M8 17h5"/>',
+    "escudo": '<path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/>',
 }
 
 
@@ -83,7 +86,7 @@ TONOS = {
     "en_curso": "azul", "hecha": "verde",
     "enviada": "gris", "respondio": "azul", "aceptada": "verde", "rechazada": "rojo", "sin_respuesta": "amarillo", "cumplida": "verde",
     "preparacion": "gris", "postulado": "azul", "ejecucion": "verde", "finalizado": "morado", "suspendido": "amarillo", "cancelado": "rojo",
-    "previa": "amarillo", "confirmado_lote": "verde", "revertido": "gris", "descartado": "rojo",
+    "previa": "amarillo", "activa": "verde", "inactiva": "gris", "otorgado": "verde", "rechazado": "rojo", "revocado": "gris", "falta": "amarillo", "confirmado_lote": "verde", "revertido": "gris", "descartado": "rojo",
     "borrador": "gris", "adjudicada": "verde",
     # Textos visibles (cuando la columna trae la etiqueta y no el código)
     "en_preparacion": "gris", "en_ejecucion": "verde", "en_revision": "amarillo", "acepto": "verde",

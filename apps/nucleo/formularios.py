@@ -9,7 +9,7 @@ class BootstrapMixin:
         fijar_valores_selectores(self)
         for campo in self.fields.values():
             w = campo.widget
-            if isinstance(w, forms.CheckboxInput):
+            if isinstance(w, (forms.CheckboxInput, forms.CheckboxSelectMultiple)):
                 clase = "form-check-input"
             elif isinstance(w, (forms.Select, forms.SelectMultiple)):
                 clase = "form-select"
@@ -24,6 +24,23 @@ class BootstrapMixin:
             if isinstance(w, forms.TimeInput):
                 w.input_type = "time"
                 w.format = "%H:%M"
+
+    secciones = ()  # [(título, ayuda, [nombres de campos])]: el formulario se dibuja por bloques
+
+    def secciones_ui(self):
+        """Secciones con sus campos visibles; lo que no está en ninguna va al final en «Otros datos»."""
+        if not self.secciones:
+            return None
+        usados, res = set(), []
+        for titulo, ayuda, nombres in self.secciones:
+            campos = [self[n] for n in nombres if n in self.fields]
+            usados.update(nombres)
+            if campos:
+                res.append((titulo, ayuda, campos))
+        resto = [self[n] for n in self.fields if n not in usados]
+        if resto:
+            res.append(("Otros datos", "", resto))
+        return res
 
 
 class _IteradorLimitado(forms.models.ModelChoiceIterator):
