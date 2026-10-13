@@ -15,5 +15,6 @@ urlpatterns = [
     *urls_hijo("proyectos", "equipo", "Equipo", modelo=models.ProyectoPersona, form_class=forms.EquipoForm, tab="equipo", etiqueta="persona del equipo", **P),
     *urls_hijo("proyectos", "beneficiarios", "Beneficiario", modelo=models.ProyectoPersona, form_class=forms.BeneficiarioForm, tab="beneficiarios", etiqueta="beneficiario", **P),
     *urls_hijo("proyectos", "organizaciones", "Organizacion", modelo=models.ProyectoOrganizacion, form_class=forms.ProyectoOrganizacionForm, tab="organizaciones", etiqueta="organización", **P),
+    *urls_hijo("proyectos", "comunidades", "Comunidad", modelo=models.ProyectoComunidad, form_class=forms.ProyectoComunidadForm, tab="comunidades", etiqueta="comunidad destinataria", **P),
     *urls_hijo("proyectos", "postulaciones", "Postulacion", modelo=models.Postulacion, form_class=forms.PostulacionForm, tab="postulacion", etiqueta="postulación", **P),
 ]

@@ -1,8 +1,9 @@
-<form class="row g-2 mb-3" method="get"><input type="hidden" name="tab" value="disponibilidad">
-  <div class="col-auto"><input class="form-control" type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" aria-label="Fecha"></div>
-  <div class="col-auto"><button class="btn btn-outline-primary">Consultar</button></div></form>
-<h2 class="h6">{{ fecha|date:"l d-m-Y" }}</h2>
+{% load fche %}<form class="d-flex flex-wrap gap-2 align-items-center mb-4" method="get"><input type="hidden" name="tab" value="disponibilidad">
+  <label class="small fw-semibold" for="fecha-disp">Consultar el día</label>
+  <input class="form-control" style="max-width:12rem;" type="date" id="fecha-disp" name="fecha" value="{{ fecha|date:'Y-m-d' }}">
+  <button class="btn btn-outline-primary">Consultar</button></form>
+<h2 class="h6 mb-3 text-capitalize">{{ fecha|date:"l d-m-Y" }}</h2>
 {% if ocupaciones %}
-<div class="alert alert-warning">Hay actividades programadas este día:</div>
-<ul class="list-group">{% for o in ocupaciones %}<li class="list-group-item">{{ o.hora_inicio|time:"H:i" }}{% if o.hora_fin %}–{{ o.hora_fin|time:"H:i" }}{% endif %} · <a href="{{ o.actividad.get_absolute_url }}">{{ o.actividad.nombre }}</a></li>{% endfor %}</ul>
-{% else %}<div class="alert alert-success">Sin actividades programadas ese día.</div>{% endif %}
+<div class="alert alert-warning d-flex gap-2">{% icono "alerta" 18 %}<div>Hay actividades programadas este día:</div></div>
+<ul class="fche-items">{% for o in ocupaciones %}<li><span><strong class="fche-num">{{ o.hora_inicio|time:"H:i" }}{% if o.hora_fin %}–{{ o.hora_fin|time:"H:i" }}{% endif %}</strong> · <a href="{{ o.actividad.get_absolute_url }}">{{ o.actividad.nombre }}</a></span></li>{% endfor %}</ul>
+{% else %}<div class="alert alert-success d-flex gap-2">{% icono "ok" 18 %}<div>Sin actividades programadas ese día.</div></div>{% endif %}

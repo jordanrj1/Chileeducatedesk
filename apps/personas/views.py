@@ -8,7 +8,7 @@ from django.views.generic import CreateView
 
 from django.db.models import Q
 
-from apps.nucleo.models import EstadoRegistro, OrigenPersona, RolParticipacion
+from apps.nucleo.models import AreaTematica, EstadoRegistro, OrigenPersona, PerfilPersona, RolParticipacion
 from apps.organizaciones.models import Organizacion
 from apps.territorio.models import Comuna
 from apps.nucleo.vistas_base import (
@@ -16,8 +16,8 @@ from apps.nucleo.vistas_base import (
 )
 
 from .duplicados import candidatos
-from .forms import PersonaDireccionForm, PersonaForm, PersonaNuevaForm, PersonaRapidaForm
-from .models import Contacto, Persona, PersonaDireccion
+from .forms import PerfilSensibleForm, PersonaDireccionForm, PersonaForm, PersonaNuevaForm, PersonaRapidaForm
+from .models import Consentimiento, Contacto, PerfilSensible, Persona, PersonaDireccion
 
 
 def _principal(persona, codigos):
@@ -27,10 +27,38 @@ def _principal(persona, codigos):
     return ""
 
 
+def _opciones_comunidad():
+    from apps.comunidades.models import Comunidad
+
+    return [(str(c.pk), c.nombre) for c in Comunidad.objects.filter(activo=True)]
+
+
+def _filtrar_edad(qs, tramo):
+    """Tramos de edad a partir de la fecha de nacimiento (F22)."""
+    from django.utils import timezone
+
+    hoy = timezone.localdate()
+
+    def hace(anios):
+        try:
+            return hoy.replace(year=hoy.year - anios)
+        except ValueError:  # 29 de febrero
+            return hoy.replace(year=hoy.year - anios, day=28)
+
+    if tramo == "sin":
+        return qs.filter(fecha_nacimiento__isnull=True)
+    limites = {"menor": (0, 17), "18_29": (18, 29), "30_59": (30, 59), "60": (60, 150)}
+    if tramo not in limites:
+        raise ValueError(tramo)
+    desde, hasta = limites[tramo]
+    return qs.filter(fecha_nacimiento__lte=hace(desde), fecha_nacimiento__gt=hace(hasta + 1)) if desde else qs.filter(fecha_nacimiento__gt=hace(hasta + 1))
+
+
 class PersonaLista(ListaBase):
     model = Persona
     permission_required = "personas.view_persona"
     titulo = "Personas"
+    descripcion = "Voluntarios, profesionales, beneficiarios y contactos registrados."
     url_crear = "/personas/nueva"
     permiso_crear = "personas.add_persona"
     etiqueta_crear = "+ Nueva persona"
@@ -40,6 +68,7 @@ class PersonaLista(ListaBase):
         ("RUT 🔒", "rut"),
         ("Correo", lambda p: _principal(p, ["correo"])),
         ("Teléfono", lambda p: _principal(p, ["telefono_movil", "telefono_fijo"])),
+        ("Edad", lambda p: p.edad if p.edad is not None else ""),
         ("Registro", "estado_registro"),
         ("Origen", "origen"),
     ]
@@ -53,6 +82,13 @@ class PersonaLista(ListaBase):
         Filtro("organizacion", "Organización", "", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(activo=True)[:300]],
                aplicar=lambda qs, v: qs.filter(Q(vinculos__organizacion_id=v) | Q(formaciones__organizacion_id=v)).distinct()),
         Filtro("comuna", "Comuna", "", opciones_modelo(Comuna), aplicar=lambda qs, v: qs.filter(direcciones__vigente=True, direcciones__direccion__comuna_id=v).distinct()),
+        # F22: el banco de personas se filtra por perfil, interés, comunidad y edad
+        Filtro("perfil", "Perfil", "", lambda: [(str(p.pk), p.nombre) for p in PerfilPersona.objects.filter(activo=True)], aplicar=lambda qs, v: qs.filter(perfiles__id=v).distinct()),
+        Filtro("interes", "Interés", "", lambda: [(str(a.pk), a.nombre) for a in AreaTematica.objects.filter(activo=True)], aplicar=lambda qs, v: qs.filter(areas_interes__id=v).distinct()),
+        Filtro("comunidad", "Comunidad", "", lambda: _opciones_comunidad(),
+               aplicar=lambda qs, v: qs.filter(comunidades__comunidad_id=v, comunidades__vigente=True).distinct()),
+        Filtro("edad", "Edad", "", lambda: [("menor", "Menores de 18"), ("18_29", "18 a 29"), ("30_59", "30 a 59"), ("60", "60 o más"), ("sin", "Sin fecha de nacimiento")],
+               aplicar=lambda qs, v: _filtrar_edad(qs, v)),
     ]
     texto_vacio = "Aún no hay personas registradas."
     url_exportar = "/personas/exportar"
@@ -115,6 +151,7 @@ class PersonaNueva(Permiso403Mixin, CreateView):
                 codigo = "activo" if (persona.apellido_paterno and tiene_contacto) else "incompleto"
                 persona.estado_registro = EstadoRegistro.objects.filter(codigo=codigo).first()
             persona.save()
+            form.save_m2m()  # perfiles y áreas de interés (F22)
             from apps.nucleo.models import TipoContacto
 
             if d.get("correo"):
@@ -156,6 +193,7 @@ def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente
 
 class PersonaFicha(FichaBase):
     model = Persona
+    template_name = "personas/ficha.html"
     permission_required = "personas.view_persona"
     pestanas_segunda_fase = {"verificaciones": "verificaciones"}
     breadcrumb = [("Personas", "/personas")]
@@ -173,9 +211,21 @@ class PersonaFicha(FichaBase):
         ("interacciones", "Interacciones", "coordinacion/_interacciones.html", "coordinacion.view_interaccion"),
         ("emergencia", "Contacto de emergencia 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
         ("verificaciones", "Verificaciones 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
+        ("sensibles", "Datos sensibles 🔒", "personas/pestanas/sensibles.html", "personas.ver_sensibles"),
+        ("apoderados", "Apoderados 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
+        ("consentimientos", "Consentimientos", "personas/pestanas/consentimientos.html", "personas.view_consentimiento"),
+        ("comunidades", "Comunidades", "generico/_hijos.html", "comunidades.view_comunidadmiembro"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "personas.view_historicalpersona"),
     ]
+
+    def pestanas_visibles(self):
+        from django.conf import settings
+
+        visibles = super().pestanas_visibles()
+        if not getattr(settings, "DATOS_SENSIBLES", True):
+            visibles = [p for p in visibles if p[0] != "sensibles"]
+        return visibles
 
     def acciones_extra(self):
         res = []
@@ -195,6 +245,9 @@ class PersonaFicha(FichaBase):
         return {
             "url_editar": reverse("personas:editar", args=[p.pk]),
             "url_volver": "/personas",
+            "correo_principal": _principal(p, ["correo"]),
+            "telefono_principal": _principal(p, ["telefono_movil", "telefono_fijo"]),
+            "avisos_consentimiento": p.avisos_consentimiento() if self.request.user.has_perm("personas.view_consentimiento") else [],
             "puede_agregar": self.request.user.has_perm("personas.change_persona"),
         }
 
@@ -208,8 +261,11 @@ class PersonaFicha(FichaBase):
         }
 
     def ctx_trayectoria(self):
+        from apps.actividades.alcance import horas_persona
+
         p = self.object
         return {
+            "horas_acumuladas": horas_persona(p),
             "participaciones": p.participaciones.select_related("actividad__estado", "actividad__proyecto", "rol", "estado").order_by("-actividad__creado_en"),
             "reuniones": p.reuniones.select_related("reunion").order_by("-reunion__fecha"),
             "tareas": p.tareas_asignadas.select_related("tarea").order_by("-tarea__creado_en"),
@@ -244,8 +300,13 @@ class PersonaFicha(FichaBase):
         return ctx
 
     def ctx_formacion(self):
-        return self._hijo_ctx("Formación", "formacion", "Formación", self.object.formaciones.select_related("organizacion", "carrera"),
-                              texto=lambda f: str(f), detalle=lambda f: f"{f.get_estado_display()} {f.anio_inicio or ''}–{f.anio_termino or ''}".strip())
+        def detalle(f):
+            partes = [f.get_estado_display(), f.sede, f.get_jornada_display() if f.jornada else "", f"{f.nivel_actual}.º año" if f.nivel_actual else "",
+                      f.asignatura, f"docente: {f.docente}" if f.docente_id else "", f"{f.horas_comprometidas} h comprometidas" if f.horas_comprometidas else ""]
+            return " · ".join(x for x in partes if x)
+
+        return self._hijo_ctx("Formación", "formacion", "Formación", self.object.formaciones.select_related("organizacion", "carrera", "docente"),
+                              texto=lambda f: str(f), detalle=detalle)
 
     def ctx_experiencia(self):
         return self._hijo_ctx("Experiencia", "experiencia", "Experiencia", self.object.experiencias.all(),
@@ -262,6 +323,38 @@ class PersonaFicha(FichaBase):
     def ctx_emergencia(self):
         return self._hijo_ctx("Contacto de emergencia", "emergencia", "Contacto", self.object.contactos_emergencia.all(),
                               texto=lambda c: c.nombre, detalle=lambda c: f"{c.parentesco} · {c.telefono}")
+
+    def ctx_sensibles(self):
+        from django.conf import settings
+
+        perfil = getattr(self.object, "perfil_sensible", None)
+        return {"perfil": perfil, "consentimiento_sensibles": self.object.consentimiento_vigente("sensibles"),
+                "puede_editar_sensibles": self.request.user.has_perm("personas.change_persona") and getattr(settings, "DATOS_SENSIBLES", True)}
+
+    def ctx_apoderados(self):
+        return self._hijo_ctx("Apoderados", "apoderados", "Apoderado", self.object.apoderados.select_related("apoderado"),
+                              texto=lambda a: str(a.apoderado), detalle=lambda a: " · ".join(x for x in [a.parentesco, "Tutor legal" if a.tutor_legal else ""] if x))
+
+    def ctx_consentimientos(self):
+        p = self.object
+        estado = []
+        for codigo, nombre in Consentimiento.TIPOS:
+            if codigo == "apoderado" and not p.es_menor:
+                continue
+            ultimo = p.consentimientos.filter(tipo=codigo).order_by("-fecha", "-pk").first()
+            estado.append({"nombre": nombre, "ultimo": ultimo, "vigente": bool(ultimo and ultimo.vigente)})
+        return {
+            "estado_consentimientos": estado,
+            "consentimientos": p.consentimientos.select_related("otorgado_por", "documento", "registrado_por"),
+            "puede_agregar_consentimiento": self.request.user.has_perm("personas.add_consentimiento"),
+        }
+
+    def ctx_comunidades(self):
+        ctx = self._hijo_ctx("Comunidades", "comunidades", "Comunidad", self.object.comunidades.select_related("comunidad__comuna"),
+                             texto=lambda m: str(m.comunidad), detalle=lambda m: " · ".join(x for x in [m.get_rol_display(), m.comunidad.territorio,
+                                                                                                         f"desde {m.desde:%d-%m-%Y}" if m.desde else ""] if x))
+        ctx["puede_agregar"] = self.request.user.has_perm("comunidades.add_comunidadmiembro")
+        return ctx
 
     def ctx_verificaciones(self):
         return self._hijo_ctx("Verificaciones", "verificaciones", "Verificación", self.object.verificaciones.all(),
@@ -289,12 +382,22 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
         libro = Workbook()
         hojas = [("Datos", ["Campo", "Valor"], [
             ("Nombres", p.nombres), ("Apellido paterno", p.apellido_paterno), ("Apellido materno", p.apellido_materno), ("RUT", p.rut),
+            ("Nombre social", p.nombre_social), ("Fecha de nacimiento", f"{p.fecha_nacimiento:%d-%m-%Y}" if p.fecha_nacimiento else ""), ("Nacionalidad", p.nacionalidad),
+            ("Perfiles", ", ".join(str(x) for x in p.perfiles.all())), ("Nivel educacional", p.get_nivel_educacional_display()),
+            ("Situación ocupacional", p.get_situacion_ocupacional_display()), ("Áreas de interés", ", ".join(str(x) for x in p.areas_interes.all())),
+            ("Habilidades", p.habilidades), ("Idiomas", p.idiomas), ("Canal preferido", p.canal_preferido or ""),
             ("Profesión u oficio", p.profesion), ("Sitio web", p.sitio_web), ("Origen", p.origen or ""), ("Estado del registro", p.estado_registro or ""),
             ("Observaciones", p.observaciones), ("Registrada el", f"{p.creado_en:%d-%m-%Y}"),
         ])]
         hojas.append(("Contactos", ["Tipo", "Valor", "Vigente"], [(c.tipo, c.valor, "Sí" if c.vigente else "No") for c in p.contactos.select_related("tipo")]))
         hojas.append(("Direcciones", ["Tipo", "Dirección", "Vigente"], [(d.get_tipo_display(), d.direccion, "Sí" if d.vigente else "No") for d in p.direcciones.select_related("direccion__comuna")]))
-        hojas.append(("Formación", ["Institución", "Carrera", "Estado"], [(f.organizacion, f.carrera or "", f.get_estado_display()) for f in p.formaciones.select_related("organizacion", "carrera")]))
+        hojas.append(("Formación", ["Institución", "Carrera", "Estado", "Sede", "Jornada", "Año que cursa", "Asignatura", "Horas comprometidas"], [
+            (f.organizacion, f.carrera or "", f.get_estado_display(), f.sede, f.get_jornada_display(), f.nivel_actual or "", f.asignatura, f.horas_comprometidas or "")
+            for f in p.formaciones.select_related("organizacion", "carrera")]))
+        hojas.append(("Comunidades", ["Comunidad", "Rol", "Desde", "Hasta", "Vigente"], [
+            (m.comunidad, m.get_rol_display(), m.desde or "", m.hasta or "", "Sí" if m.vigente else "No") for m in p.comunidades.select_related("comunidad")]))
+        hojas.append(("Consentimientos", ["Tipo", "Otorgado", "Fecha", "Medio", "Revocado el"], [
+            (c.get_tipo_display(), "Sí" if c.otorgado else "No", c.fecha, c.get_medio_display(), c.revocado_en or "") for c in p.consentimientos.all()]))
         hojas.append(("Cargos", ["Organización", "Cargo", "Desde", "Hasta"], [(v.organizacion, v.cargo, v.fecha_inicio or "", v.fecha_termino or "") for v in p.vinculos.select_related("organizacion")]))
         hojas.append(("Participaciones", ["Actividad", "Rol", "Estado", "Asistencia"], [
             (x.actividad, x.rol, x.estado, {True: "Asistió", False: "No asistió", None: ""}[x.asistencia]) for x in p.participaciones.select_related("actividad", "rol", "estado")
@@ -302,6 +405,16 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
         if request.user.has_perm("personas.ver_sensibles"):
             hojas.append(("Emergencia", ["Nombre", "Parentesco", "Teléfono"], [(c.nombre, c.parentesco, c.telefono) for c in p.contactos_emergencia.all()]))
             hojas.append(("Verificaciones", ["Tipo", "Fecha", "Vigente hasta"], [(v.tipo, v.fecha, v.vigente_hasta or "") for v in p.verificaciones.all()]))
+            hojas.append(("Apoderados", ["Apoderado", "Parentesco", "Tutor legal"], [(a.apoderado, a.parentesco, "Sí" if a.tutor_legal else "No") for a in p.apoderados.select_related("apoderado")]))
+            ps = getattr(p, "perfil_sensible", None)
+            if ps:
+                hojas.append(("Datos sensibles", ["Campo", "Valor"], [
+                    ("Género", ps.get_genero_display()), ("Pueblo originario", ps.get_pueblo_originario_display()),
+                    ("Discapacidad", {True: "Sí", False: "No", None: ""}[ps.discapacidad]), ("Necesidades de apoyo", ps.necesidades_apoyo),
+                    ("Condiciones de salud", ps.condiciones_salud), ("Alergias", ps.alergias), ("Previsión", ps.get_prevision_salud_display()),
+                    ("Jefatura de hogar", {True: "Sí", False: "No", None: ""}[ps.jefatura_hogar]), ("Integrantes del hogar", ps.integrantes_hogar or ""),
+                    ("Tramo RSH", ps.get_tramo_rsh_display()),
+                ]))
         libro.remove(libro.active)
         for titulo, encabezados, filas in hojas:
             h = libro.create_sheet(titulo)
@@ -421,3 +534,48 @@ class PersonaOpciones(Permiso403Mixin, View):
         qs = Persona.objects.filter(activo=True).exclude(estado_registro__codigo__in=["fallecida", "fusionada"]).buscar(request.GET.get("q", ""))[:25]
         opciones = [("", "---------")] + [(p.pk, p.nombre_completo + (f" · {p.rut}" if p.rut else "")) for p in qs]
         return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))
+
+
+class PerfilSensibleEditar(Permiso403Mixin, View):
+    """Datos sensibles (F22): permiso propio, consentimiento obligatorio y ajuste DATOS_SENSIBLES."""
+
+    permission_required = ("personas.change_persona", "personas.ver_sensibles")
+
+    def dispatch(self, request, *a, **kw):
+        from django.conf import settings
+        from django.http import Http404
+
+        if not getattr(settings, "DATOS_SENSIBLES", True):
+            raise Http404("El registro de datos sensibles está desactivado.")
+        return super().dispatch(request, *a, **kw)
+
+    def _contexto(self, persona, form):
+        return {"form": form, "titulo": f"Datos sensibles de {persona.nombre_completo}", "volver_url": f"{persona.get_absolute_url()}?tab=sensibles",
+                "breadcrumb": [("Personas", "/personas"), (persona.nombre_completo, persona.get_absolute_url())],
+                "bajada": "Solo los ve quien tiene permiso de datos sensibles. Se guardan únicamente con el consentimiento explícito de la persona o de su apoderado."}
+
+    def get(self, request, pk):
+        from django.shortcuts import render
+
+        persona = get_object_or_404(Persona, pk=pk)
+        form = PerfilSensibleForm(instance=getattr(persona, "perfil_sensible", None), persona=persona)
+        return render(request, "generico/formulario.html", self._contexto(persona, form))
+
+    def post(self, request, pk):
+        from django.shortcuts import render
+
+        persona = get_object_or_404(Persona, pk=pk)
+        instancia = getattr(persona, "perfil_sensible", None) or PerfilSensible(persona=persona)
+        form = PerfilSensibleForm(request.POST, instance=instancia, persona=persona)
+        if not form.is_valid():
+            return render(request, "generico/formulario.html", self._contexto(persona, form), status=400)
+        with transaction.atomic():
+            if form.cleaned_data.get("consentimiento"):
+                Consentimiento.objects.create(persona=persona, tipo="sensibles", otorgado=True, fecha=form.cleaned_data["consentimiento_fecha"],
+                                              medio=form.cleaned_data.get("consentimiento_medio") or "papel", registrado_por=request.user)
+            form.save()
+        from apps.nucleo.auditoria import registrar
+
+        registrar(request.user, "datos_sensibles_editados", persona, "")
+        messages.success(request, "Datos sensibles guardados.")
+        return HttpResponseRedirect(f"{persona.get_absolute_url()}?tab=sensibles")

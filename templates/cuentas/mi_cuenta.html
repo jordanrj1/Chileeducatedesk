@@ -1,13 +1,23 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}Mi cuenta{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Mi cuenta</li>{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Mi cuenta</li>{% endblock %}
 {% block contenido %}
-<h1 class="h4">Mi cuenta</h1>
-<dl class="row" style="max-width:32rem;">
-  <dt class="col-5">Usuario</dt><dd class="col-7">{{ user.get_username }}</dd>
-  <dt class="col-5">Nombre</dt><dd class="col-7">{{ user.get_full_name|default:"—" }}</dd>
-  <dt class="col-5">Correo</dt><dd class="col-7">{{ user.email|default:"—" }}</dd>
-  <dt class="col-5">Rol</dt><dd class="col-7">{% for g in grupos %}{{ g }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
-</dl>
-<a class="btn btn-outline-primary btn-sm" href="/mi-cuenta/clave">Cambiar contraseña</a>
+{% with nombre=user.get_full_name|default:user.get_username %}
+<section class="fche-tarjeta" style="max-width:44rem;">
+  <div class="fche-tarjeta__cuerpo d-flex gap-3 align-items-center border-bottom">
+    <span class="fche-avatar fche-avatar--lg {{ nombre|tono_avatar }}" aria-hidden="true">{{ nombre|iniciales }}</span>
+    <div><p class="fche-pagina__antetitulo">Mi cuenta</p><h1 class="fche-ficha-cabecera__titulo">{{ nombre }}</h1></div>
+  </div>
+  <div class="fche-tarjeta__cuerpo">
+    <dl class="fche-datos">
+      <div><dt>Usuario</dt><dd>{{ user.get_username }}</dd></div>
+      <div><dt>Nombre</dt><dd>{{ user.get_full_name|default:"—" }}</dd></div>
+      <div><dt>Correo</dt><dd>{{ user.email|default:"—" }}</dd></div>
+      <div><dt>Rol</dt><dd>{% for g in grupos %}{{ g }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd></div>
+    </dl>
+  </div>
+  <div class="fche-tarjeta__pie"><a class="btn btn-outline-primary btn-sm" href="/mi-cuenta/clave">{% icono "candado" 15 %}Cambiar contraseña</a></div>
+</section>
+{% endwith %}
 {% endblock %}

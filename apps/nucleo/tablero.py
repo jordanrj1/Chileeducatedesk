@@ -6,12 +6,32 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+ICONOS_TARJETA = {
+    "Actividades incompletas": "actividades", "Próximas sin participantes": "personas", "Solicitudes sin respuesta": "solicitudes",
+    "Personas incompletas": "persona", "Tareas por vencer": "tareas", "Sin respuesta": "correo", "Estado del sistema": "administracion",
+    "Datos por vencer": "reloj",
+}
+
+
+def proximas(user, dias=7, limite=8):
+    """Agenda vigente de los próximos días, para ver de un vistazo qué viene."""
+    if not user.has_perm("actividades.view_actividad"):
+        return None
+    from apps.actividades.models import AgendaActividad
+
+    hoy = timezone.localdate()
+    qs = (AgendaActividad.objects.filter(vigente=True, fecha__gte=hoy, fecha__lte=hoy + timedelta(days=dias), actividad__estado__codigo__in=["planificada", "confirmada", "reprogramada"])
+          .select_related("actividad__estado", "lugar").order_by("fecha", "hora_inicio"))
+    return {"total": qs.count(), "items": list(qs[:limite]), "hoy": hoy}
+
+
 def tarjetas(user):
     hoy = timezone.localdate()
     res = []
 
     def agregar(titulo, items, url_todos="", vacio="Nada pendiente."):
-        res.append({"titulo": titulo, "items": list(items)[:8], "url": url_todos, "vacio": vacio})
+        items = list(items)
+        res.append({"titulo": titulo, "items": items[:8], "total": len(items), "url": url_todos, "vacio": vacio, "icono": ICONOS_TARJETA.get(titulo, "info")})
 
     try:
         if user.has_perm("actividades.view_actividad"):

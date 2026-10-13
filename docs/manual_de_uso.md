@@ -5,7 +5,7 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 ## 1. Ingresar
 1. Abre la dirección del sistema (por defecto `http://127.0.0.1:8000`).
 2. Escribe tu **usuario o correo** y tu contraseña → **Ingresar**.
-3. Para salir: **Cerrar sesión** (arriba a la derecha). La sesión se cierra sola tras 60 minutos sin actividad.
+3. Para salir: tu nombre (arriba a la derecha) → **Cerrar sesión**. La sesión se cierra sola tras 60 minutos sin actividad.
 4. Cambiar tu contraseña: tu nombre (arriba) → **Cambiar contraseña**. Si la olvidas, el Administrador la restablece.
 
 ## 1b. Seguridad
@@ -15,21 +15,42 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 
 ## 2. Cómo está organizado
 - **Inicio**: qué tienes que hacer hoy (actividades incompletas, solicitudes sin respuesta, personas por completar, tareas por vencer).
-- **Buscador** (arriba, siempre visible): busca en personas, organizaciones, proyectos, actividades, lugares, reuniones y documentos. En **/buscar** puedes combinar filtros (tipo, estado, zona, fechas).
-- **Menú lateral**: Solicitudes, Proyectos, Actividades, Personas, Organizaciones, Lugares, Calendario, Reuniones, Tareas, Documentos, Territorio, Importaciones, Finanzas, Catálogos, Administración (según tu rol).
-- Cada registro tiene una **ficha con pestañas**. Arriba están **Editar** y **← Volver**.
+- **Buscador** (arriba, siempre visible; atajo: tecla `/`): busca en personas, organizaciones, comunidades, proyectos, actividades, **minutas de sesiones**, lugares, reuniones y documentos. En **/buscar** puedes combinar filtros (tipo, estado, zona, fechas).
+- **Menú lateral**, agrupado: *Operación* (Solicitudes, Proyectos, Actividades, Calendario), *Registro* (Personas, Organizaciones, Comunidades, Lugares, Territorio, Documentos), *Gestión* (Importaciones) y *Configuración* (Catálogos, Administración, Ayuda), según tu rol. En el celular se abre con el botón ☰.
+- **Nuevo** (botón azul, arriba): crea una solicitud, actividad, persona, organización, comunidad, lugar o documento desde cualquier pantalla.
+- Cada registro tiene una **ficha con pestañas**. Arriba están **Editar**, las acciones de la ficha y **Volver**.
 - Nada se elimina. Lo que ya no se usa se **desactiva** o se **archiva**, y su historial se conserva.
 
 ## 3. Registrar una persona (una sola vez)
 1. **Personas → + Nueva persona**. Elige **Ficha rápida** (nombre y un contacto) o **Ficha completa**. Solo el nombre es obligatorio. «Guardar y completar después» la deja en la cola de incompletos.
 2. Al guardar, el sistema **busca coincidencias** (mismo RUT, correo, teléfono o nombre parecido). Si aparece un posible duplicado, elige **Usar existente** o **Crear de todos modos**. Nunca se fusiona nada automáticamente.
-3. En la ficha: Datos, Contactos, Direcciones, Formación, Experiencia, Disponibilidad, Organizaciones y cargos, Trayectoria, Documentos, Contacto de emergencia y Verificaciones (estas dos son datos sensibles), Origen, Historial.
-4. Una persona **no necesita cuenta** para existir ni participar.
-5. Personas extranjeras: en la ficha completa se registra el pasaporte u otro documento.
-6. Si una persona fallece: estado «Fallecida/o»; no se elimina y ya no aparece como candidata.
-7. Fichas duplicadas descubiertas tarde: el Administrador usa «Fusionar con otra ficha»; todo pasa a la que queda.
-8. «Exportar sus datos personales» entrega todo lo que el sistema guarda de esa persona.
-9. Al desactivar una persona, organización o lugar con actividades futuras, el sistema las muestra antes de confirmar. «Reasignar sus actividades» pasa las de un responsable que se va a otra persona.
+3. La **ficha completa** se llena por secciones:
+   - **Identificación:** nombre social, fecha de nacimiento (calcula la edad y avisa si es menor) y nacionalidad.
+   - **Contacto** y canal preferido.
+   - **Perfil y ocupación:** estudiante, vecino/a, voluntario/a, tallerista, dirigente, docente…; nivel educacional y situación ocupacional.
+   - **Intereses y habilidades:** áreas de interés, habilidades e idiomas. Sirven para encontrar a quién invitar.
+4. En la ficha: Datos, Contactos, Direcciones, Formación, Experiencia, Disponibilidad, Organizaciones y cargos, Participaciones (con horas acumuladas), Documentos, Interacciones, Contacto de emergencia, Verificaciones, **Datos sensibles**, **Apoderados**, **Consentimientos**, **Comunidades**, Origen e Historial. Las pestañas marcadas con 🔒 solo las ve quien tiene permiso de datos sensibles.
+   - **Formación del estudiante:** institución, carrera, sede, jornada, año que cursa, asignatura o práctica vinculada, docente a cargo y horas comprometidas.
+   - **Datos sensibles 🔒** (salud y accesibilidad, alergias, previsión, pueblo originario, género, hogar y tramo del Registro Social de Hogares): se guardan **solo con el consentimiento explícito** de la persona o de su apoderado, registrado ahí mismo (fecha y medio). Si el Administrador pone `DATOS_SENSIBLES=False` en `.env`, la sección desaparece.
+   - **Consentimientos:** tratamiento de datos, datos sensibles, uso de imagen, contacto para futuras actividades y autorización del apoderado. No se borran: se **revocan** con fecha. Sin consentimiento la persona no se excluye; la ficha muestra qué falta.
+   - **Menores de edad:** la ficha avisa si falta el apoderado o su autorización. El apoderado se registra como otra persona en la pestaña **Apoderados 🔒**.
+5. El listado de **Personas** se filtra por perfil, interés, comunidad, comuna, organización y tramo de edad. Así se arma el banco de personas para cada actividad.
+6. Una persona **no necesita cuenta** para existir ni participar.
+7. Personas extranjeras: en la ficha completa se registra el pasaporte u otro documento.
+8. Si una persona fallece: estado «Fallecida/o»; no se elimina y ya no aparece como candidata.
+9. Fichas duplicadas descubiertas tarde: el Administrador usa «Fusionar con otra ficha»; todo pasa a la que queda (también perfiles e intereses).
+10. «Exportar sus datos personales» entrega todo lo que el sistema guarda de esa persona (los datos sensibles, solo a quien tiene permiso).
+11. Al desactivar una persona, organización o lugar con actividades futuras, el sistema las muestra antes de confirmar. «Reasignar sus actividades» pasa las de un responsable que se va a otra persona.
+
+## 3b. Comunidades
+Una **comunidad** es un grupo de personas que vive en un sector o comparte un espacio: vecinos de una villa, una comunidad escolar, un club de adulto mayor, una comunidad indígena.
+1. **Comunidades → + Nueva comunidad** (o desde la pestaña *Comunidades* de una comuna):
+   - nombre, tipo, comuna y sector;
+   - organización que la representa (p. ej., la junta de vecinos) y referente;
+   - población estimada, rango etario, áreas de interés, y diagnóstico y necesidades.
+2. Pestaña **Integrantes**: el padrón de la comunidad (integrante, dirigente/a, referente, vocero/a), con fechas. Una persona también se suma a una comunidad desde su ficha.
+3. **+ Actividad para esta comunidad** crea una actividad ya dirigida a ella.
+4. Pestaña **Alcance**: cuántas personas de la comunidad se alcanzaron, con qué equipo y cuántas horas.
 
 ## 4. Organizaciones y lugares
 - **Organizaciones → + Nueva organización**: tipo, RUT (opcional), dirección, contactos (varios, con propósito), carreras (si es institución educativa), personas y cargos.
@@ -57,10 +78,24 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 - **En lista de espera**: estado para quien no alcanza cupo; no ocupa capacidad.
 - La capacidad cuenta personas: quien tiene dos roles cuenta una vez.
 
+## 6c. A quién va dirigida y quién la ejecuta
+- Al crear o editar la actividad: **línea o área temática**, **público objetivo**, rango etario y beneficiarios estimados.
+- Pestaña **Público y comunidades**: agrega las **comunidades destinatarias** (una o varias).
+- Pestaña **Participantes**: se separa el **equipo ejecutor** (estudiantes, voluntarios, talleristas, coordinación) de los **asistentes**. Para cada persona se guardan su **institución de procedencia** y su **comunidad**, que se completan solas con su formación y su padrón, y las **horas**.
+
+## 6d. Sesiones y minutas
+Cada encuentro de una actividad se registra en la pestaña **Sesiones y minutas** → **Nueva sesión**:
+- **Datos:** fecha, horario, lugar y **facilitadores**.
+- **Minuta:** objetivo, desarrollo, avances, acuerdos, incidencias y próximos pasos.
+- **Asistentes sin registro individual:** solo cifras, por tramo de edad y género. Úsalo cuando asiste gente que no se registra una por una.
+- En **Ver minuta** se marca la **asistencia de esa sesión** y se suben las **evidencias** (fotos, listas firmadas, presentaciones).
+- Las minutas se encuentran con el buscador.
+
 ## 7. Ejecutar y finalizar
 1. Después de la actividad, pestaña **Asistencia**: marca quién asistió (o «no hay registro de asistencia»). Si llegó alguien no previsto: **+ Agregar persona que llegó**.
-2. Pestaña **Resultados**: resultado, observaciones, incidencias, indicadores. Sube fotos/minutas en **Documentos**.
-3. **Finalizar actividad**: exige asistencia (o «sin registro») y resultado. Queda **Realizada**, de solo lectura y consultable en el historial.
+2. Pestaña **Resultados**: resultado, observaciones, incidencias, indicadores. Sube fotos/minutas en **Documentos** o como evidencia de cada sesión.
+3. Pestaña **Alcance** (también en el proyecto y la comunidad): total alcanzado, equipo ejecutor y sus horas, asistentes, instituciones de procedencia, comunidades, edades y sesiones.
+4. **Finalizar actividad**: exige asistencia (o «sin registro») y resultado. Queda **Realizada**, de solo lectura y consultable en el historial.
 
 ## 8. Documentos
 - **Documentos → + Nuevo documento** (o desde una actividad, proyecto, persona u organización). Formatos: PDF, Word, Excel, imágenes, etc. (máx. 25 MB).
@@ -82,12 +117,16 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 4. Si una columna no se reconoce, indícala en «Columnas de la planilla» y pulsa «Aplicar columnas».
 5. Si la persona ya existe con datos distintos, elige: conservar, agregar solo el contacto nuevo o actualizar la ficha.
 6. Si te equivocas: abre el lote y **Revertir lote** (se conservan las personas que ya tienen otra historia o que alguien editó después).
+7. Columnas que se reconocen además del nombre, RUT, correo y teléfono:
+   - **fecha de nacimiento** (dd-mm-aaaa o dd/mm/aa), **nacionalidad** y **nivel educacional**;
+   - **comuna** y **dirección**: crean la dirección de residencia;
+   - **institución**, **carrera**, **sede**, **jornada**, **año que cursa** y **asignatura**: completan la formación.
 
 ## 10. Exportar
 Los listados con botón **Exportar** generan un Excel con los filtros aplicados. Cada exportación queda en la auditoría.
 
 ## 11. Segunda fase
-Reuniones con asistentes, tareas, sesiones, beneficiarios, verificaciones y finanzas están construidas pero ocultas. Para mostrarlas, el Administrador pone `SEGUNDA_FASE=True` en `.env` y reinicia.
+Reuniones con asistentes, tareas, beneficiarios, verificaciones y finanzas están construidas pero ocultas (las **sesiones y minutas** ya están siempre visibles). Para mostrarlas, el Administrador pone `SEGUNDA_FASE=True` en `.env` y reinicia.
 
 ## 11b. Finanzas (solo usuarios autorizados, segunda fase)
 Presupuesto por proyecto (ítems), gastos, aportes y donaciones. Los movimientos no se borran: se **anulan** con motivo. No registres cuentas bancarias.

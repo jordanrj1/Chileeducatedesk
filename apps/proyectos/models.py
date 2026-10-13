@@ -18,6 +18,7 @@ class Proyecto(models.Model):
     diagnostico = models.TextField("diagnóstico", blank=True)
     poblacion_objetivo = models.TextField("población objetivo", blank=True)
     zona = models.CharField(max_length=200, blank=True, help_text="Comuna, sector o territorio donde se desarrolla.")
+    area_tematica = models.ForeignKey("nucleo.AreaTematica", null=True, blank=True, on_delete=models.PROTECT, related_name="+", verbose_name="área temática")
     fecha_inicio = models.DateField("inicio", null=True, blank=True)
     fecha_termino = models.DateField("término", null=True, blank=True)
     estado = models.CharField(max_length=12, choices=ESTADOS, default="preparacion")
@@ -97,3 +98,20 @@ class Postulacion(models.Model):
 
     def __str__(self):
         return f"{self.fondo} ({self.get_estado_display()})"
+
+
+class ProyectoComunidad(models.Model):
+    """Comunidades a las que va dirigido el proyecto (F22)."""
+
+    proyecto = models.ForeignKey(Proyecto, on_delete=models.PROTECT, related_name="comunidades_destino")
+    comunidad = models.ForeignKey("comunidades.Comunidad", on_delete=models.PROTECT, related_name="proyectos_dirigidos")
+    observaciones = models.CharField(max_length=250, blank=True)
+    vigente = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "comunidad del proyecto"
+        verbose_name_plural = "comunidades del proyecto"
+        constraints = [models.UniqueConstraint(fields=["proyecto", "comunidad"], name="proyecto_comunidad_unica")]
+
+    def __str__(self):
+        return f"{self.comunidad} · {self.proyecto}"

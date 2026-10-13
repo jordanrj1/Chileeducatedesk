@@ -1,15 +1,22 @@
-{% if municipalidad %}<p class="small">Municipalidad: <a href="{{ municipalidad.get_absolute_url }}">{{ municipalidad }}</a></p>{% endif %}
+{% load fche %}{% if municipalidad %}<p class="small d-flex align-items-center gap-1">{% icono "organizaciones" 15 %}Municipalidad: <a href="{{ municipalidad.get_absolute_url }}">{{ municipalidad }}</a></p>{% endif %}
+<div class="row g-4">
+<div class="col-12 {% if puede_agregar %}col-xl-7{% endif %}">
+<h2 class="h6 mb-2">Sectores</h2>
 {% if raices %}
-<ul class="mb-3">{% for s in raices %}
-  <li><a href="{{ s.get_absolute_url }}">{{ s.nombre }}</a> <span class="text-muted small">({{ s.get_tipo_display }}{% for a in s.alias.all %} · también «{{ a.nombre }}»{% endfor %})</span>
-    {% if s.hijos.all %}<ul>{% for h in s.hijos.all %}<li><a href="{{ h.get_absolute_url }}">{{ h.nombre }}</a> <span class="text-muted small">({{ h.get_tipo_display }})</span>
+<ul class="fche-items">{% for s in raices %}
+  <li class="d-block"><a class="fche-items__titulo" href="{{ s.get_absolute_url }}">{{ s.nombre }}</a> <span class="text-muted small">({{ s.get_tipo_display }}{% for a in s.alias.all %} · también «{{ a.nombre }}»{% endfor %})</span>
+    {% if s.hijos.all %}<ul class="small mt-1 mb-0">{% for h in s.hijos.all %}<li><a href="{{ h.get_absolute_url }}">{{ h.nombre }}</a> <span class="text-muted">({{ h.get_tipo_display }})</span>
       {% if h.hijos.all %}<ul>{% for n in h.hijos.all %}<li><a href="{{ n.get_absolute_url }}">{{ n.nombre }}</a></li>{% endfor %}</ul>{% endif %}</li>{% endfor %}</ul>{% endif %}
   </li>{% endfor %}</ul>
-{% else %}<p class="text-muted">Aún no hay sectores registrados aquí.</p>{% endif %}
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "territorio" 18 %}</span><p class="fche-vacio__texto mb-0">Aún no hay sectores registrados aquí.</p></div>{% endif %}
+</div>
 {% if puede_agregar %}
-<h2 class="h6">+ Crear sector</h2>
-<form method="post" action="{{ url_crear }}" class="row g-2" style="max-width: 44rem;">{% csrf_token %}
-  {% for campo in form %}<div class="col-12 col-md-4">{% include "generico/_campo.html" %}</div>{% endfor %}
-  <div class="col-12"><button class="btn btn-primary btn-sm">Crear sector</button></div>
+<div class="col-12 col-xl-5">
+<form method="post" action="{{ url_crear }}" class="fche-tarjeta">{% csrf_token %}
+  <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">+ Crear sector</h2></div>
+  <div class="fche-tarjeta__cuerpo pb-1">{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}</div>
+  <div class="fche-form__acciones"><button class="btn btn-primary btn-sm">Crear sector</button></div>
 </form>
+</div>
 {% endif %}
+</div>

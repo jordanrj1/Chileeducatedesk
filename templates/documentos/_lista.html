@@ -1,6 +1,6 @@
-{% if documentos %}
+{% load fche %}{% if documentos %}
 <div class="table-responsive"><table class="table table-sm align-middle">
-<thead><tr><th>Documento</th><th>Tipo</th><th>Fecha</th><th></th></tr></thead>
-<tbody>{% for d in documentos %}<tr class="{% if not d.activo %}text-muted{% endif %}"><td><a href="{{ d.get_absolute_url }}">{{ d.nombre }}</a>{% if d.restringido %} <span class="badge text-bg-warning">🔒 Restringido</span>{% endif %}{% if not d.activo %} <span class="badge text-bg-secondary">Archivado</span>{% endif %}{% if d.vencido %} <span class="badge text-bg-danger">Vencido</span>{% endif %}</td>
-<td>{{ d.tipo }}</td><td>{{ d.fecha|date:"d-m-Y" }}</td><td><a class="btn btn-outline-secondary btn-sm" href="{% url 'documentos:archivo' d.pk %}">Descargar</a></td></tr>{% endfor %}</tbody></table></div>
-{% else %}<p class="text-muted">Sin documentos.</p>{% endif %}
+<thead><tr><th>Documento</th><th>Tipo</th><th>Fecha</th><th><span class="visually-hidden">Descargar</span></th></tr></thead>
+<tbody>{% for d in documentos %}<tr class="{% if not d.activo %}text-muted{% endif %}"><td><span class="d-inline-flex align-items-center gap-2">{% icono "documentos" 16 "text-muted" %}<a href="{{ d.get_absolute_url }}">{{ d.nombre }}</a></span>{% if d.restringido %} <span class="badge text-bg-warning">🔒 Restringido</span>{% endif %}{% if not d.activo %} <span class="badge text-bg-secondary">Archivado</span>{% endif %}{% if d.vencido %} <span class="badge text-bg-danger">Vencido</span>{% endif %}</td>
+<td>{{ d.tipo }}</td><td class="text-nowrap">{{ d.fecha|date:"d-m-Y" }}</td><td class="text-end"><a class="btn btn-outline-secondary btn-sm" href="{% url 'documentos:archivo' d.pk %}">{% icono "descargar" 14 %}Descargar</a></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "documentos" 18 %}</span><p class="fche-vacio__texto mb-0">Sin documentos.</p></div>{% endif %}

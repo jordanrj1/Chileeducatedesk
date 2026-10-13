@@ -1,0 +1,10 @@
+{% extends "generico/ficha.html" %}
+{% load fche %}
+{% block subtitulo %}
+<div class="d-flex flex-wrap gap-2 align-items-center">
+  {% estado object.estado object.get_estado_display %}
+  {% if object.zona %}<span class="d-inline-flex align-items-center gap-1">{% icono "territorio" 15 %}{{ object.zona }}</span>{% endif %}
+  {% if object.fecha_inicio or object.fecha_termino %}<span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}{{ object.fecha_inicio|date:"d-m-Y"|default:"?" }} a {{ object.fecha_termino|date:"d-m-Y"|default:"?" }}</span>{% endif %}
+  {% if object.responsable %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.responsable.get_absolute_url }}">{% icono "persona" 15 %}{{ object.responsable }}</a>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "generico/ficha.html" %}
+{% load fche %}
+{% block subtitulo %}
+<div class="d-flex flex-wrap gap-2 align-items-center">
+  {% estado object.estado %}
+  <span class="badge text-bg-light border">{{ object.get_origen_display }}</span>
+  <span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}{{ object.fecha|date:"d-m-Y" }}</span>
+  {% if object.dias_abierta is not None %}<span class="d-inline-flex align-items-center gap-1 {% if object.dias_abierta > 7 %}text-warning-emphasis{% endif %}">{% icono "reloj" 15 %}Abierta hace {{ object.dias_abierta }} días</span>{% endif %}
+  {% if object.persona %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.persona.get_absolute_url }}">{% icono "persona" 15 %}{{ object.persona }}</a>{% elif object.organizacion %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.organizacion.get_absolute_url }}">{% icono "organizaciones" 15 %}{{ object.organizacion }}</a>{% endif %}
+</div>
+{% endblock %}

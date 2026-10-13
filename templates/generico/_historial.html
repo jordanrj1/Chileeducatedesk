@@ -1,14 +1,14 @@
-{% if origenes_historial %}
-<div class="alert alert-light border small mb-3"><strong>Fuente de la información:</strong>
+{% load fche %}{% if origenes_historial %}
+<div class="alert alert-info small mb-4"><strong class="d-block mb-1">Fuente de la información</strong>
 {% for o in origenes_historial %}{{ o.get_fuente_display }}{% if o.documento %} (<a href="{{ o.documento.get_absolute_url }}">{{ o.documento }}</a>){% endif %} · {{ o.fecha|date:"d-m-Y" }} · {{ o.registrado_por|default:"sistema" }} · {{ o.get_estado_verificacion_display }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
 {% endif %}
 {% if cambios %}
-<div class="list-group">
+<ol class="fche-linea">
 {% for c in cambios %}
-  <div class="list-group-item">
-    <div class="d-flex justify-content-between"><strong>{{ c.tipo }}</strong><span class="text-muted small">{{ c.fecha|date:"d-m-Y H:i" }} · {{ c.usuario }}</span></div>
-    {% if c.cambios %}<ul class="mb-0 small">{% for campo, antes, despues in c.cambios %}<li>{{ campo }}: <span class="text-decoration-line-through">{{ antes|default:"—" }}</span> → {{ despues|default:"—" }}</li>{% endfor %}</ul>{% endif %}
-  </div>
+  <li class="fche-linea__item{% if c.tipo == 'Creación' %} fche-linea__item--creacion{% endif %}">
+    <div class="fche-linea__cabecera"><span class="fche-linea__tipo">{{ c.tipo }}</span><span class="fche-linea__meta">{{ c.fecha|date:"d-m-Y H:i" }} · {{ c.usuario }}</span></div>
+    {% if c.cambios %}<ul class="fche-linea__cambios">{% for campo, antes, despues in c.cambios %}<li><span class="fche-linea__campo">{{ campo }}:</span> <span class="fche-antes">{{ antes|default:"—" }}</span> → <span class="fche-despues">{{ despues|default:"—" }}</span></li>{% endfor %}</ul>{% endif %}
+  </li>
 {% endfor %}
-</div>
-{% else %}<p class="text-muted">Sin historial.</p>{% endif %}
+</ol>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "historial" 18 %}</span><p class="fche-vacio__texto mb-0">Sin historial.</p></div>{% endif %}

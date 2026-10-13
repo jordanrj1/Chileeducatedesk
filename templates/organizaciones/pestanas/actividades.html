@@ -1,8 +1,18 @@
-<h2 class="h6">Actividades en las que ha intervenido</h2>
-<ul class="list-group mb-3">{% for a in participaciones_org %}<li class="list-group-item"><a href="{{ a.actividad.get_absolute_url }}">{{ a.actividad }}</a> <span class="badge text-bg-secondary">{{ a.tipo_intervencion|default:"intervención" }}</span> <span class="badge text-bg-light border">{{ a.actividad.estado }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin actividades.</li>{% endfor %}</ul>
-<h2 class="h6">Proyectos</h2>
-<ul class="list-group mb-3">{% for p in proyectos_org %}<li class="list-group-item"><a href="{{ p.proyecto.get_absolute_url }}">{{ p.proyecto }}</a> {{ p.tipo_intervencion|default:"" }}</li>{% empty %}<li class="list-group-item text-muted">Sin proyectos.</li>{% endfor %}</ul>
-<h2 class="h6">Colaboraciones</h2>
-<ul class="list-group mb-3">{% for c in colaboraciones %}<li class="list-group-item"><a href="{{ c.get_absolute_url }}">{{ c.actividad }}</a> · {{ c.tipo_apoyo }} <span class="badge text-bg-secondary">{{ c.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin colaboraciones.</li>{% endfor %}</ul>
-<h2 class="h6">Últimos contactos</h2>
-<ul class="list-group">{% for i in interacciones %}<li class="list-group-item"><a href="{{ i.get_absolute_url }}">{{ i.fecha|date:"d-m-Y" }} · {{ i.canal }}</a> <span class="small text-muted">{{ i.resultado|truncatechars:80 }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin contactos registrados.</li>{% endfor %}</ul>
+{% load fche %}<div class="row g-4">
+<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Actividades en las que ha intervenido <span class="fche-contador">{{ participaciones_org|length }}</span></h2>
+<ul class="fche-items">{% for a in participaciones_org %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ a.actividad.get_absolute_url }}">{{ a.actividad }}</a><div class="fche-items__detalle">{{ a.tipo_intervencion|default:"intervención" }}</div></div>{% estado a.actividad.estado %}</li>{% empty %}<li class="text-muted">Sin actividades.</li>{% endfor %}</ul>
+</div>
+<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Proyectos</h2>
+<ul class="fche-items">{% for p in proyectos_org %}<li><a class="fche-items__titulo" href="{{ p.proyecto.get_absolute_url }}">{{ p.proyecto }}</a> <span class="small text-muted">{{ p.tipo_intervencion|default:"" }}</span></li>{% empty %}<li class="text-muted">Sin proyectos.</li>{% endfor %}</ul>
+</div>
+<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Colaboraciones</h2>
+<ul class="fche-items">{% for c in colaboraciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ c.get_absolute_url }}">{{ c.actividad }}</a><div class="fche-items__detalle">{{ c.tipo_apoyo }}</div></div>{% estado c.estado c.get_estado_display %}</li>{% empty %}<li class="text-muted">Sin colaboraciones.</li>{% endfor %}</ul>
+</div>
+<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Últimos contactos</h2>
+<ul class="fche-items">{% for i in interacciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ i.get_absolute_url }}">{{ i.fecha|date:"d-m-Y" }} · {{ i.canal }}</a><div class="fche-items__detalle">{{ i.resultado|truncatechars:80 }}</div></div></li>{% empty %}<li class="text-muted">Sin contactos registrados.</li>{% endfor %}</ul>
+</div>
+</div>

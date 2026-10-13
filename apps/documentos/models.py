@@ -38,6 +38,8 @@ class Documento(models.Model):
     fecha = models.DateField(default=timezone.localdate)
     descripcion = models.TextField("descripción", blank=True)
     actividad = models.ForeignKey("actividades.Actividad", null=True, blank=True, on_delete=models.PROTECT, related_name="documentos")
+    sesion = models.ForeignKey("actividades.SesionActividad", null=True, blank=True, on_delete=models.PROTECT, related_name="evidencias",
+                               verbose_name="sesión", help_text="Evidencia de una sesión de la actividad (F22).")
     proyecto = models.ForeignKey("proyectos.Proyecto", null=True, blank=True, on_delete=models.PROTECT, related_name="documentos")
     persona = models.ForeignKey("personas.Persona", null=True, blank=True, on_delete=models.PROTECT, related_name="documentos")
     organizacion = models.ForeignKey("organizaciones.Organizacion", null=True, blank=True, on_delete=models.PROTECT, related_name="documentos", verbose_name="organización")

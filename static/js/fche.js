@@ -113,6 +113,55 @@
     if (sucio) { e.preventDefault(); e.returnValue = ""; }
   });
 
+  // Atajo de teclado: «/» o Ctrl/⌘+K llevan al buscador global (salvo que se esté escribiendo en un campo).
+  document.addEventListener("keydown", function (e) {
+    var destino = e.target, escribiendo = destino.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(destino.tagName);
+    var atajo = (e.key === "/" && !escribiendo) || ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K"));
+    if (!atajo) return;
+    var buscador = document.getElementById("buscador-global");
+    if (!buscador) return;
+    e.preventDefault();
+    buscador.focus();
+    buscador.select();
+  });
+
+  // Resultados de búsqueda: marca las palabras buscadas (sin distinguir mayúsculas ni tildes).
+  function sinTildes(c) { return c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().charAt(0) || c; }
+  function resaltar(raiz, termino) {
+    var palabras = termino.split(/\s+/).map(function (p) { return Array.prototype.map.call(p, sinTildes).join(""); }).filter(function (p) { return p.length >= 2; });
+    if (!palabras.length) return;
+    var recorrido = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT), nodos = [];
+    while (recorrido.nextNode()) { if (recorrido.currentNode.parentNode.closest("a, .small")) nodos.push(recorrido.currentNode); }
+    nodos.forEach(function (nodo) {
+      var texto = nodo.nodeValue, plano = Array.prototype.map.call(texto, sinTildes).join(""), marcas = [];
+      palabras.forEach(function (p) { var i = plano.indexOf(p); while (i !== -1) { marcas.push([i, i + p.length]); i = plano.indexOf(p, i + p.length); } });
+      if (!marcas.length) return;
+      marcas.sort(function (a, b) { return a[0] - b[0]; });
+      var frag = document.createDocumentFragment(), pos = 0;
+      marcas.forEach(function (m) {
+        if (m[0] < pos) return;
+        frag.appendChild(document.createTextNode(texto.slice(pos, m[0])));
+        var mark = document.createElement("mark"); mark.textContent = texto.slice(m[0], m[1]); frag.appendChild(mark);
+        pos = m[1];
+      });
+      frag.appendChild(document.createTextNode(texto.slice(pos)));
+      nodo.parentNode.replaceChild(frag, nodo);
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-resaltar]"), function (lista) { resaltar(lista, lista.dataset.resaltar || ""); });
+  });
+
+  // Avisos de éxito: se cierran solos después de unos segundos (los errores y advertencias se quedan).
+  document.addEventListener("DOMContentLoaded", function () {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-autocerrar]"), function (aviso) {
+      window.setTimeout(function () {
+        if (window.bootstrap && window.bootstrap.Alert) window.bootstrap.Alert.getOrCreateInstance(aviso).close();
+        else aviso.remove();
+      }, 6000);
+    });
+  });
+
   // Error de una sección cargada con HTMX: mensaje claro y botón para reintentar.
   var ultima = null;
   document.addEventListener("htmx:beforeRequest", function (e) { ultima = e.detail.elt; });

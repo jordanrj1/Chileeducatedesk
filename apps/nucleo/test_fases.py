@@ -23,13 +23,14 @@ def test_pestanas_ocultas(cg, sin_segunda_fase, actividad, persona):
     from apps.proyectos.models import Proyecto
 
     a = cg.get(f"/actividades/{actividad.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
-    assert "Sesiones" not in a and "Beneficiarios" not in a and "Participantes" in a
+    assert "Beneficiarios" not in a and "Participantes" in a
+    assert "Sesiones" in a  # F22: la bitácora de sesiones es visible sin segunda fase
     p = cg.get(f"/personas/{persona.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
     assert "Verificaciones" not in p
     pr = Proyecto.objects.create(nombre="P")
     t = cg.get(f"/proyectos/{pr.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
     assert "Presupuesto" not in t and "Postulación" not in t and "Equipo" in t
-    assert cg.get(f"/actividades/{actividad.pk}/sesiones/nuevo").status_code == 404
+    assert cg.get(f"/actividades/{actividad.pk}/sesiones/nuevo").status_code == 200
     assert cg.get(f"/personas/{persona.pk}/verificaciones/nuevo").status_code == 404
 
 
@@ -70,7 +71,7 @@ def test_habilitar_solo_reuniones_y_tareas(cg, settings, actividad, persona):
     html = cg.get("/dashboard").content.decode()
     assert 'href="/reuniones"' in html and 'href="/tareas"' in html and 'href="/finanzas"' not in html
     tabs = cg.get(f"/actividades/{actividad.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
-    assert "Sesiones" not in tabs
+    assert "Sesiones" in tabs and "Beneficiarios" not in tabs  # F22: sesiones siempre visibles
     coord = cg.get(f"/actividades/{actividad.pk}?tab=coordinacion").content.decode()
     assert "+ Nueva reunión" in coord and "+ Nueva tarea" in coord
     assert cg.get(f"/personas/{persona.pk}/verificaciones/nuevo").status_code == 404

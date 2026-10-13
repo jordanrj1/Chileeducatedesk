@@ -1,21 +1,27 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}{{ titulo }}{% endblock %}
-{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">{{ titulo }}</li>{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">{{ titulo }}</li>{% endblock %}
 {% block contenido %}
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-  <h1 class="h4 mb-0">{{ titulo }}</h1>
-  <div class="d-flex gap-2">
-    {% if url_exportar %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_exportar }}{% if querystring %}?{{ querystring }}{% endif %}">Exportar</a>{% endif %}
+<header class="fche-pagina">
+  <div class="fche-pagina__texto">
+    <h1 class="fche-pagina__titulo">{{ titulo }}{% if paginator %} <span class="fche-contador" title="Registros que cumplen los filtros">{{ paginator.count }}</span>{% endif %}</h1>
+    {% if descripcion %}<p class="fche-pagina__bajada">{{ descripcion }}</p>{% endif %}
+  </div>
+  <div class="fche-pagina__acciones">
+    {% if url_exportar %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_exportar }}{% if querystring %}?{{ querystring }}{% endif %}" title="Descarga en Excel lo que ves con los filtros actuales">{% icono "descargar" 16 %}Exportar</a>{% endif %}
     {% for etiqueta, url in botones_extra %}<a class="btn btn-outline-primary btn-sm" href="{{ url }}">{{ etiqueta }}</a>{% endfor %}
     {% if puede_crear %}<a class="btn btn-primary btn-sm" href="{{ url_crear }}">{{ etiqueta_crear }}</a>{% endif %}
   </div>
-</div>
-<form class="row g-2 mb-3" method="get">
-  {% if buscable %}<div class="col-12 col-md-4"><input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar…" aria-label="Buscar"></div>{% endif %}
+</header>
+
+{% if buscable or filtros_ui %}
+<form class="fche-filtros" method="get" role="search" aria-label="Filtrar {{ titulo|lower }}">
+  {% if buscable %}<div class="fche-filtros__busqueda">{% icono "buscar" 16 %}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar en {{ titulo|lower }}…" aria-label="Buscar"></div>{% endif %}
   {% for f in filtros_ui %}
-  <div class="col-6 col-md-2">
+  <div class="fche-filtros__campo{% if f.entrada == 'date' %} fche-filtros__campo--fecha{% endif %}">
     {% if f.entrada == "select" %}
-    <select class="form-select" name="{{ f.param }}" aria-label="{{ f.etiqueta }}">
+    <select class="form-select" name="{{ f.param }}" aria-label="{{ f.etiqueta }}" title="{{ f.etiqueta }}">
       <option value="">{{ f.etiqueta }}: todos</option>
       {% for valor, etiqueta in f.opciones %}<option value="{{ valor }}" {% if valor == f.valor %}selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
     </select>
@@ -24,29 +30,53 @@
     {% endif %}
   </div>
   {% endfor %}
-  <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Filtrar</button></div>
-  {% if hay_filtros %}<div class="col-auto"><a class="btn btn-link" href="?">Limpiar</a></div>{% endif %}
+  <div class="fche-filtros__acciones">
+    <button class="btn btn-outline-primary" type="submit">{% icono "filtro" 16 %}Filtrar</button>
+    {% if hay_filtros %}<a class="btn btn-link text-decoration-none" href="?">Limpiar</a>{% endif %}
+  </div>
 </form>
-{% if resumen %}<div class="alert alert-light border small">Presupuestado ${{ resumen.presupuestado|floatformat:0 }} · Gastado ${{ resumen.gastado|floatformat:0 }} · Aportes ${{ resumen.aportes|floatformat:0 }} · Donaciones ${{ resumen.donaciones|floatformat:0 }} · <strong>Saldo ${{ resumen.saldo|floatformat:0 }}</strong></div>{% endif %}
+{% endif %}
+
+{% if resumen %}
+<div class="fche-kpis">
+  <div class="fche-kpi"><div class="fche-kpi__cabecera">Presupuestado</div><div class="fche-kpi__valor">${{ resumen.presupuestado|floatformat:"0g" }}</div></div>
+  <div class="fche-kpi"><div class="fche-kpi__cabecera">Gastado</div><div class="fche-kpi__valor">${{ resumen.gastado|floatformat:"0g" }}</div></div>
+  <div class="fche-kpi"><div class="fche-kpi__cabecera">Aportes</div><div class="fche-kpi__valor">${{ resumen.aportes|floatformat:"0g" }}</div></div>
+  <div class="fche-kpi"><div class="fche-kpi__cabecera">Donaciones</div><div class="fche-kpi__valor">${{ resumen.donaciones|floatformat:"0g" }}</div></div>
+  <div class="fche-kpi fche-kpi--{% if resumen.saldo < 0 %}alerta{% else %}ok{% endif %}"><div class="fche-kpi__cabecera"><strong>Saldo</strong></div><div class="fche-kpi__valor">${{ resumen.saldo|floatformat:"0g" }}</div></div>
+</div>
+{% endif %}
+
 {% block cuerpo %}
 {% if filas %}
 <div class="table-responsive">
 <table class="table table-hover align-middle">
+  <caption class="visually-hidden">{{ titulo }}</caption>
   <thead><tr>{% for e in encabezados %}<th scope="col">{{ e }}</th>{% endfor %}</tr></thead>
   <tbody>
   {% for fila in filas %}
-    <tr>{% for celda in fila.celdas %}
-      <td>{% if forloop.first and fila.obj.get_absolute_url %}<a href="{{ fila.obj.get_absolute_url }}">{{ celda }}</a>{% else %}{{ celda }}{% endif %}</td>
-    {% endfor %}</tr>
+    <tr>{% for celda_valor in fila.celdas %}{% with enc=encabezados|slice:forloop.counter|last %}
+      <td>{% if forloop.first and fila.obj.get_absolute_url %}<a href="{{ fila.obj.get_absolute_url }}">{{ celda_valor }}</a>{% else %}{% celda celda_valor enc %}{% endif %}</td>
+    {% endwith %}{% endfor %}</tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
 {% include "generico/_paginacion.html" %}
 {% elif hay_filtros %}
-<p class="text-muted">Sin resultados con estos filtros. <a href="?">Limpiar filtros</a></p>
+<div class="fche-vacio">
+  <span class="fche-vacio__icono">{% icono "buscar" 22 %}</span>
+  <p class="fche-vacio__titulo">Sin resultados con estos filtros</p>
+  <p class="fche-vacio__texto">Prueba con otra palabra, cambia el estado o amplía las fechas.</p>
+  <a class="btn btn-outline-secondary btn-sm" href="?">Limpiar filtros</a>
+</div>
 {% else %}
-<p class="text-muted">{{ texto_vacio }}</p>
+<div class="fche-vacio">
+  <span class="fche-vacio__icono">{% icono "dato_vacio" 22 %}</span>
+  <p class="fche-vacio__titulo">{{ texto_vacio }}</p>
+  <p class="fche-vacio__texto">Cuando se registren {{ titulo|lower }}, aparecerán aquí.</p>
+  {% if puede_crear %}<a class="btn btn-primary btn-sm" href="{{ url_crear }}">{{ etiqueta_crear }}</a>{% endif %}
+</div>
 {% endif %}
 {% endblock %}
 {% endblock %}

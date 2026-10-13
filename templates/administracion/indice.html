@@ -1,12 +1,14 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}Administración{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Administración</li>{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Administración</li>{% endblock %}
 {% block contenido %}
-<h1 class="h4">Administración</h1>
-<div class="list-group" style="max-width: 32rem;">
-  {% if perms.auth.view_user %}<a class="list-group-item list-group-item-action" href="/administracion/usuarios">Usuarios</a>{% endif %}
-  {% if perms.auth.view_group %}<a class="list-group-item list-group-item-action" href="/administracion/roles">Roles y permisos</a>{% endif %}
-  <a class="list-group-item list-group-item-action" href="/administracion/catalogos/">Catálogos</a>
-  {% if perms.nucleo.view_auditoria %}<a class="list-group-item list-group-item-action" href="/administracion/auditoria">Auditoría</a>{% endif %}
+<header class="fche-pagina"><div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Configuración</p><h1 class="fche-pagina__titulo">Administración</h1>
+<p class="fche-pagina__bajada">Cuentas de acceso, permisos de cada rol, opciones de los formularios y registro de auditoría.</p></div></header>
+<div class="fche-mosaico">
+  {% if perms.auth.view_user %}<a class="fche-mosaico__item" href="/administracion/usuarios"><span class="fche-mosaico__icono">{% icono "personas" 20 %}</span><span><span class="fche-mosaico__titulo">Usuarios</span><span class="fche-mosaico__texto">Crear cuentas, asignar rol, restablecer contraseña y desbloquear accesos.</span></span></a>{% endif %}
+  {% if perms.auth.view_group %}<a class="fche-mosaico__item" href="/administracion/roles"><span class="fche-mosaico__icono">{% icono "candado" 20 %}</span><span><span class="fche-mosaico__titulo">Roles y permisos</span><span class="fche-mosaico__texto">Qué puede ver y hacer cada rol (Gestor, Administrador).</span></span></a>{% endif %}
+  <a class="fche-mosaico__item" href="/administracion/catalogos/"><span class="fche-mosaico__icono">{% icono "catalogos" 20 %}</span><span><span class="fche-mosaico__titulo">Catálogos</span><span class="fche-mosaico__texto">Opciones de los formularios: estados, tipos, roles de participación y más.</span></span></a>
+  {% if perms.nucleo.view_auditoria %}<a class="fche-mosaico__item" href="/administracion/auditoria"><span class="fche-mosaico__icono">{% icono "historial" 20 %}</span><span><span class="fche-mosaico__titulo">Auditoría</span><span class="fche-mosaico__texto">Quién hizo qué y cuándo: ingresos, exportaciones, fusiones y respaldos.</span></span></a>{% endif %}
 </div>
 {% endblock %}

@@ -1,26 +1,40 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}{{ titulo }}{% endblock %}
-{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">{{ titulo }}</li>{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">{{ titulo }}</li>{% endblock %}
 {% block contenido %}
 <div id="ficha-completa">
-  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-    <div>
-      <h1 class="h4 mb-1">{{ titulo }}</h1>
-      {% block subtitulo %}{% endblock %}
+  <section class="fche-ficha-cabecera" aria-labelledby="ficha-titulo">
+    <div class="fche-ficha-cabecera__identidad">
+      {% if icono_ficha %}<span class="fche-avatar fche-avatar--lg tono-0" aria-hidden="true">{% icono icono_ficha 26 %}</span>
+      {% else %}<span class="fche-avatar fche-avatar--lg {{ titulo|tono_avatar }}" aria-hidden="true">{{ titulo|iniciales }}</span>{% endif %}
+      <div class="min-w-0">
+        {% if tipo_ficha %}<p class="fche-pagina__antetitulo">{{ tipo_ficha }}</p>{% endif %}
+        <h1 class="fche-ficha-cabecera__titulo" id="ficha-titulo">{{ titulo }}</h1>
+        <div class="fche-ficha-cabecera__meta">{% block subtitulo %}{% endblock %}</div>
+      </div>
     </div>
-    <div class="d-flex gap-2 align-items-center">
-      {% for etiqueta, url in acciones_extra %}<a class="btn btn-outline-primary btn-sm" href="{{ url }}">{{ etiqueta }}</a>{% endfor %}
+    <div class="fche-ficha-cabecera__acciones">
       {% block acciones %}{% endblock %}
-      {% if puede_editar and url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">Editar</a>{% endif %}
-      <a href="{{ url_volver|default:'javascript:history.back()' }}" class="btn btn-outline-secondary btn-sm volver">← Volver</a>
+      {% if puede_editar and url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">{% icono "editar" 15 %}Editar</a>{% endif %}
+      {% for etiqueta, url in acciones_extra|slice:":1" %}<a class="btn btn-outline-secondary btn-sm" href="{{ url }}">{{ etiqueta }}</a>{% endfor %}
+      {% if acciones_extra|length > 1 %}
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Más acciones</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          {% for etiqueta, url in acciones_extra|slice:"1:" %}<li><a class="dropdown-item" href="{{ url }}">{{ etiqueta }}</a></li>{% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <a href="{{ url_volver|default:'javascript:history.back()' }}" class="btn btn-outline-secondary btn-sm volver">{% icono "volver" 15 %}Volver</a>
     </div>
-  </div>
-  <ul class="nav nav-tabs mb-3" hx-boost="false">
-    {% for clave, etiqueta in pestanas %}
-    <li class="nav-item"><a class="nav-link {% if clave == pestana %}active{% endif %}" href="?tab={{ clave }}"
-        hx-get="?tab={{ clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true">{{ etiqueta }}</a></li>
-    {% endfor %}
-  </ul>
-  <div id="pestana">{% if plantilla_pestana %}{% include plantilla_pestana %}{% endif %}</div>
+    <ul class="nav nav-tabs" hx-boost="false" aria-label="Secciones de la ficha">
+      {% for clave, etiqueta in pestanas %}
+      <li class="nav-item"><a class="nav-link {% if clave == pestana %}active{% endif %}" href="?tab={{ clave }}"{% if clave == pestana %} aria-current="page"{% endif %}
+          hx-get="?tab={{ clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true">{{ etiqueta }}</a></li>
+      {% endfor %}
+    </ul>
+  </section>
+  <div class="fche-ficha-cuerpo" id="pestana">{% if plantilla_pestana %}{% include plantilla_pestana %}{% endif %}</div>
 </div>
 {% endblock %}

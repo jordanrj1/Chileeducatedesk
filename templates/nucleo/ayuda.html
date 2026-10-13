@@ -1,6 +1,17 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}Ayuda{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active">Ayuda</li>{% endblock %}
+{% block descripcion %}Manual de uso de la plataforma FCHE: cómo registrar personas, programar actividades, cargar listados y más.{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Ayuda</li>{% endblock %}
 {% block contenido %}
-<article style="max-width:52rem;">{{ manual }}</article>
+<div class="row g-4">
+  {% if indice %}
+  <aside class="col-lg-3 order-lg-2 d-none d-lg-block" aria-label="Índice del manual">
+    <nav class="fche-indice"><p class="fche-filtros__etiqueta mb-2">En esta página</p>{% for ancla, texto in indice %}<a href="#{{ ancla }}">{{ texto }}</a>{% endfor %}</nav>
+  </aside>
+  {% endif %}
+  <article class="col-lg-9 order-lg-1">
+    <div class="fche-tarjeta fche-tarjeta__cuerpo px-4 py-4 fche-prosa">{{ manual }}</div>
+  </article>
+</div>
 {% endblock %}

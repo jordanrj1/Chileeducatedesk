@@ -42,7 +42,21 @@ def _catalogo(nombre_clase, verbose, verbose_plural):
 EstadoActividad = _catalogo("EstadoActividad", "estado de actividad", "estados de actividad")
 EstadoSolicitud = _catalogo("EstadoSolicitud", "estado de solicitud", "estados de solicitud")
 EstadoParticipacion = _catalogo("EstadoParticipacion", "estado de participación", "estados de participación")
-RolParticipacion = _catalogo("RolParticipacion", "rol de participación", "roles de participación")
+
+
+class RolParticipacion(Catalogo):
+    """Rol en una actividad. El grupo separa a quien ejecuta de quien asiste (F22)."""
+
+    GRUPOS = [("ejecutor", "Equipo ejecutor"), ("asistente", "Asistentes"), ("contacto", "Contacto institucional")]
+    grupo = models.CharField(max_length=10, choices=GRUPOS, default="asistente", help_text="Equipo ejecutor (realiza la actividad), asistentes (a quienes va dirigida) o contacto.")
+    campos_extra = ["grupo"]
+
+    class Meta(Catalogo.Meta):
+        verbose_name = "rol de participación"
+        verbose_name_plural = "roles de participación"
+        permissions = [("desactivar_rolparticipacion", "Puede desactivar valores de roles de participación")]
+
+
 TipoOrganizacion = _catalogo("TipoOrganizacion", "tipo de organización", "tipos de organización")
 TipoActividad = _catalogo("TipoActividad", "tipo de actividad", "tipos de actividad")
 TipoContacto = _catalogo("TipoContacto", "tipo de contacto", "tipos de contacto")
@@ -53,6 +67,8 @@ EstadoRegistro = _catalogo("EstadoRegistro", "estado de registro", "estados de r
 TipoLugar = _catalogo("TipoLugar", "tipo de lugar", "tipos de lugar")
 TipoDocumento = _catalogo("TipoDocumento", "tipo de documento", "tipos de documento")
 TipoIntervencion = _catalogo("TipoIntervencion", "tipo de intervención", "tipos de intervención")
+PerfilPersona = _catalogo("PerfilPersona", "perfil de persona", "perfiles de persona")
+AreaTematica = _catalogo("AreaTematica", "área temática", "áreas temáticas")
 
 CATALOGOS = {
     "estado-actividad": EstadoActividad,
@@ -69,6 +85,8 @@ CATALOGOS = {
     "tipo-lugar": TipoLugar,
     "tipo-documento": TipoDocumento,
     "tipo-intervencion": TipoIntervencion,
+    "perfil-persona": PerfilPersona,
+    "area-tematica": AreaTematica,
 }
 
 

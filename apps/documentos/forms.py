@@ -19,13 +19,14 @@ class DocumentoForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = Documento
-        fields = ["nombre", "archivo", "tipo", "fecha", "descripcion", "actividad", "proyecto", "persona", "organizacion", "solicitud", "restringido", "folio", "emisor", "fecha_emision", "fecha_vencimiento"]
-        widgets = {"solicitud": forms.HiddenInput()}
+        fields = ["nombre", "archivo", "tipo", "fecha", "descripcion", "actividad", "proyecto", "persona", "organizacion", "solicitud", "sesion", "restringido", "folio", "emisor", "fecha_emision", "fecha_vencimiento"]
+        widgets = {"solicitud": forms.HiddenInput(), "sesion": forms.HiddenInput()}
 
     def __init__(self, *a, puede_restringir=True, **kw):
         super().__init__(*a, **kw)
         self.fields["tipo"].queryset = TipoDocumento.objects.filter(activo=True)
         self.fields["solicitud"].required = False
+        self.fields["sesion"].required = False
         if self.instance.pk:
             self.fields["archivo"].required = False  # al editar, el archivo se conserva si no se sube otro
         if not puede_restringir:
@@ -33,6 +34,9 @@ class DocumentoForm(BootstrapMixin, forms.ModelForm):
 
     def clean(self):
         d = super().clean()
+        if d.get("sesion"):  # evidencia de una sesión: queda también en su actividad
+            d["actividad"] = d["sesion"].actividad
+            self.instance.actividad = d["actividad"]
         if not any(d.get(n) for n in ("actividad", "proyecto", "persona", "organizacion", "solicitud")):
             raise forms.ValidationError("Asocia el documento a una actividad, proyecto, persona u organización.")
         return d

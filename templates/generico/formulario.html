@@ -1,17 +1,29 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}{{ titulo }}{% endblock %}
-{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">{{ titulo }}</li>{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">{{ titulo }}</li>{% endblock %}
 {% block contenido %}
-<h1 class="h4 mb-3">{{ titulo }}</h1>
-<form method="post" enctype="multipart/form-data" data-aviso-cambios novalidate>
+<header class="fche-pagina">
+  <div class="fche-pagina__texto">
+    <h1 class="fche-pagina__titulo">{{ titulo }}</h1>
+    <p class="fche-pagina__bajada">{% block bajada %}{{ bajada|default:"Los campos marcados con * son obligatorios. Si se interrumpe la conexión, lo escrito se recupera al volver." }}{% endblock %}</p>
+  </div>
+</header>
+{% block antes_form %}{% endblock %}
+<form method="post" enctype="multipart/form-data" data-aviso-cambios novalidate class="fche-form fche-tarjeta">
   {% csrf_token %}
   {% if version_registro %}<input type="hidden" name="_version" value="{{ version_registro }}">{% endif %}
-  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-  {% block campos %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endblock %}
-  {% block extra_form %}{% endblock %}
-  <div class="d-flex gap-2 mt-3">
-    <button type="submit" class="btn btn-primary">Guardar</button>
-    <a href="{{ volver_url }}" class="btn btn-outline-secondary volver">← Volver</a>
+  <div class="fche-form__cuerpo">
+    {% if form.non_field_errors %}<div class="alert alert-danger d-flex gap-2" role="alert">{% icono "error" 18 %}<div>{{ form.non_field_errors }}</div></div>
+    {% elif form.errors %}<div class="alert alert-danger d-flex gap-2 fche-errores" role="alert">{% icono "error" 18 %}<div>Revisa {{ form.errors|length }} campo{{ form.errors|length|pluralize }} marcado{{ form.errors|length|pluralize }} en rojo.</div></div>{% endif %}
+    {% block campos %}{% include "generico/_campos.html" %}{% endblock %}
+    {% block extra_form %}{% endblock %}
+  </div>
+  <div class="fche-form__acciones">
+    <button type="submit" class="btn btn-primary">{% block texto_guardar %}Guardar{% endblock %}</button>
+    {% block acciones_form %}{% endblock %}
+    <a href="{{ volver_url }}" class="btn btn-outline-secondary volver">Cancelar</a>
+    <span class="fche-form__nota d-none d-md-inline">Los cambios quedan en el historial</span>
   </div>
 </form>
 {% block despues_form %}{% endblock %}

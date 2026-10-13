@@ -23,6 +23,7 @@ class MovimientoLista(ListaBase):
     model = Movimiento
     permission_required = "finanzas.view_movimiento"
     titulo = "Finanzas"
+    descripcion = "Gastos, aportes y donaciones asociados a cada proyecto."
     url_crear = "/finanzas/nuevo"
     permiso_crear = "finanzas.add_movimiento"
     etiqueta_crear = "+ Nuevo movimiento"

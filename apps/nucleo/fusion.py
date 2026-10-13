@@ -11,7 +11,8 @@ from .auditoria import registrar
 
 # Datos que se copian a la ficha que queda si allí están vacíos
 COMPLETAR = {
-    "Persona": ["apellido_paterno", "apellido_materno", "profesion", "sitio_web", "origen_id", "tipo_documento", "numero_documento"],
+    "Persona": ["apellido_paterno", "apellido_materno", "profesion", "sitio_web", "origen_id", "tipo_documento", "numero_documento",
+                "nombre_social", "fecha_nacimiento", "nacionalidad", "nivel_educacional", "situacion_ocupacional", "habilidades", "idiomas", "canal_preferido_id"],
     "Organizacion": ["otro_identificador", "descripcion", "sitio_web", "direccion_id", "naturaleza_juridica", "domicilio_legal", "vigencia_desde", "vigencia_hasta"],
 }
 
@@ -72,6 +73,9 @@ def fusionar(origen, destino, usuario, motivo):
         if not getattr(destino, c) and getattr(origen, c):
             setattr(destino, c, getattr(origen, c))
     destino.save()
+    for m2m in ("perfiles", "areas_interes"):  # F22: perfiles e intereses se suman
+        if hasattr(destino, m2m):
+            getattr(destino, m2m).add(*getattr(origen, m2m).all())
     # La ficha de origen se desactiva y queda la nota
     origen.refresh_from_db()
     origen.activo = False

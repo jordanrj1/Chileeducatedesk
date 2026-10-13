@@ -1,10 +1,17 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}{{ titulo }}{% endblock %}
-{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active">{{ titulo }}</li>{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">{{ titulo }}</li>{% endblock %}
 {% block contenido %}
-<div class="d-flex justify-content-between align-items-start mb-3"><h1 class="h4">{{ titulo }}</h1>
-<div class="d-flex gap-2">{% if url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">Editar</a>{% endif %}
-{% if extra.marcar_cumplida %}<form method="post" action="{{ extra.marcar_cumplida }}">{% csrf_token %}<button class="btn btn-outline-success btn-sm">Marcar próxima acción como cumplida</button></form>{% endif %}
-<a class="btn btn-outline-secondary btn-sm volver" href="javascript:history.back()">← Volver</a></div></div>
-<dl class="row" style="max-width:48rem;">{% for etiqueta, valor in filas %}<dt class="col-sm-4">{{ etiqueta }}</dt><dd class="col-sm-8">{{ valor|linebreaksbr }}</dd>{% endfor %}</dl>
+<header class="fche-pagina">
+  <div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">{{ titulo }}</h1></div>
+  <div class="fche-pagina__acciones">
+    {% if extra.marcar_cumplida %}<form method="post" action="{{ extra.marcar_cumplida }}">{% csrf_token %}<button class="btn btn-outline-success btn-sm">{% icono "ok" 15 %}Marcar próxima acción como cumplida</button></form>{% endif %}
+    {% if url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">{% icono "editar" 15 %}Editar</a>{% endif %}
+    <a class="btn btn-outline-secondary btn-sm volver" href="javascript:history.back()">{% icono "volver" 15 %}Volver</a>
+  </div>
+</header>
+<div class="fche-tarjeta fche-tarjeta__cuerpo" style="max-width:56rem;">
+  <dl class="fche-datos">{% for etiqueta, valor in filas %}<div class="{% if valor|length > 80 %}fche-datos__ancho{% endif %}"><dt>{{ etiqueta }}</dt><dd>{{ valor|default:"—"|linebreaksbr }}</dd></div>{% endfor %}</dl>
+</div>
 {% endblock %}

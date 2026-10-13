@@ -3,7 +3,7 @@
 {% block campos %}
 {% for campo in form %}
   {% if campo.name == "persona" %}
-  <div class="mb-3"><label class="form-label" for="q_persona">Buscar persona</label>
+  <div class="fche-campo"><label class="form-label" for="q_persona">Buscar persona</label>
     <input class="form-control" id="q_persona" name="q_persona" type="search" placeholder="Nombre o RUT…" hx-get="/administracion/usuarios/personas" hx-trigger="input changed delay:300ms" hx-target="#id_persona"></div>
   {% endif %}
   {% include "generico/_campo.html" %}
@@ -12,7 +12,7 @@
 
 {% block extra_form %}
 {% if editando %}
-<div class="d-flex flex-wrap gap-2 mt-3">
+<div class="d-flex flex-wrap gap-2 pt-3 mt-2 mb-3 border-top">
   <a class="btn btn-outline-secondary btn-sm" href="{% url 'cuentas_admin:usuario_clave' editando.pk %}">Restablecer contraseña</a>
   {% if bloqueado %}<button class="btn btn-outline-warning btn-sm" type="submit" form="form-desbloquear">Desbloquear acceso</button>{% endif %}
 </div>

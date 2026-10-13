@@ -1,7 +1,12 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}Sin permiso{% endblock %}
+{% block migas %}{% endblock %}
 {% block contenido %}{% block publico %}
-<h1 class="h4">403 · Sin permiso</h1>
-<p>No tienes permiso para ver esta página.</p>
-<a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Volver al inicio</a>
+<div class="fche-error">
+  <div class="fche-error__codigo">403</div>
+  <h1>No tienes permiso para ver esta página</h1>
+  <p>Tu rol no incluye esta sección. Si crees que deberías tener acceso, pídeselo al Administrador.</p>
+  <a href="/dashboard" class="btn btn-primary mt-2">{% icono "inicio" 16 %}Volver al inicio</a>
+</div>
 {% endblock %}{% endblock %}

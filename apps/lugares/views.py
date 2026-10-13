@@ -18,6 +18,7 @@ class LugarLista(ListaBase):
     model = Lugar
     permission_required = "lugares.view_lugar"
     titulo = "Lugares"
+    descripcion = "Espacios donde se realizan las actividades, con su capacidad y ubicación."
     url_crear = "/lugares/nuevo"
     permiso_crear = "lugares.add_lugar"
     etiqueta_crear = "+ Nuevo lugar"
@@ -141,6 +142,7 @@ class LugarAlternar(AlternarActivoBase):
 
 class LugarFicha(FichaBase):
     model = Lugar
+    template_name = "lugares/ficha.html"
     permission_required = "lugares.view_lugar"
     breadcrumb = [("Lugares", "/lugares")]
     permiso_editar = "lugares.change_lugar"

@@ -1,7 +1,12 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}No encontrado{% endblock %}
+{% block migas %}{% endblock %}
 {% block contenido %}{% block publico %}
-<h1 class="h4">404 · No encontrado</h1>
-<p>La página que buscas no existe.</p>
-<a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Volver al inicio</a>
+<div class="fche-error">
+  <div class="fche-error__codigo">404</div>
+  <h1>No encontramos esta página</h1>
+  <p>La página que buscas no existe o el enlace está incompleto. Prueba con el buscador o vuelve al inicio.</p>
+  <div class="d-flex gap-2 mt-2"><a href="/dashboard" class="btn btn-primary">{% icono "inicio" 16 %}Volver al inicio</a><a href="/buscar" class="btn btn-outline-secondary">{% icono "buscar" 16 %}Buscar</a></div>
+</div>
 {% endblock %}{% endblock %}

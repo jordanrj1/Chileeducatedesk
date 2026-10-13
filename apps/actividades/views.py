@@ -25,7 +25,7 @@ from . import servicios
 from .forms import (
     SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
 )
-from .models import Actividad, AgendaActividad, Participacion
+from .models import Actividad, ActividadComunidad, AgendaActividad, Participacion, SesionActividad, SesionAsistencia
 from .reglas import TRANSICIONES, ReglaNegocio, antes_de_la_fecha, personas_que_ocupan, revisar
 
 
@@ -58,6 +58,7 @@ class ActividadLista(ListaBase):
     model = Actividad
     permission_required = "actividades.view_actividad"
     titulo = "Actividades"
+    descripcion = "Talleres, charlas y jornadas: su estado, fecha, lugar y responsable."
     url_crear = "/actividades/nueva"
     permiso_crear = "actividades.add_actividad"
     etiqueta_crear = "+ Nueva actividad"
@@ -131,9 +132,19 @@ class ActividadNueva(Permiso403Mixin, CreateView):
             ini["actividad_padre"] = int(self.request.GET["padre"])
         return ini
 
+    def comunidad_inicial(self):
+        from apps.comunidades.models import Comunidad
+
+        valor = self.request.GET.get("comunidad") or self.request.POST.get("comunidad_destino")
+        return Comunidad.objects.filter(pk=valor, activo=True).first() if str(valor or "").isdigit() else None
+
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ctx.update(titulo="Nueva actividad", volver_url=self.request.META.get("HTTP_REFERER") or "/actividades", breadcrumb=[("Actividades", "/actividades")])
+        comunidad = self.comunidad_inicial()
+        if comunidad:
+            ctx["bajada"] = f"Dirigida a la comunidad «{comunidad}» ({comunidad.territorio}). Los campos marcados con * son obligatorios."
+            ctx["comunidad_destino"] = comunidad
         return ctx
 
     def form_valid(self, form):
@@ -141,6 +152,10 @@ class ActividadNueva(Permiso403Mixin, CreateView):
         obj.creado_por = self.request.user
         obj.estado = EstadoActividad.objects.get(codigo="pendiente")
         obj.save()
+        form.save_m2m()
+        comunidad = self.comunidad_inicial()
+        if comunidad:
+            ActividadComunidad.objects.create(actividad=obj, comunidad=comunidad)
         from apps.documentos.origen import registrar_origen
 
         registrar_origen(obj, self.request.user)
@@ -166,20 +181,22 @@ class ActividadFicha(FichaBase):
     model = Actividad
     permission_required = "actividades.view_actividad"
     template_name = "actividades/ficha.html"
-    pestanas_segunda_fase = {"beneficiarios": "beneficiarios", "sesiones": "sesiones"}
+    pestanas_segunda_fase = {"beneficiarios": "beneficiarios"}
     breadcrumb = [("Actividades", "/actividades")]
     permiso_editar = "actividades.change_actividad"
     pestanas = [
         ("info", "Información", "actividades/pestanas/info.html"),
+        ("publico", "Público y comunidades", "actividades/pestanas/publico.html"),
         ("participantes", "Participantes", "actividades/pestanas/participantes.html"),
         ("beneficiarios", "Beneficiarios", "actividades/pestanas/participantes.html"),
         ("organizaciones", "Organizaciones", "generico/_hijos.html"),
-        ("sesiones", "Sesiones", "generico/_hijos.html"),
+        ("sesiones", "Sesiones y minutas", "actividades/pestanas/sesiones.html"),
         ("agenda", "Agenda", "actividades/pestanas/agenda.html"),
         ("coordinacion", "Coordinación", "actividades/pestanas/coordinacion.html", "coordinacion.view_interaccion"),
         ("asistencia", "Asistencia", "actividades/pestanas/asistencia.html"),
         ("documentos", "Documentos", "actividades/pestanas/documentos.html", "documentos.view_documento"),
         ("resultados", "Resultados", "actividades/pestanas/resultados.html"),
+        ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "actividades/pestanas/historial.html", "actividades.view_historicalactividad"),
     ]
@@ -220,16 +237,41 @@ class ActividadFicha(FichaBase):
     def _participantes(self, beneficiarios):
         from apps.nucleo.fases import modulo_activo
 
-        qs = self.object.participaciones.select_related("persona", "rol", "estado")
+        qs = self.object.participaciones.select_related("persona", "rol", "estado", "institucion", "comunidad")
         if not modulo_activo("beneficiarios"):
             return list(qs) if not beneficiarios else []  # sin pestaña aparte: todos van en Participantes
         return [p for p in qs if p.es_beneficiario == beneficiarios]
 
     def ctx_participantes(self):
-        return {"participaciones": self._participantes(False), "grupo": "participantes", "titulo_pestana": "Participantes", "capacidad_alerta": self._capacidad()}
+        partes = self._participantes(False)
+        from apps.nucleo.models import RolParticipacion
+
+        grupos = [(etiqueta, [p for p in partes if p.rol.grupo == clave]) for clave, etiqueta in RolParticipacion.GRUPOS]
+        return {"participaciones": partes, "grupos_participacion": [(e, ps) for e, ps in grupos if ps], "grupo": "participantes",
+                "titulo_pestana": "Participantes", "capacidad_alerta": self._capacidad()}
+
+    def ctx_publico(self):
+        a = self.object
+        pk = a.pk
+        destinos = a.comunidades_destino.select_related("comunidad__comuna", "comunidad__sector")
+        return {
+            "destinos": [{
+                "texto": str(d.comunidad), "detalle": " · ".join(x for x in [d.comunidad.territorio, f"{d.beneficiarios_estimados} beneficiarios estimados" if d.beneficiarios_estimados else "", d.observaciones] if x),
+                "vigente": d.vigente, "url_editar": reverse("actividades:comunidades_editar", args=[pk, d.pk]), "url_alternar": reverse("actividades:comunidades_alternar", args=[pk, d.pk]),
+            } for d in destinos],
+            "url_nueva_comunidad": reverse("actividades:comunidades_nuevo", args=[pk]),
+            "territorios_publico": a.territorios.filter(vigente=True).select_related("region", "provincia", "comuna", "sector"),
+        }
+
+    def ctx_alcance(self):
+        from .alcance import alcance
+
+        return {"alcance": alcance([self.object]), "contexto_alcance": "esta actividad"}
 
     def ctx_beneficiarios(self):
-        return {"participaciones": self._participantes(True), "grupo": "beneficiarios", "titulo_pestana": "Beneficiarios", "capacidad_alerta": None}
+        partes = self._participantes(True)
+        return {"participaciones": partes, "grupos_participacion": [("Beneficiarios", partes)] if partes else [], "grupo": "beneficiarios",
+                "titulo_pestana": "Beneficiarios", "capacidad_alerta": None}
 
     def _capacidad(self):
         ag = self.object.agenda_vigente
@@ -261,12 +303,9 @@ class ActividadFicha(FichaBase):
         return {"titulo_pestana": "Organizaciones", "etiqueta_nuevo": "Organización", "url_nuevo": reverse("actividades:organizaciones_nuevo", args=[pk]), "hijos": hijos, "vacio": "Sin organizaciones relacionadas."}
 
     def ctx_sesiones(self):
-        pk = self.object.pk
-        hijos = [{
-            "texto": str(s), "detalle": " · ".join(x for x in [s.fecha.strftime("%d-%m-%Y") if s.fecha else "", f"{s.hora_inicio:%H:%M}" if s.hora_inicio else "", str(s.lugar) if s.lugar else "", s.observaciones] if x),
-            "vigente": s.vigente, "url_editar": reverse("actividades:sesiones_editar", args=[pk, s.pk]), "url_alternar": reverse("actividades:sesiones_alternar", args=[pk, s.pk]),
-        } for s in self.object.sesiones.all()]
-        return {"titulo_pestana": "Sesiones", "etiqueta_nuevo": "Sesión", "url_nuevo": reverse("actividades:sesiones_nuevo", args=[pk]), "hijos": hijos, "vacio": "Esta actividad no tiene sesiones."}
+        sesiones = self.object.sesiones.select_related("lugar").prefetch_related("facilitadores__persona", "asistencias", "evidencias")
+        return {"sesiones": sesiones, "url_nueva_sesion": reverse("actividades:sesiones_nuevo", args=[self.object.pk]),
+                "puede_sesiones": self.request.user.has_perm("actividades.add_sesionactividad") and self.object.estado.codigo != "realizada"}
 
     def ctx_agenda(self):
         return {"versiones": self.object.agendas.select_related("lugar", "estado", "creado_por")}
@@ -827,3 +866,52 @@ class OrganizacionUsar(_AccionActividad):
         ActividadOrganizacion.objects.get_or_create(actividad=a, organizacion=org, tipo_intervencion=None)
         messages.success(request, f"{org} agregada a la actividad.")
         return self.volver(a, "organizaciones")
+
+
+class SesionVista(Permiso403Mixin, View):
+    """Minuta de una sesión: lo que se hizo, avances, asistencia por sesión y evidencias (F22)."""
+
+    permission_required = "actividades.view_sesionactividad"
+
+    def _sesion(self, pk, sid):
+        return get_object_or_404(SesionActividad.objects.select_related("actividad__estado", "lugar", "redactada_por"), pk=sid, actividad_id=pk)
+
+    def get(self, request, pk, sid):
+        s = self._sesion(pk, sid)
+        a = s.actividad
+        marcadas = {x.participacion_id: x.asistio for x in s.asistencias.all()}
+        partes = [p for p in a.participaciones.select_related("persona", "rol", "estado") if p.estado.codigo != "registro_erroneo"]
+        filas = [(p, marcadas.get(p.pk)) for p in partes]
+        docs = s.evidencias.select_related("tipo")
+        if not request.user.has_perm("documentos.ver_restringido"):
+            docs = docs.filter(restringido=False)
+        return render(request, "actividades/sesion.html", {
+            "sesion": s, "actividad": a, "filas": filas, "evidencias": docs, "facilitadores": [f.persona for f in s.facilitadores.select_related("persona")],
+            "titulo": f"{s} · {a.nombre}", "breadcrumb": [("Actividades", "/actividades"), (a.nombre, f"{a.get_absolute_url()}?tab=sesiones")],
+            "puede_editar": request.user.has_perm("actividades.change_sesionactividad") and a.estado.codigo != "realizada",
+            "puede_asistencia": request.user.has_perm("actividades.change_participacion"),
+            "presentes": sum(1 for _, v in filas if v is True),
+        })
+
+
+class SesionAsistenciaVista(Permiso403Mixin, View):
+    permission_required = "actividades.change_participacion"
+
+    def post(self, request, pk, sid):
+        s = get_object_or_404(SesionActividad, pk=sid, actividad_id=pk)
+        n = 0
+        with transaction.atomic():
+            for p in s.actividad.participaciones.all():
+                v = request.POST.get(f"asistio_{p.pk}")
+                if v not in ("si", "no", ""):
+                    continue
+                valor = {"si": True, "no": False, "": None}[v]
+                fila, creada = SesionAsistencia.objects.get_or_create(sesion=s, participacion=p, defaults={"asistio": valor})
+                if creada:
+                    n += valor is not None
+                elif fila.asistio != valor:
+                    fila.asistio = valor
+                    fila.save()
+                    n += 1
+        messages.success(request, f"Asistencia de la sesión guardada ({n} cambios).")
+        return HttpResponseRedirect(s.get_absolute_url())

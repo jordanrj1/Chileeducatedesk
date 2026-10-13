@@ -1,21 +1,25 @@
-<div class="d-flex justify-content-between align-items-center mb-2">
-  <h2 class="h6 mb-0">{{ titulo_pestana }}</h2>
+{% load fche %}{% if titulo_pestana or puede_agregar and url_nuevo %}
+<div class="fche-seccion">
+  {% if titulo_pestana %}<h2 class="h6 mb-0">{{ titulo_pestana }}{% if hijos %} <span class="fche-contador">{{ hijos|length }}</span>{% endif %}</h2>{% else %}<span></span>{% endif %}
   {% if puede_agregar and url_nuevo %}<a class="btn btn-primary btn-sm" href="{{ url_nuevo }}">+ {{ etiqueta_nuevo }}</a>{% endif %}
 </div>
+{% endif %}
 {% if hijos %}
-<ul class="list-group">
+<ul class="fche-items">
   {% for h in hijos %}
-  <li class="list-group-item d-flex justify-content-between align-items-start {% if not h.vigente %}text-muted{% endif %}">
-    <div>
-      <div>{{ h.texto }}{% if h.badge %} <span class="badge text-bg-primary">{{ h.badge }}</span>{% endif %}{% if not h.vigente %} <span class="badge text-bg-secondary">No vigente</span>{% endif %}</div>
-      {% if h.detalle %}<div class="small text-muted">{{ h.detalle }}</div>{% endif %}
+  <li class="{% if not h.vigente %}is-inactivo text-muted{% endif %}">
+    <div class="fche-items__texto">
+      <div class="fche-items__titulo">{{ h.texto }}{% if h.badge %} <span class="badge text-bg-primary">{{ h.badge }}</span>{% endif %}{% if not h.vigente %} <span class="badge text-bg-secondary">No vigente</span>{% endif %}</div>
+      {% if h.detalle %}<div class="fche-items__detalle">{{ h.detalle }}</div>{% endif %}
     </div>
     {% if puede_agregar and h.url_editar %}
-    <div class="d-flex gap-1">
-      <a class="btn btn-outline-primary btn-sm" href="{{ h.url_editar }}">Editar</a>
+    <div class="fche-items__acciones">
+      <a class="btn btn-outline-secondary btn-sm" href="{{ h.url_editar }}">{% icono "editar" 14 %}Editar</a>
       {% if h.url_alternar %}<form method="post" action="{{ h.url_alternar }}">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm">{% if h.vigente %}Marcar no vigente{% else %}Marcar vigente{% endif %}</button></form>{% endif %}
     </div>{% endif %}
   </li>
   {% endfor %}
 </ul>
-{% else %}<p class="text-muted">{{ vacio|default:"Sin registros." }}</p>{% endif %}
+{% else %}
+<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "dato_vacio" 18 %}</span><p class="fche-vacio__texto mb-0">{{ vacio|default:"Sin registros." }}</p></div>
+{% endif %}

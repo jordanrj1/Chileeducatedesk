@@ -1,24 +1,26 @@
-{% if not archivo_existe %}<div class="alert alert-danger">El archivo no se encuentra en el servidor. Quedó registrado; restáuralo desde el respaldo o reemplázalo.</div>{% endif %}
-{% if object.reemplaza %}<p class="small">Versión anterior: <a href="{{ object.reemplaza.get_absolute_url }}">{{ object.reemplaza.nombre }} ({{ object.reemplaza.subido_en|date:"d-m-Y" }})</a></p>{% endif %}
+{% load fche %}{% if not archivo_existe %}<div class="alert alert-danger d-flex gap-2">{% icono "error" 18 %}<div>El archivo no se encuentra en el servidor. Quedó registrado; restáuralo desde el respaldo o reemplázalo.</div></div>{% endif %}
 {% for v in versiones_siguientes %}<div class="alert alert-info py-2">Esta versión fue reemplazada: <a href="{{ v.get_absolute_url }}">ver la versión actual</a>.</div>{% endfor %}
-<dl class="row" style="max-width:48rem;">
-  <dt class="col-sm-3">Tipo</dt><dd class="col-sm-9">{{ object.tipo }}</dd>
-  <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">{{ object.fecha|date:"d-m-Y" }}</dd>
-  <dt class="col-sm-3">Descripción</dt><dd class="col-sm-9">{{ object.descripcion|default:"—"|linebreaksbr }}</dd>
-  <dt class="col-sm-3">Emisor / folio</dt><dd class="col-sm-9">{{ object.emisor|default:"—" }} · {{ object.folio|default:"—" }}{% if object.fecha_emision %} · emitido {{ object.fecha_emision|date:"d-m-Y" }}{% endif %}</dd>
-  <dt class="col-sm-3">Actividad</dt><dd class="col-sm-9">{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a>{% else %}—{% endif %}</dd>
-  <dt class="col-sm-3">Proyecto</dt><dd class="col-sm-9">{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd>
-  <dt class="col-sm-3">Persona</dt><dd class="col-sm-9">{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% else %}—{% endif %}</dd>
-  <dt class="col-sm-3">Organización</dt><dd class="col-sm-9">{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd>
-  <dt class="col-sm-3">Vencimiento</dt><dd class="col-sm-9">{{ object.fecha_vencimiento|date:"d-m-Y"|default:"—" }}{% if object.vencido %} <span class="badge text-bg-danger">Vencido</span>{% endif %}</dd>
-  <dt class="col-sm-3">Subido</dt><dd class="col-sm-9">{{ object.subido_en|date:"d-m-Y H:i" }} · {{ object.subido_por|default:"—" }}</dd>
-  <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">{% if object.activo %}Vigente{% else %}Archivado{% endif %}{% if object.restringido %} · Restringido{% endif %}</dd>
+<div class="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
+  <a class="btn btn-primary btn-sm" href="{% url 'documentos:archivo' object.pk %}">{% icono "descargar" 15 %}Descargar archivo</a>
+  {% if perms.personas.add_persona or perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:transcribir' object.pk %}">Transcribir datos de este documento</a>{% endif %}
+  {% if puede_agregar and object.activo %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'documentos:reemplazar' object.pk %}">Reemplazar archivo</a>{% endif %}
+</div>
+<dl class="fche-datos mb-4">
+  <div><dt>Tipo</dt><dd>{{ object.tipo }}</dd></div>
+  <div><dt>Fecha</dt><dd>{{ object.fecha|date:"d-m-Y" }}</dd></div>
+  <div><dt>Estado</dt><dd>{% if object.activo %}{% estado "vigente" "Vigente" %}{% else %}{% estado "anterior" "Archivado" %}{% endif %}{% if object.restringido %} <span class="badge text-bg-warning">🔒 Restringido</span>{% endif %}</dd></div>
+  <div><dt>Vencimiento</dt><dd>{{ object.fecha_vencimiento|date:"d-m-Y"|default:"—" }}{% if object.vencido %} <span class="badge text-bg-danger">Vencido</span>{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
+  <div><dt>Emisor / folio</dt><dd>{{ object.emisor|default:"—" }} · {{ object.folio|default:"—" }}{% if object.fecha_emision %} · emitido {{ object.fecha_emision|date:"d-m-Y" }}{% endif %}</dd></div>
+  <div><dt>Actividad</dt><dd>{% if object.actividad %}<a href="{{ object.actividad.get_absolute_url }}">{{ object.actividad }}</a>{% else %}—{% endif %}</dd></div>
+  <div><dt>Proyecto</dt><dd>{% if object.proyecto %}<a href="{{ object.proyecto.get_absolute_url }}">{{ object.proyecto }}</a>{% else %}—{% endif %}</dd></div>
+  <div><dt>Persona</dt><dd>{% if object.persona %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a>{% else %}—{% endif %}</dd></div>
+  <div><dt>Organización</dt><dd>{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd></div>
+  <div><dt>Subido</dt><dd>{{ object.subido_en|date:"d-m-Y H:i" }} · {{ object.subido_por|default:"—" }}</dd></div>
+  {% if object.reemplaza %}<div><dt>Versión anterior</dt><dd><a href="{{ object.reemplaza.get_absolute_url }}">{{ object.reemplaza.nombre }} ({{ object.reemplaza.subido_en|date:"d-m-Y" }})</a></dd></div>{% endif %}
 </dl>
-<a class="btn btn-primary btn-sm" href="{% url 'documentos:archivo' object.pk %}">Descargar archivo</a>
-{% if perms.personas.add_persona or perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:transcribir' object.pk %}">Transcribir datos de este documento</a>{% endif %}
 {% if puede_agregar %}
-{% if object.activo %}<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:reemplazar' object.pk %}">Reemplazar archivo</a>{% endif %}
-<form class="d-inline-flex gap-1 mt-2" method="post" action="{% url 'documentos:alternar' object.pk %}">{% csrf_token %}
-  {% if object.activo %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo para archivar" required style="max-width:16rem;">{% endif %}
-  <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Archivar{% else %}Restaurar{% endif %}</button></form>{% endif %}
-{% if origenes %}<h2 class="h6 mt-4">Datos que se tomaron de este documento</h2><ul class="list-group">{% for o in origenes %}<li class="list-group-item small">{{ o.objeto }} — {{ o.get_estado_verificacion_display }}</li>{% endfor %}</ul>{% endif %}
+<form class="d-flex flex-wrap gap-2 align-items-center p-3 rounded-3 border bg-light-subtle" method="post" action="{% url 'documentos:alternar' object.pk %}" style="max-width:40rem;">{% csrf_token %}
+  {% if object.activo %}<input class="form-control form-control-sm flex-grow-1" name="motivo" placeholder="Motivo para archivar" aria-label="Motivo para archivar" required style="max-width:22rem;">{% endif %}
+  <button class="btn btn-outline-secondary btn-sm">{% icono "archivar" 15 %}{% if object.activo %}Archivar{% else %}Restaurar{% endif %}</button></form>{% endif %}
+{% if origenes %}<h2 class="h6 mt-4">Datos que se tomaron de este documento</h2><ul class="fche-items">{% for o in origenes %}<li class="small"><span>{{ o.objeto }}</span><span class="text-muted">{{ o.get_estado_verificacion_display }}</span></li>{% endfor %}</ul>{% endif %}

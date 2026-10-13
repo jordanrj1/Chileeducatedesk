@@ -27,16 +27,30 @@ Fundación Chile Edúcate (FCHE). Práctica profesional: 14-09-2026 al 30-11-202
 Fuentes, de más a menos reciente: **«FCHE — Requerimientos por módulo»** (HU con IDs AC, US, TE, PE…; trazabilidad en `specs/trazabilidad_requerimientos.md`), el **tablero de GitHub** (tarjetas F01–F21) y este documento. Donde difieren, prevalece el más reciente.
 
 - **Finalizar actividad** exige asistencia (o «sin registro» explícito) y resultado, y la deja **realizada** y de solo lectura. **No existe el estado «cerrada».** Reabrir: permiso `reabrir_actividad`, que nadie tiene por defecto [V#4].
-- **Segunda fase** (reuniones con asistentes y compromisos, tareas, sesiones, beneficiarios, verificaciones, finanzas): está construida pero **oculta** con `SEGUNDA_FASE=False` en `.env`. Con `True` se muestra. Sin ella, la reunión es un canal de interacción y el panel muestra las próximas acciones.
+- **Segunda fase** (reuniones con asistentes y compromisos, tareas, beneficiarios, verificaciones, finanzas): está construida pero **oculta** con `SEGUNDA_FASE=False` en `.env`. Con `True` se muestra. Sin ella, la reunión es un canal de interacción y el panel muestra las próximas acciones. **Las sesiones (bitácora con minuta) son siempre visibles desde F22 (13-10-2026).**
+- **F22 Ingesta ampliada (13-10-2026, decidido con el usuario; spec en `specs/f22/`):**
+  - persona con identificación, perfil, intereses y habilidades;
+  - **datos sensibles en sección restringida**: permiso `ver_sensibles`, consentimiento obligatorio y ajuste `DATOS_SENSIBLES`;
+  - consentimientos (se revocan, no se borran) y apoderados;
+  - formación del estudiante ampliada;
+  - **Comunidad como registro propio** (app `comunidades`) con padrón;
+  - actividad con público objetivo, comunidades destinatarias y equipo ejecutor frente a asistentes (grupo del rol);
+  - participación con institución, comunidad y horas;
+  - pestaña **Alcance** en actividad, proyecto y comunidad;
+  - planillas con columnas nuevas.
+  Amplía la sección 7 con autorización expresa del usuario; lo [V] queda listado en la spec.
 - **Proyecto** es agrupador opcional con su ficha (equipo, organizaciones, actividades) [V#7]. Ninguna actividad lo exige.
 - **Catálogos:** el Gestor agrega y edita valores; **desactivar** es solo del Administrador.
 - **Cuentas:** desde la pantalla, una cuenta se crea solo para una persona ya registrada. La primera cuenta se crea por consola (`crear_usuario`).
 - **Territorio:** dirección en cascada y nombres alternativos de sector (`SectorAlias`).
 - **Documentos:** se puede asociar un documento existente a otra ficha sin copiar el archivo; tienen fecha de vencimiento; transcribir datos con el documento al lado (origen «por revisar»).
 - **Escenarios hipotéticos:** el catálogo de escenarios se aplicó; estado de cada ID en `docs/escenarios_estado.md`. Pruebas con el ID del escenario en `apps/nucleo/test_escenarios_catalogo.py`.
-- **Ajustes en `.env` además de los anteriores:** `MODULOS_SEGUNDA_FASE`, `ROLES_FUERA_DE_CAPACIDAD`, `FERIADOS`, `INTENTOS_MAXIMOS`, `BLOQUEO_MINUTOS`, `SIN_RESPUESTA_DIAS`, `RESPALDO_MAX_DIAS`, `CONTACTO_ADMINISTRADOR`.
+- **Ajustes en `.env` además de los anteriores:** `DATOS_SENSIBLES`, `MODULOS_SEGUNDA_FASE`, `ROLES_FUERA_DE_CAPACIDAD`, `FERIADOS`, `INTENTOS_MAXIMOS`, `BLOQUEO_MINUTOS`, `SIN_RESPUESTA_DIAS`, `RESPALDO_MAX_DIAS`, `CONTACTO_ADMINISTRADOR`.
 - **Commits:** sin líneas de coautoría ni marcas de herramientas.
-- Apps además de la sección 6: `proyectos`, `coordinacion`, `finanzas`, `importaciones`.
+- Apps además de la sección 6: `proyectos`, `coordinacion`, `finanzas`, `importaciones`, `comunidades`.
+- **Interfaz:**
+  - sistema de diseño propio en `static/css/fche.css` (tokens, componentes) e iconos SVG propios en `{% load fche %}` (`icono`, `estado`, `celda`, `iniciales`);
+  - formularios por secciones con el atributo `secciones` del form (BootstrapMixin).
 - Sigue sin estar en el repositorio el Excel con las filas en amarillo ni el archivo oficial CUT.
 
 Cómo trabajar: `.venv/bin/python -m pytest -q` (Mac) o `.venv\Scripts\python -m pytest -q` (Windows). Uso: `docs/manual_de_uso.md`; entrega: `docs/entrega.md`; specs: `specs/fXX/`.

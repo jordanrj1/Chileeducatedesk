@@ -18,10 +18,16 @@ def test_cargar_demo_exige_confirmacion_y_es_ficticio():
     from apps.actividades.models import Actividad
     from apps.personas.models import Persona
 
-    assert Persona.objects.count() == 6 and Actividad.objects.count() == 2
+    from apps.actividades.models import SesionActividad
+    from apps.comunidades.models import Comunidad
+
+    assert Persona.objects.count() == 9 and Actividad.objects.count() == 2  # 6 + 3 vecinas de la comunidad (F22)
     assert all("Demo" in p.apellido_paterno for p in Persona.objects.all())
+    assert Comunidad.objects.get().miembros.count() == 3 and SesionActividad.objects.get().acuerdos
     with pytest.raises(CommandError):
         call_command("cargar_demo", "--si-estoy-seguro")  # no pisa datos existentes
+    with pytest.raises(CommandError):
+        call_command("cargar_demo", "--si-estoy-seguro", "--ampliar")  # ya tiene comunidades
 
 
 @pytest.mark.skipif(not _buscar_pg_dump(), reason="pg_dump no está disponible en este equipo")

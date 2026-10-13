@@ -68,3 +68,17 @@ Estado al 12-10-2026. ✅ hecho y probado · 🟡 hecho con decisión por valida
 | Avisos de caducidad | ✅ | panel: «Datos por vencer» (documentos, verificaciones, vigencia legal) |
 | Derechos sobre los datos | 🟡 | acceso: exportar en Excel ✅ · rectificación: edición ✅ · eliminación: por decidir |
 | Continuidad | 🟡 | manual y guía de entrega listos; falta definir el Administrador |
+
+## F22 — Ingesta ampliada (pedido del 13-10-2026)
+| Necesidad | Estado | Dónde |
+|---|---|---|
+| Datos relevantes de la persona (nacimiento, perfil, intereses, habilidades) | ✅ | ficha completa por secciones |
+| Datos sensibles con consentimiento (Ley 21.719) | ✅ [V] | pestaña «Datos sensibles 🔒», ajuste `DATOS_SENSIBLES` |
+| Consentimientos y apoderados de menores | ✅ [V#2] | pestañas «Consentimientos» y «Apoderados 🔒» |
+| Estudiante: sede, jornada, año, asignatura, docente, horas | ✅ | pestaña «Formación» y planillas |
+| Comunidad (grupo de personas de un sector) con padrón | ✅ [P] | `/comunidades`, comuna → Comunidades |
+| A quién va dirigida la actividad (público, comunidades) | ✅ | pestaña «Público y comunidades» |
+| Quién ejecuta frente a quién asiste; procedencia y horas | ✅ | pestaña «Participantes» (grupo del rol) |
+| Minutas y avances por sesión, asistencia por sesión, evidencias | ✅ | pestaña «Sesiones y minutas» |
+| Alcance de actividad, proyecto y comunidad | ✅ | pestaña «Alcance» |
+| Planillas con columnas ampliadas | ✅ | Importaciones |

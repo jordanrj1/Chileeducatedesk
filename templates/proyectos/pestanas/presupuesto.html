@@ -1,13 +1,10 @@
-<h2 class="h6">Presupuesto y movimientos</h2>
-<p class="small text-muted">Información financiera: visible solo para usuarios autorizados.</p>
-<dl class="row" style="max-width:32rem;">
-  <dt class="col-6">Presupuestado</dt><dd class="col-6">${{ resumen.presupuestado|floatformat:0 }}</dd>
-  <dt class="col-6">Gastado</dt><dd class="col-6">${{ resumen.gastado|floatformat:0 }}</dd>
-  <dt class="col-6">Aportes recibidos</dt><dd class="col-6">${{ resumen.aportes|floatformat:0 }}</dd>
-  <dt class="col-6">Donaciones recibidas</dt><dd class="col-6">${{ resumen.donaciones|floatformat:0 }}</dd>
-  <dt class="col-6">Saldo</dt><dd class="col-6"><strong>${{ resumen.saldo|floatformat:0 }}</strong></dd>
-</dl>
-<a class="btn btn-outline-primary btn-sm" href="/finanzas?proyecto={{ object.pk }}">Ver movimientos y presupuesto</a>
-
-<hr>
+{% load fche %}<div class="fche-seccion"><div><h2 class="h6">Presupuesto y movimientos</h2><p class="small text-muted mb-0">Información financiera: visible solo para usuarios autorizados.</p></div>
+<div class="fche-seccion__acciones"><a class="btn btn-outline-primary btn-sm" href="/finanzas?proyecto={{ object.pk }}">Ver movimientos y presupuesto</a></div></div>
+<div class="fche-kpis">
+  <div class="fche-kpi"><span class="fche-kpi__cabecera">Presupuestado</span><span class="fche-kpi__valor">${{ resumen.presupuestado|floatformat:"0g" }}</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera">Gastado</span><span class="fche-kpi__valor">${{ resumen.gastado|floatformat:"0g" }}</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera">Aportes recibidos</span><span class="fche-kpi__valor">${{ resumen.aportes|floatformat:"0g" }}</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera">Donaciones recibidas</span><span class="fche-kpi__valor">${{ resumen.donaciones|floatformat:"0g" }}</span></div>
+  <div class="fche-kpi fche-kpi--{% if resumen.saldo < 0 %}alerta{% else %}ok{% endif %}"><span class="fche-kpi__cabecera"><strong>Saldo</strong></span><span class="fche-kpi__valor">${{ resumen.saldo|floatformat:"0g" }}</span></div>
+</div>
 {% include "generico/_hijos.html" %}

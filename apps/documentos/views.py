@@ -26,6 +26,7 @@ class DocumentoLista(ListaBase):
     model = Documento
     permission_required = "documentos.view_documento"
     titulo = "Documentos"
+    descripcion = "Archivos, evidencias y respaldos asociados a actividades, proyectos, personas y organizaciones."
     url_crear = "/documentos/nuevo"
     permiso_crear = "documentos.add_documento"
     etiqueta_crear = "+ Nuevo documento"
@@ -121,7 +122,7 @@ class DocumentoNuevo(Permiso403Mixin, CreateView):
 
     def get_initial(self):
         ini = super().get_initial()
-        for k in ("actividad", "proyecto", "persona", "organizacion", "solicitud"):
+        for k in ("actividad", "proyecto", "persona", "organizacion", "solicitud", "sesion"):
             if self.request.GET.get(k, "").isdigit():
                 ini[k] = int(self.request.GET[k])
         return ini
@@ -144,6 +145,9 @@ class DocumentoNuevo(Permiso403Mixin, CreateView):
         obj.huella = huella
         obj.save()
         registrar(self.request.user, "documento_subido", obj, "restringido" if obj.restringido else "")
+        if obj.sesion_id:
+            messages.success(self.request, "Evidencia guardada en la sesión.")
+            return HttpResponseRedirect(obj.sesion.get_absolute_url())
         for destino in (obj.actividad, obj.proyecto, obj.persona, obj.organizacion, obj.solicitud):
             if destino:
                 messages.success(self.request, "Documento guardado.")

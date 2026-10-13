@@ -1,7 +1,12 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}Error{% endblock %}
+{% block migas %}{% endblock %}
 {% block contenido %}{% block publico %}
-<h1 class="h4">500 · Algo salió mal</h1>
-<p>Ocurrió un error inesperado. Tu información no se perdió; intenta nuevamente o avisa al Administrador.</p>
-<a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Volver al inicio</a>
+<div class="fche-error">
+  <div class="fche-error__codigo">500</div>
+  <h1>Algo salió mal</h1>
+  <p>Ocurrió un error inesperado. Tu información no se perdió; intenta nuevamente o avisa al Administrador.</p>
+  <a href="/dashboard" class="btn btn-primary mt-2">{% icono "inicio" 16 %}Volver al inicio</a>
+</div>
 {% endblock %}{% endblock %}

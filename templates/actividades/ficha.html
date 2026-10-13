@@ -1,24 +1,33 @@
 {% extends "generico/ficha.html" %}
+{% load fche %}
 {% block subtitulo %}
 <div class="d-flex flex-wrap gap-2 align-items-center">
-  <span class="badge text-bg-primary">{{ object.estado }}</span>
+  {% estado object.estado %}
   {% if object.tipo %}<span class="badge text-bg-light border">{{ object.tipo }}</span>{% endif %}
-  {% if object.proyecto %}<a class="small" href="{{ object.proyecto.get_absolute_url }}">Proyecto: {{ object.proyecto }}</a>{% endif %}
-  {% if object.actividad_padre %}<a class="small" href="{{ object.actividad_padre.get_absolute_url }}">Parte de: {{ object.actividad_padre }}</a>{% endif %}
-  {% if agenda %}<span class="small text-muted">{{ agenda.fecha|date:"d-m-Y" }}{% if agenda.hora_inicio %} {{ agenda.hora_inicio|time:"H:i" }}{% endif %}{% if agenda.lugar %} · {{ agenda.lugar }}{% endif %}{% if agenda.enlace %} · <a href="{{ agenda.enlace }}" target="_blank" rel="noopener">enlace virtual</a>{% endif %}{% if agenda.ultimo_minuto %} <span class="badge text-bg-warning">Cambio de último minuto</span>{% endif %}</span>{% else %}<span class="small text-muted">Sin programar</span>{% endif %}
+  {% if agenda %}<span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}{{ agenda.fecha|date:"D d-m-Y" }}{% if agenda.hora_inicio %} · {{ agenda.hora_inicio|time:"H:i" }}{% if agenda.hora_fin %}–{{ agenda.hora_fin|time:"H:i" }}{% endif %}{% endif %}</span>
+  {% if agenda.lugar %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ agenda.lugar.get_absolute_url }}">{{ agenda.lugar }}</a></span>{% endif %}
+  {% if agenda.enlace %}<a class="d-inline-flex align-items-center gap-1" href="{{ agenda.enlace }}" target="_blank" rel="noopener">{% icono "enlace" 15 %}enlace virtual</a>{% endif %}
+  {% if agenda.ultimo_minuto %}<span class="badge text-bg-warning">Cambio de último minuto</span>{% endif %}
+  {% else %}<span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}Sin programar</span>{% endif %}
 </div>
-{% if faltantes and object.estado.codigo != "cancelada" and object.estado.codigo != "realizada" %}<div class="small text-warning-emphasis mt-1">Falta: {{ faltantes|join:", " }}</div>{% endif %}
+{% if object.proyecto or object.actividad_padre %}<div class="d-flex flex-wrap gap-3 mt-2">
+  {% if object.proyecto %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.proyecto.get_absolute_url }}">{% icono "proyectos" 15 %}Proyecto: {{ object.proyecto }}</a>{% endif %}
+  {% if object.actividad_padre %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.actividad_padre.get_absolute_url }}">{% icono "actividades" 15 %}Parte de: {{ object.actividad_padre }}</a>{% endif %}
+</div>{% endif %}
+{% if faltantes and object.estado.codigo != "cancelada" and object.estado.codigo != "realizada" %}<div class="d-inline-flex align-items-center gap-1 mt-2 px-2 py-1 rounded-2 small text-warning-emphasis" style="background:#fff7e0;">{% icono "alerta" 14 %}Falta: {{ faltantes|join:", " }}</div>{% endif %}
 {% if object.motivo_estado and object.estado.codigo in "suspendida cancelada reprogramada" %}<div class="small text-muted mt-1">Motivo: {{ object.motivo_estado }}</div>{% endif %}
 {% endblock %}
 {% block acciones %}
-{% if puede_programar %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:programar' object.pk %}">{% if agenda %}Reprogramar{% else %}Programar{% endif %}</a>{% endif %}
-{% if puede_confirmar %}<a class="btn btn-success btn-sm" href="{% url 'actividades:confirmar' object.pk %}">Confirmar</a>{% endif %}
+{% if puede_confirmar %}<a class="btn btn-success btn-sm" href="{% url 'actividades:confirmar' object.pk %}">{% icono "ok" 15 %}Confirmar</a>{% endif %}
 {% if puede_finalizar %}<a class="btn btn-dark btn-sm" href="?tab=resultados">Finalizar actividad</a>{% endif %}
+{% if puede_programar %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:programar' object.pk %}">{% icono "calendario" 15 %}{% if agenda %}Reprogramar{% else %}Programar{% endif %}</a>{% endif %}
 {% if estados_siguientes %}
-<div class="dropdown"><button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" type="button">Estado</button>
-  <form class="dropdown-menu p-3" style="min-width: 16rem;" method="post" action="{% url 'actividades:estado' object.pk %}">{% csrf_token %}
-    <select class="form-select form-select-sm mb-2" name="estado" aria-label="Nuevo estado">{% for c, n in estados_siguientes %}<option value="{{ c }}">{{ n }}</option>{% endfor %}</select>
-    <input class="form-control form-control-sm mb-2" name="motivo" placeholder="Motivo (suspender/cancelar)" maxlength="250">
-    <button class="btn btn-primary btn-sm">Cambiar</button></form></div>
+<div class="dropdown"><button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" type="button" aria-expanded="false">Cambiar estado</button>
+  <form class="dropdown-menu dropdown-menu-end p-3" style="min-width: 17rem;" method="post" action="{% url 'actividades:estado' object.pk %}">{% csrf_token %}
+    <label class="form-label small" for="nuevo-estado">Nuevo estado</label>
+    <select class="form-select form-select-sm mb-2" name="estado" id="nuevo-estado">{% for c, n in estados_siguientes %}<option value="{{ c }}">{{ n }}</option>{% endfor %}</select>
+    <label class="form-label small" for="motivo-estado">Motivo <span class="text-muted fw-normal">(obligatorio al suspender o cancelar)</span></label>
+    <input class="form-control form-control-sm mb-3" id="motivo-estado" name="motivo" maxlength="250">
+    <button class="btn btn-primary btn-sm w-100">Cambiar estado</button></form></div>
 {% endif %}
 {% endblock %}

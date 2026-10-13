@@ -1,6 +1,6 @@
 {% extends "generico/formulario.html" %}
 {% block campos %}
 <input type="hidden" name="{{ campo }}" value="{{ destino.pk }}">
-<p class="small text-muted">Elige un documento ya subido. Quedará disponible aquí también, sin copiar el archivo.</p>
+<p class="small text-muted mb-3">Elige un documento ya subido. Quedará disponible aquí también, sin copiar el archivo.</p>
 {% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
 {% endblock %}

@@ -6,7 +6,7 @@ from apps.nucleo.models import RolParticipacion, TipoIntervencion
 from apps.organizaciones.models import Organizacion
 from apps.personas.models import Persona
 
-from .models import Postulacion, Proyecto, ProyectoOrganizacion, ProyectoPersona
+from .models import Postulacion, Proyecto, ProyectoComunidad, ProyectoOrganizacion, ProyectoPersona
 
 
 def _persona(**kw):
@@ -15,13 +15,45 @@ def _persona(**kw):
 
 class ProyectoForm(BootstrapMixin, forms.ModelForm):
     responsable = _persona(required=False)
+    secciones = [
+        ("Identificación", "", ["nombre", "estado", "area_tematica", "responsable", "fecha_inicio", "fecha_termino"]),
+        ("Propósito", "Qué busca el proyecto y para quién. Las comunidades destinatarias se agregan en su ficha.",
+         ["descripcion", "objetivo_general", "objetivos_especificos", "diagnostico", "poblacion_objetivo", "zona"]),
+    ]
 
     class Meta:
         model = Proyecto
         fields = [
-            "nombre", "estado", "descripcion", "objetivo_general", "objetivos_especificos", "diagnostico", "poblacion_objetivo",
+            "nombre", "estado", "area_tematica", "descripcion", "objetivo_general", "objetivos_especificos", "diagnostico", "poblacion_objetivo",
             "zona", "fecha_inicio", "fecha_termino", "responsable",
         ]
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        from apps.nucleo.models import AreaTematica
+
+        self.fields["area_tematica"].queryset = AreaTematica.objects.filter(activo=True)
+
+
+class ProyectoComunidadForm(BootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = ProyectoComunidad
+        fields = ["comunidad", "observaciones", "vigente"]
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        from apps.comunidades.models import Comunidad
+
+        self.fields["comunidad"].queryset = Comunidad.objects.filter(activo=True).select_related("comuna")
+
+    def clean_comunidad(self):
+        c = self.cleaned_data["comunidad"]
+        if ProyectoComunidad.objects.filter(proyecto_id=self.instance.proyecto_id, comunidad=c).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Esa comunidad ya está entre las destinatarias del proyecto.")
+        return c
+
+    def validate_unique(self):
+        pass
 
 
 class _PersonaProyectoForm(BootstrapMixin, forms.ModelForm):

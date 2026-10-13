@@ -18,6 +18,7 @@ class LoteLista(ListaBase):
     model = Lote
     permission_required = "importaciones.importar_listado"
     titulo = "Importaciones"
+    descripcion = "Cargas de listados desde Excel o CSV, con su revisión y posibilidad de revertir."
     url_crear = "/importaciones/nueva"
     permiso_crear = "importaciones.importar_listado"
     etiqueta_crear = "+ Nueva importación"

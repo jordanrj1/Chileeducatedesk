@@ -1,7 +1,7 @@
-<h2 class="h6">Actividades programadas o realizadas aquí</h2>
+{% load fche %}<h2 class="h6 mb-3">Actividades programadas o realizadas aquí{% if usos %} <span class="fche-contador">{{ usos|length }}</span>{% endif %}</h2>
 {% if usos %}
-<div class="table-responsive"><table class="table table-sm">
+<div class="table-responsive"><table class="table table-sm align-middle">
 <thead><tr><th>Fecha</th><th>Horario</th><th>Actividad</th><th>Programación</th><th>Estado</th></tr></thead>
-<tbody>{% for u in usos %}<tr class="{% if not u.vigente %}text-muted{% endif %}"><td>{{ u.fecha|date:"d-m-Y" }}</td><td>{{ u.hora_inicio|time:"H:i" }}{% if u.hora_fin %}–{{ u.hora_fin|time:"H:i" }}{% endif %}</td>
-<td><a href="{{ u.actividad.get_absolute_url }}">{{ u.actividad.nombre }}</a></td><td>v{{ u.version }}{% if not u.vigente %} (anterior){% endif %}</td><td>{{ u.estado }}</td></tr>{% endfor %}</tbody></table></div>
-{% else %}<p class="text-muted">Este lugar aún no se ha usado en ninguna actividad.</p>{% endif %}
+<tbody>{% for u in usos %}<tr class="{% if not u.vigente %}text-muted{% endif %}"><td class="text-nowrap">{{ u.fecha|date:"d-m-Y" }}</td><td class="text-nowrap">{{ u.hora_inicio|time:"H:i" }}{% if u.hora_fin %}–{{ u.hora_fin|time:"H:i" }}{% endif %}</td>
+<td><a href="{{ u.actividad.get_absolute_url }}">{{ u.actividad.nombre }}</a></td><td>v{{ u.version }}{% if not u.vigente %} (anterior){% endif %}</td><td>{% estado u.estado %}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "lugares" 18 %}</span><p class="fche-vacio__texto mb-0">Este lugar aún no se ha usado en ninguna actividad.</p></div>{% endif %}

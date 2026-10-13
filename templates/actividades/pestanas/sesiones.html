@@ -1,0 +1,24 @@
+{% load fche %}<div class="fche-seccion"><div><h2 class="h6">Bitácora de sesiones{% if sesiones %} <span class="fche-contador">{{ sesiones|length }}</span>{% endif %}</h2>
+<p class="small text-muted mb-0">Cada sesión guarda su minuta: qué se hizo, avances, acuerdos, asistencia y evidencias.</p></div>
+{% if puede_sesiones %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_sesion }}">{% icono "minuta" 15 %}Nueva sesión</a></div>{% endif %}</div>
+{% if sesiones %}
+<div class="fche-tarjeta">
+{% for s in sesiones %}
+  <article class="fche-sesion{% if not s.vigente %} is-inactivo{% endif %}">
+    <span class="fche-sesion__numero" aria-hidden="true">{{ s.numero }}</span>
+    <div class="min-w-0">
+      <h3 class="h6 mb-1"><a href="{{ s.get_absolute_url }}">{{ s }}</a>{% if not s.vigente %} <span class="badge text-bg-secondary">No vigente</span>{% endif %}</h3>
+      <div class="small text-muted d-flex flex-wrap gap-3">
+        <span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 14 %}{{ s.fecha|date:"d-m-Y"|default:"Sin fecha" }}{% if s.hora_inicio %} · {{ s.hora_inicio|time:"H:i" }}{% if s.hora_fin %}–{{ s.hora_fin|time:"H:i" }}{% endif %}{% endif %}</span>
+        {% if s.lugar %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 14 %}{{ s.lugar }}</span>{% endif %}
+        <span class="d-inline-flex align-items-center gap-1">{% icono "personas" 14 %}{{ s.total_asistentes }} asistente{{ s.total_asistentes|pluralize }}</span>
+        {% with n=s.evidencias.all|length %}{% if n %}<span class="d-inline-flex align-items-center gap-1">{% icono "documentos" 14 %}{{ n }} evidencia{{ n|pluralize }}</span>{% endif %}{% endwith %}
+      </div>
+      {% if s.facilitadores.all %}<div class="small mt-1">Facilitan: {% for f in s.facilitadores.all %}{{ f.persona }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+      {% if s.avances %}<p class="small mt-2 mb-0"><strong>Avances:</strong> {{ s.avances|truncatechars:220 }}</p>{% elif s.desarrollo %}<p class="small mt-2 mb-0">{{ s.desarrollo|truncatechars:220 }}</p>{% else %}<p class="small mt-2 mb-0 text-warning-emphasis">Falta la minuta de esta sesión.</p>{% endif %}
+    </div>
+    <div class="d-flex gap-1"><a class="btn btn-outline-secondary btn-sm" href="{{ s.get_absolute_url }}">Ver minuta</a></div>
+  </article>
+{% endfor %}
+</div>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "minuta" 18 %}</span><p class="fche-vacio__texto">Esta actividad no tiene sesiones. Registra cada encuentro con su minuta y asistencia.</p>{% if puede_sesiones %}<a class="btn btn-primary btn-sm" href="{{ url_nueva_sesion }}">Nueva sesión</a>{% endif %}</div>{% endif %}

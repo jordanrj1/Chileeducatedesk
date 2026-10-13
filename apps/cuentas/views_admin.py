@@ -34,6 +34,7 @@ class UsuarioLista(ListaBase):
     model = User
     permission_required = "auth.view_user"
     titulo = "Usuarios"
+    descripcion = "Cuentas de acceso del equipo, su rol y último ingreso."
     breadcrumb = CRUMB
     url_crear = "/administracion/usuarios/nuevo"
     permiso_crear = "auth.add_user"
@@ -231,6 +232,7 @@ class AuditoriaLista(ListaBase):
     model = Auditoria
     permission_required = "nucleo.view_auditoria"
     titulo = "Auditoría"
+    descripcion = "Registro de acciones relevantes: quién hizo qué y cuándo."
     breadcrumb = CRUMB
     campos_busqueda = ("usuario_nombre", "objeto", "detalle", "accion")
     columnas = [("Fecha", lambda a: a.fecha.astimezone().strftime("%d-%m-%Y %H:%M")), ("Usuario", "usuario_nombre"), ("Acción", "accion"), ("Objeto", "objeto"), ("Detalle", "detalle")]

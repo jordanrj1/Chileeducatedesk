@@ -1,0 +1,16 @@
+{% extends "generico/ficha.html" %}
+{% load fche %}
+{% block subtitulo %}
+<div class="d-flex flex-wrap gap-2 align-items-center">
+  {% if object.estado_registro %}{% estado object.estado_registro %}{% endif %}
+  {% if not object.activo %}{% estado "inactivo" "Inactiva" %}{% endif %}
+  {% if object.es_menor %}<span class="badge text-bg-warning">Menor de edad</span>{% endif %}
+  {% if object.edad is not None %}<span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}{{ object.edad }} años</span>{% endif %}
+  {% for p in object.perfiles.all %}<span class="badge text-bg-primary">{{ p }}</span>{% endfor %}
+  {% if object.profesion %}<span class="d-inline-flex align-items-center gap-1">{% icono "persona" 15 %}{{ object.profesion }}</span>{% endif %}
+  {% if correo_principal %}<a class="d-inline-flex align-items-center gap-1" href="mailto:{{ correo_principal }}">{% icono "correo" 15 %}{{ correo_principal }}</a>{% endif %}
+  {% if telefono_principal %}<span class="d-inline-flex align-items-center gap-1">{% icono "telefono" 15 %}{{ telefono_principal }}</span>{% endif %}
+</div>
+{% if object.nombre_social %}<div class="small mt-1">Nombre social: <strong>{{ object.nombre_social }}</strong></div>{% endif %}
+{% if avisos_consentimiento %}<div class="d-flex flex-column gap-1 mt-2">{% for a in avisos_consentimiento %}<a class="d-inline-flex align-items-center gap-1 small text-warning-emphasis" href="?tab=consentimientos">{% icono "alerta" 14 %}{{ a }}</a>{% endfor %}</div>{% endif %}
+{% endblock %}

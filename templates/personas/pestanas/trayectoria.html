@@ -1,14 +1,30 @@
-<h2 class="h6">Actividades en las que ha participado</h2>
-<ul class="list-group mb-3">{% for p in participaciones %}<li class="list-group-item"><a href="{{ p.actividad.get_absolute_url }}">{{ p.actividad }}</a>
-<span class="badge text-bg-secondary">{{ p.rol }}</span> <span class="badge text-bg-light border">{{ p.estado }}</span>{% if p.asistencia is True %} <span class="badge text-bg-success">Asistió</span>{% elif p.asistencia is False %} <span class="badge text-bg-danger">No asistió</span>{% endif %}
-<div class="small text-muted">{% if p.actividad.proyecto %}Proyecto: {{ p.actividad.proyecto }} · {% endif %}{{ p.actividad.estado }}</div></li>{% empty %}<li class="list-group-item text-muted">Aún no participa en ninguna actividad.</li>{% endfor %}</ul>
-<h2 class="h6">Cargos y organizaciones</h2>
-<ul class="list-group mb-3">{% for v in vinculos %}<li class="list-group-item"><a href="{{ v.organizacion.get_absolute_url }}">{{ v.organizacion }}</a> · {{ v.cargo|default:"vínculo" }} <span class="small text-muted">{{ v.fecha_inicio|date:"d-m-Y" }} a {{ v.fecha_termino|date:"d-m-Y"|default:"actualidad" }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin cargos registrados.</li>{% endfor %}</ul>
-<h2 class="h6">Proyectos</h2>
-<ul class="list-group mb-3">{% for pr in proyectos %}<li class="list-group-item"><a href="{{ pr.proyecto.get_absolute_url }}">{{ pr.proyecto }}</a> <span class="badge text-bg-secondary">{{ pr.get_tipo_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin proyectos.</li>{% endfor %}</ul>
-{% if modulos.reuniones %}<h2 class="h6">Reuniones</h2>
-<ul class="list-group mb-3">{% for r in reuniones %}<li class="list-group-item"><a href="{{ r.reunion.get_absolute_url }}">{{ r.reunion }}</a></li>{% empty %}<li class="list-group-item text-muted">Sin reuniones.</li>{% endfor %}</ul>{% endif %}
-{% if modulos.tareas %}<h2 class="h6">Tareas</h2>
-<ul class="list-group mb-3">{% for t in tareas %}<li class="list-group-item"><a href="{{ t.tarea.get_absolute_url }}">{{ t.tarea }}</a> <span class="badge text-bg-secondary">{{ t.tarea.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin tareas.</li>{% endfor %}</ul>{% endif %}
-<h2 class="h6">Invitaciones</h2>
-<ul class="list-group">{% for i in invitaciones %}<li class="list-group-item"><a href="{{ i.get_absolute_url }}">{{ i.actividad }}</a> <span class="badge text-bg-secondary">{{ i.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin invitaciones.</li>{% endfor %}</ul>
+{% load fche %}<div class="fche-kpis">
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "actividades" 16 %}</span>Participaciones</span><span class="fche-kpi__valor">{{ participaciones|length }}</span></div>
+  <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "reloj" 16 %}</span>Horas acumuladas</span><span class="fche-kpi__valor">{{ horas_acumuladas|floatformat:"-1" }}</span><span class="fche-kpi__nota">en actividades a las que asistió</span></div>
+</div>
+<h2 class="h6 mb-2">Actividades en las que ha participado <span class="fche-contador">{{ participaciones|length }}</span></h2>
+<ul class="fche-items mb-4">{% for p in participaciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ p.actividad.get_absolute_url }}">{{ p.actividad }}</a>
+<div class="fche-items__detalle">{{ p.rol }}{% if p.actividad.proyecto %} · Proyecto: {{ p.actividad.proyecto }}{% endif %} · actividad {{ p.actividad.estado|lower }}</div></div>
+<div class="fche-items__acciones">{% estado p.estado %}{% if p.asistencia is True %} {% estado "asistio" "Asistió" %}{% elif p.asistencia is False %} {% estado "no_asistio" "No asistió" %}{% endif %}</div></li>{% empty %}<li class="text-muted">Aún no participa en ninguna actividad.</li>{% endfor %}</ul>
+<div class="row g-4">
+<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Cargos y organizaciones</h2>
+<ul class="fche-items">{% for v in vinculos %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ v.organizacion.get_absolute_url }}">{{ v.organizacion }}</a><div class="fche-items__detalle">{{ v.cargo|default:"vínculo" }} · {{ v.fecha_inicio|date:"d-m-Y" }} a {{ v.fecha_termino|date:"d-m-Y"|default:"actualidad" }}</div></div></li>{% empty %}<li class="text-muted">Sin cargos registrados.</li>{% endfor %}</ul>
+</div>
+<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Proyectos</h2>
+<ul class="fche-items">{% for pr in proyectos %}<li><a class="fche-items__titulo" href="{{ pr.proyecto.get_absolute_url }}">{{ pr.proyecto }}</a> <span class="badge text-bg-secondary">{{ pr.get_tipo_display }}</span></li>{% empty %}<li class="text-muted">Sin proyectos.</li>{% endfor %}</ul>
+</div>
+<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Invitaciones</h2>
+<ul class="fche-items">{% for i in invitaciones %}<li><a class="fche-items__titulo" href="{{ i.get_absolute_url }}">{{ i.actividad }}</a> {% estado i.estado i.get_estado_display %}</li>{% empty %}<li class="text-muted">Sin invitaciones.</li>{% endfor %}</ul>
+</div>
+{% if modulos.reuniones %}<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Reuniones</h2>
+<ul class="fche-items">{% for r in reuniones %}<li><a class="fche-items__titulo" href="{{ r.reunion.get_absolute_url }}">{{ r.reunion }}</a></li>{% empty %}<li class="text-muted">Sin reuniones.</li>{% endfor %}</ul>
+</div>{% endif %}
+{% if modulos.tareas %}<div class="col-12 col-xl-6">
+<h2 class="h6 mb-2">Tareas</h2>
+<ul class="fche-items">{% for t in tareas %}<li><a class="fche-items__titulo" href="{{ t.tarea.get_absolute_url }}">{{ t.tarea }}</a> {% estado t.tarea.estado t.tarea.get_estado_display %}</li>{% empty %}<li class="text-muted">Sin tareas.</li>{% endfor %}</ul>
+</div>{% endif %}
+</div>

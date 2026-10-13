@@ -1,3 +1,2 @@
-{% load territorio_extras %}
-<ul class="list-group">{% for a in actividades %}<li class="list-group-item"><a href="{{ a.get_absolute_url }}">{{ a.nombre }}</a> <span class="badge text-bg-secondary">{{ a.estado }}</span>{% if a.tipo %} <span class="small text-muted">{{ a.tipo }}</span>{% endif %}
-  <div class="small text-muted">{% relacion_territorial a comuna_ficha sectores_ficha %}</div></li>{% empty %}<li class="list-group-item text-muted">Aún no hay actividades aquí.</li>{% endfor %}</ul>
+{% load territorio_extras fche %}<ul class="fche-items">{% for a in actividades %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ a.get_absolute_url }}">{{ a.nombre }}</a>{% if a.tipo %} <span class="small text-muted">{{ a.tipo }}</span>{% endif %}
+  <div class="fche-items__detalle">{% relacion_territorial a comuna_ficha sectores_ficha %}</div></div>{% estado a.estado %}</li>{% empty %}<li class="text-muted">Aún no hay actividades aquí.</li>{% endfor %}</ul>

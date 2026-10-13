@@ -1,12 +1,18 @@
 {% extends "base.html" %}
+{% load fche %}
 {% block titulo %}{{ titulo }}{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li><li class="breadcrumb-item active">Desactivar</li>{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ obj.get_absolute_url }}">{{ obj }}</a></li><li class="breadcrumb-item active" aria-current="page">Desactivar</li>{% endblock %}
 {% block contenido %}
-<h1 class="h4">{{ titulo }}</h1>
-<div class="alert alert-warning">Tiene <strong>{{ afectados|length }}</strong> actividad(es) en curso o futuras. Desactivarlo no las cambia, pero tendrás que revisarlas:</div>
-<ul>{% for texto, url in afectados %}<li><a href="{{ url }}">{{ texto }}</a></li>{% endfor %}</ul>
-<form method="post">{% csrf_token %}<input type="hidden" name="confirmar" value="1">
-  <button class="btn btn-danger">Desactivar de todos modos</button>
-  <a class="btn btn-outline-secondary volver" href="{{ obj.get_absolute_url }}">← Volver sin cambiar nada</a>
-</form>
+<header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">{{ titulo }}</h1>
+<p class="fche-pagina__bajada">Desactivar no borra nada: el registro deja de aparecer en las listas habituales y se puede reactivar.</p></div></header>
+<div class="fche-tarjeta" style="max-width:48rem;">
+  <div class="fche-tarjeta__cuerpo">
+    <div class="alert alert-warning d-flex gap-2">{% icono "alerta" 18 %}<div>Tiene <strong>{{ afectados|length }}</strong> actividad(es) en curso o futuras. Desactivarlo no las cambia, pero tendrás que revisarlas:</div></div>
+    <ul class="fche-items">{% for texto, url in afectados %}<li><a class="fche-items__titulo" href="{{ url }}">{{ texto }}</a>{% icono "derecha" 16 "text-muted" %}</li>{% endfor %}</ul>
+  </div>
+  <form method="post" class="fche-form__acciones">{% csrf_token %}<input type="hidden" name="confirmar" value="1">
+    <button class="btn btn-danger">Desactivar de todos modos</button>
+    <a class="btn btn-outline-secondary volver" href="{{ obj.get_absolute_url }}">Volver sin cambiar nada</a>
+  </form>
+</div>
 {% endblock %}
