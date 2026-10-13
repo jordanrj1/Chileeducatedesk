@@ -69,13 +69,13 @@
 - [ ] Implementar; pruebas en verde; commit.
 
 ### Tarea 4: Índice «Dónde trabajamos» y región
-**Archivos:** modificar `apps/territorio/views.py` (`Indice`, `RegionVista`), `templates/territorio/indice.html`, `templates/territorio/region.html`; crear el parcial `templates/territorio/_comunas_con_presencia.html`.
+**Archivos:** modificar `apps/territorio/views.py` (`TerritorioIndice`, `RegionDetalle`), `templates/territorio/indice.html`, `templates/territorio/region.html`; crear el parcial `templates/territorio/_comunas_con_presencia.html`.
 - [ ] Pruebas: `test_indice_muestra_comunas_con_presencia_primero`, `test_indice_vacio_ofrece_acciones`, `test_region_lista_sus_comunas_con_presencia`.
 - [ ] Implementar; pruebas en verde; commit.
 
 ### Tarea 5: Crear en contexto y enlaces «en esta comuna»
 **Archivos:**
-- modificar las vistas nuevas de `apps/organizaciones/views.py` y `apps/lugares/views.py` (`get_initial`/form de dirección con `comuna`);
+- modificar `OrganizacionNueva` (`apps/organizaciones/views.py`) y `LugarNuevo` (`apps/lugares/views.py`) (`get_initial`/form de dirección con `comuna`);
 - modificar `apps/actividades/views.py` (`ActividadNueva`: crea `ActividadTerritorio(comuna=…)`);
 - modificar las cabeceras de `templates/personas/ficha.html`, `organizaciones/ficha.html`, `lugares/ficha.html` y `actividades/ficha.html`;
 - contexto nuevo `comuna_residencia` en `PersonaFicha`.
