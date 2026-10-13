@@ -48,9 +48,15 @@ def _normalizar_persona(d):
     return d
 
 
+DOS_PERSONAS = re.compile(r"\s(y|e)\s|/|&|\+", re.IGNORECASE)
+
+
 def _analizar_persona(d, vistos):
     errores, cands, estado, existente = [], [], "nuevo", None
+    original = d.get("nombre_completo") or d.get("nombres") or ""
     d = _normalizar_persona(d)
+    if DOS_PERSONAS.search(f" {original} "):
+        errores.append("Parece traer dos personas en la misma fila: sepáralas en dos filas.")
     rut = None
     if not d.get("nombres"):
         errores.append("Falta el nombre.")
@@ -74,7 +80,7 @@ def _analizar_persona(d, vistos):
         return d, "error", errores, [], None
     encontrados = candidatos(d.get("nombres", ""), d.get("apellido_paterno", ""), d.get("apellido_materno", ""), rut[0] if rut else None, d.get("correo", ""), d.get("telefono", ""))
     for p, razones in encontrados:
-        cands.append({"pk": p.pk, "nombre": p.nombre_completo, "razones": razones})
+        cands.append({"pk": p.pk, "nombre": p.nombre_completo, "razones": razones, "activo": p.activo})
     fuertes = [c for c in cands if any(r in ("mismo RUT", "mismo correo") for r in c["razones"])]
     if fuertes:
         estado, existente = "existente", fuertes[0]["pk"]
@@ -170,7 +176,76 @@ def _analizar_lugar(d, vistos):
 ANALIZADORES = {"listado_actividad": _analizar_persona, "personas": _analizar_persona, "organizaciones": _analizar_org, "lugares": _analizar_lugar}
 
 
-def analizar(tipo, filas_crudas, decisiones=None):
+def _sin_tildes(t):
+    import unicodedata
+
+    return "".join(c for c in unicodedata.normalize("NFD", (t or "").strip().lower()) if unicodedata.category(c) != "Mn")
+
+
+def _institucion(nombre):
+    from django.db.models.functions import Lower
+
+    if not nombre:
+        return None
+    clave = _sin_tildes(nombre)
+    for o in Organizacion.objects.filter(tipo__codigo="institucion_educativa"):
+        if _sin_tildes(o.nombre) == clave:
+            return o
+    return None
+
+
+def _carrera(org, nombre):
+    clave = _sin_tildes(nombre)
+    return next((c for c in org.carreras.all() if _sin_tildes(c.nombre) == clave), None)
+
+
+def _avisos_formacion(d, crear_carreras):
+    """IG-E9: institución o carrera que no existen (no bloquea)."""
+    avisos = []
+    if d.get("institucion"):
+        org = _institucion(d["institucion"])
+        if not org:
+            avisos.append(f"La institución «{d['institucion']}» no está registrada: no se guardará su formación.")
+        elif d.get("carrera") and not _carrera(org, d["carrera"]):
+            avisos.append(f"La carrera «{d['carrera']}» no existe en {org}: " + ("se creará." if crear_carreras else "se registrará sin carrera (o marca «crear carreras»)."))
+    return avisos
+
+
+def _diferencias(persona, d):
+    """IG-E8: qué trae la planilla distinto de lo que ya hay."""
+    dif = []
+    for campo, etiqueta in (("apellido_paterno", "Apellido paterno"), ("apellido_materno", "Apellido materno"), ("profesion", "Profesión")):
+        nuevo, actual = d.get(campo, ""), getattr(persona, campo)
+        if nuevo and _sin_tildes(nuevo) != _sin_tildes(actual):
+            dif.append(f"{etiqueta}: actual «{actual or '—'}» · planilla «{nuevo}»")
+    actuales = set(persona.contactos.values_list("valor_normalizado", flat=True))
+    for campo in ("correo", "telefono"):
+        if d.get(campo) and d[campo] not in actuales:
+            dif.append(f"Contacto nuevo: {d[campo]}")
+    return dif
+
+
+def _opciones(fila):
+    """[(valor, etiqueta)] para «Qué hacer» en la revisión."""
+    estado, ops = fila["estado"], []
+    if fila["decision"] == "pendiente":
+        ops.append(("pendiente", "— Corrige los datos o elige omitir —" if estado == "error" else "— Decide qué hacer —"))
+    if estado == "error":
+        return ops + [("omitir", "Omitir esta fila")]
+    if estado != "existente":
+        ops.append(("crear", "Crear nuevo"))
+    for c in fila["coincidencias"]:
+        ops.append((f"usar:{c['pk']}", f"Usar existente: {c['nombre']} ({', '.join(c['razones'])})" + ("" if c.get("activo", True) else " — DESACTIVADA")))
+        if estado == "existente" and c["pk"] == fila.get("existente"):
+            if fila.get("diferencias"):
+                ops.append((f"contacto:{c['pk']}", "Conservar la ficha y agregar solo los contactos nuevos"))
+                ops.append((f"actualizar:{c['pk']}", "Actualizar la ficha con los datos de la planilla"))
+            if not c.get("activo", True):
+                ops.append((f"reactivar:{c['pk']}", "Usar y reactivar la ficha"))
+    return ops + [("omitir", "Omitir")]
+
+
+def analizar(tipo, filas_crudas, decisiones=None, crear_carreras=False):
     """Lista de filas con estado, errores y coincidencias. `decisiones[i]` conserva lo elegido por el usuario."""
     decisiones = decisiones or {}
     vistos, salida = {}, []
@@ -179,18 +254,21 @@ def analizar(tipo, filas_crudas, decisiones=None):
         vistos["_fila"] = i
         datos, estado, errores, cands, existente = ANALIZADORES[tipo](crudo, vistos)
         # Duplicados y errores quedan «pendiente»: el usuario debe decidir o corregir antes de confirmar.
+        fila = {"fila": i, "datos": datos, "estado": estado, "errores": errores, "coincidencias": cands, "existente": existente, "avisos": [], "diferencias": []}
+        if tipo in ("personas", "listado_actividad") and estado != "error":
+            fila["avisos"] = _avisos_formacion(datos, crear_carreras)
+            if existente:
+                fila["diferencias"] = _diferencias(Persona.objects.get(pk=existente), datos)
+                if not Persona.objects.filter(pk=existente, activo=True).exists():
+                    fila["avisos"].append("La persona existe pero está desactivada: puedes reactivarla.")  # IG-E14
         decision = {"nuevo": "crear", "existente": f"usar:{existente}", "duplicado": "pendiente", "error": "pendiente"}[estado]
+        fila["decision"] = decision
+        validas = {v for v, _ in _opciones(fila)}
         previa = decisiones.get(i)
-        if previa:
-            if previa == "omitir":
-                decision = "omitir"
-            elif estado in ("nuevo", "duplicado") and previa == "crear":
-                decision = "crear"
-            elif estado in ("existente", "duplicado") and previa.startswith("usar:") and any(str(c["pk"]) == previa[5:] for c in cands):
-                decision = previa
-        for c in cands:
-            c["valor"] = f"usar:{c['pk']}"
-        salida.append({"fila": i, "datos": datos, "estado": estado, "errores": errores, "coincidencias": cands, "decision": decision})
+        if previa and previa in validas and previa != "pendiente":
+            fila["decision"] = previa
+        fila["opciones"] = _opciones(fila)
+        salida.append(fila)
         resumen[estado] += 1
     return salida, resumen
 
@@ -205,10 +283,55 @@ def _contactos_persona(lote, fila, persona, d):
         LoteItem.objects.create(lote=lote, tipo_objeto="contacto", objeto_id=c.pk, fila=fila)
 
 
+def _formacion(lote, f, persona, d):
+    org = _institucion(d.get("institucion"))
+    if not org:
+        return
+    carrera = _carrera(org, d["carrera"]) if d.get("carrera") else None
+    if d.get("carrera") and not carrera and lote.crear_carreras:
+        carrera = Carrera.objects.create(organizacion=org, nombre=d["carrera"].strip())
+        LoteItem.objects.create(lote=lote, tipo_objeto="carrera", objeto_id=carrera.pk, fila=f["fila"])
+    if PersonaFormacion.objects.filter(persona=persona, organizacion=org, carrera=carrera).exists():
+        return
+    fm = PersonaFormacion.objects.create(persona=persona, organizacion=org, carrera=carrera)
+    LoteItem.objects.create(lote=lote, tipo_objeto="formacion", objeto_id=fm.pk, fila=f["fila"])
+
+
+def _existente(lote, f, usuario):
+    """usar / contacto / actualizar / reactivar sobre una persona que ya existe (IG-E8, IG-E14)."""
+    accion, pk = f["decision"].split(":", 1)
+    p = Persona.objects.get(pk=int(pk))
+    d = f["datos"]
+    if accion in ("contacto", "actualizar"):
+        actuales = set(p.contactos.values_list("valor_normalizado", flat=True))
+        for valor, codigo in ((d.get("correo"), "correo"), (d.get("telefono"), "telefono_movil")):
+            if valor and valor not in actuales:
+                c = Contacto.objects.create(persona=p, tipo=TipoContacto.objects.get(codigo=codigo), valor=valor)
+                LoteItem.objects.create(lote=lote, tipo_objeto="contacto", objeto_id=c.pk, fila=f["fila"])
+    if accion == "actualizar":
+        antes = {}
+        for campo in ("apellido_paterno", "apellido_materno", "profesion"):
+            if d.get(campo) and d[campo] != getattr(p, campo):
+                antes[campo] = getattr(p, campo)
+                setattr(p, campo, d[campo])
+        if d.get("rut") and not p.rut_numero:
+            antes["rut_numero"], antes["rut_dv"] = None, None
+            p.rut_numero, p.rut_dv = separar_rut(d["rut"])
+        if antes:
+            p.save()
+            LoteItem.objects.create(lote=lote, tipo_objeto="actualizacion", objeto_id=p.pk, creado=False, fila=f["fila"], antes=antes)
+        _formacion(lote, f, p, d)
+    if accion == "reactivar" and not p.activo:
+        p.activo = True
+        p.save()
+        LoteItem.objects.create(lote=lote, tipo_objeto="actualizacion", objeto_id=p.pk, creado=False, fila=f["fila"], antes={"activo": False})
+    return p
+
+
 def _persona(lote, f, usuario):
     d = f["datos"]
-    if f["decision"].startswith("usar:"):
-        return Persona.objects.get(pk=int(f["decision"][5:])), False
+    if ":" in f["decision"]:
+        return _existente(lote, f, usuario), False
     rut = separar_rut(d["rut"]) if d.get("rut") else (None, None)
     completa = d.get("apellido_paterno") and (d.get("correo") or d.get("telefono"))
     p = Persona.objects.create(
@@ -217,12 +340,7 @@ def _persona(lote, f, usuario):
     )
     LoteItem.objects.create(lote=lote, tipo_objeto="persona", objeto_id=p.pk, fila=f["fila"])
     _contactos_persona(lote, f["fila"], p, d)
-    if d.get("institucion"):
-        org = Organizacion.objects.filter(nombre__iexact=d["institucion"], tipo__codigo="institucion_educativa").first()
-        if org:
-            carrera = Carrera.objects.filter(organizacion=org, nombre__iexact=d.get("carrera", "")).first() if d.get("carrera") else None
-            fm = PersonaFormacion.objects.create(persona=p, organizacion=org, carrera=carrera)
-            LoteItem.objects.create(lote=lote, tipo_objeto="formacion", objeto_id=fm.pk, fila=f["fila"])
+    _formacion(lote, f, p, d)
     return p, True
 
 
@@ -290,7 +408,7 @@ def aplicar(lote, usuario):
     lote.estado = "confirmado"
     lote.confirmado_en = timezone.now()
     lote.resumen = {**lote.resumen, "aplicado": n}
-    lote.filas = []  # minimización (RNF-02): el detalle de las filas ya está en los registros creados
+    lote.filas, lote.crudas = [], []  # minimización (RNF-02): el detalle de las filas ya está en los registros creados
     lote.save()
     registrar(usuario, "importacion_confirmada", lote, str(n))
     return n
@@ -317,13 +435,34 @@ def revertir(lote, usuario):
 
     if lote.estado != "confirmado":
         raise ValueError("Solo se puede revertir un lote confirmado.")
-    modelos = {"participacion": Participacion, "contacto": Contacto, "formacion": PersonaFormacion, "persona": Persona, "organizacion": Organizacion, "lugar": Lugar, "direccion": Direccion}
-    n = {"eliminados": 0, "conservados": 0}
+    modelos = {"participacion": Participacion, "contacto": Contacto, "formacion": PersonaFormacion, "persona": Persona, "organizacion": Organizacion, "lugar": Lugar, "direccion": Direccion, "carrera": Carrera}
+    n = {"eliminados": 0, "conservados": 0, "editados": 0, "restaurados": 0}
+
+    def editado_despues(obj):
+        """IG-E11: alguien lo modificó después de la carga: no se toca."""
+        h = getattr(obj, "history", None)
+        return bool(h is not None and lote.confirmado_en and h.filter(history_date__gt=lote.confirmado_en).exists())
+
+    for item in reversed(list(lote.items.filter(creado=False, tipo_objeto="actualizacion"))):
+        p = Persona.objects.filter(pk=item.objeto_id).first()
+        if not p:
+            continue
+        if editado_despues(p):
+            n["editados"] += 1
+            continue
+        for campo, valor in (item.antes or {}).items():
+            setattr(p, campo, valor)
+        p.save()
+        n["restaurados"] += 1
     OrigenDato.objects.filter(lote=lote.pk).delete()
     for item in reversed(list(lote.items.filter(creado=True))):
         modelo = modelos[item.tipo_objeto]
         obj = modelo.objects.filter(pk=item.objeto_id).first()
         if not obj:
+            continue
+        if editado_despues(obj):
+            n["editados"] += 1
+            n["conservados"] += 1
             continue
         try:
             with transaction.atomic():

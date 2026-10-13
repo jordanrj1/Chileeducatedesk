@@ -86,8 +86,24 @@ class ErrorLectura(Exception):
     pass
 
 
-def leer(contenido: bytes | None = None, nombre: str = "", texto: str = ""):
-    """Devuelve (filas, columnas_ignoradas). Cada fila es un dict con claves canónicas."""
+COLUMNAS_POR_TIPO = {
+    "personas": [("nombre_completo", "Nombre completo"), ("nombres", "Nombres"), ("apellido_paterno", "Apellido paterno"), ("apellido_materno", "Apellido materno"),
+                 ("apellidos", "Apellidos (ambos)"), ("rut", "RUT"), ("correo", "Correo"), ("telefono", "Teléfono"), ("institucion", "Institución"),
+                 ("carrera", "Carrera"), ("profesion", "Profesión"), ("observaciones", "Observaciones")],
+    "organizaciones": [("nombres", "Nombre"), ("tipo", "Tipo"), ("rut", "RUT"), ("correo", "Correo"), ("telefono", "Teléfono"), ("comuna", "Comuna"), ("calle", "Dirección"), ("sitio_web", "Sitio web")],
+    "lugares": [("nombres", "Nombre"), ("tipo", "Tipo"), ("calle", "Calle"), ("numero", "Número"), ("comuna", "Comuna"), ("capacidad", "Capacidad"), ("condiciones", "Condiciones")],
+}
+COLUMNAS_POR_TIPO["listado_actividad"] = COLUMNAS_POR_TIPO["personas"]
+
+
+def _es_fila_de_total(fila):
+    """IG-E3: «Total», «Subtotal», «TOTAL ALUMNOS»… al comienzo de la fila."""
+    primera = next((_texto(c) for c in fila if _texto(c)), "")
+    return _sin_tildes(primera).lower().startswith(("total", "subtotal"))
+
+
+def leer_tabla(contenido: bytes | None = None, nombre: str = "", texto: str = ""):
+    """(encabezados, filas, filas_de_total_ignoradas). Las celdas siempre como texto."""
     try:
         if contenido is not None:
             filas = _filas_xlsx(contenido) if nombre.lower().endswith(".xlsx") else _filas_de_texto(_decodificar(contenido))
@@ -95,22 +111,39 @@ def leer(contenido: bytes | None = None, nombre: str = "", texto: str = ""):
             filas = _filas_de_texto(texto)
     except Exception as e:  # archivo corrupto o formato inesperado
         raise ErrorLectura(f"No se pudo leer el archivo: {e}")
-    filas = [f for f in filas if any(_texto(c) for c in f)]
+    filas = [[_texto(c) for c in f] for f in filas if any(_texto(c) for c in f)]
     if len(filas) < 2:
         raise ErrorLectura("El archivo no tiene datos: se espera una fila de encabezados y al menos una fila de datos.")
-    if len(filas) - 1 > MAX_FILAS:
-        raise ErrorLectura(f"Demasiadas filas ({len(filas) - 1}). El máximo por carga es {MAX_FILAS}.")
-    cabeceras = [canon_cabecera(h) for h in filas[0]]
-    ignoradas = [str(h) for h, c in zip(filas[0], cabeceras) if c is None and str(h).strip()]
-    if not any(cabeceras):
-        raise ErrorLectura("No se reconocieron los encabezados. Usa columnas como: nombre, apellidos, rut, correo, teléfono.")
+    encabezados, datos = filas[0], filas[1:]
+    totales = [f for f in datos if _es_fila_de_total(f)]
+    datos = [f for f in datos if not _es_fila_de_total(f)]
+    if len(datos) > MAX_FILAS:
+        raise ErrorLectura(f"Demasiadas filas ({len(datos)}). El máximo por carga es {MAX_FILAS}.")
+    if not datos:
+        raise ErrorLectura("El archivo no tiene filas de datos (solo encabezados o totales).")
+    return encabezados, datos, len(totales)
+
+
+def mapeo_sugerido(encabezados):
+    return [canon_cabecera(h) or "" for h in encabezados]
+
+
+def aplicar_mapeo(filas, mapeo):
     resultado = []
-    for fila in filas[1:]:
+    for fila in filas:
         d = {}
-        for c, v in zip(cabeceras, fila):
-            if c:
-                t = _texto(v)
-                if t and not d.get(c):
-                    d[c] = t
+        for c, v in zip(mapeo, fila):
+            if c and v and not d.get(c):
+                d[c] = v
         resultado.append(d)
-    return resultado, ignoradas
+    return resultado
+
+
+def leer(contenido: bytes | None = None, nombre: str = "", texto: str = ""):
+    """Devuelve (filas, columnas_ignoradas). Cada fila es un dict con claves canónicas."""
+    encabezados, datos, _ = leer_tabla(contenido, nombre, texto)
+    mapeo = mapeo_sugerido(encabezados)
+    if not any(mapeo):
+        raise ErrorLectura("No se reconocieron los encabezados. Usa columnas como: nombre, apellidos, rut, correo, teléfono.")
+    ignoradas = [str(h) for h, c in zip(encabezados, mapeo) if not c and str(h).strip()]
+    return aplicar_mapeo(datos, mapeo), ignoradas

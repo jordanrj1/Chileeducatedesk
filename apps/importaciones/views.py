@@ -50,23 +50,36 @@ class LoteNuevo(Permiso403Mixin, FormView):
         return ctx
 
     def form_valid(self, form):
+        import hashlib
+
         d = form.cleaned_data
         try:
             if d.get("archivo"):
-                crudas, ignoradas = lectura.leer(d["archivo"].read(), d["archivo"].name)
+                bruto = d["archivo"].read()
+                encabezados, datos, totales = lectura.leer_tabla(bruto, d["archivo"].name)
                 nombre = d["archivo"].name
             else:
-                crudas, ignoradas = lectura.leer(texto=d["texto"])
+                bruto = d["texto"].encode("utf-8")
+                encabezados, datos, totales = lectura.leer_tabla(texto=d["texto"])
                 nombre = "Texto pegado"
         except lectura.ErrorLectura as e:
             form.add_error(None, str(e))
             return self.form_invalid(form)
-        filas, resumen = procesar.analizar(d["tipo"], crudas)
+        mapeo = lectura.mapeo_sugerido(encabezados)
+        filas, resumen = procesar.analizar(d["tipo"], lectura.aplicar_mapeo(datos, mapeo))
+        ignoradas = [str(h) for h, c in zip(encabezados, mapeo) if not c and str(h).strip()]
         if ignoradas:
             resumen["columnas_ignoradas"] = ignoradas
+        if totales:
+            resumen["filas_de_total"] = totales  # IG-E3
+        huella = hashlib.sha256(bruto).hexdigest()
+        previo = Lote.objects.filter(huella=huella, tipo=d["tipo"], estado="confirmado").order_by("-confirmado_en").first()
+        if previo:  # IG-E7: el mismo archivo ya se cargó
+            resumen["ya_cargado"] = {"pk": previo.pk, "fecha": f"{previo.confirmado_en.astimezone():%d-%m-%Y %H:%M}" if previo.confirmado_en else ""}
         lote = Lote.objects.create(
             tipo=d["tipo"], nombre_archivo=nombre, fuente=d.get("fuente", ""), actividad=d.get("actividad") if d["tipo"] == "listado_actividad" else None,
             rol=d.get("rol") if d["tipo"] == "listado_actividad" else None, filas=filas, resumen=resumen, usuario=self.request.user,
+            encabezados=encabezados, crudas=datos, mapeo=mapeo, huella=huella,
         )
         if d.get("archivo"):
             d["archivo"].seek(0)
@@ -97,6 +110,8 @@ class LoteRevisar(Permiso403Mixin, View):
     def contexto(self, lote):
         return {
             "lote": lote, "titulo": f"Revisar importación #{lote.pk}", "campos": procesar.CAMPOS[lote.tipo], "filas": lote.filas,
+            "columnas": list(zip(range(len(lote.encabezados)), lote.encabezados, lote.mapeo)), "opciones_columna": lectura.COLUMNAS_POR_TIPO[lote.tipo],
+            "es_personas": lote.tipo in ("personas", "listado_actividad"),
             "breadcrumb": [("Importaciones", "/importaciones")], "volver_url": "/importaciones",
             "hay_pendientes": any(f["decision"] == "pendiente" for f in lote.filas),
             "n_pendientes": sum(1 for f in lote.filas if f["decision"] == "pendiente"),
@@ -120,16 +135,23 @@ class LoteRevisar(Permiso403Mixin, View):
         accion = request.POST.get("accion")
         if accion == "descartar":
             lote.estado = "descartado"
-            lote.filas = []  # no se conservan datos personales de una carga descartada
+            lote.filas, lote.crudas = [], []  # no se conservan datos personales de una carga descartada
             lote.save()
             registrar(request.user, "importacion_descartada", lote)
             messages.success(request, "Importación descartada. No se guardó ningún dato.")
             return HttpResponseRedirect("/importaciones")
-        crudas, decisiones = _recolectar(request.POST, lote)
-        filas, resumen = procesar.analizar(lote.tipo, crudas, decisiones)
-        ign = lote.resumen.get("columnas_ignoradas")
-        if ign:
-            resumen["columnas_ignoradas"] = ign
+        lote.crear_carreras = request.POST.get("crear_carreras") == "1"
+        if accion == "mapear":  # IG-E1: el usuario indicó qué es cada columna; se vuelve a leer desde la planilla original
+            validos = {c for c, _ in lectura.COLUMNAS_POR_TIPO[lote.tipo]}
+            lote.mapeo = [request.POST.get(f"m{j}", "") if request.POST.get(f"m{j}", "") in validos else "" for j in range(len(lote.encabezados))]
+            crudas, decisiones = lectura.aplicar_mapeo(lote.crudas, lote.mapeo), {}
+        else:
+            crudas, decisiones = _recolectar(request.POST, lote)
+        filas, resumen = procesar.analizar(lote.tipo, crudas, decisiones, lote.crear_carreras)
+        for clave in ("filas_de_total", "ya_cargado"):
+            if lote.resumen.get(clave):
+                resumen[clave] = lote.resumen[clave]
+        resumen["columnas_ignoradas"] = [str(h) for h, c in zip(lote.encabezados, lote.mapeo) if not c and str(h).strip()]
         lote.filas, lote.resumen = filas, resumen
         lote.save()
         if accion == "confirmar":
@@ -169,5 +191,5 @@ class LoteRevertir(Permiso403Mixin, View):
         except ValueError as e:
             messages.error(request, str(e))
         else:
-            messages.success(request, f"Lote revertido: {n['eliminados']} registros eliminados, {n['conservados']} conservados porque tienen otra historia.")
+            messages.success(request, f"Lote revertido: {n['eliminados']} registros eliminados, {n['conservados']} conservados porque tienen otra historia o se editaron después" + (f" ({n['editados']} editados)" if n.get("editados") else "") + ".")
         return HttpResponseRedirect(lote.get_absolute_url())

@@ -761,3 +761,147 @@ def test_SE_E3_exportacion_con_aviso(cg, persona):
     assert "Aviso" in libro.sheetnames and "datos personales" in libro["Aviso"]["A1"].value and "gestor_prueba" in libro["Aviso"]["A2"].value
     libro = load_workbook(BytesIO(cg.get(f"/personas/{persona.pk}/datos-personales").content))
     assert "Aviso" in libro.sheetnames
+
+
+# --- Iteración 7: cargas de planillas ------------------------------------------------------------------------------
+from apps.importaciones.models import Lote  # noqa: E402
+from apps.nucleo.utilidades import calcular_dv  # noqa: E402
+
+
+def _cargar(c, actividad, rol, csv, nombre="lista.csv"):
+    return c.post("/importaciones/nueva", {"tipo": "listado_actividad", "actividad": actividad.pk, "rol": rol("estudiante").pk, "archivo": SimpleUploadedFile(nombre, csv.encode())})
+
+
+def test_IG_E1_mapeo_manual_de_columnas(cg, actividad, rol):
+    _cargar(cg, actividad, rol, "Alumno inscrito;Fono contacto\nAna Pérez;912345678\n")
+    lote = Lote.objects.get()
+    assert lote.filas[0]["estado"] == "error"  # sin columnas reconocidas: falta el nombre
+    html = cg.get(f"/importaciones/{lote.pk}/revisar").content.decode()
+    assert "«Alumno inscrito»" in html and "Aplicar columnas" in html
+    cg.post(f"/importaciones/{lote.pk}/revisar", {"accion": "mapear", "m0": "nombre_completo", "m1": "telefono"})
+    lote.refresh_from_db()
+    f = lote.filas[0]
+    assert f["estado"] == "nuevo" and f["datos"]["nombres"] == "Ana" and f["datos"]["telefono"] == "+56912345678"
+    cg.post(f"/importaciones/{lote.pk}/revisar", {"accion": "confirmar"})
+    assert Persona.objects.get().nombres == "Ana"
+
+
+def test_IG_E3_filas_de_total_se_ignoran(cg, actividad, rol):
+    _cargar(cg, actividad, rol, "Nombre\nAna Pérez\nBeto Rojas\nTotal;2\n")
+    lote = Lote.objects.get()
+    assert len(lote.filas) == 2 and lote.resumen["filas_de_total"] == 1
+    assert "1 fila(s) de totales" in cg.get(f"/importaciones/{lote.pk}/revisar").content.decode()
+
+
+def test_IG_E4_dos_personas_en_una_fila(cg, actividad, rol):
+    _cargar(cg, actividad, rol, "Nombre\nJuan y María Soto\nPedro / Luis\nMaría José Díaz\n")
+    estados = [f["estado"] for f in Lote.objects.get().filas]
+    assert estados == ["error", "error", "nuevo"]
+
+
+def test_IG_E7_mismo_archivo_dos_veces(cg, actividad, rol):
+    csv = "Nombre;RUT\nAna Pérez;%s\n" % f"12345678-{calcular_dv(12345678)}"
+    _cargar(cg, actividad, rol, csv)
+    cg.post(f"/importaciones/{Lote.objects.get().pk}/revisar", {"accion": "confirmar"})
+    _cargar(cg, actividad, rol, csv)
+    segundo = Lote.objects.latest("id")
+    assert segundo.resumen["ya_cargado"]["pk"] == Lote.objects.earliest("id").pk
+    assert "ya se cargó" in cg.get(f"/importaciones/{segundo.pk}/revisar").content.decode()
+
+
+def test_IG_E8_persona_existente_con_datos_distintos(cg, actividad, rol, crear_persona):
+    from apps.nucleo.models import TipoContacto
+    from apps.personas.models import Contacto
+
+    ana = crear_persona("Ana", apellido_paterno="Rojas", rut_numero=12345678, rut_dv=calcular_dv(12345678))
+    Contacto.objects.create(persona=ana, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor="911111111")
+    csv = "Nombres;Apellido paterno;RUT;Teléfono\nAna;Rojas;%s;922222222\n" % f"12345678-{calcular_dv(12345678)}"
+    _cargar(cg, actividad, rol, csv)
+    lote = Lote.objects.get()
+    f = lote.filas[0]
+    assert f["estado"] == "existente" and any("Contacto nuevo: +56922222222" in x for x in f["diferencias"])
+    html = cg.get(f"/importaciones/{lote.pk}/revisar").content.decode()
+    assert "Datos distintos" in html and "agregar solo los contactos nuevos" in html and "Actualizar la ficha" in html
+    # Conservar actual: no cambia nada de la ficha
+    cg.post(f"/importaciones/{lote.pk}/revisar", {"accion": "confirmar", "d2": f"contacto:{ana.pk}"})
+    assert set(ana.contactos.values_list("valor_normalizado", flat=True)) == {"+56911111111", "+56922222222"}
+    assert Persona.objects.count() == 1 and actividad.participaciones.get().persona == ana
+
+
+def test_IG_E8_actualizar_y_revertir_la_actualizacion(cg, actividad, rol, crear_persona):
+    ana = crear_persona("Ana", apellido_paterno="Rojaz", rut_numero=12345678, rut_dv=calcular_dv(12345678))
+    _cargar(cg, actividad, rol, "Nombres;Apellido paterno;RUT\nAna;Rojas;%s\n" % f"12345678-{calcular_dv(12345678)}")
+    lote = Lote.objects.get()
+    cg.post(f"/importaciones/{lote.pk}/revisar", {"accion": "confirmar", "d2": f"actualizar:{ana.pk}"})
+    ana.refresh_from_db()
+    assert ana.apellido_paterno == "Rojas"
+    cg.post(f"/importaciones/{lote.pk}/revertir")
+    ana.refresh_from_db()
+    assert ana.apellido_paterno == "Rojaz" and Persona.objects.filter(pk=ana.pk).exists()
+
+
+def test_IG_E9_carrera_inexistente(cg, actividad, rol, universidad):
+    from apps.organizaciones.models import Carrera
+    from apps.personas.models import PersonaFormacion
+
+    csv = "Nombre;Institución;Carrera\nAna Pérez;universidad ficticia;Química\nBeto Rojas;Universidad Inventada;Física\n"
+    _cargar(cg, actividad, rol, csv)
+    lote = Lote.objects.get()
+    assert any("no existe en Universidad Ficticia" in a for a in lote.filas[0]["avisos"])
+    assert any("no está registrada" in a for a in lote.filas[1]["avisos"])
+    cg.post(f"/importaciones/{lote.pk}/revisar", {"accion": "confirmar", "crear_carreras": "1"})
+    assert Carrera.objects.filter(organizacion=universidad, nombre="Química").exists()
+    assert PersonaFormacion.objects.get(persona__nombres="Ana").carrera.nombre == "Química"
+    assert not PersonaFormacion.objects.filter(persona__nombres="Beto").exists()
+    cg.post(f"/importaciones/{lote.pk}/revertir")
+    assert not Carrera.objects.filter(nombre="Química").exists()
+
+
+def test_IG_E10_si_falla_a_la_mitad_no_queda_nada(cg, actividad, rol, monkeypatch):
+    from apps.importaciones import procesar
+
+    _cargar(cg, actividad, rol, "Nombre\nAna Pérez\nBeto Rojas\nCarla Díaz\n")
+    lote = Lote.objects.get()
+    original, llamadas = procesar._persona, {"n": 0}
+
+    def falla_en_la_segunda(*a, **kw):
+        llamadas["n"] += 1
+        if llamadas["n"] == 2:
+            raise RuntimeError("corte de luz simulado")
+        return original(*a, **kw)
+
+    monkeypatch.setattr(procesar, "_persona", falla_en_la_segunda)
+    with pytest.raises(RuntimeError):
+        procesar.aplicar(lote, None)
+    lote.refresh_from_db()
+    assert Persona.objects.count() == 0 and lote.estado == "previa" and not actividad.participaciones.exists()
+
+
+def test_IG_E11_revertir_conserva_lo_editado_despues(cg, actividad, rol):
+    _cargar(cg, actividad, rol, "Nombre\nAna Pérez\nBeto Rojas\n")
+    lote = Lote.objects.get()
+    cg.post(f"/importaciones/{lote.pk}/revisar", {"accion": "confirmar"})
+    ana = Persona.objects.get(nombres="Ana")
+    cg.post(f"/personas/{ana.pk}/editar", {"nombres": "Ana", "apellido_paterno": "Pérez", "profesion": "Editada a mano"})
+    r = cg.post(f"/importaciones/{lote.pk}/revertir", follow=True)
+    assert Persona.objects.filter(pk=ana.pk).exists() and not Persona.objects.filter(nombres="Beto").exists()
+    assert "editados" in r.content.decode()
+
+
+def test_IG_E14_persona_desactivada_se_puede_reactivar(cg, actividad, rol, crear_persona):
+    ana = crear_persona("Ana", apellido_paterno="Rojas", rut_numero=12345678, rut_dv=calcular_dv(12345678))
+    ana.activo = False
+    ana.save()
+    _cargar(cg, actividad, rol, "Nombre;RUT\nAna Rojas;%s\n" % f"12345678-{calcular_dv(12345678)}")
+    lote = Lote.objects.get()
+    assert any("desactivada" in a for a in lote.filas[0]["avisos"])
+    cg.post(f"/importaciones/{lote.pk}/revisar", {"accion": "confirmar", "d2": f"reactivar:{ana.pk}"})
+    ana.refresh_from_db()
+    assert ana.activo
+
+
+def test_IG_E12_formatos_no_permitidos(cg, actividad, rol):
+    for nombre in ("lista.xlsm", "lista.ods"):
+        r = cg.post("/importaciones/nueva", {"tipo": "listado_actividad", "actividad": actividad.pk, "rol": rol("estudiante").pk, "archivo": SimpleUploadedFile(nombre, b"x")})
+        assert r.status_code == 200, nombre
+    assert not Lote.objects.exists()
