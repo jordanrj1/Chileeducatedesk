@@ -110,7 +110,7 @@ class ActividadOpciones(Permiso403Mixin, View):
         q = request.GET.get("q", "").strip()
         qs = Actividad.objects.filter(actividad_padre__isnull=True)
         if q:
-            qs = qs.filter(nombre__icontains=q)
+            qs = qs.filter(nombre__unaccent__icontains=q)
         opciones = [("", "---------")] + [(a.pk, a.nombre) for a in qs[:25]]
         from django.http import HttpResponse
 

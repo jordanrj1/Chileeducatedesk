@@ -12,13 +12,24 @@ from apps.nucleo.utilidades import formatear_rut, normalizar_telefono
 
 class PersonaQuerySet(models.QuerySet):
     def buscar(self, texto):
+        """Por nombre (sin distinguir tildes ni mayúsculas), RUT, documento o teléfono en cualquier formato (PE-E8, BU-E1, BU-E2, BU-E3)."""
         texto = (texto or "").strip()
         if not texto:
             return self
+        digitos_total = "".join(ch for ch in texto if ch.isdigit())
+        if len(digitos_total) >= 8 and not any(ch.isalpha() and ch not in "kK" for ch in texto):
+            # parece un teléfono o un RUT completo: se compara normalizado
+            tel = normalizar_telefono(texto)
+            cola = digitos_total[-8:]
+            por_numero = Q(contactos__valor_normalizado__endswith=cola) | Q(rut_numero__icontains=digitos_total[:-1] or digitos_total) | Q(numero_documento__icontains=texto.replace(" ", ""))
+            if tel.startswith("+"):
+                por_numero |= Q(contactos__valor_normalizado=tel)
+            return self.filter(por_numero).distinct()
         cond = Q()
         for palabra in texto.split():
             sub = (
-                Q(nombres__icontains=palabra) | Q(apellido_paterno__icontains=palabra) | Q(apellido_materno__icontains=palabra)
+                Q(nombres__unaccent__icontains=palabra) | Q(apellido_paterno__unaccent__icontains=palabra) | Q(apellido_materno__unaccent__icontains=palabra)
+                | Q(numero_documento__icontains=palabra)
             )
             digitos = "".join(ch for ch in palabra if ch.isdigit())
             if len(digitos) >= 4:
@@ -48,6 +59,10 @@ class Persona(models.Model):
     apellido_materno = models.CharField(max_length=100, blank=True)
     rut_numero = models.PositiveIntegerField("RUT (número)", null=True, blank=True)
     rut_dv = models.CharField("RUT (dígito)", max_length=1, null=True, blank=True)
+    TIPOS_DOCUMENTO = [("pasaporte", "Pasaporte"), ("extranjero", "Documento de identidad extranjero"), ("otro", "Otro")]
+    tipo_documento = models.CharField("otro documento (tipo)", max_length=12, choices=TIPOS_DOCUMENTO, blank=True,
+                                      help_text="Para quien no tiene RUT, por ejemplo personas extranjeras (PE-E4).")
+    numero_documento = models.CharField("otro documento (número)", max_length=40, blank=True)
     origen = models.ForeignKey(OrigenPersona, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     estado_registro = models.ForeignKey(EstadoRegistro, null=True, blank=True, on_delete=models.PROTECT, related_name="+", verbose_name="estado del registro")
     profesion = models.CharField("profesión u oficio", max_length=120, blank=True)
@@ -66,10 +81,12 @@ class Persona(models.Model):
         permissions = [
             ("exportar_persona", "Puede exportar personas"),
             ("ver_sensibles", "Puede ver datos sensibles de personas"),
+            ("fusionar_persona", "Puede fusionar fichas duplicadas de personas"),
         ]
         constraints = [
             models.UniqueConstraint(fields=["rut_numero"], condition=Q(rut_numero__isnull=False), name="persona_rut_unico"),
             models.CheckConstraint(condition=Q(rut_numero__isnull=True) | Q(rut_dv__isnull=False), name="persona_rut_con_dv"),
+            models.UniqueConstraint(fields=["tipo_documento", "numero_documento"], condition=~Q(numero_documento=""), name="persona_documento_unico"),
         ]
 
     def __str__(self):

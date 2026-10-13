@@ -36,7 +36,7 @@ class Organizacion(models.Model):
         ordering = ["nombre"]
         verbose_name = "organización"
         verbose_name_plural = "organizaciones"
-        permissions = [("exportar_organizacion", "Puede exportar organizaciones")]
+        permissions = [("exportar_organizacion", "Puede exportar organizaciones"), ("fusionar_organizacion", "Puede fusionar organizaciones duplicadas")]
         constraints = [
             models.UniqueConstraint(fields=["rut_numero"], condition=models.Q(rut_numero__isnull=False), name="organizacion_rut_unico"),
             models.UniqueConstraint(fields=["es_propia"], condition=models.Q(es_propia=True), name="una_sola_organizacion_propia"),

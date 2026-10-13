@@ -86,7 +86,7 @@ class ListaBase(Permiso403Mixin, ListView):
         if q and self.campos_busqueda:
             cond = Q()
             for campo in self.campos_busqueda:
-                cond |= Q(**{f"{campo}__icontains": q})
+                cond |= Q(**{f"{campo}__unaccent__icontains": q})  # sin distinguir tildes (BU-E1)
             qs = qs.filter(cond)
         for f in self.filtros:
             v = self.valor_filtro(f)

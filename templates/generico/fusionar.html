@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="{{ volver_url }}">{{ origen }}</a></li><li class="breadcrumb-item active">Fusionar</li>{% endblock %}
+{% block contenido %}
+<h1 class="h4">{{ titulo }}</h1>
+<div class="alert alert-warning">Se fusionará <strong>«{{ origen }}»</strong> (ficha duplicada) en la ficha que elijas. Todo su historial pasa a esa ficha; esta queda desactivada con una nota. Nada se borra y queda en la auditoría.</div>
+<h2 class="h6">Lo que se moverá</h2>
+<ul>{% for nombre, n in previa %}<li>{{ n }} {{ nombre }}</li>{% empty %}<li class="text-muted">No tiene registros relacionados.</li>{% endfor %}</ul>
+<form method="post" style="max-width:40rem;">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+  {% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
+  <button class="btn btn-danger">Fusionar</button> <a class="btn btn-outline-secondary volver" href="{{ volver_url }}">← Volver</a>
+</form>
+{% endblock %}

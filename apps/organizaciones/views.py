@@ -99,6 +99,19 @@ class OrganizacionEditar(ControlVersionMixin, ConDireccionMixin, Permiso403Mixin
         return HttpResponseRedirect(self.object.get_absolute_url())
 
 
+class OrganizacionFusionar(__import__("apps.nucleo.vistas_fusion", fromlist=["FusionarBase"]).FusionarBase):
+    modelo = Organizacion
+    permiso = "organizaciones.fusionar_organizacion"
+    titulo = "Fusionar organizaciones duplicadas"
+
+    def campo_destino(self, origen):
+        from django.urls import reverse_lazy
+
+        from apps.nucleo.formularios import SelectorField
+
+        return SelectorField(Organizacion.objects.filter(activo=True).exclude(pk=origen.pk), reverse_lazy("organizaciones:opciones"), label="Organización que se conserva")
+
+
 class OrganizacionAlternar(AlternarActivoBase):
     modelo = Organizacion
     permission_required = "organizaciones.change_organizacion"
@@ -125,9 +138,12 @@ class OrganizacionFicha(FichaBase):
     ]
 
     def acciones_extra(self):
+        res = []
         if self.request.user.has_perm("coordinacion.add_interaccion"):
-            return [("Registrar interacción", f"/interacciones/nueva?organizacion={self.object.pk}")]
-        return []
+            res.append(("Registrar interacción", f"/interacciones/nueva?organizacion={self.object.pk}"))
+        if self.request.user.has_perm("organizaciones.fusionar_organizacion") and self.object.activo:
+            res.append(("Fusionar con otra", f"/organizaciones/{self.object.pk}/fusionar"))
+        return res
 
     def contexto_ficha(self):
         o = self.object
@@ -249,6 +265,6 @@ class OrganizacionOpciones(Permiso403Mixin, __import__("django.views", fromlist=
         q = request.GET.get("q", "").strip()
         qs = Organizacion.objects.filter(activo=True)
         if q:
-            qs = qs.filter(Q(nombre__icontains=q) | Q(otro_identificador__icontains=q))
+            qs = qs.filter(Q(nombre__unaccent__icontains=q) | Q(otro_identificador__unaccent__icontains=q))
         opciones = [("", "---------")] + [(o.pk, f"{o.nombre} ({o.tipo})") for o in qs[:25]]
         return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))

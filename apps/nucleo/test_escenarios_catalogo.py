@@ -123,3 +123,158 @@ def test_UI_E10_volver_conserva_filtros(cg, persona):
 def test_UI_E13_listado_vacio_con_boton_para_crear(cg):
     html = cg.get("/lugares").content.decode()
     assert "Aún no hay registros" in html and "+ Nuevo lugar" in html
+
+
+# --- PE y BU: personas y búsqueda ------------------------------------------------------------------------
+from apps.personas.models import Persona  # noqa: E402
+
+
+def test_PE_E8_BU_E1_busqueda_sin_tildes(cg, crear_persona):
+    crear_persona("María", apellido_paterno="Guzmán")
+    for q in ("guzman", "GUZMAN", "maria", "Maria Guzman"):
+        assert "Guzmán" in cg.get(f"/personas?q={q}").content.decode(), q
+        assert "Guzmán" in cg.get(f"/buscar?q={q}&tipo=persona").content.decode(), q
+    crear_persona("Íñigo", apellido_paterno="Ñuñez")
+    assert "Ñuñez" in cg.get("/personas?q=nunez").content.decode()
+
+
+def test_BU_E1_tambien_en_organizaciones_y_lugares(cg, universidad):
+    universidad.nombre = "Universidad de Concepción"
+    universidad.save()
+    assert "Concepción" in cg.get("/organizaciones?q=concepcion").content.decode()
+    assert "Concepción" in cg.get("/buscar?q=concepcion").content.decode()
+
+
+def test_BU_E2_buscar_telefono_en_cualquier_formato(cg, persona):
+    from apps.nucleo.models import TipoContacto
+    from apps.personas.models import Contacto
+
+    Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor="+56 9 8765 4321")
+    for q in ("987654321", "9 8765 4321", "+56987654321", "(9) 8765-4321"):
+        assert "Ana María" in cg.get("/personas", {"q": q}).content.decode(), q
+
+
+def test_BU_E3_apellidos_compuestos(cg, crear_persona):
+    crear_persona("Pedro", apellido_paterno="De la Fuente")
+    assert "De la Fuente" in cg.get("/personas", {"q": "de la fuente"}).content.decode()
+    assert "De la Fuente" in cg.get("/personas", {"q": "fuente"}).content.decode()
+
+
+def test_BU_E5_desactivados_aparecen_marcados(cg, crear_persona):
+    p = crear_persona("Desactivada", apellido_paterno="Buscable")
+    p.activo = False
+    p.save()
+    html = cg.get("/buscar?q=buscable").content.decode()
+    assert "Desactivada Buscable" in html and "Desactivado" in html
+
+
+def test_PE_E4_persona_extranjera_con_pasaporte(cg):
+    r = cg.post("/personas/nueva", {"modo": "completa", "nombres": "Jean", "apellido_paterno": "Dupont", "tipo_documento": "pasaporte", "numero_documento": "ab123456"})
+    p = Persona.objects.get()
+    assert r.status_code == 302 and p.numero_documento == "AB123456" and p.rut_numero is None
+    assert "AB123456" in cg.get("/personas?q=AB123456").content.decode()
+    r = cg.post("/personas/nueva", {"modo": "completa", "nombres": "Otro", "tipo_documento": "pasaporte", "numero_documento": "AB123456", "confirmar_duplicado": "1", "nota_distincion": "x"})
+    assert r.status_code == 200 and Persona.objects.count() == 1  # documento repetido
+    assert cg.post("/personas/nueva", {"modo": "completa", "nombres": "Sin tipo", "numero_documento": "ZZ1"}).status_code == 200
+
+
+def test_PE_E1_comparacion_lado_a_lado(cg, persona):
+    from apps.nucleo.models import TipoContacto
+    from apps.personas.models import Contacto
+
+    Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor="ana@ejemplo.invalid")
+    html = cg.post("/personas/nueva", {"modo": "rapida", "nombres": "Ana María", "apellido_paterno": "Pérez"}).content.decode()
+    assert "Persona existente" in html and "ana@ejemplo.invalid" in html and "Por qué coincide" in html
+
+
+def test_PE_E10_fallecida_no_es_candidata(cg, actividad, crear_persona):
+    from apps.actividades import matching
+    from apps.nucleo.models import EstadoRegistro
+
+    p = crear_persona("Fallecida")
+    p.estado_registro = EstadoRegistro.objects.get(codigo="fallecida")
+    p.save()
+    assert p not in [c.objeto for c in matching.buscar_personas(actividad)]
+    assert Persona.objects.filter(pk=p.pk).exists()
+
+
+def test_VA_E4_desactivada_nunca_es_candidata(actividad, crear_persona):
+    from apps.actividades import matching
+
+    p = crear_persona("Inactiva")
+    p.activo = False
+    p.save()
+    assert p not in [c.objeto for c in matching.buscar_personas(actividad)]
+
+
+# --- Fusión controlada --------------------------------------------------------------------------------------
+def test_PE_E14_fusion_solo_administrador(cg, ca, persona, crear_persona):
+    dup = crear_persona("Ana María", apellido_paterno="Pérez S.")
+    assert cg.get(f"/personas/{dup.pk}/fusionar").status_code == 403
+    assert "Fusionar con otra ficha" not in cg.get(dup.get_absolute_url()).content.decode()
+    assert ca.get(f"/personas/{dup.pk}/fusionar").status_code == 200
+
+
+def test_PE_E14_fusion_une_historiales(ca, persona, crear_persona, crear_actividad, rol, estado_part):
+    from apps.actividades.models import Participacion
+    from apps.documentos.origen import origenes_de, registrar_origen
+    from apps.nucleo.models import Auditoria, TipoContacto
+    from apps.personas.models import Contacto
+
+    dup = crear_persona("Ana Maria", apellido_paterno="Perez", rut_numero=11111111, rut_dv="1")
+    a1, a2 = crear_actividad("A1"), crear_actividad("A2")
+    Participacion.objects.create(actividad=a1, persona=dup, rol=rol("voluntario"), estado=estado_part("confirmado"))
+    Participacion.objects.create(actividad=a2, persona=dup, rol=rol("voluntario"), estado=estado_part("confirmado"))
+    Participacion.objects.create(actividad=a2, persona=persona, rol=rol("voluntario"), estado=estado_part("confirmado"))  # choque
+    Contacto.objects.create(persona=dup, tipo=TipoContacto.objects.get(codigo="correo"), valor="dup@ejemplo.invalid")
+    a1.responsable = dup
+    a1.save()
+    registrar_origen(dup, None, fuente="llamado")
+    r = ca.post(f"/personas/{dup.pk}/fusionar", {"destino": persona.pk, "motivo": "Misma persona, digitada dos veces", "confirmo": "on"})
+    assert r.status_code == 302 and r["Location"] == persona.get_absolute_url()
+    persona.refresh_from_db()
+    dup.refresh_from_db()
+    assert persona.participaciones.count() == 2 and dup.participaciones.count() == 1  # el choque queda en el origen
+    assert persona.contactos.filter(valor="dup@ejemplo.invalid").exists()
+    a1.refresh_from_db()
+    assert a1.responsable == persona
+    assert persona.rut_numero == 11111111 and dup.rut_numero is None  # el RUT pasa a la ficha que queda
+    assert not dup.activo and dup.estado_registro.codigo == "fusionada" and "Fusionada en la ficha" in dup.observaciones
+    assert origenes_de(persona).count() == 1
+    assert Auditoria.objects.filter(accion="fusion").exists()
+
+
+def test_PE_E14_fusion_pide_motivo_y_confirmacion(ca, persona, crear_persona):
+    dup = crear_persona("Dup")
+    assert ca.post(f"/personas/{dup.pk}/fusionar", {"destino": persona.pk, "motivo": "", "confirmo": "on"}).status_code == 400
+    assert ca.post(f"/personas/{dup.pk}/fusionar", {"destino": persona.pk, "motivo": "x"}).status_code == 400
+    assert ca.post(f"/personas/{dup.pk}/fusionar", {"destino": dup.pk, "motivo": "x", "confirmo": "on"}).status_code == 400
+    dup.refresh_from_db()
+    assert dup.activo
+
+
+def test_OR_E1_fusion_de_organizaciones(ca, universidad, crear_actividad):
+    from apps.actividades.models import ActividadOrganizacion
+    from apps.organizaciones.models import Carrera, Organizacion
+
+    dup = Organizacion.objects.create(nombre="U. Ficticia", tipo=universidad.tipo)
+    Carrera.objects.create(organizacion=dup, nombre="Química")
+    ActividadOrganizacion.objects.create(actividad=crear_actividad(), organizacion=dup)
+    ca.post(f"/organizaciones/{dup.pk}/fusionar", {"destino": universidad.pk, "motivo": "Mismo nombre abreviado", "confirmo": "on"})
+    assert universidad.carreras.filter(nombre="Química").exists() and universidad.actividades.count() == 1
+    dup.refresh_from_db()
+    assert not dup.activo
+
+
+def test_CO_E4_unir_valores_del_catalogo(ca, cg, persona):
+    from apps.nucleo.models import OrigenPersona
+
+    mal = OrigenPersona.objects.create(nombre="Difucion")
+    persona.origen = mal
+    persona.save()
+    bien = OrigenPersona.objects.get(codigo="difusion")
+    assert cg.get(f"/administracion/catalogos/origen-persona/{mal.pk}/unir").status_code == 403
+    r = ca.post(f"/administracion/catalogos/origen-persona/{mal.pk}/unir", {"destino": bien.pk, "motivo": "Mal escrito", "confirmo": "on"})
+    persona.refresh_from_db()
+    mal.refresh_from_db()
+    assert r.status_code == 302 and persona.origen == bien and not mal.activo

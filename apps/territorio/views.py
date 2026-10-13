@@ -39,7 +39,7 @@ class TerritorioIndice(Permiso403Mixin, TemplateView):
         q = self.request.GET.get("q", "").strip()
         ctx.update(titulo="Territorio", q=q)
         if q:
-            ctx["comunas"] = Comuna.objects.filter(nombre__icontains=q).select_related("provincia__region")[:60]
+            ctx["comunas"] = Comuna.objects.filter(nombre__unaccent__icontains=q).select_related("provincia__region")[:60]
         else:
             ctx["regiones"] = Region.objects.annotate(n_provincias=Count("provincias", distinct=True), n_comunas=Count("provincias__comunas"))
         return ctx
