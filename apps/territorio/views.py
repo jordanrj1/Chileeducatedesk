@@ -39,7 +39,7 @@ class TerritorioIndice(Permiso403Mixin, TemplateView):
         q = self.request.GET.get("q", "").strip()
         ctx.update(titulo="Territorio", q=q)
         if q:
-            ctx["comunas"] = Comuna.objects.filter(nombre__icontains=q).select_related("provincia__region")[:60]
+            ctx["comunas"] = Comuna.objects.filter(nombre__unaccent__icontains=q).select_related("provincia__region")[:60]
         else:
             ctx["regiones"] = Region.objects.annotate(n_provincias=Count("provincias", distinct=True), n_comunas=Count("provincias__comunas"))
         return ctx
@@ -76,7 +76,7 @@ class _FichaTerritorio(FichaBase):
         return {"organizaciones": self._organizaciones()}
 
     def ctx_actividades(self):
-        return {"actividades": self._actividades()}
+        return {"actividades": self._actividades(), "comuna_ficha": getattr(self.object, "provincia_id", None) and self.object, "sectores_ficha": self._ids() if hasattr(self, "_ids") else None}
 
 
 class ComunaFicha(_FichaTerritorio):

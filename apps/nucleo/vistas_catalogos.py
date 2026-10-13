@@ -8,7 +8,7 @@ from django.views import View
 
 from .formularios import BootstrapMixin
 from .models import CATALOGOS
-from .vistas_base import Permiso403Mixin
+from .vistas_base import Permiso403Mixin  # noqa: F401
 
 
 def dependencias(obj):
@@ -99,6 +99,31 @@ class Editar(View):
             messages.success(request, "Opción actualizada.")
             return redirect("nucleo:catalogo", slug=slug)
         return render(request, "generico/formulario.html", {"form": form, "titulo": f"Editar: {obj}", "volver_url": f"/administracion/catalogos/{slug}/", "breadcrumb": []}, status=400)
+
+
+class Unir(__import__("apps.nucleo.vistas_fusion", fromlist=["FusionarBase"]).FusionarBase):
+    """CO-E4: un valor mal escrito se une a otro; lo que lo usaba pasa al correcto."""
+
+    titulo = "Unir valores del catálogo"
+
+    def get_origen(self, **kw):
+        self.modelo = _modelo(kw["slug"])
+        self.slug = kw["slug"]
+        return get_object_or_404(self.modelo, pk=kw["pk"])
+
+    def permiso_requerido(self, origen):
+        return f"nucleo.desactivar_{self.modelo._meta.model_name}"
+
+    def campo_destino(self, origen):
+        from django import forms as f
+
+        return f.ModelChoiceField(self.modelo.objects.filter(activo=True).exclude(pk=origen.pk), label="Valor que se conserva")
+
+    def volver(self):
+        return f"/administracion/catalogos/{self.slug}/"
+
+    def destino_url(self, destino):
+        return self.volver()
 
 
 class Alternar(View):

@@ -48,7 +48,10 @@ class ReunionForm(BootstrapMixin, forms.ModelForm):
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
-        self.fields["lugar"].queryset = Lugar.objects.filter(activo=True)
+        from apps.lugares.campos import LugarChoiceField
+
+        self.fields["lugar"] = LugarChoiceField(required=False)
+        self.fields["lugar"].widget.attrs["class"] = "form-select"
         self.fields["modalidad"].queryset = Modalidad.objects.filter(activo=True)
         self.fields["actividad"].required = self.fields["proyecto"].required = False
 

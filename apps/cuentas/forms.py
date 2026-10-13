@@ -16,6 +16,13 @@ class LoginForm(AuthenticationForm):
     error_messages = {"invalid_login": MENSAJE, "inactive": MENSAJE}
 
     def clean(self):
+        from .bloqueo import bloqueado
+
+        if bloqueado(self.cleaned_data.get("username")):
+            minutos = getattr(settings, "BLOQUEO_MINUTOS", 15)
+            raise ValidationError(
+                f"Demasiados intentos fallidos. Espera {minutos} minutos o pide al Administrador que desbloquee el acceso.", code="bloqueado"
+            )
         try:
             return super().clean()
         except ValidationError:

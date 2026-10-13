@@ -16,7 +16,8 @@
   {% elif hay_criticos and not critico_permitido %}<p class="text-danger">Hay incompatibilidades críticas: corrígelas (cambia fecha, lugar o participantes) y vuelve a confirmar.</p>
   {% else %}
     {% if hay_criticos %}<div class="mb-3"><label class="form-label" for="mc">Motivo para confirmar a pesar de la incompatibilidad</label><input class="form-control" id="mc" name="motivo_conflicto" maxlength="250" required></div>{% endif %}
-    {% if hay_advertencias %}<div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="acepto" value="1" id="acepto"><label class="form-check-label" for="acepto">Confirmar de todos modos</label></div>{% endif %}
+    {% if hay_advertencias %}<div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="acepto" value="1" id="acepto"><label class="form-check-label" for="acepto">Confirmar de todos modos</label></div>
+    <div class="mb-3" style="max-width:36rem;"><label class="form-label small" for="ma">¿Por qué se confirma a pesar de las advertencias? (opcional, queda en la auditoría)</label><input class="form-control form-control-sm" id="ma" name="motivo_advertencias" maxlength="250"></div>{% endif %}
     <button class="btn btn-success">Confirmar actividad</button>
   {% endif %}
   <a class="btn btn-outline-secondary volver" href="{{ volver_url }}">← Corregir</a>

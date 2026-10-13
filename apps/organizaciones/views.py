@@ -8,7 +8,7 @@ from django.views.generic import CreateView
 from apps.nucleo.direccion_mixin import ConDireccionMixin
 from apps.nucleo.models import EstadoRegistro, TipoOrganizacion
 from apps.nucleo.vistas_base import (
-    AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
+    ControlVersionMixin, AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
 )
 from apps.personas.duplicados import candidatos  # noqa: F401  (reutilizado por los selectores)
 
@@ -82,7 +82,7 @@ class OrganizacionNueva(ConDireccionMixin, Permiso403Mixin, CreateView):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
-class OrganizacionEditar(ConDireccionMixin, Permiso403Mixin, __import__("django.views.generic", fromlist=["UpdateView"]).UpdateView):
+class OrganizacionEditar(ControlVersionMixin, ConDireccionMixin, Permiso403Mixin, __import__("django.views.generic", fromlist=["UpdateView"]).UpdateView):
     model = Organizacion
     form_class = OrganizacionForm
     permission_required = "organizaciones.change_organizacion"
@@ -99,9 +99,27 @@ class OrganizacionEditar(ConDireccionMixin, Permiso403Mixin, __import__("django.
         return HttpResponseRedirect(self.object.get_absolute_url())
 
 
+class OrganizacionFusionar(__import__("apps.nucleo.vistas_fusion", fromlist=["FusionarBase"]).FusionarBase):
+    modelo = Organizacion
+    permiso = "organizaciones.fusionar_organizacion"
+    titulo = "Fusionar organizaciones duplicadas"
+
+    def campo_destino(self, origen):
+        from django.urls import reverse_lazy
+
+        from apps.nucleo.formularios import SelectorField
+
+        return SelectorField(Organizacion.objects.filter(activo=True).exclude(pk=origen.pk), reverse_lazy("organizaciones:opciones"), label="Organización que se conserva")
+
+
 class OrganizacionAlternar(AlternarActivoBase):
     modelo = Organizacion
     permission_required = "organizaciones.change_organizacion"
+
+    def afectados(self, obj):
+        from apps.actividades.afectacion import de_organizacion
+
+        return de_organizacion(obj)
 
 
 class OrganizacionFicha(FichaBase):
@@ -117,7 +135,7 @@ class OrganizacionFicha(FichaBase):
         ("info", "Información", "organizaciones/pestanas/info.html"),
         ("contactos", "Contactos", "generico/_hijos.html"),
         ("carreras", "Carreras", "generico/_hijos.html"),
-        ("personas", "Personas relacionadas", "generico/_hijos.html"),
+        ("personas", "Personas relacionadas", "organizaciones/pestanas/personas.html"),
         ("actividades", "Actividades y proyectos", "organizaciones/pestanas/actividades.html", "actividades.view_actividadorganizacion"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
@@ -125,9 +143,12 @@ class OrganizacionFicha(FichaBase):
     ]
 
     def acciones_extra(self):
+        res = []
         if self.request.user.has_perm("coordinacion.add_interaccion"):
-            return [("Registrar interacción", f"/interacciones/nueva?organizacion={self.object.pk}")]
-        return []
+            res.append(("Registrar interacción", f"/interacciones/nueva?organizacion={self.object.pk}"))
+        if self.request.user.has_perm("organizaciones.fusionar_organizacion") and self.object.activo:
+            res.append(("Fusionar con otra", f"/organizaciones/{self.object.pk}/fusionar"))
+        return res
 
     def contexto_ficha(self):
         o = self.object
@@ -185,7 +206,36 @@ class OrganizacionFicha(FichaBase):
         return {
             "titulo_pestana": "Personas relacionadas", "hijos": hijos, "etiqueta_nuevo": "Agregar persona con cargo",
             "url_nuevo": reverse("organizaciones:personas_nuevo", args=[pk]), "vacio": "Aún no hay personas vinculadas.",
+            "hay_autoridades": self.object.vinculos.filter(tipo_cargo="autoridad", fecha_termino__isnull=True).exists(),
         }
+
+
+class CerrarCargosAutoridad(Permiso403Mixin, __import__("django.views", fromlist=["View"]).View):
+    """OR-E6: cambio de administración. Se cierran los cargos de autoridad vigentes; los contactos de oficina siguen."""
+
+    permission_required = "personas.change_personaorganizacion"
+
+    def post(self, request, pk):
+        from datetime import date
+
+        from apps.nucleo.auditoria import registrar
+
+        org = get_object_or_404(Organizacion, pk=pk)
+        try:
+            hasta = date.fromisoformat(request.POST.get("hasta", ""))
+        except ValueError:
+            messages.error(request, "Indica la fecha de término.")
+            return HttpResponseRedirect(f"{org.get_absolute_url()}?tab=personas")
+        n = 0
+        for v in org.vinculos.filter(tipo_cargo="autoridad", fecha_termino__isnull=True):
+            if v.fecha_inicio and v.fecha_inicio > hasta:
+                continue
+            v.fecha_termino = hasta
+            v.save()
+            n += 1
+        registrar(request.user, "cargos_autoridad_cerrados", org, f"{n} cargos al {hasta:%d-%m-%Y}")
+        messages.success(request, f"{n} cargo(s) de autoridad cerrados al {hasta:%d-%m-%Y}. Los nuevos se agregan con «Agregar persona con cargo».")
+        return HttpResponseRedirect(f"{org.get_absolute_url()}?tab=personas")
 
 
 class CarreraNueva(Permiso403Mixin, CreateView):
@@ -249,6 +299,6 @@ class OrganizacionOpciones(Permiso403Mixin, __import__("django.views", fromlist=
         q = request.GET.get("q", "").strip()
         qs = Organizacion.objects.filter(activo=True)
         if q:
-            qs = qs.filter(Q(nombre__icontains=q) | Q(otro_identificador__icontains=q))
+            qs = qs.filter(Q(nombre__unaccent__icontains=q) | Q(otro_identificador__unaccent__icontains=q))
         opciones = [("", "---------")] + [(o.pk, f"{o.nombre} ({o.tipo})") for o in qs[:25]]
         return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))

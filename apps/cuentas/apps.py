@@ -25,8 +25,8 @@ class CuentasConfig(AppConfig):
         from apps.nucleo.auditoria import registrar
 
         post_migrate.connect(_sembrar, sender=self, dispatch_uid="fche_sembrar_roles")
-        user_logged_in.connect(lambda sender, request, user, **k: registrar(user, "ingreso"), weak=False, dispatch_uid="aud_in")
+        user_logged_in.connect(lambda sender, request, user, **k: registrar(user, "ingreso", user.get_username().lower()), weak=False, dispatch_uid="aud_in")
         user_logged_out.connect(lambda sender, request, user, **k: registrar(user, "salida"), weak=False, dispatch_uid="aud_out")
         user_login_failed.connect(
-            lambda sender, credentials, **k: registrar(None, "ingreso_fallido", credentials.get("username", "")), weak=False, dispatch_uid="aud_fail"
+            lambda sender, credentials, **k: registrar(None, "ingreso_fallido", (credentials.get("username") or "").strip().lower()), weak=False, dispatch_uid="aud_fail"
         )

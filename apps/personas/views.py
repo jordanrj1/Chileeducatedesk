@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.db import transaction
 from django.http import HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render  # noqa: F401
 from django.urls import reverse
 from django.views import View
 from django.views.generic import CreateView
@@ -95,13 +95,21 @@ class PersonaNueva(Permiso403Mixin, CreateView):
     def form_valid(self, form):
         d = form.cleaned_data
         rut = d.get("rut")
-        if not self.request.POST.get("confirmar_duplicado"):
-            cands = candidatos(d["nombres"], d.get("apellido_paterno", ""), d.get("apellido_materno", ""), rut[0] if rut else None, d.get("correo", ""), d.get("telefono", ""))
+        cands = None
+        if not self.request.POST.get("confirmar_duplicado") or not self.request.POST.get("nota_distincion", "").strip():
+            cands = candidatos(
+                d["nombres"], d.get("apellido_paterno", ""), d.get("apellido_materno", ""), rut[0] if rut else None, d.get("correo", ""), d.get("telefono", ""),
+                documento=(d.get("tipo_documento"), d.get("numero_documento")),
+            )
             if cands:
-                return self.render_to_response(self.get_context_data(form=form, candidatos=cands))
+                falta_nota = bool(self.request.POST.get("confirmar_duplicado"))
+                return self.render_to_response(self.get_context_data(form=form, candidatos=cands, falta_nota=falta_nota))
         with transaction.atomic():
             persona = form.save(commit=False)
             persona.creado_por = self.request.user
+            nota = self.request.POST.get("nota_distincion", "").strip()
+            if nota:  # PE-E2: qué la distingue de la otra persona con el mismo nombre
+                persona.observaciones = (f"Se distingue de otra ficha parecida: {nota}\n" + persona.observaciones).strip()
             tiene_contacto = bool(d.get("correo") or d.get("telefono"))
             if not persona.estado_registro_id:
                 codigo = "activo" if (persona.apellido_paterno and tiene_contacto) else "incompleto"
@@ -170,9 +178,17 @@ class PersonaFicha(FichaBase):
     ]
 
     def acciones_extra(self):
+        res = []
         if self.request.user.has_perm("coordinacion.add_interaccion"):
-            return [("Registrar interacción", f"/interacciones/nueva?persona={self.object.pk}")]
-        return []
+            res.append(("Registrar interacción", f"/interacciones/nueva?persona={self.object.pk}"))
+        if self.request.user.has_perm("actividades.change_actividad"):
+            from apps.actividades.afectacion import a_cargo_de
+
+            if a_cargo_de(self.object).exists():
+                res.append(("Reasignar sus actividades", f"/personas/{self.object.pk}/reasignar"))
+        if self.request.user.has_perm("personas.fusionar_persona") and self.object.activo:
+            res.append(("Fusionar con otra ficha", f"/personas/{self.object.pk}/fusionar"))
+        return res
 
     def contexto_ficha(self):
         p = self.object
@@ -292,6 +308,9 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
             h.append(encabezados)
             for fila in filas:
                 h.append([_seguro(v) for v in fila])
+        from apps.nucleo.exportacion import agregar_aviso
+
+        agregar_aviso(libro, request.user)
         buffer = BytesIO()
         libro.save(buffer)
         registrar(request.user, "datos_personales_exportados", p, "derecho de acceso")
@@ -300,9 +319,71 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
         return r
 
 
+class PersonaFusionar(__import__("apps.nucleo.vistas_fusion", fromlist=["FusionarBase"]).FusionarBase):
+    modelo = Persona
+    permiso = "personas.fusionar_persona"
+    titulo = "Fusionar personas duplicadas"
+
+    def campo_destino(self, origen):
+        from django.urls import reverse_lazy
+
+        from apps.nucleo.formularios import SelectorField
+
+        return SelectorField(Persona.objects.filter(activo=True).exclude(pk=origen.pk), reverse_lazy("personas:opciones"), label="Ficha que se conserva")
+
+
+class PersonaReasignar(Permiso403Mixin, View):
+    """AT-E6: pasar las actividades en curso o futuras de un responsable a otra persona."""
+
+    permission_required = "actividades.change_actividad"
+
+    def _form(self, persona, data=None):
+        from django import forms as f
+        from django.urls import reverse_lazy
+
+        from apps.actividades.afectacion import a_cargo_de
+        from apps.nucleo.formularios import BootstrapMixin, SelectorField
+
+        class F(BootstrapMixin, f.Form):
+            actividades = f.ModelMultipleChoiceField(a_cargo_de(persona), widget=f.CheckboxSelectMultiple, label="Actividades a reasignar")
+            nuevo = SelectorField(Persona.objects.filter(activo=True).exclude(pk=persona.pk), reverse_lazy("personas:opciones"), label="Nuevo responsable")
+            motivo = f.CharField(max_length=250)
+
+        form = F(data, initial={"actividades": list(a_cargo_de(persona))})
+        form.fields["actividades"].widget.attrs["class"] = ""
+        return form
+
+    def get(self, request, pk):
+        p = get_object_or_404(Persona, pk=pk)
+        return render(request, "generico/formulario.html", {"form": self._form(p), "titulo": f"Reasignar actividades de {p}", "volver_url": p.get_absolute_url(), "breadcrumb": [(str(p), p.get_absolute_url())]})
+
+    def post(self, request, pk):
+        from apps.nucleo.auditoria import registrar
+
+        p = get_object_or_404(Persona, pk=pk)
+        form = self._form(p, request.POST)
+        if not form.is_valid():
+            return render(request, "generico/formulario.html", {"form": form, "titulo": f"Reasignar actividades de {p}", "volver_url": p.get_absolute_url(), "breadcrumb": []}, status=400)
+        nuevo = form.cleaned_data["nuevo"]
+        n = 0
+        with transaction.atomic():
+            for a in form.cleaned_data["actividades"]:
+                a.responsable = nuevo
+                a.save()  # queda en el historial de cada actividad
+                n += 1
+        registrar(request.user, "responsable_reasignado", p, f"{n} actividades a {nuevo}. Motivo: {form.cleaned_data['motivo']}")
+        messages.success(request, f"{n} actividad(es) reasignadas a {nuevo}.")
+        return HttpResponseRedirect(p.get_absolute_url())
+
+
 class PersonaAlternar(AlternarActivoBase):
     modelo = Persona
     permission_required = "personas.change_persona"
+
+    def afectados(self, obj):
+        from apps.actividades.afectacion import de_persona
+
+        return de_persona(obj)
 
 
 class DireccionPersonaNueva(Permiso403Mixin, CreateView):
@@ -337,6 +418,6 @@ class PersonaOpciones(Permiso403Mixin, View):
         from django.http import HttpResponse
         from django.utils.html import format_html_join
 
-        qs = Persona.objects.filter(activo=True).buscar(request.GET.get("q", ""))[:25]
+        qs = Persona.objects.filter(activo=True).exclude(estado_registro__codigo__in=["fallecida", "fusionada"]).buscar(request.GET.get("q", ""))[:25]
         opciones = [("", "---------")] + [(p.pk, p.nombre_completo + (f" · {p.rut}" if p.rut else "")) for p in qs]
         return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))

@@ -8,4 +8,5 @@ urlpatterns = [
     path("catalogos/<slug:slug>/", vc.Lista.as_view(), name="catalogo"),
     path("catalogos/<slug:slug>/<int:pk>/editar", vc.Editar.as_view(), name="catalogo_editar"),
     path("catalogos/<slug:slug>/<int:pk>/alternar", vc.Alternar.as_view(), name="catalogo_alternar"),
+    path("catalogos/<slug:slug>/<int:pk>/unir", vc.Unir.as_view(), name="catalogo_unir"),
 ]

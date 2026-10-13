@@ -4,6 +4,7 @@ from django.urls import include, path
 
 from apps.cuentas.forms import LoginForm
 from apps.nucleo import views
+from apps.nucleo.vistas_ayuda import Ayuda
 from apps.nucleo.vistas_busqueda import Buscar
 from apps.nucleo.vistas_inicio import Dashboard
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path("logout", LogoutView.as_view(), name="logout"),
     path("dashboard", Dashboard.as_view(), name="dashboard"),
     path("buscar", Buscar.as_view(), name="buscar"),
+    path("ayuda", Ayuda.as_view(), name="ayuda"),
     path("salud", views.salud, name="salud"),
     path("", include("apps.cuentas.urls")),
     path("administracion/", include("apps.cuentas.urls_admin")),

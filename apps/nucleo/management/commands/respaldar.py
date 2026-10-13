@@ -44,6 +44,9 @@ class Command(BaseCommand):
         if r.returncode != 0:
             archivo_bd.unlink(missing_ok=True)
             raise CommandError(f"pg_dump falló: {r.stderr.strip()}")
+        env = Path(settings.BASE_DIR) / ".env"
+        if env.exists():  # OP-E8: sin la configuración no se puede volver a levantar el sistema
+            shutil.copy2(env, destino / f"fche_config_{sello}.env")
         archivo_media = destino / f"fche_documentos_{sello}.zip"
         n = 0
         media = Path(settings.MEDIA_ROOT)

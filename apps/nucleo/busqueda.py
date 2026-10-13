@@ -31,7 +31,7 @@ def _fecha(txt):
 def _personas(u, f):
     from apps.personas.models import Persona
 
-    qs = Persona.objects.filter(activo=True).buscar(f["q"]).select_related("estado_registro")
+    qs = Persona.objects.buscar(f["q"]).select_related("estado_registro")
     if f["comuna"]:
         qs = qs.filter(direcciones__direccion__comuna_id=f["comuna"], direcciones__vigente=True)
     if f["estado_registro"]:
@@ -41,7 +41,7 @@ def _personas(u, f):
     for p in qs.distinct()[:LIMITE_POR_TIPO]:
         n = p.participaciones.count()
         det = " · ".join(x for x in [p.profesion, f"{n} participación(es)" if n else "", str(p.estado_registro or "")] if x)
-        yield Resultado("persona", p.nombre_completo, p.get_absolute_url(), det)
+        yield Resultado("persona", p.nombre_completo, p.get_absolute_url(), det, "" if p.activo else "Desactivado")
 
 
 def _organizaciones(u, f):
@@ -49,10 +49,10 @@ def _organizaciones(u, f):
 
     from apps.organizaciones.models import Organizacion
 
-    qs = Organizacion.objects.filter(activo=True)
+    qs = Organizacion.objects.all()
     if f["q"]:
         digitos = "".join(c for c in f["q"] if c.isdigit())
-        cond = Q(nombre__icontains=f["q"]) | Q(otro_identificador__icontains=f["q"]) | Q(descripcion__icontains=f["q"])
+        cond = Q(nombre__unaccent__icontains=f["q"]) | Q(otro_identificador__unaccent__icontains=f["q"]) | Q(descripcion__unaccent__icontains=f["q"])
         if len(digitos) >= 4:
             cond |= Q(rut_numero__icontains=digitos)
         qs = qs.filter(cond)
@@ -62,7 +62,7 @@ def _organizaciones(u, f):
         qs = qs.filter(actividades__isnull=False)
     qs = qs.select_related("tipo").annotate(n=Count("actividades", distinct=True)).distinct()[:LIMITE_POR_TIPO]
     for o in qs:
-        yield Resultado("organizacion", o.nombre, o.get_absolute_url(), f"{o.tipo} · {o.n} actividad(es)")
+        yield Resultado("organizacion", o.nombre, o.get_absolute_url(), f"{o.tipo} · {o.n} actividad(es)", "" if o.activo else "Desactivado")
 
 
 def _proyectos(u, f):
@@ -70,13 +70,13 @@ def _proyectos(u, f):
 
     qs = Proyecto.objects.all()
     if f["q"]:
-        qs = qs.filter(Q(nombre__icontains=f["q"]) | Q(descripcion__icontains=f["q"]) | Q(zona__icontains=f["q"]) | Q(objetivo_general__icontains=f["q"]))
+        qs = qs.filter(Q(nombre__unaccent__icontains=f["q"]) | Q(descripcion__unaccent__icontains=f["q"]) | Q(zona__unaccent__icontains=f["q"]) | Q(objetivo_general__unaccent__icontains=f["q"]))
     if f["desde"]:
         qs = qs.filter(Q(fecha_termino__gte=f["desde"]) | Q(fecha_termino__isnull=True))
     if f["hasta"]:
         qs = qs.filter(Q(fecha_inicio__lte=f["hasta"]) | Q(fecha_inicio__isnull=True))
     if f["zona_nombre"]:
-        qs = qs.filter(zona__icontains=f["zona_nombre"])
+        qs = qs.filter(zona__unaccent__icontains=f["zona_nombre"])
     for p in qs[:LIMITE_POR_TIPO]:
         yield Resultado("proyecto", p.nombre, p.get_absolute_url(), p.zona, p.get_estado_display(), f"{p.fecha_inicio:%d-%m-%Y}" if p.fecha_inicio else "")
 
@@ -87,7 +87,7 @@ def _actividades(u, f):
 
     qs = Actividad.objects.select_related("estado", "proyecto", "tipo")
     if f["q"]:
-        qs = qs.filter(Q(nombre__icontains=f["q"]) | Q(objetivo__icontains=f["q"]) | Q(descripcion__icontains=f["q"]) | Q(proyecto__nombre__icontains=f["q"]))
+        qs = qs.filter(Q(nombre__unaccent__icontains=f["q"]) | Q(objetivo__unaccent__icontains=f["q"]) | Q(descripcion__unaccent__icontains=f["q"]) | Q(proyecto__nombre__unaccent__icontains=f["q"]))
     if f["estado"]:
         qs = qs.filter(estado__codigo=f["estado"])
     if f["tipo_actividad"]:
@@ -110,13 +110,13 @@ def _actividades(u, f):
 def _lugares(u, f):
     from apps.lugares.models import Lugar
 
-    qs = Lugar.objects.filter(activo=True).select_related("direccion__comuna", "tipo")
+    qs = Lugar.objects.select_related("direccion__comuna", "tipo")
     if f["q"]:
-        qs = qs.filter(Q(nombre__icontains=f["q"]) | Q(direccion__calle__icontains=f["q"]) | Q(condiciones__icontains=f["q"]))
+        qs = qs.filter(Q(nombre__unaccent__icontains=f["q"]) | Q(direccion__calle__unaccent__icontains=f["q"]) | Q(condiciones__unaccent__icontains=f["q"]))
     if f["comuna"]:
         qs = qs.filter(direccion__comuna_id=f["comuna"])
     for l in qs[:LIMITE_POR_TIPO]:
-        yield Resultado("lugar", l.nombre, l.get_absolute_url(), f"{l.tipo} · {l.direccion.comuna}" + (f" · capacidad {l.capacidad}" if l.capacidad else ""))
+        yield Resultado("lugar", l.nombre, l.get_absolute_url(), f"{l.tipo} · {l.direccion.comuna}" + (f" · capacidad {l.capacidad}" if l.capacidad else ""), "" if l.activo else "Desactivado")
 
 
 def _reuniones(u, f):
@@ -124,7 +124,7 @@ def _reuniones(u, f):
 
     qs = Reunion.objects.all()
     if f["q"]:
-        qs = qs.filter(Q(titulo__icontains=f["q"]) | Q(objetivo__icontains=f["q"]) | Q(temas__icontains=f["q"]) | Q(acuerdos__icontains=f["q"]))
+        qs = qs.filter(Q(titulo__unaccent__icontains=f["q"]) | Q(objetivo__unaccent__icontains=f["q"]) | Q(temas__unaccent__icontains=f["q"]) | Q(acuerdos__unaccent__icontains=f["q"]))
     if f["desde"]:
         qs = qs.filter(fecha__gte=f["desde"])
     if f["hasta"]:
@@ -140,7 +140,7 @@ def _documentos(u, f):
     if not u.has_perm("documentos.ver_restringido"):
         qs = qs.filter(restringido=False)
     if f["q"]:
-        qs = qs.filter(Q(nombre__icontains=f["q"]) | Q(descripcion__icontains=f["q"]) | Q(folio__icontains=f["q"]) | Q(emisor__icontains=f["q"]))
+        qs = qs.filter(Q(nombre__unaccent__icontains=f["q"]) | Q(descripcion__unaccent__icontains=f["q"]) | Q(folio__unaccent__icontains=f["q"]) | Q(emisor__unaccent__icontains=f["q"]))
     if f["desde"]:
         qs = qs.filter(fecha__gte=f["desde"])
     if f["hasta"]:
@@ -183,4 +183,4 @@ def buscar(user, params):
         if f["estado"] and clave not in ("actividad",):
             continue
         resultados.extend(proveedor(user, f))
-    return resultados
+    return sorted(resultados, key=lambda r: r.estado == "Desactivado")  # lo desactivado, al final y marcado (BU-E5)

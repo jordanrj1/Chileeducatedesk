@@ -18,7 +18,7 @@ def _sincronizar_estado_agenda(actividad):
 
 
 @transaction.atomic
-def programar(actividad, usuario, fecha, hora_inicio=None, hora_fin=None, lugar=None, modalidad=None, motivo=""):
+def programar(actividad, usuario, fecha, hora_inicio=None, hora_fin=None, lugar=None, modalidad=None, motivo="", enlace=""):
     """Crea la primera programación o, si ya existe, una nueva versión (reprogramar). La anterior se conserva."""
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
     codigo = actividad.estado.codigo
@@ -30,8 +30,8 @@ def programar(actividad, usuario, fecha, hora_inicio=None, hora_fin=None, lugar=
         raise ReglaNegocio("El lugar elegido está desactivado.")
     vigente = actividad.agendas.filter(vigente=True).first()
     if vigente:
-        igual = (vigente.fecha, vigente.hora_inicio, vigente.hora_fin, vigente.lugar_id, vigente.modalidad_id) == (
-            fecha, hora_inicio, hora_fin, getattr(lugar, "pk", None), getattr(modalidad, "pk", None)
+        igual = (vigente.fecha, vigente.hora_inicio, vigente.hora_fin, vigente.lugar_id, vigente.modalidad_id, vigente.enlace) == (
+            fecha, hora_inicio, hora_fin, getattr(lugar, "pk", None), getattr(modalidad, "pk", None), enlace or ""
         )
         if igual:
             raise ReglaNegocio("No hay cambios respecto de la programación vigente.")
@@ -46,15 +46,23 @@ def programar(actividad, usuario, fecha, hora_inicio=None, hora_fin=None, lugar=
         actividad.estado = _estado("reprogramada")
         actividad.motivo_estado = motivo.strip()[:250]
     elif codigo == "suspendida":
-        raise ReglaNegocio("Reactiva la actividad antes de programarla.")
+        # AG-E11: reprogramar una actividad suspendida la reanuda
+        if not motivo.strip():
+            raise ReglaNegocio("Indica el motivo para reanudar la actividad.")
+        actividad.estado = _estado("planificada")
+        actividad.motivo_estado = f"Reanudada: {motivo.strip()}"[:250]
     if modalidad is not None:
         actividad.modalidad = modalidad
     actividad.save()
+    hoy = timezone.localdate()
+    ultimo_minuto = bool(vigente) and (vigente.fecha <= hoy or fecha <= hoy)  # AG-E10
     nueva = AgendaActividad.objects.create(
         actividad=actividad, version=version, vigente=True, fecha=fecha, hora_inicio=hora_inicio, hora_fin=hora_fin,
         lugar=lugar, modalidad=modalidad or actividad.modalidad, estado=actividad.estado, motivo_cambio=motivo.strip(), creado_por=usuario,
+        enlace=enlace or "", ultimo_minuto=ultimo_minuto,
     )
-    registrar(usuario, "reprogramada" if vigente else "programada", actividad, f"v{version} {fecha:%d-%m-%Y} {motivo}".strip())
+    accion = "reprogramada_ultimo_minuto" if ultimo_minuto else ("reprogramada" if vigente else "programada")
+    registrar(usuario, accion, actividad, f"v{version} {fecha:%d-%m-%Y} {motivo}".strip())
     return nueva
 
 
@@ -100,7 +108,7 @@ def cambiar_estado(actividad, codigo, usuario, motivo=""):
 
 
 @transaction.atomic
-def confirmar(actividad, usuario, acepta_advertencias=False, motivo_conflicto=""):
+def confirmar(actividad, usuario, acepta_advertencias=False, motivo_conflicto="", motivo_advertencias=""):
     """Revisa compatibilidad antes de confirmar. Nunca confirma con faltantes; los conflictos críticos solo si la opción está activa."""
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
     if "confirmada" not in TRANSICIONES.get(actividad.estado.codigo, set()):
@@ -124,7 +132,12 @@ def confirmar(actividad, usuario, acepta_advertencias=False, motivo_conflicto=""
     actividad.motivo_estado = motivo_conflicto.strip()[:250] if con_conflicto else ""
     actividad.save()
     _sincronizar_estado_agenda(actividad)
-    registrar(usuario, "confirmada_con_conflicto" if con_conflicto else "confirmada", actividad, motivo_conflicto if con_conflicto else "")
+    detalle = []
+    if con_conflicto:
+        detalle.append(f"Conflictos críticos aceptados: {'; '.join(p.mensaje for p in criticos)}. Motivo: {motivo_conflicto.strip()}")
+    if advertencias:  # VA-E9: queda registrado qué advertencias se ignoraron y por qué
+        detalle.append(f"Advertencias aceptadas: {'; '.join(p.mensaje for p in advertencias)}" + (f". Motivo: {motivo_advertencias.strip()}" if motivo_advertencias.strip() else ""))
+    registrar(usuario, "confirmada_con_conflicto" if con_conflicto else ("confirmada_con_advertencias" if advertencias else "confirmada"), actividad, " | ".join(detalle))
     return problemas
 
 
@@ -134,6 +147,10 @@ def finalizar(actividad, usuario):
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
     if "realizada" not in TRANSICIONES.get(actividad.estado.codigo, set()):
         raise ReglaNegocio(f"No se puede finalizar una actividad {actividad.estado.nombre.lower()}.")
+    from .reglas import antes_de_la_fecha
+
+    if antes_de_la_fecha(actividad):
+        raise ReglaNegocio(f"La actividad es el {actividad.agenda_vigente.fecha:%d-%m-%Y}: se puede finalizar desde ese día.")
     faltan = []
     registrada = actividad.participaciones.filter(asistencia__isnull=False).exists()
     if not registrada and not actividad.asistencia_sin_registro:
@@ -149,6 +166,29 @@ def finalizar(actividad, usuario):
     _sincronizar_estado_agenda(actividad)
     registrar(usuario, "finalizada", actividad)
     return actividad
+
+
+@transaction.atomic
+def duplicar(actividad, usuario):
+    """AT-E1: copia los datos de una actividad (sin participantes ni fechas) para repetirla."""
+    from apps.documentos.origen import registrar_origen
+
+    nueva = Actividad.objects.create(
+        nombre=f"Copia de {actividad.nombre}"[:200], proyecto=actividad.proyecto, tipo=actividad.tipo, objetivo=actividad.objetivo,
+        descripcion=actividad.descripcion, modalidad=actividad.modalidad, responsable=actividad.responsable, condiciones=actividad.condiciones,
+        estado=_estado("pendiente"), creado_por=usuario,
+    )
+    for t in actividad.territorios.filter(vigente=True):
+        t.pk = None
+        t.actividad = nueva
+        t.save()
+    for o in actividad.organizaciones.filter(vigente=True):
+        o.pk = None
+        o.actividad = nueva
+        o.save()
+    registrar_origen(nueva, usuario, detalle=f"Duplicada de la actividad #{actividad.pk}")
+    registrar(usuario, "actividad_duplicada", nueva, f"desde #{actividad.pk}")
+    return nueva
 
 
 @transaction.atomic

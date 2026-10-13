@@ -29,10 +29,11 @@ class Buscar(Permiso403Mixin, TemplateView):
         for r in resultados:
             conteo[r.tipo] = conteo.get(r.tipo, 0) + 1
         agrupados = [(nombres[t], conteo[t], grupos[t]) for t, _ in busqueda.TIPOS if t in grupos]
+        hay_tope = any(n >= busqueda.LIMITE_POR_TIPO for n in conteo.values())
         params = g.copy()
         params.pop("page", None)
         ctx.update(
-            titulo="Búsqueda", termino=g.get("q", "").strip(), pagina=pagina, agrupados=agrupados, total=len(resultados), hay_criterio=hay_criterio, querystring=params.urlencode(),
+            titulo="Búsqueda", termino=g.get("q", "").strip(), pagina=pagina, agrupados=agrupados, hay_tope=hay_tope, limite=busqueda.LIMITE_POR_TIPO, total=len(resultados), hay_criterio=hay_criterio, querystring=params.urlencode(),
             tipos=busqueda.TIPOS, estados=EstadoActividad.objects.all(), comunas=Comuna.objects.all(), tipos_actividad=TipoActividad.objects.all(),
             registros=EstadoRegistro.objects.all(), datos=g,
         )

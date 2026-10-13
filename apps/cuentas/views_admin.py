@@ -47,6 +47,7 @@ class UsuarioLista(ListaBase):
         ("Persona", lambda u: getattr(getattr(u, "perfil", None), "persona", "") or ""),
         ("Estado", lambda u: "Activo" if u.is_active else "Desactivado"),
         ("Último ingreso", lambda u: u.last_login.astimezone().strftime("%d-%m-%Y %H:%M") if u.last_login else "Nunca"),
+        ("Acceso", lambda u: "Bloqueado por intentos fallidos" if _bloqueado(u) else ""),
     ]
     orden_defecto = ("username",)
 
@@ -83,7 +84,7 @@ class UsuarioEditar(Permiso403Mixin, UpdateView):
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo=f"Editar usuario: {self.object.username}", volver_url="/administracion/usuarios", breadcrumb=CRUMB + [("Usuarios", "/administracion/usuarios")], editando=self.object)
+        ctx.update(titulo=f"Editar usuario: {self.object.username}", volver_url="/administracion/usuarios", breadcrumb=CRUMB + [("Usuarios", "/administracion/usuarios")], editando=self.object, bloqueado=_bloqueado(self.object))
         return ctx
 
     def form_valid(self, form):
@@ -108,6 +109,24 @@ class UsuarioAlternar(Permiso403Mixin, View):
         usuario.save(update_fields=["is_active"])
         registrar(request.user, "usuario_activado" if usuario.is_active else "usuario_desactivado", usuario.username)
         messages.success(request, "Cuenta activada." if usuario.is_active else "Cuenta desactivada; la persona conserva su ficha.")
+        return redirect("cuentas_admin:usuarios")
+
+
+def _bloqueado(u):
+    from .bloqueo import bloqueado
+
+    return bloqueado(u.username) or bloqueado(u.email)
+
+
+class UsuarioDesbloquear(Permiso403Mixin, View):
+    permission_required = "auth.change_user"
+
+    def post(self, request, pk):
+        from .bloqueo import desbloquear
+
+        usuario = get_object_or_404(User, pk=pk)
+        desbloquear(request.user, usuario)
+        messages.success(request, f"Acceso de {usuario.username} desbloqueado.")
         return redirect("cuentas_admin:usuarios")
 
 

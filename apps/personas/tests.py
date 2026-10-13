@@ -62,7 +62,10 @@ def test_aviso_de_posible_duplicado_no_guarda_sola(cg):
     assert r.status_code == 200 and b"podr\xc3\xada ya existir" in r.content
     assert Persona.objects.count() == 1
     r = nueva(cg, nombres="Carolina", apellido_paterno="Fuentes", apellido_materno="Mora", correo="otro@ejemplo.invalid", confirmar_duplicado="1")
+    assert r.status_code == 200 and Persona.objects.count() == 1  # PE-E2: falta la nota que la distingue
+    r = nueva(cg, nombres="Carolina", apellido_paterno="Fuentes", apellido_materno="Mora", correo="otro@ejemplo.invalid", confirmar_duplicado="1", nota_distincion="Es la prima, vive en Talcahuano")
     assert r.status_code == 302 and Persona.objects.count() == 2  # nunca se fusiona ni bloquea sola
+    assert "Es la prima" in Persona.objects.order_by("-pk").first().observaciones
 
 
 def test_duplicado_por_correo_aunque_el_nombre_sea_distinto(cg):

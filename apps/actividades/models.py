@@ -148,7 +148,7 @@ class Participacion(models.Model):
     @property
     def activa(self):
         """Ocupa cupo. «En lista de espera» no ocupa cupo hasta que se confirme [P]."""
-        return self.estado.codigo not in ("rechazo", "cancelo", "no_asistio", "lista_espera")
+        return self.estado.codigo not in ("rechazo", "cancelo", "no_asistio", "lista_espera", "registro_erroneo")
 
     @property
     def en_espera(self):
@@ -214,6 +214,8 @@ class AgendaActividad(models.Model):
     modalidad = models.ForeignKey(Modalidad, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     estado = models.ForeignKey(EstadoActividad, on_delete=models.PROTECT, related_name="+")
     motivo_cambio = models.CharField("motivo del cambio", max_length=250, blank=True)
+    enlace = models.URLField("enlace (actividad virtual)", blank=True, help_text="Plataforma y enlace de la reunión virtual (LU-E8).")
+    ultimo_minuto = models.BooleanField("cambio de último minuto", default=False)
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     creado_en = models.DateTimeField(auto_now_add=True)
 

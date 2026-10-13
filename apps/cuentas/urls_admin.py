@@ -11,6 +11,7 @@ urlpatterns = [
     path("usuarios/<int:pk>/editar", v.UsuarioEditar.as_view(), name="usuario_editar"),
     path("usuarios/<int:pk>/alternar", v.UsuarioAlternar.as_view(), name="usuario_alternar"),
     path("usuarios/<int:pk>/clave", v.UsuarioClave.as_view(), name="usuario_clave"),
+    path("usuarios/<int:pk>/desbloquear", v.UsuarioDesbloquear.as_view(), name="usuario_desbloquear"),
     path("roles", v.RolLista.as_view(), name="roles"),
     path("roles/<int:pk>", v.RolEditar.as_view(), name="rol_editar"),
     path("auditoria", v.AuditoriaLista.as_view(), name="auditoria"),

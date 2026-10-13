@@ -17,7 +17,7 @@ SOLO_POR_EXCEPCION = {"reabrir_actividad"}  # nadie lo tiene por defecto [V#4]; 
 
 def permisos_gestor(p):
     app, cod = p.content_type.app_label, p.codename
-    if cod in SOLO_POR_EXCEPCION or cod.startswith("desactivar_"):
+    if cod in SOLO_POR_EXCEPCION or cod.startswith("desactivar_") or cod.startswith("fusionar_"):
         return False
     if app == "finanzas":
         return _accion(cod) != "delete"
@@ -43,6 +43,8 @@ def permisos_administrador(p):
     if accion == "view":
         return True
     if app == "nucleo" and accion == "desactivar":
+        return True
+    if accion == "fusionar":  # mantenimiento de datos duplicados (PE-E14)
         return True
     if app == "nucleo" and modelo in CATALOGOS_MODELOS and accion in {"add", "change"}:
         return True

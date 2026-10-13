@@ -10,8 +10,9 @@
 {% if participaciones %}
 <div class="table-responsive"><table class="table table-sm align-middle">
 <thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th><th>Observaciones</th><th></th></tr></thead>
-<tbody>{% for p in participaciones %}<tr class="{% if not p.activa %}text-muted{% endif %}">
+<tbody>{% for p in participaciones %}<tr class="{% if not p.activa %}text-muted{% endif %}{% if p.estado.codigo == 'registro_erroneo' %} text-decoration-line-through{% endif %}">
 <td><a href="{{ p.persona.get_absolute_url }}">{{ p.persona }}</a></td><td>{{ p.rol }}</td><td>{{ p.estado }}</td>
 <td>{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% else %}—{% endif %}</td><td class="small">{{ p.observaciones }}</td>
-<td>{% if puede_agregar and perms.actividades.change_participacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_editar' object.pk p.pk %}">Editar</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+<td class="text-nowrap">{% if puede_agregar and perms.actividades.change_participacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_editar' object.pk p.pk %}">Editar</a>
+{% if p.estado.codigo != "registro_erroneo" %}<a class="btn btn-outline-danger btn-sm" href="{% url 'actividades:participante_quitar' object.pk p.pk %}" title="Se relacionó por error">Quitar</a>{% endif %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
 {% else %}<p class="text-muted">Aún no hay {{ grupo }} registrados.</p>{% endif %}

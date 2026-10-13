@@ -27,7 +27,7 @@ def _ordenar(lista):
 
 def buscar_personas(actividad, texto="", area="", institucion=None, carrera=None, comuna=None, solo_disponibles=False, limite=60):
     ya = actividad.participaciones.values_list("persona_id", flat=True)
-    qs = Persona.objects.filter(activo=True).exclude(pk__in=ya).buscar(texto)
+    qs = Persona.objects.filter(activo=True).exclude(pk__in=ya).exclude(estado_registro__codigo__in=["fallecida", "fusionada"]).buscar(texto)
     if institucion:
         qs = qs.filter(formaciones__organizacion_id=institucion, formaciones__vigente=True)
     if carrera:
@@ -35,7 +35,7 @@ def buscar_personas(actividad, texto="", area="", institucion=None, carrera=None
     if comuna:
         qs = qs.filter(direcciones__direccion__comuna_id=comuna, direcciones__vigente=True)
     if area:
-        qs = qs.filter(Q(profesion__icontains=area) | Q(formaciones__carrera__nombre__icontains=area) | Q(experiencias__descripcion__icontains=area))
+        qs = qs.filter(Q(profesion__unaccent__icontains=area) | Q(formaciones__carrera__nombre__unaccent__icontains=area) | Q(experiencias__descripcion__unaccent__icontains=area))
     qs = qs.annotate(n_actividades=Count("participaciones", distinct=True)).distinct().order_by("-n_actividades", "apellido_paterno")[: limite * 3]
     agenda = actividad.agenda_vigente
     res = []
@@ -67,12 +67,14 @@ def buscar_personas(actividad, texto="", area="", institucion=None, carrera=None
 
 def buscar_lugares(actividad, cantidad=None, comuna=None, texto="", limite=40):
     agenda = actividad.agenda_vigente
-    cantidad = cantidad or len(participaciones_activas(actividad)) or None
+    from .reglas import personas_que_ocupan
+
+    cantidad = cantidad or len(personas_que_ocupan(actividad)) or None
     qs = Lugar.objects.filter(activo=True).select_related("direccion__comuna", "tipo")
     if comuna:
         qs = qs.filter(direccion__comuna_id=comuna)
     if texto:
-        qs = qs.filter(Q(nombre__icontains=texto) | Q(direccion__calle__icontains=texto))
+        qs = qs.filter(Q(nombre__unaccent__icontains=texto) | Q(direccion__calle__unaccent__icontains=texto))
     res = []
     for l in qs[: limite * 3]:
         razones, estado = [], "ok"
@@ -104,7 +106,7 @@ def buscar_organizaciones(actividad, tipo=None, comuna=None, texto="", limite=40
     if comuna:
         qs = qs.filter(Q(direccion__comuna_id=comuna) | Q(comuna_municipal_id=comuna))
     if texto:
-        qs = qs.filter(nombre__icontains=texto)
+        qs = qs.filter(nombre__unaccent__icontains=texto)
     qs = qs.annotate(n_actividades=Count("actividades", distinct=True)).order_by("-n_actividades", "nombre")[:limite]
     res = []
     for o in qs:

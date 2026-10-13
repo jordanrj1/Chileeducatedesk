@@ -7,7 +7,7 @@ from django.views.generic import CreateView, UpdateView
 
 from apps.nucleo.direccion_mixin import ConDireccionMixin
 from apps.nucleo.models import TipoLugar
-from apps.nucleo.vistas_base import AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo
+from apps.nucleo.vistas_base import ControlVersionMixin, AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo
 from apps.territorio.models import Comuna
 
 from .forms import LugarForm
@@ -64,6 +64,12 @@ class _Formulario(ConDireccionMixin, Permiso403Mixin):
             from apps.documentos.origen import registrar_origen
 
             registrar_origen(obj, self.request.user)
+        else:
+            from apps.actividades.afectacion import excedidas_por_capacidad
+
+            excedidas = excedidas_por_capacidad(obj)
+            if excedidas:
+                messages.warning(self.request, f"Con la capacidad actual ({obj.capacidad}) quedan excedidas: " + "; ".join(t for t, _ in excedidas) + ". Revísalas antes de confirmarlas.")
         messages.success(self.request, "Lugar guardado.")
         return HttpResponseRedirect(obj.get_absolute_url())
 
@@ -76,7 +82,7 @@ class LugarNuevo(_Formulario, CreateView):
         return "/lugares"
 
 
-class LugarEditar(_Formulario, UpdateView):
+class LugarEditar(ControlVersionMixin, _Formulario, UpdateView):
     permission_required = "lugares.change_lugar"
     titulo = "Editar lugar"
 
@@ -126,6 +132,11 @@ class LugarCrearRapido(Permiso403Mixin, __import__("django.views", fromlist=["Vi
 class LugarAlternar(AlternarActivoBase):
     modelo = Lugar
     permission_required = "lugares.change_lugar"
+
+    def afectados(self, obj):
+        from apps.actividades.afectacion import de_lugar
+
+        return de_lugar(obj)
 
 
 class LugarFicha(FichaBase):

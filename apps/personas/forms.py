@@ -20,7 +20,7 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = Persona
-        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "profesion", "sitio_web", "origen", "estado_registro", "observaciones"]
+        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", "profesion", "sitio_web", "origen", "estado_registro", "observaciones"]
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
@@ -39,6 +39,20 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
                 raise forms.ValidationError(f"Ya existe una persona con ese RUT: {existe.nombre_completo}.")
         return valor
 
+    def clean(self):
+        d = super().clean()
+        tipo, numero = d.get("tipo_documento"), (d.get("numero_documento") or "").strip().upper()
+        if numero and not tipo:
+            self.add_error("tipo_documento", "Indica el tipo de documento.")
+        if tipo and not numero:
+            self.add_error("numero_documento", "Indica el número del documento.")
+        if tipo and numero:
+            d["numero_documento"] = numero
+            otra = Persona.objects.filter(tipo_documento=tipo, numero_documento=numero).exclude(pk=self.instance.pk).first()
+            if otra:
+                self.add_error("numero_documento", f"Ya existe una persona con ese documento: {otra.nombre_completo}.")
+        return d
+
     def save(self, commit=True):
         obj = super().save(commit=False)
         rut = self.cleaned_data.get("rut")
@@ -55,7 +69,7 @@ class PersonaNuevaForm(PersonaForm):
     telefono = forms.CharField(label="teléfono", required=False, max_length=40)
 
     class Meta(PersonaForm.Meta):
-        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "correo", "telefono", "profesion", "origen", "observaciones"]
+        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", "correo", "telefono", "profesion", "origen", "observaciones"]
 
     def clean_telefono(self):
         t = self.cleaned_data.get("telefono", "").strip()
@@ -67,10 +81,13 @@ class PersonaNuevaForm(PersonaForm):
 class PersonaRapidaForm(PersonaNuevaForm):
     """Ficha rápida (IG-01): nombre y un dato de contacto, para registrar mientras se habla por teléfono."""
 
-    rut = None  # campo declarado en la ficha completa; aquí no se pide
+    rut = None  # campos de la ficha completa que aquí no se piden
 
     class Meta(PersonaNuevaForm.Meta):
         fields = ["nombres", "apellido_paterno", "correo", "telefono"]
+
+    def clean(self):
+        return super(PersonaForm, self).clean()  # sin documento en la ficha rápida
 
 
 class ContactoForm(BootstrapMixin, forms.ModelForm):

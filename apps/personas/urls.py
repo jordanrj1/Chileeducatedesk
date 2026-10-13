@@ -14,6 +14,8 @@ urlpatterns = [
     path("personas/<int:pk>", views.PersonaFicha.as_view(), name="ficha"),
     path("personas/<int:pk>/editar", views.PersonaEditar.as_view(), name="editar"),
     path("personas/<int:pk>/alternar", views.PersonaAlternar.as_view(), name="alternar"),
+    path("personas/<int:pk>/fusionar", views.PersonaFusionar.as_view(), name="fusionar"),
+    path("personas/<int:pk>/reasignar", views.PersonaReasignar.as_view(), name="reasignar"),
     path("personas/<int:pk>/datos-personales", views.PersonaDatosPersonales.as_view(), name="datos_personales"),
     path("personas/<int:pk>/direcciones/nuevo", views.DireccionPersonaNueva.as_view(), name="direcciones_nuevo"),
     *urls_hijo("personas", "contactos", "Contacto", modelo=models.Contacto, form_class=forms.ContactoForm, tab="contactos", etiqueta="contacto", **P),

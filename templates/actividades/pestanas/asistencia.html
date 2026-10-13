@@ -1,16 +1,18 @@
 <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Asistencia</h2>
-{% if puede_agregar and perms.actividades.add_participacion %}<div class="d-flex gap-2">
+{% if puede_asistencia and perms.actividades.add_participacion %}<div class="d-flex gap-2">
   <a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_nuevo' object.pk %}?llego=1">+ Agregar persona que llegó</a>
   {% if perms.personas.add_persona %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:participante_rapido' object.pk %}?llego=1">Crear y marcar asistencia</a>{% endif %}</div>{% endif %}</div>
+{% if antes_de_fecha %}<p class="text-muted">La asistencia se registra desde el día de la actividad ({{ agenda.fecha|date:"d-m-Y" }}).</p>{% endif %}
+{% if object.estado.codigo == "realizada" %}<p class="small text-muted">La actividad ya fue finalizada: lo que registres ahora queda como registro tardío.</p>{% endif %}
 {% if participaciones %}
 <form method="post" action="{% url 'actividades:asistencia' object.pk %}">{% csrf_token %}
 <div class="table-responsive"><table class="table table-sm align-middle">
 <thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th></tr></thead>
 <tbody>{% for p in participaciones %}<tr><td>{{ p.persona }}</td><td>{{ p.rol }}</td><td>{{ p.estado }}</td>
-<td>{% if p.asistencia is True %}<a class="small float-end" href="{% url 'actividades:constancia' object.pk p.pk %}">Constancia</a>{% endif %}{% if puede_agregar and perms.actividades.change_participacion %}<select class="form-select form-select-sm" name="asistencia_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}" style="max-width:12rem;">
+<td>{% if p.asistencia is True %}<a class="small float-end" href="{% url 'actividades:constancia' object.pk p.pk %}">Constancia</a>{% endif %}{% if puede_asistencia %}<select class="form-select form-select-sm" name="asistencia_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}" style="max-width:12rem;">
 <option value="" {% if p.asistencia is None %}selected{% endif %}>Sin registro</option><option value="si" {% if p.asistencia is True %}selected{% endif %}>Asistió</option><option value="no" {% if p.asistencia is False %}selected{% endif %}>No asistió</option></select>
 {% else %}{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% else %}—{% endif %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
-{% if puede_agregar and perms.actividades.change_participacion %}
+{% if puede_asistencia %}
 <div class="form-check mb-2"><input type="hidden" name="sin_registro" value="0"><input class="form-check-input" type="checkbox" name="sin_registro" value="1" id="sr" {% if object.asistencia_sin_registro %}checked{% endif %}><label class="form-check-label" for="sr">No hay registro de asistencia (se indica explícitamente al cerrar)</label></div>
 <button class="btn btn-primary btn-sm">Registrar asistencia</button>{% endif %}
 </form>

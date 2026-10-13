@@ -40,3 +40,21 @@ Cada pregunta trae por qué importa, las opciones y **qué hace hoy el sistema**
 ## 6. Modelo
 21. **«Zona»** en los documentos oficiales: ¿equivale a comuna y sector? Hoy: región → provincia → comuna → sector.
 22. **Sede y unidad académica de las instituciones:** ¿hacen falta, o basta con institución y carrera (como hoy)?
+
+## 7. Surgidas de los escenarios hipotéticos
+23. **Emergencia sin Administrador (AC-E6):** ☐ Sobre cerrado con una clave de respaldo ☐ Segunda cuenta de Administrador ☐ Otro.
+24. **RUT con dígito verificador incorrecto (PE-E6):** ☐ Rechazar (hoy) ☐ Advertir y permitir si Claudio confirma.
+25. **Mayoría de edad (PE-E9):** ¿se guarda la fecha de nacimiento? Sin ella no se puede saber quién es menor.
+26. **Consentimiento (PE-E15, SE-E2):** ¿se registra fecha y origen del consentimiento, y qué pasa si se retira?
+27. **Domicilio particular como lugar (LU-E4) y quién ve qué direcciones (LU-E5).**
+28. **Una solicitud que genera varias actividades (SO-E2):** ☐ Agruparlas en un proyecto (hoy) ☐ Permitir varias actividades por solicitud.
+29. **Actividad sin solicitud (SO-E3):** ☐ Permitida (hoy) ☐ Crear la oportunidad automáticamente.
+30. **Dividir o fusionar actividades (AT-E2, AT-E3).**
+31. **Actividades de varios días o que cruzan la medianoche (AG-E5, AG-E6):** ☐ Usar series o sesiones ☐ Fecha de término.
+32. **Corregir la fecha de una actividad ya realizada (AG-E12).**
+33. **Verificaciones vencidas e inhabilidades con menores (VA-E5, SE-E9, SE-E10):** ¿advertencia o bloqueo?
+34. **Fotos con menores (DO-E10)** y **borrar archivos subidos por error (DO-E9).**
+35. **Asistentes que no dan su nombre (RE-E2):** ¿se registra un conteo?
+36. **Exportaciones con datos sensibles o de menores (BU-E6, SE-E6).**
+37. **Acciones masivas (UI-E11):** ¿se necesitan?
+38. **Reemplazo de Claudio y traspaso del Administrador (CO-E1, CO-E3).**

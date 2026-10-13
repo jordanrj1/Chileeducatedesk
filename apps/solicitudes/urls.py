@@ -10,6 +10,7 @@ urlpatterns = [
     path("solicitudes/<int:pk>", views.SolicitudFicha.as_view(), name="ficha"),
     path("solicitudes/<int:pk>/editar", views.SolicitudEditar.as_view(), name="editar"),
     path("solicitudes/<int:pk>/estado", views.SolicitudEstado.as_view(), name="estado"),
+    path("solicitudes/<int:pk>/reabrir", views.SolicitudReabrir.as_view(), name="reabrir"),
     path("solicitudes/<int:pk>/crear-proyecto", views.SolicitudAProyecto.as_view(), name="crear_proyecto"),
     path("solicitudes/<int:pk>/crear-actividad", views.SolicitudAActividad.as_view(), name="crear_actividad"),
 ]

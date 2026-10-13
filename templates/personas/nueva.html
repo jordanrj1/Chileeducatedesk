@@ -10,9 +10,17 @@
 {% if candidatos %}
 <div class="alert alert-warning mt-3" role="alert">
   <strong>Esta persona podría ya existir.</strong> Revisa antes de crear un duplicado:
-  <ul class="list-unstyled mb-2 mt-2">
-    {% for p, razones in candidatos %}<li class="mb-1">{{ p.nombre_completo }} — <span class="small">{{ razones|join:", " }}</span> <a class="btn btn-outline-primary btn-sm ms-2" href="{{ p.get_absolute_url }}">Usar existente</a></li>{% endfor %}
-  </ul>
+  <div class="table-responsive"><table class="table table-sm mb-2 mt-2">
+    <thead><tr><th>Persona existente</th><th>RUT o documento</th><th>Contacto</th><th>Por qué coincide</th><th></th></tr></thead>
+    <tbody>{% for p, razones in candidatos %}<tr><td>{{ p.nombre_completo }}{% if not p.activo %} <span class="badge text-bg-secondary">desactivada</span>{% endif %}</td>
+      <td>{{ p.rut|default:p.numero_documento|default:"—" }}</td>
+      <td class="small">{% for c in p.contactos.all|slice:":2" %}{{ c.valor }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</td>
+      <td class="small">{{ razones|join:", " }}</td>
+      <td><a class="btn btn-outline-primary btn-sm" href="{{ p.get_absolute_url }}">Usar existente</a></td></tr>{% endfor %}</tbody>
+  </table></div>
+  <label class="form-label small" for="nota_distincion">Si es otra persona, ¿qué la distingue? (se guarda en sus observaciones)</label>
+  <input class="form-control form-control-sm mb-2 {% if falta_nota %}is-invalid{% endif %}" id="nota_distincion" name="nota_distincion" maxlength="200" placeholder="Ej.: es la hija; vive en Hualpén; estudiante de otra carrera">
+  {% if falta_nota %}<div class="invalid-feedback d-block mb-2">Escribe qué la distingue para poder crearla.</div>{% endif %}
   <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Crear de todos modos</button>
 </div>
 {% endif %}

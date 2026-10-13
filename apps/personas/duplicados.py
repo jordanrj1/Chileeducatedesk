@@ -1,4 +1,5 @@
 """Buscar antes de crear (RNF-16). Muestra coincidencias; nunca fusiona ni bloquea sola."""
+from django.contrib.postgres.lookups import Unaccent
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Value
 from django.db.models.functions import Concat
@@ -10,7 +11,7 @@ from .models import Contacto, Persona
 UMBRAL_NOMBRE = 0.45
 
 
-def candidatos(nombres="", apellido_paterno="", apellido_materno="", rut_numero=None, correo="", telefono="", excluir=None):
+def candidatos(nombres="", apellido_paterno="", apellido_materno="", rut_numero=None, correo="", telefono="", excluir=None, documento=None):
     """[(persona, [razones])] ordenado por fuerza de la coincidencia."""
     encontrados = {}
 
@@ -22,6 +23,9 @@ def candidatos(nombres="", apellido_paterno="", apellido_materno="", rut_numero=
     if rut_numero:
         for p in Persona.objects.filter(rut_numero=rut_numero):
             marcar(p, "mismo RUT", 100)
+    if documento and documento[1]:
+        for p in Persona.objects.filter(tipo_documento=documento[0], numero_documento=documento[1].strip().upper()):
+            marcar(p, "mismo documento", 100)
     correo = (correo or "").strip().lower()
     if correo:
         for c in Contacto.objects.filter(persona__isnull=False, tipo__codigo="correo", valor_normalizado=correo).select_related("persona"):
@@ -34,9 +38,9 @@ def candidatos(nombres="", apellido_paterno="", apellido_materno="", rut_numero=
     if texto:
         qs = (
             Persona.objects.annotate(
-                _nombre=Concat("nombres", Value(" "), "apellido_paterno", Value(" "), "apellido_materno")
+                _nombre=Unaccent(Concat("nombres", Value(" "), "apellido_paterno", Value(" "), "apellido_materno"))
             )
-            .annotate(similitud=TrigramSimilarity("_nombre", texto))
+            .annotate(similitud=TrigramSimilarity("_nombre", Unaccent(Value(texto))))
             .filter(similitud__gte=UMBRAL_NOMBRE)
             .order_by("-similitud")[:10]
         )

@@ -8,6 +8,11 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 3. Para salir: **Cerrar sesión** (arriba a la derecha). La sesión se cierra sola tras 60 minutos sin actividad.
 4. Cambiar tu contraseña: tu nombre (arriba) → **Cambiar contraseña**. Si la olvidas, el Administrador la restablece.
 
+## 1b. Seguridad
+- Tras 5 intentos fallidos el acceso se bloquea 15 minutos; el Administrador puede desbloquearlo antes.
+- Si la sesión vence mientras escribes, al volver a ingresar se recupera lo escrito («Se recuperó lo que habías escrito»).
+- Si otra pestaña cambió el registro mientras lo editabas, el sistema avisa en vez de pisar los cambios.
+
 ## 2. Cómo está organizado
 - **Inicio**: qué tienes que hacer hoy (actividades incompletas, solicitudes sin respuesta, personas por completar, tareas por vencer).
 - **Buscador** (arriba, siempre visible): busca en personas, organizaciones, proyectos, actividades, lugares, reuniones y documentos. En **/buscar** puedes combinar filtros (tipo, estado, zona, fechas).
@@ -20,6 +25,11 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 2. Al guardar, el sistema **busca coincidencias** (mismo RUT, correo, teléfono o nombre parecido). Si aparece un posible duplicado, elige **Usar existente** o **Crear de todos modos**. Nunca se fusiona nada automáticamente.
 3. En la ficha: Datos, Contactos, Direcciones, Formación, Experiencia, Disponibilidad, Organizaciones y cargos, Trayectoria, Documentos, Contacto de emergencia y Verificaciones (estas dos son datos sensibles), Origen, Historial.
 4. Una persona **no necesita cuenta** para existir ni participar.
+5. Personas extranjeras: en la ficha completa se registra el pasaporte u otro documento.
+6. Si una persona fallece: estado «Fallecida/o»; no se elimina y ya no aparece como candidata.
+7. Fichas duplicadas descubiertas tarde: el Administrador usa «Fusionar con otra ficha»; todo pasa a la que queda.
+8. «Exportar sus datos personales» entrega todo lo que el sistema guarda de esa persona.
+9. Al desactivar una persona, organización o lugar con actividades futuras, el sistema las muestra antes de confirmar. «Reasignar sus actividades» pasa las de un responsable que se va a otra persona.
 
 ## 4. Organizaciones y lugares
 - **Organizaciones → + Nueva organización**: tipo, RUT (opcional), dirección, contactos (varios, con propósito), carreras (si es institución educativa), personas y cargos.
@@ -41,6 +51,12 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 - **Estado**: suspender o cancelar exige un motivo. Una actividad cancelada o finalizada (realizada) ya no se modifica.
 - **Calendario**: vista mensual/semanal/lista; filtra por estado, zona, responsable y organización, y puede mostrar programaciones anteriores.
 
+## 6b. Más acciones de la actividad
+- **Duplicar**: copia una actividad del año pasado, sin participantes ni fechas.
+- **Quitar** (en Participantes): si alguien se agregó por error; queda como «registro erróneo» con el motivo.
+- **En lista de espera**: estado para quien no alcanza cupo; no ocupa capacidad.
+- La capacidad cuenta personas: quien tiene dos roles cuenta una vez.
+
 ## 7. Ejecutar y finalizar
 1. Después de la actividad, pestaña **Asistencia**: marca quién asistió (o «no hay registro de asistencia»). Si llegó alguien no previsto: **+ Agregar persona que llegó**.
 2. Pestaña **Resultados**: resultado, observaciones, incidencias, indicadores. Sube fotos/minutas en **Documentos**.
@@ -54,11 +70,18 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 - **Transcribir datos de este documento**: el documento a un lado y el formulario al otro; lo registrado queda con ese documento como origen.
 - **Origen del dato**: en la pestaña *Origen* de cada ficha queda de dónde salió la información, quién la registró y si está verificada.
 
+## 8b. Más sobre documentos
+- Si subes un archivo que ya existe, el sistema avisa y ofrece usar el existente.
+- **Reemplazar archivo** guarda una versión nueva (por ejemplo, un escaneo mejor); la anterior queda archivada.
+- Archivar pide un motivo. Si un archivo desaparece del disco, la ficha lo indica.
+
 ## 9. Cargar un listado (planilla que manda una institución)
 1. **Importaciones → + Nueva importación** → «Listado de participantes de una actividad» → elige actividad y rol → sube el archivo (CSV, TXT o XLSX) o pega las filas.
 2. **Revisa**: el sistema muestra *nuevos*, *ya existen*, *posibles duplicados* y *errores*. Corrige los datos en la misma tabla y pulsa «Revisar de nuevo». Para cada duplicado elige: usar la existente, crear nueva u omitir.
 3. **Confirmar carga**: solo se habilita cuando no queda nada pendiente. La planilla original se guarda como documento restringido.
-4. Si te equivocas: abre el lote y **Revertir lote** (se conservan las personas que ya tienen otra historia).
+4. Si una columna no se reconoce, indícala en «Columnas de la planilla» y pulsa «Aplicar columnas».
+5. Si la persona ya existe con datos distintos, elige: conservar, agregar solo el contacto nuevo o actualizar la ficha.
+6. Si te equivocas: abre el lote y **Revertir lote** (se conservan las personas que ya tienen otra historia o que alguien editó después).
 
 ## 10. Exportar
 Los listados con botón **Exportar** generan un Excel con los filtros aplicados. Cada exportación queda en la auditoría.

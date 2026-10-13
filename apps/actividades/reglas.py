@@ -52,6 +52,16 @@ def participaciones_activas(actividad):
     return [p for p in actividad.participaciones.select_related("persona", "rol", "estado") if p.activa]
 
 
+def personas_que_ocupan(actividad, activas=None):
+    """Personas distintas que ocupan cupo (AT-E9: alguien con dos roles cuenta una vez).
+
+    AT-E10 [V]: los roles de ROLES_FUERA_DE_CAPACIDAD (p. ej. tutor) no cuentan. Hoy cuentan todos.
+    """
+    fuera = set(getattr(settings, "ROLES_FUERA_DE_CAPACIDAD", []))
+    activas = participaciones_activas(actividad) if activas is None else activas
+    return {p.persona_id for p in activas if p.rol.codigo not in fuera}
+
+
 def conflictos_de_persona(persona, agenda, excluir_actividad=None):
     """Otras actividades que ocupan a la persona (como participante activa o responsable) en el mismo horario."""
     from django.db.models import Q
@@ -108,8 +118,9 @@ def revisar(actividad, hoy=None):
         if lugar:
             if not lugar.activo:
                 res.append(Problema("critico", "lugar_inactivo", f"El lugar «{lugar}» está desactivado."))
-            if lugar.capacidad is not None and len(activas) > lugar.capacidad:
-                res.append(Problema("critico", "capacidad", f"Hay {len(activas)} participantes y el lugar «{lugar}» tiene capacidad para {lugar.capacidad}."))
+            ocupan = len(personas_que_ocupan(actividad, activas))
+            if lugar.capacidad is not None and ocupan > lugar.capacidad:
+                res.append(Problema("critico", "capacidad", f"Hay {ocupan} participantes y el lugar «{lugar}» tiene capacidad para {lugar.capacidad}."))
             elif lugar.capacidad is None and activas:
                 res.append(Problema("advertencia", "capacidad_desconocida", f"El lugar «{lugar}» no tiene capacidad registrada."))
             mio = intervalo(agenda.hora_inicio, agenda.hora_fin)
@@ -125,6 +136,12 @@ def revisar(actividad, hoy=None):
                 res.append(Problema("info", "condiciones_lugar", f"Condiciones del lugar: {lugar.condiciones}"))
         if actividad.condiciones:
             res.append(Problema("info", "condiciones", f"Condiciones de la actividad: {actividad.condiciones}"))
+        if agenda.fecha.weekday() >= 5:
+            res.append(Problema("info", "fin_de_semana", f"La fecha cae en {'sábado' if agenda.fecha.weekday() == 5 else 'domingo'}."))
+        if agenda.fecha.isoformat() in set(getattr(settings, "FERIADOS", [])):
+            res.append(Problema("info", "feriado", f"El {agenda.fecha:%d-%m-%Y} es feriado."))
+        if lugar and lugar.organizacion_propietaria_id and not actividad.organizaciones.filter(organizacion_id=lugar.organizacion_propietaria_id, vigente=True).exists():
+            res.append(Problema("advertencia", "lugar_sin_confirmar", f"El lugar pertenece a «{lugar.organizacion_propietaria}», que no figura en la actividad: confirma con ellos que está disponible."))
         if agenda.fecha < hoy and actividad.estado.codigo != "realizada":
             res.append(Problema("advertencia", "fecha_pasada", f"La fecha programada ({agenda.fecha:%d-%m-%Y}) ya pasó."))
         personas = {p.persona_id: p.persona for p in activas if not p.es_beneficiario}
@@ -152,10 +169,17 @@ def _compatibles(actividad, agenda, lugar, activas, codigos):
         elif not lugar and actividad.es_virtual:
             ok.append(Problema("ok", "virtual_ok", "Modalidad virtual: no requiere lugar."))
         if lugar and lugar.capacidad is not None and "capacidad" not in codigos:
-            ok.append(Problema("ok", "capacidad_ok", f"Capacidad compatible: {len(activas)} de {lugar.capacidad}."))
+            ok.append(Problema("ok", "capacidad_ok", f"Capacidad compatible: {len(personas_que_ocupan(actividad, activas))} de {lugar.capacidad}."))
         if activas and not codigos & {"persona_ocupada", "fuera_de_disponibilidad"}:
             ok.append(Problema("ok", "horarios_ok", "Sin choques de horario de las personas."))
     return ok
+
+
+def antes_de_la_fecha(actividad, hoy=None):
+    """True si la actividad tiene fecha y todavía no llega (asistencia, resultado y finalizar se habilitan desde ese día)."""
+    hoy = hoy or date.today()
+    ag = actividad.agenda_vigente
+    return bool(ag and ag.fecha > hoy)
 
 
 def conflicto_critico_permitido():

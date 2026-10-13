@@ -66,6 +66,7 @@ class ListaBase(Permiso403Mixin, ListView):
     def get(self, request, *args, **kwargs):
         if self.exportar:
             return self.responder_xlsx()
+        request.session[f"lista:{request.path}"] = request.get_full_path()  # «← Volver» conserva filtros y página
         return super().get(request, *args, **kwargs)
 
     def responder_xlsx(self):
@@ -85,7 +86,7 @@ class ListaBase(Permiso403Mixin, ListView):
         if q and self.campos_busqueda:
             cond = Q()
             for campo in self.campos_busqueda:
-                cond |= Q(**{f"{campo}__icontains": q})
+                cond |= Q(**{f"{campo}__unaccent__icontains": q})  # sin distinguir tildes (BU-E1)
             qs = qs.filter(cond)
         for f in self.filtros:
             v = self.valor_filtro(f)
@@ -160,6 +161,33 @@ class ListaBase(Permiso403Mixin, ListView):
         return ctx
 
 
+class ControlVersionMixin:
+    """UI-E5: si el registro cambió desde que se abrió el formulario (otra pestaña u otro usuario), no se pisa."""
+
+    MENSAJE_VERSION = "Este registro cambió mientras lo editabas (en otra pestaña o por otra persona). Recarga la página para ver los cambios y vuelve a guardar."
+
+    def _version_actual(self):
+        obj = getattr(self, "object", None)
+        if obj is None or not obj.pk or not hasattr(obj, "history"):
+            return ""
+        return str(obj.history.order_by("-history_id").values_list("history_id", flat=True).first() or 0)
+
+    def version_en_conflicto(self):
+        enviada = self.request.POST.get("_version")
+        return bool(enviada) and enviada != self._version_actual()
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        ctx["version_registro"] = self._version_actual()
+        return ctx
+
+    def form_valid(self, form):
+        if self.version_en_conflicto():
+            form.add_error(None, self.MENSAJE_VERSION)
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
+
 class FormularioMixin:
     template_name = "generico/formulario.html"
     titulo = ""
@@ -190,7 +218,7 @@ class CrearBase(FormularioMixin, Permiso403Mixin, CreateView):
     pass
 
 
-class EditarBase(FormularioMixin, Permiso403Mixin, UpdateView):
+class EditarBase(ControlVersionMixin, FormularioMixin, Permiso403Mixin, UpdateView):
     pass
 
 
@@ -265,6 +293,9 @@ class FichaBase(Permiso403Mixin, DetailView):
         if extra:
             ctx.update(extra())
         ctx.update(self.contexto_ficha())
+        volver = ctx.get("url_volver")
+        if volver and "?" not in volver:
+            ctx["url_volver"] = self.request.session.get(f"lista:{volver}", volver)
         ctx["acciones_extra"] = self.acciones_extra()
         return ctx
 
@@ -286,12 +317,25 @@ class FichaBase(Permiso403Mixin, DetailView):
 
 
 class AlternarActivoBase(Permiso403Mixin, View):
-    """Desactiva o reactiva un registro. Nunca borra (docs/CONTEXTO.md §3)."""
+    """Desactiva o reactiva un registro. Nunca borra (docs/CONTEXTO.md §3).
+
+    NR-06: si al desactivar hay actividades futuras afectadas, primero las muestra y pide confirmar.
+    """
 
     modelo = None
 
+    def afectados(self, obj):
+        """[(texto, url)] de actividades futuras que dependen de este registro."""
+        return []
+
     def post(self, request, pk):
         obj = get_object_or_404(self.modelo, pk=pk)
+        if obj.activo and not request.POST.get("confirmar"):
+            afectados = self.afectados(obj)
+            if afectados:
+                from django.shortcuts import render
+
+                return render(request, "generico/desactivar.html", {"obj": obj, "afectados": afectados, "titulo": f"Desactivar «{obj}»", "breadcrumb": []})
         obj.activo = not obj.activo
         obj.save()
         messages.success(request, "Registro activado." if obj.activo else "Registro desactivado.")

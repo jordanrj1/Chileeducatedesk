@@ -10,7 +10,14 @@ from apps.nucleo.models import TipoDocumento
 pytestmark = pytest.mark.django_db
 
 
-def archivo(nombre="minuta.pdf", contenido=b"%PDF-1.4 contenido ficticio"):
+_contador = {"n": 0}
+
+
+def archivo(nombre="minuta.pdf", contenido=None):
+    """Cada llamada genera contenido distinto (salvo que se indique), para no activar el aviso de archivo repetido."""
+    if contenido is None:
+        _contador["n"] += 1
+        contenido = b"%PDF-1.4 contenido ficticio " + str(_contador["n"]).encode()
     return SimpleUploadedFile(nombre, contenido, content_type="application/pdf")
 
 
@@ -90,6 +97,9 @@ def test_archivar_no_borra_el_archivo(cg, actividad):
     subir(cg, actividad)
     d = Documento.objects.get()
     cg.post(f"/documentos/{d.pk}/alternar")
+    d.refresh_from_db()
+    assert d.activo  # sin motivo no se archiva (DO-E9)
+    cg.post(f"/documentos/{d.pk}/alternar", {"motivo": "subido por error"})
     d.refresh_from_db()
     assert not d.activo and d.archivo.storage.exists(d.archivo.name)
     assert b"Eliminar" not in cg.get(f"/documentos/{d.pk}").content

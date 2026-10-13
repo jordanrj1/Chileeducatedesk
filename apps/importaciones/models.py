@@ -38,6 +38,11 @@ class Lote(models.Model):
     rol = models.ForeignKey("nucleo.RolParticipacion", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     filas = models.JSONField(default=list)
     resumen = models.JSONField(default=dict)
+    encabezados = models.JSONField(default=list)
+    crudas = models.JSONField(default=list)
+    mapeo = models.JSONField(default=list)
+    huella = models.CharField(max_length=64, blank=True, db_index=True)
+    crear_carreras = models.BooleanField("crear las carreras que no existan", default=False)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     creado_en = models.DateTimeField(auto_now_add=True)
     confirmado_en = models.DateTimeField(null=True, blank=True)
@@ -68,6 +73,7 @@ class LoteItem(models.Model):
     objeto_id = models.PositiveBigIntegerField()
     creado = models.BooleanField(default=True)
     fila = models.PositiveIntegerField(default=0)
+    antes = models.JSONField(null=True, blank=True)  # valores previos cuando el lote actualizó un registro existente
 
     class Meta:
         ordering = ["id"]

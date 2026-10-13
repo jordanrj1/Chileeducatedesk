@@ -42,6 +42,15 @@ class InteraccionEditar(_Editar):
     permission_required = "coordinacion.change_interaccion"
     titulo = "Editar interacción"
 
+    def form_valid(self, form):
+        antes = Interaccion.objects.get(pk=self.object.pk)
+        respuesta = super().form_valid(form)
+        if (antes.persona_id, antes.organizacion_id) != (form.instance.persona_id, form.instance.organizacion_id):
+            from apps.nucleo.auditoria import registrar
+
+            registrar(self.request.user, "interaccion_movida", form.instance, f"de {antes.persona or antes.organizacion} a {form.instance.persona or form.instance.organizacion}")
+        return respuesta
+
 
 class InteraccionFicha(_Detalle):
     model = Interaccion

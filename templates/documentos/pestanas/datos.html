@@ -1,3 +1,6 @@
+{% if not archivo_existe %}<div class="alert alert-danger">El archivo no se encuentra en el servidor. Quedó registrado; restáuralo desde el respaldo o reemplázalo.</div>{% endif %}
+{% if object.reemplaza %}<p class="small">Versión anterior: <a href="{{ object.reemplaza.get_absolute_url }}">{{ object.reemplaza.nombre }} ({{ object.reemplaza.subido_en|date:"d-m-Y" }})</a></p>{% endif %}
+{% for v in versiones_siguientes %}<div class="alert alert-info py-2">Esta versión fue reemplazada: <a href="{{ v.get_absolute_url }}">ver la versión actual</a>.</div>{% endfor %}
 <dl class="row" style="max-width:48rem;">
   <dt class="col-sm-3">Tipo</dt><dd class="col-sm-9">{{ object.tipo }}</dd>
   <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">{{ object.fecha|date:"d-m-Y" }}</dd>
@@ -13,5 +16,9 @@
 </dl>
 <a class="btn btn-primary btn-sm" href="{% url 'documentos:archivo' object.pk %}">Descargar archivo</a>
 {% if perms.personas.add_persona or perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:transcribir' object.pk %}">Transcribir datos de este documento</a>{% endif %}
-{% if puede_agregar %}<form class="d-inline" method="post" action="{% url 'documentos:alternar' object.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Archivar{% else %}Restaurar{% endif %}</button></form>{% endif %}
+{% if puede_agregar %}
+{% if object.activo %}<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:reemplazar' object.pk %}">Reemplazar archivo</a>{% endif %}
+<form class="d-inline-flex gap-1 mt-2" method="post" action="{% url 'documentos:alternar' object.pk %}">{% csrf_token %}
+  {% if object.activo %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo para archivar" required style="max-width:16rem;">{% endif %}
+  <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Archivar{% else %}Restaurar{% endif %}</button></form>{% endif %}
 {% if origenes %}<h2 class="h6 mt-4">Datos que se tomaron de este documento</h2><ul class="list-group">{% for o in origenes %}<li class="list-group-item small">{{ o.objeto }} — {{ o.get_estado_verificacion_display }}</li>{% endfor %}</ul>{% endif %}
