@@ -166,7 +166,7 @@ class ActividadFicha(FichaBase):
     model = Actividad
     permission_required = "actividades.view_actividad"
     template_name = "actividades/ficha.html"
-    pestanas_segunda_fase = ("beneficiarios", "sesiones")
+    pestanas_segunda_fase = {"beneficiarios": "beneficiarios", "sesiones": "sesiones"}
     breadcrumb = [("Actividades", "/actividades")]
     permiso_editar = "actividades.change_actividad"
     pestanas = [
@@ -212,10 +212,10 @@ class ActividadFicha(FichaBase):
         }
 
     def _participantes(self, beneficiarios):
-        from apps.nucleo.fases import segunda_fase_activa
+        from apps.nucleo.fases import modulo_activo
 
         qs = self.object.participaciones.select_related("persona", "rol", "estado")
-        if not segunda_fase_activa():
+        if not modulo_activo("beneficiarios"):
             return list(qs) if not beneficiarios else []  # sin pestaña aparte: todos van en Participantes
         return [p for p in qs if p.es_beneficiario == beneficiarios]
 
@@ -490,9 +490,9 @@ class ParticipanteNuevo(_AccionActividad):
                 p.estado = EstadoParticipacion.objects.get(codigo="asistio")
             p.save()
             messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}" + (" y marcada como asistente." if llego else "."))
-            from apps.nucleo.fases import segunda_fase_activa
+            from apps.nucleo.fases import modulo_activo
 
-            return self.volver(a, "asistencia" if llego else ("beneficiarios" if p.es_beneficiario and segunda_fase_activa() else "participantes"))
+            return self.volver(a, "asistencia" if llego else ("beneficiarios" if p.es_beneficiario and modulo_activo("beneficiarios") else "participantes"))
         return render(request, "actividades/participante_form.html", self._ctx(a, form, llego), status=400)
 
 

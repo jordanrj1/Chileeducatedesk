@@ -6,9 +6,9 @@
 <ul class="list-group mb-3">{% for v in vinculos %}<li class="list-group-item"><a href="{{ v.organizacion.get_absolute_url }}">{{ v.organizacion }}</a> · {{ v.cargo|default:"vínculo" }} <span class="small text-muted">{{ v.fecha_inicio|date:"d-m-Y" }} a {{ v.fecha_termino|date:"d-m-Y"|default:"actualidad" }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin cargos registrados.</li>{% endfor %}</ul>
 <h2 class="h6">Proyectos</h2>
 <ul class="list-group mb-3">{% for pr in proyectos %}<li class="list-group-item"><a href="{{ pr.proyecto.get_absolute_url }}">{{ pr.proyecto }}</a> <span class="badge text-bg-secondary">{{ pr.get_tipo_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin proyectos.</li>{% endfor %}</ul>
-{% if segunda_fase %}<h2 class="h6">Reuniones</h2>
-<ul class="list-group mb-3">{% for r in reuniones %}<li class="list-group-item"><a href="{{ r.reunion.get_absolute_url }}">{{ r.reunion }}</a></li>{% empty %}<li class="list-group-item text-muted">Sin reuniones.</li>{% endfor %}</ul>
-<h2 class="h6">Tareas</h2>
+{% if modulos.reuniones %}<h2 class="h6">Reuniones</h2>
+<ul class="list-group mb-3">{% for r in reuniones %}<li class="list-group-item"><a href="{{ r.reunion.get_absolute_url }}">{{ r.reunion }}</a></li>{% empty %}<li class="list-group-item text-muted">Sin reuniones.</li>{% endfor %}</ul>{% endif %}
+{% if modulos.tareas %}<h2 class="h6">Tareas</h2>
 <ul class="list-group mb-3">{% for t in tareas %}<li class="list-group-item"><a href="{{ t.tarea.get_absolute_url }}">{{ t.tarea }}</a> <span class="badge text-bg-secondary">{{ t.tarea.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin tareas.</li>{% endfor %}</ul>{% endif %}
 <h2 class="h6">Invitaciones</h2>
 <ul class="list-group">{% for i in invitaciones %}<li class="list-group-item"><a href="{{ i.get_absolute_url }}">{{ i.actividad }}</a> <span class="badge text-bg-secondary">{{ i.get_estado_display }}</span></li>{% empty %}<li class="list-group-item text-muted">Sin invitaciones.</li>{% endfor %}</ul>

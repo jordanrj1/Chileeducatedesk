@@ -231,15 +231,15 @@ class FichaBase(Permiso403Mixin, DetailView):
         t = self.request.GET.get("tab", claves[0] if claves else "")
         return t if t in claves else (claves[0] if claves else "")
 
-    pestanas_segunda_fase = ()  # claves de pestañas que solo se muestran con SEGUNDA_FASE
+    pestanas_segunda_fase = {}  # pestaña -> módulo de segunda fase que la habilita
 
     def pestanas_visibles(self):
-        from .fases import segunda_fase_activa
+        from .fases import modulo_activo
 
         res = []
-        fase2 = segunda_fase_activa()
         for p in self.pestanas:
-            if p[0] in self.pestanas_segunda_fase and not fase2:
+            modulo = self.pestanas_segunda_fase.get(p[0])
+            if modulo and not modulo_activo(modulo):
                 continue
             perm = p[3] if len(p) > 3 else None
             if not perm or self.request.user.has_perm(perm):

@@ -60,3 +60,27 @@ def test_con_segunda_fase_todo_visible(cg, actividad):
 def test_los_datos_no_se_borran_al_ocultar(cg, sin_segunda_fase):
     Tarea.objects.create(titulo="Sigue existiendo")
     assert Tarea.objects.filter(titulo="Sigue existiendo").exists()
+
+
+def test_habilitar_solo_reuniones_y_tareas(cg, settings, actividad, persona):
+    settings.SEGUNDA_FASE = False
+    settings.MODULOS_SEGUNDA_FASE = ["reuniones", "tareas"]
+    assert cg.get("/reuniones").status_code == 200 and cg.get("/tareas").status_code == 200
+    assert cg.get("/finanzas").status_code == 404
+    html = cg.get("/dashboard").content.decode()
+    assert 'href="/reuniones"' in html and 'href="/tareas"' in html and 'href="/finanzas"' not in html
+    tabs = cg.get(f"/actividades/{actividad.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
+    assert "Sesiones" not in tabs
+    coord = cg.get(f"/actividades/{actividad.pk}?tab=coordinacion").content.decode()
+    assert "+ Nueva reunión" in coord and "+ Nueva tarea" in coord
+    assert cg.get(f"/personas/{persona.pk}/verificaciones/nuevo").status_code == 404
+
+
+def test_modulos_sueltos_para_proyecto(cg, settings):
+    from apps.proyectos.models import Proyecto
+
+    settings.SEGUNDA_FASE = False
+    settings.MODULOS_SEGUNDA_FASE = ["finanzas"]
+    pr = Proyecto.objects.create(nombre="P")
+    tabs = cg.get(f"/proyectos/{pr.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
+    assert "Presupuesto" in tabs and "Postulación" not in tabs and "Beneficiarios" not in tabs

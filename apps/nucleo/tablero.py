@@ -34,9 +34,9 @@ def tarjetas(user):
                 [(str(p), p.get_absolute_url(), "en actividad próxima" if p.prioridad else "") for p in Persona.objects.cola_incompletos()],
                 "/personas?registro=incompleto",
             )
-        from .fases import segunda_fase_activa
+        from .fases import modulo_activo
 
-        if segunda_fase_activa() and user.has_perm("coordinacion.view_tarea"):
+        if modulo_activo("tareas") and user.has_perm("coordinacion.view_tarea"):
             from apps.coordinacion.models import Tarea
 
             agregar(
