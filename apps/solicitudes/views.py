@@ -26,6 +26,7 @@ class SolicitudLista(ListaBase):
     columnas = [
         ("Solicitud", lambda s: s.titulo), ("Fecha", lambda s: s.fecha.strftime("%d-%m-%Y")), ("Origen", "get_origen_display"),
         ("Contacto", lambda s: s.persona or s.organizacion or "Por identificar"), ("Canal", "canal"), ("Estado", "estado"),
+        ("Antigüedad", lambda s: f"{s.dias_abierta} días" if s.dias_abierta is not None else ""),
     ]
     ordenes = {"fecha": "fecha"}
     orden_defecto = ("-fecha", "-id")
@@ -52,7 +53,7 @@ class SolicitudNueva(Permiso403Mixin, CreateView):
     model = Solicitud
     form_class = SolicitudForm
     permission_required = "solicitudes.add_solicitud"
-    template_name = "generico/formulario.html"
+    template_name = "solicitudes/nueva.html"
 
     def get_initial(self):
         ini = super().get_initial()
@@ -70,6 +71,18 @@ class SolicitudNueva(Permiso403Mixin, CreateView):
         return ctx
 
     def form_valid(self, form):
+        d = form.cleaned_data
+        if not self.request.POST.get("confirmar_duplicado") and (d.get("persona") or d.get("organizacion")):
+            from django.db.models import Q
+
+            cond = Q()
+            if d.get("persona"):
+                cond |= Q(persona=d["persona"])
+            if d.get("organizacion"):
+                cond |= Q(organizacion=d["organizacion"])
+            abiertas = Solicitud.objects.filter(cond, estado__codigo__in=["pendiente", "en_seguimiento"])
+            if abiertas.exists():  # SO-E1: ¿es la misma de antes?
+                return self.render_to_response(self.get_context_data(form=form, abiertas=abiertas))
         obj = form.save(commit=False)
         obj.creado_por = self.request.user
         obj.estado = EstadoSolicitud.objects.get(codigo="pendiente")
@@ -97,6 +110,7 @@ class SolicitudFicha(FichaBase):
     pestanas = [
         ("info", "Información", "solicitudes/pestanas/info.html"),
         ("interacciones", "Seguimiento", "solicitudes/pestanas/interacciones.html", "coordinacion.view_interaccion"),
+        ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "solicitudes.view_historicalsolicitud"),
     ]
@@ -126,6 +140,12 @@ class SolicitudFicha(FichaBase):
 
     def ctx_interacciones(self):
         return {"interacciones": self.object.interacciones.select_related("canal", "persona", "organizacion").order_by("-fecha")}
+
+    def ctx_documentos(self):
+        docs = self.object.documentos.select_related("tipo")
+        if not self.request.user.has_perm("documentos.ver_restringido"):
+            docs = docs.filter(restringido=False)
+        return {"documentos": docs, "url_nuevo_doc": f"/documentos/nuevo?solicitud={self.object.pk}", "url_asociar_doc": f"/documentos/asociar?solicitud={self.object.pk}"}
 
     def ctx_origen(self):
         from apps.documentos.origen import contexto_origen
@@ -162,6 +182,27 @@ class SolicitudEstado(_Accion):
             s.save()
             registrar(request.user, f"solicitud_{codigo}", s, request.POST.get("motivo", ""))
             messages.success(request, "Estado actualizado.")
+        return self.volver(s)
+
+
+class SolicitudReabrir(_Accion):
+    """SO-E4: vuelven a pedir lo mismo meses después de descartarla. Se reabre con historial."""
+
+    def post(self, request, pk):
+        s = self.solicitud(pk)
+        motivo = request.POST.get("motivo", "").strip()
+        if s.estado.codigo != "descartada":
+            messages.error(request, "Solo se reabre una solicitud descartada.")
+        elif not motivo:
+            messages.error(request, "Indica por qué se reabre.")
+        else:
+            from django.utils import timezone
+
+            s.estado = EstadoSolicitud.objects.get(codigo="en_seguimiento")
+            s.observaciones = (s.observaciones + f"\nReabierta el {timezone.localdate():%d-%m-%Y}: {motivo}").strip()
+            s.save()
+            registrar(request.user, "solicitud_reabierta", s, motivo)
+            messages.success(request, "Solicitud reabierta y en seguimiento.")
         return self.volver(s)
 
 

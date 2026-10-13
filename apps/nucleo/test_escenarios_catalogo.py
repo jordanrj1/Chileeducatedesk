@@ -615,3 +615,77 @@ def test_AT_E14_cancelar_una_sesion_de_la_serie(cg, actividad, lugar, gestor):
     servicios.cambiar_estado(cuarta, "cancelada", gestor, "feriado")
     estados = [h.estado.codigo for h in actividad.hijas.all()]
     assert estados.count("cancelada") == 1 and estados.count("planificada") == 7
+
+
+# --- Iteración 5: solicitudes e interacciones ---------------------------------------------------------------------
+from apps.solicitudes.models import Solicitud  # noqa: E402
+
+
+def _sol(c, **extra):
+    return c.post("/solicitudes/nueva", {"origen": "solicitud_externa", "fecha": str(HOY), **extra})
+
+
+def test_SO_E1_misma_organizacion_llama_dos_veces(cg, universidad):
+    _sol(cg, organizacion=universidad.pk, motivo="Estudiantes para talleres")
+    r = _sol(cg, organizacion=universidad.pk, motivo="Lo mismo de nuevo")
+    assert r.status_code == 200 and "Ya hay una solicitud abierta" in r.content.decode() and Solicitud.objects.count() == 1
+    assert _sol(cg, organizacion=universidad.pk, motivo="Otra cosa", confirmar_duplicado="1").status_code == 302
+    assert Solicitud.objects.count() == 2
+
+
+def test_SO_E4_reabrir_descartada(cg):
+    _sol(cg, motivo="Taller de reciclaje")
+    s = Solicitud.objects.get()
+    cg.post(f"/solicitudes/{s.pk}/estado", {"estado": "descartada", "motivo": "sin fondos"})
+    cg.post(f"/solicitudes/{s.pk}/reabrir", {"motivo": "Volvieron a llamar"})
+    s.refresh_from_db()
+    assert s.estado.codigo == "en_seguimiento" and "Reabierta" in s.observaciones and "sin fondos" in s.observaciones
+    assert Auditoria.objects.filter(accion="solicitud_reabierta").exists()
+
+
+def test_SO_E5_adjuntar_correo_a_la_solicitud(cg):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from apps.nucleo.models import TipoDocumento
+
+    _sol(cg, motivo="Por correo")
+    s = Solicitud.objects.get()
+    r = cg.post("/documentos/nuevo", {"nombre": "Correo de la junta", "archivo": SimpleUploadedFile("correo.pdf", b"%PDF-1"), "tipo": TipoDocumento.objects.get(codigo="carta").pk, "fecha": str(HOY), "solicitud": s.pk})
+    assert r.status_code == 302 and "tab=documentos" in r["Location"]
+    assert "Correo de la junta" in cg.get(f"{s.get_absolute_url()}?tab=documentos").content.decode()
+
+
+def test_SO_E6_antiguedad_de_las_pendientes(cg):
+    _sol(cg, motivo="Vieja", fecha=str(HOY - timedelta(days=90)))
+    assert "90 días" in cg.get("/solicitudes").content.decode()
+    assert "hace 90 días" in cg.get("/dashboard").content.decode()
+
+
+def test_IN_E1_invitaciones_sin_respuesta_en_el_panel(cg, actividad, crear_persona, rol):
+    from apps.coordinacion.models import Invitacion
+
+    Invitacion.objects.create(persona=crear_persona("Silenciosa"), actividad=actividad, rol=rol("voluntario"), fecha=HOY - timedelta(days=10))
+    Invitacion.objects.create(persona=crear_persona("Reciente"), actividad=actividad, rol=rol("voluntario"), fecha=HOY - timedelta(days=2))
+    html = cg.get("/dashboard").content.decode()
+    assert "Sin respuesta" in html and "Silenciosa" in html and "hace 10 días" in html and "Reciente" not in html
+
+
+def test_IN_E4_mover_interaccion_a_la_persona_correcta(cg, crear_persona):
+    from apps.coordinacion.models import Interaccion
+    from apps.nucleo.models import Canal
+
+    mala, buena = crear_persona("Equivocada"), crear_persona("Correcta")
+    i = Interaccion.objects.create(canal=Canal.objects.get(codigo="llamado"), persona=mala, resultado="x")
+    cg.post(f"/interacciones/{i.pk}/editar", {"fecha": "2026-10-01T10:00", "canal": i.canal_id, "persona": buena.pk, "resultado": "x"})
+    i.refresh_from_db()
+    assert i.persona == buena and Auditoria.objects.filter(accion="interaccion_movida").exists()
+
+
+def test_IN_E3_respuesta_ambigua_queda_como_interesado(cg, actividad, crear_persona, rol):
+    from apps.coordinacion.models import Invitacion
+
+    p = crear_persona("Quizás")
+    datos = {"persona": p.pk, "actividad": actividad.pk, "rol": rol("voluntario").pk, "fecha": str(HOY), "estado": "respondio", "respuesta": "Quizás", "fecha_respuesta": str(HOY)}
+    cg.post("/invitaciones/nueva", datos)
+    part = actividad.participaciones.get(persona=p)
+    assert part.estado.codigo == "interesado" and Invitacion.objects.count() == 1

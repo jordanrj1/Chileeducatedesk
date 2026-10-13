@@ -49,3 +49,10 @@ class Solicitud(models.Model):
 
     def get_absolute_url(self):
         return reverse("solicitudes:ficha", args=[self.pk])
+
+    @property
+    def dias_abierta(self):
+        """SO-E6: días desde la fecha de la solicitud, mientras siga abierta."""
+        if self.estado.codigo in ("pendiente", "en_seguimiento"):
+            return (timezone.localdate() - self.fecha).days
+        return None

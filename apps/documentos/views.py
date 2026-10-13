@@ -32,7 +32,7 @@ class DocumentoLista(ListaBase):
     campos_busqueda = ("nombre", "descripcion", "folio", "emisor")
     columnas = [
         ("Documento", "nombre"), ("Tipo", "tipo"), ("Fecha", lambda d: d.fecha.strftime("%d-%m-%Y")),
-        ("Asociado a", lambda d: d.actividad or d.proyecto or d.persona or d.organizacion or "—"), ("Restringido", lambda d: "Sí" if d.restringido else ""),
+        ("Asociado a", lambda d: d.actividad or d.proyecto or d.persona or d.organizacion or d.solicitud or "—"), ("Restringido", lambda d: "Sí" if d.restringido else ""),
     ]
     orden_defecto = ("-fecha", "-id")
     filtros = [
@@ -65,7 +65,7 @@ def _vigencia(qs, v):
     return qs
 
 
-DESTINOS = {"actividad": ("actividades", "Actividad"), "proyecto": ("proyectos", "Proyecto"), "persona": ("personas", "Persona"), "organizacion": ("organizaciones", "Organizacion")}
+DESTINOS = {"actividad": ("actividades", "Actividad"), "proyecto": ("proyectos", "Proyecto"), "persona": ("personas", "Persona"), "organizacion": ("organizaciones", "Organizacion"), "solicitud": ("solicitudes", "Solicitud")}
 
 
 class DocumentoAsociar(Permiso403Mixin, View):
@@ -121,7 +121,7 @@ class DocumentoNuevo(Permiso403Mixin, CreateView):
 
     def get_initial(self):
         ini = super().get_initial()
-        for k in ("actividad", "proyecto", "persona", "organizacion"):
+        for k in ("actividad", "proyecto", "persona", "organizacion", "solicitud"):
             if self.request.GET.get(k, "").isdigit():
                 ini[k] = int(self.request.GET[k])
         return ini
@@ -136,7 +136,7 @@ class DocumentoNuevo(Permiso403Mixin, CreateView):
         obj.subido_por = self.request.user
         obj.save()
         registrar(self.request.user, "documento_subido", obj, "restringido" if obj.restringido else "")
-        for destino in (obj.actividad, obj.proyecto, obj.persona, obj.organizacion):
+        for destino in (obj.actividad, obj.proyecto, obj.persona, obj.organizacion, obj.solicitud):
             if destino:
                 messages.success(self.request, "Documento guardado.")
                 return HttpResponseRedirect(f"{destino.get_absolute_url()}?tab=documentos")

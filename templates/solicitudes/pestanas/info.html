@@ -6,6 +6,10 @@
   <form method="post" action="{% url 'solicitudes:estado' object.pk %}">{% csrf_token %}<input type="hidden" name="estado" value="en_seguimiento"><button class="btn btn-outline-secondary btn-sm">Pasar a seguimiento</button></form>
   <form method="post" action="{% url 'solicitudes:estado' object.pk %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="estado" value="descartada"><input class="form-control form-control-sm" name="motivo" placeholder="Motivo" required><button class="btn btn-outline-danger btn-sm">Descartar</button></form>
   {% endif %}
+  {% if object.estado.codigo == "descartada" and perms.solicitudes.change_solicitud %}
+  <form method="post" action="{% url 'solicitudes:reabrir' object.pk %}" class="d-flex gap-1">{% csrf_token %}<input class="form-control form-control-sm" name="motivo" placeholder="Motivo para reabrir" required><button class="btn btn-outline-primary btn-sm">Reabrir</button></form>
+  {% endif %}
+  {% if object.dias_abierta is not None %}<span class="small text-muted">Abierta hace {{ object.dias_abierta }} días</span>{% endif %}
 </div>
 <dl class="row" style="max-width: 48rem;">
   <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9">{{ object.fecha|date:"d-m-Y" }}</dd>

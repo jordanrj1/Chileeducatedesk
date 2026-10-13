@@ -41,6 +41,7 @@ class Documento(models.Model):
     proyecto = models.ForeignKey("proyectos.Proyecto", null=True, blank=True, on_delete=models.PROTECT, related_name="documentos")
     persona = models.ForeignKey("personas.Persona", null=True, blank=True, on_delete=models.PROTECT, related_name="documentos")
     organizacion = models.ForeignKey("organizaciones.Organizacion", null=True, blank=True, on_delete=models.PROTECT, related_name="documentos", verbose_name="organización")
+    solicitud = models.ForeignKey("solicitudes.Solicitud", null=True, blank=True, on_delete=models.PROTECT, related_name="documentos")
     restringido = models.BooleanField(default=False, help_text="Solo lo ven quienes tienen permiso para documentos restringidos.")
     folio = models.CharField(max_length=60, blank=True)
     emisor = models.CharField(max_length=150, blank=True)
@@ -60,7 +61,7 @@ class Documento(models.Model):
         ]
         constraints = [
             models.CheckConstraint(
-                condition=Q(actividad__isnull=False) | Q(proyecto__isnull=False) | Q(persona__isnull=False) | Q(organizacion__isnull=False),
+                condition=Q(actividad__isnull=False) | Q(proyecto__isnull=False) | Q(persona__isnull=False) | Q(organizacion__isnull=False) | Q(solicitud__isnull=False),
                 name="documento_con_asociacion",
             )
         ]
@@ -84,8 +85,8 @@ class Documento(models.Model):
         return os.path.splitext(self.archivo.name)[1].lower().lstrip(".")
 
     def clean(self):
-        if not any([self.actividad_id, self.proyecto_id, self.persona_id, self.organizacion_id]):
-            raise ValidationError("El documento debe asociarse a una actividad, proyecto, persona u organización.")
+        if not any([self.actividad_id, self.proyecto_id, self.persona_id, self.organizacion_id, self.solicitud_id]):
+            raise ValidationError("El documento debe asociarse a una actividad, proyecto, persona, organización o solicitud.")
 
 
 class OrigenDato(models.Model):

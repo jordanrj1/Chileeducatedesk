@@ -3,6 +3,9 @@ from django.db import models
 from django.utils import timezone
 
 
+from datetime import timedelta
+
+
 def tarjetas(user):
     hoy = timezone.localdate()
     res = []
@@ -33,7 +36,7 @@ def tarjetas(user):
 
             agregar(
                 "Solicitudes sin respuesta",
-                [(s.titulo, s.get_absolute_url(), f"desde {s.fecha:%d-%m-%Y}") for s in Solicitud.objects.sin_respuesta()],
+                [(s.titulo, s.get_absolute_url(), f"hace {(hoy - s.fecha).days} días") for s in Solicitud.objects.sin_respuesta()],
                 "/solicitudes?estado=pendiente",
             )
         if user.has_perm("personas.view_persona"):
@@ -62,6 +65,17 @@ def tarjetas(user):
                 [(i.proxima_accion, i.get_absolute_url(), f"para el {i.proxima_fecha:%d-%m-%Y}") for i in Interaccion.objects.proximas_acciones(hoy)],
                 vacio="Sin próximas acciones pendientes.",
             )
+        if user.has_perm("coordinacion.view_invitacion"):
+            from django.conf import settings
+
+            from apps.coordinacion.models import Colaboracion, Invitacion
+
+            limite = hoy - timedelta(days=getattr(settings, "SIN_RESPUESTA_DIAS", 7))
+            esperando = [(f"Invitación a {i.persona} · {i.actividad}", i.get_absolute_url(), f"hace {(hoy - i.fecha).days} días", i.fecha)
+                         for i in Invitacion.objects.filter(estado="enviada", fecha__lte=limite).select_related("persona", "actividad")]
+            esperando += [(f"Apoyo de {c.organizacion} · {c.actividad}", c.get_absolute_url(), f"hace {(hoy - timezone.localtime(c.creado_en).date()).days} días", timezone.localtime(c.creado_en).date())
+                          for c in Colaboracion.objects.filter(estado="enviada", creado_en__date__lte=limite).select_related("organizacion", "actividad")]
+            agregar("Sin respuesta", [(t, u, d) for t, u, d, _ in sorted(esperando, key=lambda x: x[3])], vacio="Ninguna invitación espera respuesta hace más de una semana.")
         avisos = _por_vencer(user, hoy)
         if avisos is not None:
             agregar("Datos por vencer", avisos, "/documentos?vencimiento=por_vencer", vacio="Nada vence en los próximos 30 días.")
