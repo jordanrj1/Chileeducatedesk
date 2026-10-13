@@ -1,4 +1,6 @@
 """Ajustes comunes. Lo específico de cada entorno va en local.py / produccion.py."""
+import sys
+import tempfile
 from pathlib import Path
 
 import environ
@@ -124,6 +126,8 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 LOG_DIR = Path(env("LOG_DIR", default=str(BASE_DIR / "logs")))
+if "pytest" in sys.modules:  # las pruebas provocan errores a propósito: no deben ensuciar el registro real
+    LOG_DIR = Path(tempfile.mkdtemp(prefix="fche_logs_pruebas_"))
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOGGING = {
     "version": 1,
