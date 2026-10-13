@@ -8,7 +8,7 @@
   {% else %}
   <span class="d-inline-flex align-items-center gap-1">{% icono "territorio" 15 %}<span><a href="{{ object.provincia.region.get_absolute_url }}">{{ object.provincia.region }}</a> › {{ object.provincia }}</span></span>
   <span class="d-inline-flex align-items-center gap-1">{% icono "organizaciones" 15 %}<span>Municipalidad:
-    {% if municipalidad %}<a href="{{ municipalidad.get_absolute_url }}">{{ municipalidad }}</a>
+    {% if municipalidad %}<a href="{{ municipalidad.get_absolute_url }}">{{ municipalidad }}</a>{% if not municipalidad.activo %} {% estado "inactiva" "Inactiva" %}{% endif %}
     {% elif perms.organizaciones.add_organizacion %}<a href="/organizaciones/nueva?comuna={{ object.pk }}&amp;tipo=municipalidad">+ Registrar municipalidad</a>
     {% else %}sin registrar{% endif %}</span>
   </span>

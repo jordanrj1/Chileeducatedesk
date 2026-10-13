@@ -1,10 +1,17 @@
 {% load fche %}
+<div class="fche-seccion"><div><h2 class="h6">Lugares</h2>
+  <p class="small text-muted mb-0">Activos con su dirección en {{ nombre_ambito }}.{% if lugares_inactivos %} Los desactivados quedan al final, atenuados, para no perder su historia.{% endif %}</p></div>
+  {% if perms.lugares.add_lugar %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="/lugares/nuevo?comuna={{ comuna_contenedor.pk }}">+ Lugar</a></div>{% endif %}</div>
 {% if lugares %}
-{% if perms.lugares.add_lugar %}<div class="fche-seccion"><p class="small text-muted mb-0">Lugares activos con su dirección en {{ nombre_ambito }}.</p>
-  <div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="/lugares/nuevo?comuna={{ comuna_contenedor.pk }}">+ Lugar</a></div></div>{% endif %}
 <ul class="fche-items">{% for l in lugares %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ l.get_absolute_url }}">{{ l.nombre }}</a> <div class="fche-items__detalle">{{ l.tipo }}{% if l.direccion.sector %} · {{ l.direccion.sector }}{% endif %}{% if l.capacidad %} · capacidad {{ l.capacidad }}{% endif %}</div></div></li>{% endfor %}</ul>
 {% else %}
 <div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "lugares" 18 %}</span>
-  <p class="fche-vacio__texto">Aún no hay lugares registrados aquí. Registra la sede vecinal, la sala o el colegio donde se hacen las actividades, con su dirección en {{ nombre_ambito }}.</p>
+  <p class="fche-vacio__texto">{% if lugares_inactivos %}No hay lugares activos aquí.{% else %}Aún no hay lugares registrados aquí.{% endif %} Registra la sede vecinal, la sala o el colegio donde se hacen las actividades, con su dirección en {{ nombre_ambito }}.</p>
   {% if perms.lugares.add_lugar %}<a class="btn btn-primary btn-sm" href="/lugares/nuevo?comuna={{ comuna_contenedor.pk }}">+ Lugar</a>{% endif %}</div>
+{% endif %}
+{% if lugares_inactivos %}
+<section class="mt-4" aria-labelledby="lugares-inactivos">
+  <h3 class="h6 mb-2 text-muted" id="lugares-inactivos">Lugares inactivos ({{ lugares_inactivos|length }})</h3>
+  <ul class="fche-items">{% for l in lugares_inactivos %}<li class="is-inactivo text-muted"><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ l.get_absolute_url }}">{{ l.nombre }}</a> <div class="fche-items__detalle">{{ l.tipo }}{% if l.direccion.sector %} · {{ l.direccion.sector }}{% endif %}</div></div>{% estado "inactivo" "Inactivo" %}</li>{% endfor %}</ul>
+</section>
 {% endif %}

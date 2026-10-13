@@ -81,11 +81,13 @@ class _FichaTerritorio(FichaBase):
         filtro = {"sector_id__in": sectores} if sectores else {"comuna": self.comuna}
         return Comunidad.objects.filter(activo=True, **filtro).select_related(SECTOR_CON_PADRES, "organizacion")
 
-    def _lugares(self):
-        return consultas.lugares_de(**self.ambito()).filter(activo=True).select_related(f"direccion__{SECTOR_CON_PADRES}")
+    def _lugares(self, activo=True):
+        """Lugares del territorio: los activos (lista principal y contador) o, con `activo=False`, los desactivados."""
+        return consultas.lugares_de(**self.ambito()).filter(activo=activo).select_related(f"direccion__{SECTOR_CON_PADRES}")
 
-    def _organizaciones(self):
-        return consultas.organizaciones_de(**self.ambito()).filter(activo=True)
+    def _organizaciones(self, activo=True):
+        """Organizaciones del territorio: las activas (lista principal y contador) o, con `activo=False`, las desactivadas."""
+        return consultas.organizaciones_de(**self.ambito()).filter(activo=activo)
 
     def _actividades(self):
         return consultas.actividades_de(**self.ambito())
@@ -183,13 +185,15 @@ class _FichaTerritorio(FichaBase):
         return {"alcance": alcance(self._actividades()), "contexto_alcance": f"las actividades de {self.descripcion_ambito}"}
 
     def ctx_lugares(self):
-        return {"lugares": self._lugares()}
+        """Activos en la lista principal; los desactivados aparte y atenuados, para no perder su historia de vista."""
+        return {"lugares": list(self._lugares()), "lugares_inactivos": list(self._lugares(activo=False).order_by("nombre", "pk"))}
 
     def ctx_organizaciones(self):
-        """Organizaciones activas agrupadas por tipo, en el orden del catálogo: [(TipoOrganizacion, total, [Organizacion])]."""
+        """Activas agrupadas por tipo, en el orden del catálogo: [(TipoOrganizacion, total, [Organizacion])]; las desactivadas, aparte."""
         orgs = self._organizaciones().select_related(f"direccion__{SECTOR_CON_PADRES}").order_by("tipo__orden", "tipo__nombre", "nombre", "pk")
         grupos = [(tipo, list(lista)) for tipo, lista in groupby(orgs, key=lambda o: o.tipo)]
-        return {"grupos_organizaciones": [(tipo, len(lista), lista) for tipo, lista in grupos]}
+        inactivas = self._organizaciones(activo=False).select_related(f"direccion__{SECTOR_CON_PADRES}").order_by("nombre", "pk")
+        return {"grupos_organizaciones": [(tipo, len(lista), lista) for tipo, lista in grupos], "organizaciones_inactivas": list(inactivas)}
 
     def ctx_comunidades(self):
         return {"comunidades": self._comunidades(), "url_nueva_comunidad": f"/comunidades/nueva?comuna={self.comuna.pk}"}

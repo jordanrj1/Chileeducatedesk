@@ -46,8 +46,8 @@ def _org(nombre, tipo, direccion=None, **kw):
     return Organizacion.objects.create(nombre=nombre, tipo=TipoOrganizacion.objects.get(codigo=tipo), direccion=direccion, **kw)
 
 
-def _lugar(nombre, direccion):
-    return Lugar.objects.create(nombre=nombre, tipo=TipoLugar.objects.get(codigo="sala"), direccion=direccion, capacidad=20)
+def _lugar(nombre, direccion, **kw):
+    return Lugar.objects.create(nombre=nombre, tipo=TipoLugar.objects.get(codigo="sala"), direccion=direccion, capacidad=20, **kw)
 
 
 def _reside(persona, direccion):
@@ -268,16 +268,48 @@ def test_pestana_organizaciones_agrupada_por_tipo(cg, comuna):
     r = cg.get(f"{comuna.get_absolute_url()}?tab=organizaciones")
     grupos = [(tipo.codigo, total, [o.nombre for o in orgs]) for tipo, total, orgs in r.context["grupos_organizaciones"]]
     assert grupos == [("institucion_educativa", 1, ["Colegio Ficticio"]), ("junta_de_vecinos_o_comite", 3, ["Junta 0 Ficticia", "Junta 1 Ficticia", "Junta 2 Ficticia"])]
+    assert [o.nombre for o in r.context["organizaciones_inactivas"]] == ["Junta Desactivada Ficticia"]
     html = r.content.decode()
-    assert 'id="tipo-junta_de_vecinos_o_comite"' in html and "Junta Desactivada Ficticia" not in html
-    assert "Organizaciones (4)" in html
+    assert 'id="tipo-junta_de_vecinos_o_comite"' in html
+    assert "Organizaciones (4)" in html  # el contador de la pestaña cuenta solo las activas, como el indicador del resumen
+    # la desactivada sigue a la vista, aparte y al final: después del último grupo de activas, dentro del grupo atenuado
+    assert html.index("Junta 2 Ficticia") < html.index("Organizaciones inactivas (1)") < html.index("Junta Desactivada Ficticia")
+    assert html.count("Junta Desactivada Ficticia") == 1
+
+
+def test_pestana_lugares_con_inactivos_aparte(cg, comuna, lugar):
+    _lugar("Sede Desactivada Ficticia", _dir(comuna), activo=False)
+    r = cg.get(f"{comuna.get_absolute_url()}?tab=lugares")
+    assert [l.nombre for l in r.context["lugares"]] == ["Sala Ficticia"]
+    assert [l.nombre for l in r.context["lugares_inactivos"]] == ["Sede Desactivada Ficticia"]
+    html = r.content.decode()
+    assert "Lugares (1)" in html  # contador = activos
+    assert html.index("Sala Ficticia") < html.index("Lugares inactivos (1)") < html.index("Sede Desactivada Ficticia")
+    assert html.count("Sede Desactivada Ficticia") == 1
+
+
+def test_nota_de_lugares_visible_sin_permiso_de_crear(comuna, lugar):
+    u = User.objects.create_user("lector_lugares", email="lector.lugares@ejemplo.invalid", password="clave-ficticia-123")
+    for codigo in ("view_comuna", "view_lugar"):
+        u.user_permissions.add(Permission.objects.get(codename=codigo))
+    cliente = Client()
+    cliente.force_login(u)
+    html = cliente.get(f"{comuna.get_absolute_url()}?tab=lugares").content.decode()
+    assert "Activos con su dirección en Comuna Ficticia" in html and "/lugares/nuevo" not in html
+
+
+def test_municipalidad_inactiva_en_cabecera(cg, comuna):
+    muni = _org("Municipalidad Desactivada Ficticia", "municipalidad", comuna_municipal=comuna, activo=False)
+    html = cg.get(comuna.get_absolute_url()).content.decode()
+    cabecera = html[: html.index('id="pestana"')]
+    assert muni.get_absolute_url() in cabecera and "Inactiva" in cabecera and "tipo=municipalidad" not in cabecera
 
 
 # ---------- rendimiento ----------
 
 def _poblar(comuna, raiz, otra, crear_actividad, gestor, desde, hasta):
-    """Por cada i: un sector (hijo de `raiz`), comunidad, organización, lugar, residente con perfil y comunidad, integrante no residente
-    y una actividad con participación, territorio y minuta."""
+    """Por cada i: un sector (hijo de `raiz`), comunidad, organización y lugar (activos y desactivados), residente con perfil y comunidad,
+    integrante no residente y una actividad con participación, territorio y minuta."""
     perfil = PerfilPersona.objects.get(codigo="vecino_o_vecina_de_la_comunidad")
     tipos = ("junta_de_vecinos_o_comite", "institucion_educativa", "fundacion_u_ong", "empresa_o_partner")
     for i in range(desde, hasta):
@@ -285,7 +317,9 @@ def _poblar(comuna, raiz, otra, crear_actividad, gestor, desde, hasta):
         d = _dir(comuna, sector)
         comunidad = Comunidad.objects.create(nombre=f"Comunidad {i}", comuna=comuna, sector=sector)
         _org(f"Organización {i}", tipos[i % 4], d)
+        _org(f"Organización desactivada {i}", tipos[i % 4], d, activo=False)
         sala = _lugar(f"Sala {i}", d)
+        _lugar(f"Sala desactivada {i}", d, activo=False)
         residente = Persona.objects.create(nombres=f"Residente{i}", apellido_paterno=f"Apellido{i}")
         residente.perfiles.add(perfil)
         _reside(residente, d)
