@@ -43,6 +43,7 @@ class Comuna(models.Model):
         ordering = ["nombre"]
         verbose_name = "comuna"
         verbose_name_plural = "comunas"
+        permissions = [("exportar_territorio", "Puede exportar resúmenes territoriales")]  # F23: Excel de una comuna o sector
 
     def __str__(self):
         return self.nombre

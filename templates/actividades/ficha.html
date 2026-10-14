@@ -5,10 +5,11 @@
   {% estado object.estado %}
   {% if object.tipo %}<span class="badge text-bg-light border">{{ object.tipo }}</span>{% endif %}
   {% if agenda %}<span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}{{ agenda.fecha|date:"D d-m-Y" }}{% if agenda.hora_inicio %} · {{ agenda.hora_inicio|time:"H:i" }}{% if agenda.hora_fin %}–{{ agenda.hora_fin|time:"H:i" }}{% endif %}{% endif %}</span>
-  {% if agenda.lugar %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ agenda.lugar.get_absolute_url }}">{{ agenda.lugar }}</a></span>{% endif %}
+  {% if agenda.lugar %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ agenda.lugar.get_absolute_url }}">{{ agenda.lugar }}</a>{% if comuna_ficha %}<span aria-hidden="true">·</span><a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a>{% endif %}</span>{% endif %}
   {% if agenda.enlace %}<a class="d-inline-flex align-items-center gap-1" href="{{ agenda.enlace }}" target="_blank" rel="noopener">{% icono "enlace" 15 %}enlace virtual</a>{% endif %}
   {% if agenda.ultimo_minuto %}<span class="badge text-bg-warning">Cambio de último minuto</span>{% endif %}
   {% else %}<span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}Sin programar</span>{% endif %}
+  {% if comuna_ficha and not agenda.lugar %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></span>{% endif %}
 </div>
 {% if object.proyecto or object.actividad_padre %}<div class="d-flex flex-wrap gap-3 mt-2">
   {% if object.proyecto %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.proyecto.get_absolute_url }}">{% icono "proyectos" 15 %}Proyecto: {{ object.proyecto }}</a>{% endif %}

@@ -8,6 +8,7 @@
   {% if object.edad is not None %}<span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}{{ object.edad }} años</span>{% endif %}
   {% for p in object.perfiles.all %}<span class="badge text-bg-primary">{{ p }}</span>{% endfor %}
   {% if object.profesion %}<span class="d-inline-flex align-items-center gap-1">{% icono "persona" 15 %}{{ object.profesion }}</span>{% endif %}
+  {% if comuna_residencia %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ comuna_residencia.get_absolute_url }}">{{ comuna_residencia }}</a></span>{% endif %}
   {% if correo_principal %}<a class="d-inline-flex align-items-center gap-1" href="mailto:{{ correo_principal }}">{% icono "correo" 15 %}{{ correo_principal }}</a>{% endif %}
   {% if telefono_principal %}<span class="d-inline-flex align-items-center gap-1">{% icono "telefono" 15 %}{{ telefono_principal }}</span>{% endif %}
 </div>

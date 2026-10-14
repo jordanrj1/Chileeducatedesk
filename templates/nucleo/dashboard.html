@@ -23,22 +23,26 @@
 {% endif %}
 
 {% if proximas or tarjetas %}
-<div class="fche-kpis" role="list" aria-label="Resumen">
+<ul class="fche-kpis" role="list" aria-label="Resumen">
   {% if proximas %}
-  <a class="fche-kpi" role="listitem" href="/calendario">
-    <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "calendario" 18 %}</span>Próximos 7 días</span>
-    <span class="fche-kpi__valor">{{ proximas.total }}</span>
-    <span class="fche-kpi__nota">actividad{{ proximas.total|pluralize:"es" }} programada{{ proximas.total|pluralize }}</span>
-  </a>
+  <li>
+    <a class="fche-kpi" href="/calendario">
+      <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "calendario" 18 %}</span>Próximos 7 días</span>
+      <span class="fche-kpi__valor">{{ proximas.total }}</span>
+      <span class="fche-kpi__nota">actividad{{ proximas.total|pluralize:"es" }} programada{{ proximas.total|pluralize }}</span>
+    </a>
+  </li>
   {% endif %}
   {% for t in tarjetas|slice:":4" %}
-  <a class="fche-kpi {% if t.total %}fche-kpi--atencion{% else %}fche-kpi--ok{% endif %}" role="listitem" href="{% if t.url %}{{ t.url }}{% else %}#tarjeta-{{ forloop.counter }}{% endif %}">
-    <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono t.icono 18 %}</span>{{ t.titulo }}</span>
-    <span class="fche-kpi__valor">{{ t.total }}</span>
-    <span class="fche-kpi__nota">{% if t.total %}requiere{{ t.total|pluralize:"n" }} atención{% else %}al día{% endif %}</span>
-  </a>
+  <li>
+    <a class="fche-kpi {% if t.total %}fche-kpi--atencion{% else %}fche-kpi--ok{% endif %}" href="{% if t.url %}{{ t.url }}{% else %}#tarjeta-{{ forloop.counter }}{% endif %}">
+      <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono t.icono 18 %}</span>{{ t.titulo }}</span>
+      <span class="fche-kpi__valor">{{ t.total }}</span>
+      <span class="fche-kpi__nota">{% if t.total %}requiere{{ t.total|pluralize:"n" }} atención{% else %}al día{% endif %}</span>
+    </a>
+  </li>
   {% endfor %}
-</div>
+</ul>
 {% endif %}
 
 <div class="row g-4 mb-4 align-items-start">
@@ -51,7 +55,7 @@
         {% for ag in proximas.items %}
         <li>
           <div class="d-flex gap-3 align-items-center min-w-0">
-            <span class="text-center flex-shrink-0" style="width:2.75rem;"><span class="d-block small text-uppercase fw-semibold {% if ag.fecha == proximas.hoy %}text-primary{% else %}text-muted{% endif %}" style="font-size:.68rem;letter-spacing:.06em;">{% if ag.fecha == proximas.hoy %}Hoy{% else %}{{ ag.fecha|date:"D" }}{% endif %}</span><span class="d-block fw-bold fs-5 lh-1 fche-num">{{ ag.fecha|date:"j" }}</span></span>
+            <span class="text-center flex-shrink-0" style="width:2.75rem;"><span class="d-block small text-uppercase fw-semibold {% if ag.fecha == proximas.hoy %}text-primary{% else %}text-muted{% endif %}" style="font-size:.75rem;letter-spacing:.04em;">{% if ag.fecha == proximas.hoy %}Hoy{% else %}{{ ag.fecha|date:"D" }}{% endif %}</span><span class="d-block fw-bold fs-5 lh-1 fche-num">{{ ag.fecha|date:"j" }}</span></span>
             <div class="min-w-0"><a href="{{ ag.actividad.get_absolute_url }}">{{ ag.actividad.nombre }}</a>
               <div class="small text-muted">{% if ag.hora_inicio %}{{ ag.hora_inicio|time:"H:i" }}{% else %}Sin hora{% endif %}{% if ag.lugar %} · {{ ag.lugar }}{% endif %}{% if ag.ultimo_minuto %} · <span class="text-warning-emphasis">cambio de último minuto</span>{% endif %}</div></div>
           </div>

@@ -5,7 +5,7 @@
   {% if object.estado_registro %}{% estado object.estado_registro %}{% endif %}
   {% if not object.activo %}{% estado "inactivo" "Inactiva" %}{% endif %}
   {% if object.tipo %}<span class="badge text-bg-light border">{{ object.tipo }}</span>{% endif %}
-  {% if object.direccion_id and object.direccion.comuna %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}{{ object.direccion.comuna }}</span>{% endif %}
+  {% if comuna_ficha %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></span>{% endif %}
   {% if object.sitio_web %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.sitio_web }}" target="_blank" rel="noopener">{% icono "enlace" 15 %}Sitio web</a>{% endif %}
 </div>
 {% endblock %}

@@ -249,7 +249,7 @@ def cambios_historial(obj, limite=50):
 # Icono de la cabecera de cada ficha; personas y organizaciones muestran sus iniciales.
 ICONOS_FICHA = {
     "actividad": "actividades", "proyecto": "proyectos", "lugar": "lugares", "documento": "documentos", "solicitud": "solicitudes",
-    "region": "territorio", "comuna": "territorio", "reunion": "reuniones", "tarea": "tareas", "movimiento": "finanzas", "lote": "importaciones",
+    "region": "territorio", "comuna": "territorio", "sector": "territorio", "reunion": "reuniones", "tarea": "tareas", "movimiento": "finanzas", "lote": "importaciones",
     "interaccion": "reuniones", "invitacion": "correo", "colaboracion": "usuarios_check", "comunidad": "comunidades", "sesionactividad": "minuta",
 }
 

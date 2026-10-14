@@ -14,7 +14,8 @@ class SectorForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *args, comuna=None, **kw):
         super().__init__(*args, **kw)
         self.comuna = comuna or getattr(self.instance, "comuna", None)
-        qs = Sector.objects.filter(comuna=self.comuna) if self.comuna else Sector.objects.none()
+        # el nombre de cada opción incluye el de su padre y su abuelo: se traen en la misma consulta
+        qs = Sector.objects.filter(comuna=self.comuna).select_related("sector_padre__sector_padre") if self.comuna else Sector.objects.none()
         if self.instance.pk:
             qs = qs.exclude(pk__in=self.instance.descendientes_ids())  # no puede quedar dentro de sí mismo
         self.fields["sector_padre"].queryset = qs
@@ -61,11 +62,16 @@ class DireccionForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         dato = lambda n: self.data.get(self.add_prefix(n)) if self.is_bound else None
-        comuna_id = dato("comuna") or (self.instance.comuna_id if self.instance.pk else None)
+        # sin dato enviado ni instancia, una comuna inicial (crear desde la ficha de una comuna) arma la cascada
+        inicial = None if self.is_bound else self.initial.get("comuna")
+        comuna_id = dato("comuna") or (self.instance.comuna_id if self.instance.pk else None) or inicial
         comuna = Comuna.objects.select_related("provincia__region").filter(pk=comuna_id).first() if str(comuna_id or "").isdigit() else None
         if comuna and not self.is_bound:
             self.initial["region"] = comuna.provincia.region_id
             self.initial["provincia"] = comuna.provincia_id
+        elif inicial and not comuna:
+            self.initial.pop("comuna")  # una comuna inicial que no existe se ignora
+            comuna_id = None
         region_id = dato("region") or self.initial.get("region")
         provincia_id = dato("provincia") or self.initial.get("provincia")
         if region_id:

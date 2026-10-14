@@ -5,6 +5,7 @@
 {% block contenido %}
 <header class="fche-pagina"><div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Región</p><h1 class="fche-pagina__titulo">{{ region.nombre }}</h1></div>
 <div class="fche-pagina__acciones"><a href="/territorio" class="btn btn-outline-secondary btn-sm volver">{% icono "volver" 15 %}Todas las regiones</a></div></header>
+{% include "territorio/_comunas_con_presencia.html" %}
 <div class="row g-4">{% for p in provincias %}
   <div class="col-12 col-md-6 col-xl-4"><section class="fche-tarjeta h-100"><div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">Provincia de {{ p.nombre }}</h2></div>
   <ul class="fche-pendiente__lista">{% for c in p.comunas.all %}<li><a href="{{ c.get_absolute_url }}">{{ c.nombre }}</a></li>{% empty %}<li class="text-muted">Sin comunas.</li>{% endfor %}</ul></section></div>

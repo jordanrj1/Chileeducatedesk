@@ -1,0 +1,27 @@
+{% load fche %}
+<div class="fche-seccion"><p class="small text-muted mb-0">Quién vive en {{ nombre_ambito }} y quién participa en sus comunidades. Aquí solo se muestran nombre, perfiles y comunidad; el RUT, los contactos y los datos sensibles quedan en la ficha de cada persona.</p>
+  <div class="fche-seccion__acciones"><a class="btn btn-outline-secondary btn-sm" href="/personas?comuna={{ comuna_contenedor.pk }}" title="El listado filtra por comuna: incluye a quien tiene una dirección vigente de residencia o de procedencia en {{ comuna_contenedor.nombre }}{% if es_sector %}, dentro o fuera de este sector{% endif %}.">{% icono "lista" 15 %}Ver personas de la comuna en el listado</a></div></div>
+
+<section class="mb-4" aria-labelledby="personas-residentes">
+  <h2 class="h6 mb-1" id="personas-residentes">Residentes <span class="fche-contador">{{ n_residentes }}</span></h2>
+  <p class="small text-muted mb-2">Con dirección de residencia vigente en {{ nombre_ambito }}{% if es_sector %} o en los sectores que contiene{% endif %}.</p>
+  {% if residentes %}
+  <ul class="fche-items fche-items--envolver">{% for p in residentes %}{% include "territorio/pestanas/_persona.html" %}{% endfor %}</ul>
+  {% if n_residentes > limite_personas %}<p class="small text-muted mt-2 mb-0">Se muestran {{ limite_personas }} de {{ n_residentes }}. El <a href="/personas?comuna={{ comuna_contenedor.pk }}">listado de Personas</a>, filtrado por la comuna de {{ comuna_contenedor.nombre }}, trae a todas las que tienen una dirección vigente allí (de residencia o de procedencia){% if es_sector %}, no solo las de este sector{% endif %}.</p>{% endif %}
+  {% else %}
+  <div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "personas" 18 %}</span>
+    <p class="fche-vacio__texto">Aún no hay personas con residencia registrada aquí. Aparecen al agregar una dirección de tipo «residencia» en la ficha de cada persona, o al cargar el padrón de una comunidad.</p>
+    {% if perms.personas.add_persona %}<a class="btn btn-outline-primary btn-sm" href="/personas/nueva">+ Persona</a>{% endif %}</div>
+  {% endif %}
+</section>
+
+<section aria-labelledby="personas-integrantes">
+  <h2 class="h6 mb-1" id="personas-integrantes">Integrantes de comunidades {% if es_sector %}del sector que no residen en él{% else %}de la comuna que no residen en ella{% endif %} <span class="fche-contador">{{ n_no_residentes }}</span></h2>
+  <p class="small text-muted mb-2">Participan en una comunidad de aquí, pero su residencia registrada está en otra parte o no está registrada.</p>
+  {% if integrantes_no_residentes %}
+  <ul class="fche-items fche-items--envolver">{% for p in integrantes_no_residentes %}{% include "territorio/pestanas/_persona.html" %}{% endfor %}</ul>
+  {% if n_no_residentes > limite_personas %}<p class="small text-muted mt-2 mb-0">Se muestran {{ limite_personas }} de {{ n_no_residentes }}.</p>{% endif %}
+  {% else %}
+  <p class="small text-muted mb-0">Nadie por ahora. Aquí aparecerá quien integre una comunidad de {{ nombre_ambito }} sin vivir en ella.</p>
+  {% endif %}
+</section>

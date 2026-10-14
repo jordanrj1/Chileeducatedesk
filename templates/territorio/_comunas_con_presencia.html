@@ -1,0 +1,40 @@
+{% load fche %}{% comment %}
+Comunas donde la Fundación ya trabaja. Recibe `presencia` (lista de presencia_por_comuna) y, si se pasa `con_vacio`, explica qué hacer cuando no hay ninguna.
+{% endcomment %}{% if presencia %}
+<section class="fche-presencia" aria-labelledby="presencia-titulo">
+  <div class="fche-seccion"><h2 class="h6" id="presencia-titulo">Comunas con presencia <span class="fche-contador">{{ presencia|length }}</span></h2></div>
+  <ul class="fche-mosaico fche-mosaico--presencia" role="list">
+    {% for f in presencia %}
+    <li><a class="fche-mosaico__item" href="{{ f.comuna.get_absolute_url }}">
+      <span class="fche-mosaico__icono">{% icono "territorio" 18 %}</span>
+      <span class="flex-grow-1 min-w-0">
+        <span class="fche-mosaico__titulo">{{ f.comuna.nombre }}</span>
+        <span class="fche-mosaico__texto">{{ f.comuna.provincia.region.nombre }}</span>
+        <span class="fche-cifras">
+          {% if f.comunidades %}<span><strong>{{ f.comunidades }}</strong> comunidad{{ f.comunidades|pluralize:"es" }}</span>{% endif %}
+          {% if f.organizaciones %}<span><strong>{{ f.organizaciones }}</strong> organizaci{{ f.organizaciones|pluralize:"ón,ones" }}</span>{% endif %}
+          {% if f.personas %}<span><strong>{{ f.personas }}</strong> residente{{ f.personas|pluralize }}</span>{% endif %}
+          {% if f.lugares %}<span><strong>{{ f.lugares }}</strong> lugar{{ f.lugares|pluralize:"es" }}</span>{% endif %}
+          {% if f.actividades_12m %}<span><strong>{{ f.actividades_12m }}</strong> actividad{{ f.actividades_12m|pluralize:"es" }} (12 meses)</span>
+          {% elif f.actividades_total %}<span><strong>{{ f.actividades_total }}</strong> actividad{{ f.actividades_total|pluralize:"es" }} en total</span>{% endif %}
+        </span>
+      </span>
+      {% icono "derecha" 16 "text-muted flex-shrink-0" %}
+    </a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% elif con_vacio %}
+<section class="fche-presencia" aria-labelledby="presencia-titulo">
+  <div class="fche-seccion"><h2 class="h6" id="presencia-titulo">Comunas con presencia</h2></div>
+  <div class="fche-vacio">
+    <span class="fche-vacio__icono">{% icono "territorio" 22 %}</span>
+    <p class="fche-vacio__titulo">Aún no hay trabajo registrado</p>
+    <p class="fche-vacio__texto">Cuando registres una comunidad, una organización, un lugar, una persona residente o una actividad, su comuna aparecerá aquí con sus cifras. Mientras tanto, busca una comuna arriba o elige una región más abajo.</p>
+    <div class="d-flex flex-wrap gap-2 justify-content-center">
+      {% if perms.comunidades.add_comunidad %}<a class="btn btn-primary btn-sm" href="/comunidades/nueva">+ Comunidad</a>{% endif %}
+      {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva">+ Organización</a>{% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}

@@ -1,16 +1,20 @@
 {% extends "base.html" %}
 {% load fche %}
-{% block titulo %}Territorio{% endblock %}
-{% block descripcion %}Regiones, provincias, comunas y sectores donde trabaja la fundación.{% endblock %}
+{% block titulo %}Dónde trabajamos · Territorio{% endblock %}
+{% block descripcion %}Las comunas donde trabaja la fundación, con sus comunidades, organizaciones, residentes y actividades; y todas las regiones.{% endblock %}
 {% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Territorio</li>{% endblock %}
 {% block contenido %}
-<header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">Territorio</h1>
-<p class="fche-pagina__bajada">Regiones, provincias, comunas y sectores. Cada comuna reúne sus organizaciones, lugares y actividades.</p></div></header>
+<header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">Dónde trabajamos</h1>
+<p class="fche-pagina__bajada">Las comunas donde ya hay trabajo registrado, primero las de más actividad en los últimos 12 meses. Cada comuna reúne sus comunidades, organizaciones, lugares y actividades.</p></div></header>
 <form class="fche-filtros" method="get" role="search" style="max-width:40rem;"><div class="fche-filtros__busqueda">{% icono "buscar" 16 %}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar una comuna…" aria-label="Buscar comuna"></div><div class="fche-filtros__acciones"><button class="btn btn-outline-primary">Buscar</button></div></form>
 {% if q %}
-  <ul class="fche-items" style="max-width:48rem;">{% for c in comunas %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ c.get_absolute_url }}">{{ c.nombre }}</a><div class="fche-items__detalle">{{ c.provincia.nombre }} · {{ c.provincia.region.nombre }}</div></div>{% icono "derecha" 16 "text-muted" %}</li>{% empty %}<li class="text-muted">Sin resultados para «{{ q }}». <a href="/territorio">Ver todas las regiones</a></li>{% endfor %}</ul>
+  <ul class="fche-items" style="max-width:48rem;">{% for c in comunas %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ c.get_absolute_url }}">{{ c.nombre }}</a><div class="fche-items__detalle">{{ c.provincia.nombre }} · {{ c.provincia.region.nombre }}</div></div>{% icono "derecha" 16 "text-muted" %}</li>{% empty %}<li class="text-muted">Sin resultados para «{{ q }}». <a href="/territorio">Volver a dónde trabajamos</a></li>{% endfor %}</ul>
 {% elif regiones %}
-  <div class="fche-mosaico">{% for r in regiones %}<a class="fche-mosaico__item align-items-center" href="{{ r.get_absolute_url }}"><span class="fche-mosaico__icono">{% icono "territorio" 18 %}</span><span class="flex-grow-1"><span class="fche-mosaico__titulo">{{ r.nombre }}</span><span class="fche-mosaico__texto">{{ r.n_provincias }} provincias · {{ r.n_comunas }} comunas</span></span>{% icono "derecha" 16 "text-muted" %}</a>{% endfor %}</div>
+  {% include "territorio/_comunas_con_presencia.html" with con_vacio=True %}
+  <section aria-labelledby="regiones-titulo">
+    <div class="fche-seccion"><h2 class="h6" id="regiones-titulo">Todas las regiones <span class="fche-contador">{{ regiones|length }}</span></h2></div>
+    <div class="fche-mosaico">{% for r in regiones %}<a class="fche-mosaico__item align-items-center" href="{{ r.get_absolute_url }}"><span class="fche-mosaico__icono">{% icono "territorio" 18 %}</span><span class="flex-grow-1"><span class="fche-mosaico__titulo">{{ r.nombre }}</span><span class="fche-mosaico__texto">{{ r.n_provincias }} provincias · {{ r.n_comunas }} comunas</span></span>{% icono "derecha" 16 "text-muted" %}</a>{% endfor %}</div>
+  </section>
 {% else %}
   <div class="fche-vacio"><span class="fche-vacio__icono">{% icono "territorio" 22 %}</span><p class="fche-vacio__titulo">El territorio aún no se ha cargado</p><p class="fche-vacio__texto">El Administrador debe ejecutar <code>cargar_territorio</code> con el archivo oficial de códigos CUT.</p></div>
 {% endif %}

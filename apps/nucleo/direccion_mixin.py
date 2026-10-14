@@ -8,11 +8,15 @@ class ConDireccionMixin:
     direccion_requerida = False
     campo_direccion = "direccion"
 
+    def direccion_inicial(self):
+        """Valores con que parte la dirección de un registro nuevo. Las vistas de alta lo sobrescriben (p. ej. `?comuna=`)."""
+        return {}
+
     def _form_dir(self):
         instancia = getattr(self.object, self.campo_direccion, None) if getattr(self, "object", None) else None
         if self.request.method == "POST":
             return DireccionForm(self.request.POST, instance=instancia, prefix="dir")
-        return DireccionForm(instance=instancia, prefix="dir")
+        return DireccionForm(instance=instancia, prefix="dir", initial=None if instancia else self.direccion_inicial())
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
@@ -38,3 +42,34 @@ class ConDireccionMixin:
                     setattr(form.instance, self.campo_direccion, direccion)
                 return self.form_valid(form)
         return self.render_to_response(self.get_context_data(form=form, form_direccion=form_dir))
+
+
+class ComunaInicialMixin:
+    """Alta «desde la comuna» o «desde el sector»: `?comuna=<id>` (y `&sector=<id>`) deja esa elección en la dirección en cascada.
+
+    Un valor inválido se ignora; un sector solo vale junto a su comuna.
+    """
+
+    def comuna_inicial(self):
+        if not hasattr(self, "_comuna_inicial"):  # la vista vive una sola solicitud
+            from apps.territorio.models import Comuna
+
+            valor = self.request.GET.get("comuna", "")
+            self._comuna_inicial = Comuna.objects.filter(pk=valor).first() if valor.isascii() and valor.isdigit() else None
+        return self._comuna_inicial
+
+    def sector_inicial(self):
+        """El sector de `?sector=` si existe y pertenece a la comuna de `?comuna=`; si no, `None`."""
+        if not hasattr(self, "_sector_inicial"):
+            from apps.territorio.models import Sector
+
+            comuna, valor = self.comuna_inicial(), self.request.GET.get("sector", "")
+            self._sector_inicial = Sector.objects.filter(pk=valor, comuna=comuna).first() if comuna and valor.isascii() and valor.isdigit() else None
+        return self._sector_inicial
+
+    def direccion_inicial(self):
+        comuna = self.comuna_inicial()
+        if not comuna:
+            return {}
+        sector = self.sector_inicial()
+        return {"comuna": comuna.pk, **({"sector": sector.pk} if sector else {})}

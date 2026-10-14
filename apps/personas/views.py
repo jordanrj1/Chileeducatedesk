@@ -249,7 +249,15 @@ class PersonaFicha(FichaBase):
             "telefono_principal": _principal(p, ["telefono_movil", "telefono_fijo"]),
             "avisos_consentimiento": p.avisos_consentimiento() if self.request.user.has_perm("personas.view_consentimiento") else [],
             "puede_agregar": self.request.user.has_perm("personas.change_persona"),
+            "comuna_residencia": self.comuna_residencia(),
         }
+
+    def comuna_residencia(self):
+        """Comuna de la residencia vigente (la primera si hay varias): enlaza la cabecera con su ficha en Territorio. Una sola consulta."""
+        residencia = (
+            self.object.direcciones.filter(tipo="residencia", vigente=True).select_related("direccion__comuna").order_by("pk").first()
+        )
+        return residencia.direccion.comuna if residencia else None
 
     def encabezado(self):
         return self.object.nombre_completo

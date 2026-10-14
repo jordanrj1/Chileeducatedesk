@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import CreateView
 
-from apps.nucleo.direccion_mixin import ConDireccionMixin
+from apps.nucleo.direccion_mixin import ComunaInicialMixin, ConDireccionMixin
 from apps.nucleo.models import EstadoRegistro, TipoOrganizacion
 from apps.nucleo.vistas_base import (
     ControlVersionMixin, AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
@@ -55,11 +55,23 @@ class OrganizacionExportar(OrganizacionLista):
     permission_required = "organizaciones.exportar_organizacion"
 
 
-class OrganizacionNueva(ConDireccionMixin, Permiso403Mixin, CreateView):
+class OrganizacionNueva(ComunaInicialMixin, ConDireccionMixin, Permiso403Mixin, CreateView):
     model = Organizacion
     form_class = OrganizacionForm
     permission_required = "organizaciones.add_organizacion"
     template_name = "organizaciones/formulario.html"
+
+    def get_initial(self):
+        """Desde la ficha de una comuna: `?comuna=<id>` prellena la dirección y `?tipo=<código>` elige el tipo. Lo inválido se ignora."""
+        ini = super().get_initial()
+        tipo = TipoOrganizacion.objects.filter(codigo=self.request.GET.get("tipo", ""), activo=True).first() if self.request.method == "GET" else None
+        if tipo:
+            ini["tipo"] = tipo.pk
+            comuna = self.comuna_inicial()
+            # «+ Registrar municipalidad»: queda como la municipalidad de esa comuna, si todavía no tiene una
+            if tipo.codigo == "municipalidad" and comuna and not Organizacion.objects.filter(comuna_municipal=comuna).exists():
+                ini["comuna_municipal"] = comuna.pk
+        return ini
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
@@ -152,12 +164,17 @@ class OrganizacionFicha(FichaBase):
             res.append(("Fusionar con otra", f"/organizaciones/{self.object.pk}/fusionar"))
         return res
 
+    def get_queryset(self):
+        return super().get_queryset().select_related("direccion__comuna", "comuna_municipal")
+
     def contexto_ficha(self):
         o = self.object
         return {
             "url_editar": reverse("organizaciones:editar", args=[o.pk]),
             "url_volver": "/organizaciones",
             "puede_agregar": self.request.user.has_perm("organizaciones.change_organizacion"),
+            # la comuna de su dirección o, si es una municipalidad sin dirección, la que representa
+            "comuna_ficha": (o.direccion.comuna if o.direccion_id else None) or o.comuna_municipal,
         }
 
     def ctx_contactos(self):
