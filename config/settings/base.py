@@ -114,6 +114,10 @@ SIN_RESPUESTA_DIAS = env.int("SIN_RESPUESTA_DIAS", default=7)
 # OP-E4: el panel avisa si el último respaldo tiene más de estos días
 RESPALDO_MAX_DIAS = env.int("RESPALDO_MAX_DIAS", default=2)
 
+# [V] Responsable de actividades, proyectos y tareas: el «Equipo de la Fundación» siempre aparece primero.
+# Con True solo se acepta a alguien del equipo (cargo vigente en la organización «es la Fundación» o con cuenta).
+RESPONSABLE_SOLO_EQUIPO = env.bool("RESPONSABLE_SOLO_EQUIPO", default=False)
+
 # [V#3] ¿Se puede confirmar una actividad con incompatibilidad crítica, con motivo? Hoy: no.
 CONFIRMAR_CON_CONFLICTO_CRITICO = env.bool("CONFIRMAR_CON_CONFLICTO_CRITICO", default=False)
 

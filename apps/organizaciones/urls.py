@@ -12,6 +12,7 @@ urlpatterns = [
     path("organizaciones", views.OrganizacionLista.as_view(), name="lista"),
     path("organizaciones/exportar", views.OrganizacionExportar.as_view(), name="exportar"),
     path("organizaciones/opciones", views.OrganizacionOpciones.as_view(), name="opciones"),
+    path("organizaciones/crear-rapida", views.OrganizacionCrearRapida.as_view(), name="crear_rapida"),
     path("organizaciones/nueva", views.OrganizacionNueva.as_view(), name="nueva"),
     path("organizaciones/<int:pk>", views.OrganizacionFicha.as_view(), name="ficha"),
     path("organizaciones/<int:pk>/editar", views.OrganizacionEditar.as_view(), name="editar"),

@@ -1,6 +1,6 @@
 /* Comportamientos comunes:
    - aviso de cambios sin guardar (DA-03);
-   - borrador en la pestaña si la sesión vence o el servidor falla (AC-E2, AC-E3, UI-E6);
+   - borrador en la pestaña si la sesión vence o el servidor falla (AC-E2, AC-E3, UI-E6), con el nombre elegido en los buscadores;
    - un solo envío por formulario aunque se haga doble clic (UI-E1);
    - error de una sección cargada con HTMX, con «Reintentar» (DA-05). */
 (function () {
@@ -22,6 +22,11 @@
     camposGuardables(form).forEach(function (el) {
       if (el.type === "checkbox" || el.type === "radio") { if (el.checked) datos[el.name] = el.value; }
       else datos[el.name] = el.value;
+      // buscadores: también el nombre elegido, para poder volver a mostrarlo (la opción puede no estar en la página)
+      if (el.tagName === "SELECT" && el.hasAttribute("data-selector") && el.selectedIndex >= 0 && el.value) {
+        var o = el.options[el.selectedIndex];
+        datos[el.name + "::texto"] = o.getAttribute("data-texto") || o.textContent;
+      }
     });
     try { almacen.setItem(claveDe(form), JSON.stringify({ datos: datos, enviado: false })); } catch (e) { /* sin espacio: se ignora */ }
   }
@@ -34,7 +39,19 @@
     camposGuardables(form).forEach(function (el) {
       if (!(el.name in borrador.datos)) return;
       if (el.type === "checkbox" || el.type === "radio") return; // no se fuerza: el servidor manda
-      if (!el.value) { el.value = borrador.datos[el.name]; recuperados++; }
+      if (el.value) return;
+      var valor = borrador.datos[el.name];
+      if (el.tagName === "SELECT" && el.hasAttribute("data-selector")) {
+        var texto = borrador.datos[el.name + "::texto"];
+        var existe = Array.prototype.some.call(el.options, function (o) { return o.value === valor; });
+        if (!valor || (!existe && !texto)) return;
+        if (!existe) { var nueva = new Option(texto, valor); nueva.setAttribute("data-texto", texto); el.appendChild(nueva); }
+        el.value = valor;
+        el.dispatchEvent(new CustomEvent("fche:restaurado")); // el buscador muestra el nombre
+        recuperados++;
+        return;
+      }
+      el.value = valor; recuperados++;
     });
     if (recuperados) {
       var aviso = document.createElement("div");

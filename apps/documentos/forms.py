@@ -1,22 +1,21 @@
 """Formularios de documentos: subir uno nuevo, asociar uno ya subido a otra ficha (sin copiar el archivo)
 y registrar de qué documento salió un dato."""
 from django import forms
-from django.urls import reverse_lazy
 
-from apps.actividades.models import Actividad
+from apps.actividades.selector import ACTIVIDADES
 from apps.nucleo.formularios import BootstrapMixin, SelectorField
 from apps.nucleo.models import TipoDocumento
-from apps.organizaciones.models import Organizacion
-from apps.personas.models import Persona
+from apps.organizaciones.selector import ORGANIZACIONES
+from apps.personas.selector import PERSONAS
 from apps.proyectos.models import Proyecto
 
 from .models import Documento, OrigenDato
 
 
 class DocumentoForm(BootstrapMixin, forms.ModelForm):
-    actividad = SelectorField(Actividad.objects.all(), reverse_lazy("actividades:opciones"), required=False)
-    persona = SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"), required=False)
-    organizacion = SelectorField(Organizacion.objects.filter(activo=True), reverse_lazy("organizaciones:opciones"), required=False, label="Organización")
+    actividad = SelectorField(ACTIVIDADES, required=False)
+    persona = SelectorField(PERSONAS, required=False)
+    organizacion = SelectorField(ORGANIZACIONES, required=False, label="Organización")
     proyecto = forms.ModelChoiceField(Proyecto.objects.all(), required=False)
 
     class Meta:

@@ -1,23 +1,22 @@
 """Formularios de comunidades: crear o editar una comunidad y agregar integrantes,
 desde la comunidad o desde la ficha de la persona."""
 from django import forms
-from django.urls import reverse_lazy
 
 from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores
 from apps.nucleo.models import AreaTematica
-from apps.organizaciones.models import Organizacion
-from apps.personas.models import Persona
+from apps.organizaciones.selector import ORGANIZACIONES
+from apps.personas.selector import PERSONAS
 from apps.territorio.models import Comuna, Sector
 
 from .models import Comunidad, ComunidadMiembro
 
 
 def selector_persona(**kw):
-    return SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"), **kw)
+    return SelectorField(PERSONAS, **kw)
 
 
 class ComunidadForm(BootstrapMixin, forms.ModelForm):
-    organizacion = SelectorField(Organizacion.objects.filter(activo=True), reverse_lazy("organizaciones:opciones"), required=False,
+    organizacion = SelectorField(ORGANIZACIONES, required=False,
                                  label="Organización que la representa", help_text="Por ejemplo, la junta de vecinos o el establecimiento.")
     referente = selector_persona(required=False, label="Referente o dirigente principal")
     secciones = [

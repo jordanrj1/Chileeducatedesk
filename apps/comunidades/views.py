@@ -1,17 +1,16 @@
 """Pantallas de comunidades: listado con filtros, crear (con la comuna ya elegida si viene del territorio),
 ficha con integrantes, actividades y alcance, desactivar sin borrar y exportar."""
 from django.db.models import Count, Q
-from django.http import HttpResponse
 from django.urls import reverse
-from django.utils.html import format_html_join
-from django.views import View
 
 from apps.nucleo.direccion_mixin import ComunaInicialMixin
-from apps.nucleo.vistas_base import AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo
+from apps.nucleo.selector import OpcionesVista
+from apps.nucleo.vistas_base import AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, filtro_activo
 from apps.territorio.models import Comuna
 
 from .forms import ComunidadForm
 from .models import Comunidad
+from .selector import COMUNIDADES
 
 
 class ComunidadLista(ListaBase):
@@ -80,16 +79,10 @@ class ComunidadAlternar(AlternarActivoBase):
     permission_required = "comunidades.change_comunidad"
 
 
-class ComunidadOpciones(Permiso403Mixin, View):
-    permission_required = "comunidades.view_comunidad"
+class ComunidadOpciones(OpcionesVista):
+    """Lista de comunidades para los buscadores (ver apps/comunidades/selector.py)."""
 
-    def get(self, request):
-        q = request.GET.get("q", "").strip()
-        qs = Comunidad.objects.filter(activo=True).select_related("comuna")
-        if q:
-            qs = qs.filter(Q(nombre__unaccent__icontains=q) | Q(comuna__nombre__unaccent__icontains=q))
-        opciones = [("", "---------")] + [(c.pk, f"{c.nombre} · {c.territorio}") for c in qs[:25]]
-        return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))
+    fuente = COMUNIDADES
 
 
 class ComunidadFicha(FichaBase):

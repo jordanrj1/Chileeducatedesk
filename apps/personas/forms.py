@@ -3,8 +3,6 @@ cargos en organizaciones, experiencia, disponibilidad, y los restringidos (emerg
 consentimientos, apoderados, verificaciones)."""
 from django import forms
 
-from django.urls import reverse_lazy
-
 from apps.nucleo.formularios import BootstrapMixin, SelectorField
 from apps.nucleo.models import AreaTematica, Canal, EstadoRegistro, OrigenPersona, PerfilPersona, TipoContacto
 from apps.nucleo.rut import CampoRut
@@ -12,6 +10,7 @@ from apps.nucleo.utilidades import normalizar_telefono, telefono_normalizado_val
 from apps.organizaciones.models import Carrera, Organizacion
 from apps.territorio.forms import DireccionForm
 
+from .selector import PERSONAS
 from .models import (
     Apoderado, Consentimiento, Contacto, ContactoEmergencia, DisponibilidadPersona, Experiencia, PerfilSensible, Persona, PersonaDireccion,
     PersonaFormacion, PersonaOrganizacion, VerificacionPersona,
@@ -19,7 +18,7 @@ from .models import (
 
 
 def selector_persona(**kw):
-    return SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"), **kw)
+    return SelectorField(PERSONAS, **kw)
 
 
 CAMPOS_PERFIL = ["nombre_social", "fecha_nacimiento", "nacionalidad", "perfiles", "nivel_educacional", "situacion_ocupacional",
@@ -129,6 +128,33 @@ class PersonaRapidaForm(PersonaNuevaForm):
         return super(PersonaForm, self).clean()  # sin documento en la ficha rápida
 
 
+class PersonaCrearRapidaForm(PersonaRapidaForm):
+    """Ventana «+ Crear persona» de los buscadores: nombres, apellidos y un contacto opcional."""
+
+    class Meta(PersonaRapidaForm.Meta):
+        fields = ["nombres", "apellido_paterno", "apellido_materno", "correo", "telefono"]
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.fields["telefono"].label = "Teléfono"
+        self.fields["telefono"].widget.attrs.setdefault("placeholder", "Ej.: +56 9 1234 5678")
+
+
+def inicial_desde_texto(texto):
+    """Lo escrito en el buscador prellena la ventana: un correo, un teléfono o un nombre («Nombre Apellido» o «Apellido, Nombre»)."""
+    from apps.nucleo.utilidades import separar_nombre
+
+    texto = (texto or "").strip()
+    if not texto:
+        return {}
+    if "@" in texto:
+        return {"correo": texto}
+    if sum(c.isdigit() for c in texto) >= 8 and not any(c.isalpha() for c in texto):
+        return {"telefono": texto}
+    nombres, paterno, materno = separar_nombre(texto)
+    return {"nombres": nombres, "apellido_paterno": paterno, "apellido_materno": materno}
+
+
 class ContactoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Contacto
@@ -208,11 +234,9 @@ class VinculoDesdeOrganizacionForm(BootstrapMixin, forms.ModelForm):
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
-        from django.urls import reverse_lazy
+        from apps.nucleo.formularios import fijar_valores_selectores
 
-        from apps.nucleo.formularios import SelectorField, fijar_valores_selectores
-
-        self.fields["persona"] = SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"))
+        self.fields["persona"] = SelectorField(PERSONAS)
         self.fields["persona"].widget.attrs["class"] = "form-select"
         fijar_valores_selectores(self)
 

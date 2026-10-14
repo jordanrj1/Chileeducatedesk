@@ -5,16 +5,16 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.html import format_html_join
 from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
 from apps.nucleo.auditoria import registrar
 from apps.nucleo.models import Auditoria
+from apps.nucleo.selector import OpcionesVista
 from apps.nucleo.vistas_base import Filtro, ListaBase, Permiso403Mixin
+from apps.personas.selector import PERSONAS_SIN_CUENTA
 
 from .forms_admin import ClaveForm, UsuarioForm
 from .roles import OPERATIVAS
@@ -155,18 +155,10 @@ class UsuarioClave(Permiso403Mixin, View):
         return render(request, "generico/formulario.html", {"form": form, "titulo": f"Nueva contraseña para {usuario.username}", "volver_url": "/administracion/usuarios", "breadcrumb": CRUMB}, status=400)
 
 
-class PersonasLibres(Permiso403Mixin, View):
-    """Opciones de persona sin cuenta, filtradas por texto (HTMX)."""
+class PersonasLibres(OpcionesVista):
+    """Personas sin cuenta, para el buscador del formulario de cuenta (ver apps/personas/selector.py)."""
 
-    permission_required = "auth.add_user"
-
-    def get(self, request):
-        from apps.personas.models import Persona
-
-        q = request.GET.get("q_persona", "")
-        qs = Persona.objects.filter(activo=True, cuenta__isnull=True).buscar(q)[:25]
-        opciones = [("", "---------")] + [(p.pk, p.nombre_completo) for p in qs]
-        return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))
+    fuente = PERSONAS_SIN_CUENTA
 
 
 # --- Roles y permisos ---------------------------------------------------

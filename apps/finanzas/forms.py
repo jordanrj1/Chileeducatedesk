@@ -1,11 +1,10 @@
 """Formularios de finanzas (2.ª fase, oculta): ítems de presupuesto de un proyecto y movimientos de dinero."""
 from django import forms
-from django.urls import reverse_lazy
 
 from apps.documentos.models import Documento
 from apps.nucleo.formularios import BootstrapMixin, SelectorField
-from apps.organizaciones.models import Organizacion
-from apps.personas.models import Persona
+from apps.organizaciones.selector import ORGANIZACIONES
+from apps.personas.selector import PERSONAS
 from apps.proyectos.models import Proyecto
 
 from .models import ItemPresupuesto, Movimiento
@@ -18,8 +17,8 @@ class ItemForm(BootstrapMixin, forms.ModelForm):
 
 
 class MovimientoForm(BootstrapMixin, forms.ModelForm):
-    persona = SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"), required=False)
-    organizacion = SelectorField(Organizacion.objects.filter(activo=True), reverse_lazy("organizaciones:opciones"), required=False, label="Organización")
+    persona = SelectorField(PERSONAS, required=False)
+    organizacion = SelectorField(ORGANIZACIONES, required=False, label="Organización")
 
     class Meta:
         model = Movimiento

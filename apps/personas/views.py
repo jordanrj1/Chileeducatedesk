@@ -17,9 +17,12 @@ from apps.nucleo.vistas_base import (
     AlternarActivoBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
 )
 
+from apps.nucleo.selector import OpcionesVista, campo_seguro, respuesta_elegido
+
 from .duplicados import candidatos
 from .forms import PerfilSensibleForm, PersonaDireccionForm, PersonaForm, PersonaNuevaForm, PersonaRapidaForm
 from .models import Consentimiento, Contacto, PerfilSensible, Persona, PersonaDireccion
+from .selector import AYUDA_RESPONSABLE, PERSONAS
 
 
 def _principal(persona, codigos):
@@ -448,11 +451,9 @@ class PersonaFusionar(__import__("apps.nucleo.vistas_fusion", fromlist=["Fusiona
     titulo = "Fusionar personas duplicadas"
 
     def campo_destino(self, origen):
-        from django.urls import reverse_lazy
-
         from apps.nucleo.formularios import SelectorField
 
-        return SelectorField(Persona.objects.filter(activo=True).exclude(pk=origen.pk), reverse_lazy("personas:opciones"), label="Ficha que se conserva")
+        return SelectorField(PERSONAS, filtros={"excluir": origen.pk}, crear=False, label="Ficha que se conserva")
 
 
 class PersonaReasignar(Permiso403Mixin, View):
@@ -462,14 +463,13 @@ class PersonaReasignar(Permiso403Mixin, View):
 
     def _form(self, persona, data=None):
         from django import forms as f
-        from django.urls import reverse_lazy
 
         from apps.actividades.afectacion import a_cargo_de
         from apps.nucleo.formularios import BootstrapMixin, SelectorField
 
         class F(BootstrapMixin, f.Form):
             actividades = f.ModelMultipleChoiceField(a_cargo_de(persona), widget=f.CheckboxSelectMultiple, label="Actividades a reasignar")
-            nuevo = SelectorField(Persona.objects.filter(activo=True).exclude(pk=persona.pk), reverse_lazy("personas:opciones"), label="Nuevo responsable")
+            nuevo = SelectorField(PERSONAS, filtros={"equipo_primero": 1, "excluir": persona.pk}, crear=False, label="Nuevo responsable", help_text=AYUDA_RESPONSABLE)
             motivo = f.CharField(max_length=250)
 
         form = F(data, initial={"actividades": list(a_cargo_de(persona))})
@@ -532,18 +532,56 @@ class DireccionPersonaNueva(Permiso403Mixin, CreateView):
         return HttpResponseRedirect(f"{self.persona.get_absolute_url()}?tab=direcciones")
 
 
-class PersonaOpciones(Permiso403Mixin, View):
-    """<option> de personas que calzan con `q` (para los selectores con búsqueda)."""
+class PersonaCrearRapida(Permiso403Mixin, View):
+    """Ventana «+ Crear persona» de los buscadores: pide lo mínimo, avisa si ya existe alguien parecido
+    («Usar esta persona» o «Es otra persona: crear» con qué la distingue) y deja a la persona elegida
+    en el formulario de origen, sin salir de él."""
 
-    permission_required = "personas.view_persona"
+    permission_required = "personas.add_persona"
+    plantilla = "generico/_crear_rapida.html"
+
+    def _ctx(self, datos, form, **extra):
+        return {
+            "form": form, "campo_id": campo_seguro(datos.get("campo")), "filtros": PERSONAS.limpiar_filtros(datos), "accion": reverse("personas:crear_rapida"),
+            "titulo": "Crear persona", "aviso_parecido": "Esta persona podría ya existir.", "texto_usar": "Usar esta persona",
+            "texto_crear_igual": "Es otra persona: crear", "pide_nota": True, **extra,
+        }
 
     def get(self, request):
-        from django.http import HttpResponse
-        from django.utils.html import format_html_join
+        from .forms import PersonaCrearRapidaForm, inicial_desde_texto
 
-        qs = Persona.objects.filter(activo=True).exclude(estado_registro__codigo__in=["fallecida", "fusionada"]).buscar(request.GET.get("q", ""))[:25]
-        opciones = [("", "---------")] + [(p.pk, p.nombre_completo + (f" · {p.rut}" if p.rut else "")) for p in qs]
-        return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))
+        form = PersonaCrearRapidaForm(prefix="rapida", initial=inicial_desde_texto(request.GET.get("q", "")[:150]))
+        return render(request, self.plantilla, self._ctx(request.GET, form))
+
+    def post(self, request):
+        from django.db.models import prefetch_related_objects
+
+        from .forms import PersonaCrearRapidaForm
+        from .servicios import crear_persona_rapida
+
+        form = PersonaCrearRapidaForm(request.POST, prefix="rapida")
+        if not form.is_valid():  # 200: la ventana vuelve a dibujarse con los errores
+            return render(request, self.plantilla, self._ctx(request.POST, form))
+        d = form.cleaned_data
+        nota = request.POST.get("nota_distincion", "").strip()[:200]
+        confirmar = bool(request.POST.get("confirmar_duplicado"))
+        if not (confirmar and nota):
+            cands = candidatos(d["nombres"], d.get("apellido_paterno", ""), d.get("apellido_materno", ""), None, d.get("correo", ""), d.get("telefono", ""))
+            if cands:
+                personas = [p for p, _ in cands]
+                prefetch_related_objects(personas, "contactos")
+                filtros = PERSONAS.limpiar_filtros(request.POST)
+                elegibles = set(PERSONAS.base(**filtros).filter(pk__in=[p.pk for p in personas]).values_list("pk", flat=True))
+                lista = [(p, razones, p.pk in elegibles) for p, razones in cands]
+                return render(request, self.plantilla, self._ctx(request.POST, form, candidatos=lista, falta_nota=confirmar, nota=nota))
+        persona = crear_persona_rapida(d, request.user, nota)
+        return respuesta_elegido(request.POST.get("campo"), persona.pk, PERSONAS.texto(persona), "Persona creada y elegida. Completa su ficha cuando puedas.")
+
+
+class PersonaOpciones(OpcionesVista):
+    """Lista de personas para los buscadores de los formularios (ver apps/personas/selector.py)."""
+
+    fuente = PERSONAS
 
 
 class PerfilSensibleEditar(Permiso403Mixin, View):

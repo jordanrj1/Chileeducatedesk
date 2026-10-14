@@ -9,12 +9,12 @@ from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.html import format_html_join
 from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
 from apps.nucleo.auditoria import registrar
 from apps.nucleo.direccion_mixin import ComunaInicialMixin
+from apps.nucleo.selector import OpcionesVista
 from apps.nucleo.models import EstadoActividad, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad
 from apps.nucleo.vistas_base import (
     EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, cambios_historial, opciones_modelo,
@@ -30,6 +30,7 @@ from .forms import (
     SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
 )
 from .models import Actividad, ActividadComunidad, ActividadTerritorio, AgendaActividad, Participacion, SesionActividad, SesionAsistencia
+from .selector import ACTIVIDADES
 from .reglas import TRANSICIONES, ReglaNegocio, antes_de_la_fecha, personas_que_ocupan, revisar
 
 
@@ -108,18 +109,10 @@ class ActividadExportar(ActividadLista):
     permission_required = "actividades.exportar_actividad"
 
 
-class ActividadOpciones(Permiso403Mixin, View):
-    permission_required = "actividades.view_actividad"
+class ActividadOpciones(OpcionesVista):
+    """Lista de actividades para los buscadores de los formularios (ver apps/actividades/selector.py)."""
 
-    def get(self, request):
-        q = request.GET.get("q", "").strip()
-        qs = Actividad.objects.filter(actividad_padre__isnull=True)
-        if q:
-            qs = qs.filter(nombre__unaccent__icontains=q)
-        opciones = [("", "---------")] + [(a.pk, a.nombre) for a in qs[:25]]
-        from django.http import HttpResponse
-
-        return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))
+    fuente = ACTIVIDADES
 
 
 class ActividadNueva(ComunaInicialMixin, Permiso403Mixin, CreateView):

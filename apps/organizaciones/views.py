@@ -10,27 +10,15 @@ from django.views.generic import CreateView
 
 from apps.nucleo.direccion_mixin import ComunaInicialMixin, ConDireccionMixin
 from apps.nucleo.models import EstadoRegistro, TipoOrganizacion
+from apps.nucleo.selector import OpcionesVista, campo_seguro, respuesta_elegido
 from apps.nucleo.vistas_base import (
     ControlVersionMixin, AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
 )
-from apps.personas.duplicados import candidatos  # noqa: F401  (reutilizado por los selectores)
 
+from .duplicados import organizaciones_parecidas
 from .forms import CarreraForm, OrganizacionForm
 from .models import Carrera, Organizacion
-
-
-def organizaciones_parecidas(nombre, rut=None, excluir=None):
-    """Buscar antes de crear: mismo RUT o nombre parecido (pg_trgm)."""
-    from django.contrib.postgres.search import TrigramSimilarity
-
-    encontradas = {}
-    if rut:
-        for o in Organizacion.objects.filter(rut_numero=rut[0]):
-            encontradas[o.pk] = (o, ["mismo RUT"])
-    if nombre:
-        for o in Organizacion.objects.annotate(sim=TrigramSimilarity("nombre", nombre)).filter(sim__gte=0.45).order_by("-sim")[:10]:
-            encontradas.setdefault(o.pk, (o, []))[1].append(f"nombre parecido ({int(o.sim * 100)}%)")
-    return [v for k, v in encontradas.items() if k != excluir]
+from .selector import ORGANIZACIONES
 
 
 class OrganizacionLista(ListaBase):
@@ -121,11 +109,9 @@ class OrganizacionFusionar(__import__("apps.nucleo.vistas_fusion", fromlist=["Fu
     titulo = "Fusionar organizaciones duplicadas"
 
     def campo_destino(self, origen):
-        from django.urls import reverse_lazy
-
         from apps.nucleo.formularios import SelectorField
 
-        return SelectorField(Organizacion.objects.filter(activo=True).exclude(pk=origen.pk), reverse_lazy("organizaciones:opciones"), label="Organización que se conserva")
+        return SelectorField(ORGANIZACIONES, filtros={"excluir": origen.pk}, crear=False, label="Organización que se conserva")
 
 
 class OrganizacionAlternar(AlternarActivoBase):
@@ -310,17 +296,56 @@ class CarreraEditar(Permiso403Mixin, __import__("django.views.generic", fromlist
         return HttpResponseRedirect(f"{self.object.organizacion.get_absolute_url()}?tab=carreras")
 
 
-class OrganizacionOpciones(Permiso403Mixin, __import__("django.views", fromlist=["View"]).View):
-    permission_required = "organizaciones.view_organizacion"
+class OrganizacionOpciones(OpcionesVista):
+    """Lista de organizaciones para los buscadores de los formularios (ver apps/organizaciones/selector.py)."""
+
+    fuente = ORGANIZACIONES
+
+
+class OrganizacionCrearRapida(Permiso403Mixin, __import__("django.views", fromlist=["View"]).View):
+    """Ventana «+ Crear organización» de los buscadores: nombre y tipo, aviso de parecidas («Usar esta organización»
+    o «Es otra: crear») y la organización queda elegida en el formulario de origen, sin salir de él."""
+
+    permission_required = "organizaciones.add_organizacion"
+    plantilla = "generico/_crear_rapida.html"
+
+    def _ctx(self, datos, form, **extra):
+        return {
+            "form": form, "campo_id": campo_seguro(datos.get("campo")), "filtros": ORGANIZACIONES.limpiar_filtros(datos),
+            "accion": reverse("organizaciones:crear_rapida"), "titulo": "Crear organización", "aviso_parecido": "Esta organización podría ya existir.",
+            "texto_usar": "Usar esta organización", "texto_crear_igual": "Es otra: crear", "pide_nota": False, **extra,
+        }
+
+    def _form(self, datos, data=None):
+        from .forms import OrganizacionRapidaForm
+
+        tipo = ORGANIZACIONES.limpiar_filtros(datos).get("tipo", "")
+        return OrganizacionRapidaForm(data, prefix="rapida", tipo_fijo=tipo, initial={"nombre": datos.get("q", "")[:200]})
 
     def get(self, request):
-        from django.db.models import Q
-        from django.http import HttpResponse
-        from django.utils.html import format_html_join
+        from django.shortcuts import render
 
-        q = request.GET.get("q", "").strip()
-        qs = Organizacion.objects.filter(activo=True)
-        if q:
-            qs = qs.filter(Q(nombre__unaccent__icontains=q) | Q(otro_identificador__unaccent__icontains=q))
-        opciones = [("", "---------")] + [(o.pk, f"{o.nombre} ({o.tipo})") for o in qs[:25]]
-        return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))
+        return render(request, self.plantilla, self._ctx(request.GET, self._form(request.GET)))
+
+    def post(self, request):
+        from django.shortcuts import render
+
+        from apps.documentos.origen import registrar_origen
+
+        form = self._form(request.POST, request.POST)
+        if not form.is_valid():
+            return render(request, self.plantilla, self._ctx(request.POST, form))
+        d = form.cleaned_data
+        if not request.POST.get("confirmar_duplicado"):
+            cands = organizaciones_parecidas(d["nombre"])
+            if cands:
+                filtros = ORGANIZACIONES.limpiar_filtros(request.POST)
+                elegibles = set(ORGANIZACIONES.base(**filtros).filter(pk__in=[o.pk for o, _ in cands]).values_list("pk", flat=True))
+                lista = [(o, razones, o.pk in elegibles) for o, razones in cands]
+                return render(request, self.plantilla, self._ctx(request.POST, form, candidatos=lista))
+        org = Organizacion.objects.create(
+            nombre=d["nombre"], tipo=d["tipo"], creado_por=request.user,
+            estado_registro=EstadoRegistro.objects.filter(codigo="incompleto").first(),  # le falta dirección y contacto
+        )
+        registrar_origen(org, request.user)
+        return respuesta_elegido(request.POST.get("campo"), org.pk, ORGANIZACIONES.texto(org), "Organización creada y elegida. Completa su ficha cuando puedas.")

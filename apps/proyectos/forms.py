@@ -1,21 +1,20 @@
 """Formularios de proyecto: datos del proyecto, su equipo, organizaciones, comunidades, beneficiarios y postulaciones."""
 from django import forms
-from django.urls import reverse_lazy
 
 from apps.nucleo.formularios import BootstrapMixin, SelectorField
 from apps.nucleo.models import RolParticipacion, TipoIntervencion
-from apps.organizaciones.models import Organizacion
-from apps.personas.models import Persona
+from apps.organizaciones.selector import ORGANIZACIONES
+from apps.personas.selector import AYUDA_RESPONSABLE, PERSONAS
 
 from .models import Postulacion, Proyecto, ProyectoComunidad, ProyectoOrganizacion, ProyectoPersona
 
 
 def _persona(**kw):
-    return SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"), **kw)
+    return SelectorField(PERSONAS, **kw)
 
 
 class ProyectoForm(BootstrapMixin, forms.ModelForm):
-    responsable = _persona(required=False)
+    responsable = _persona(required=False, filtros={"equipo_primero": 1}, help_text=AYUDA_RESPONSABLE)
     secciones = [
         ("Identificación", "", ["nombre", "estado", "area_tematica", "responsable", "fecha_inicio", "fecha_termino"]),
         ("Propósito", "Qué busca el proyecto y para quién. Las comunidades destinatarias se agregan en su ficha.",
@@ -97,7 +96,7 @@ class BeneficiarioForm(_PersonaProyectoForm):
 
 
 class ProyectoOrganizacionForm(BootstrapMixin, forms.ModelForm):
-    organizacion = SelectorField(Organizacion.objects.filter(activo=True), reverse_lazy("organizaciones:opciones"))
+    organizacion = SelectorField(ORGANIZACIONES)
     contacto = _persona(required=False, label="Persona de contacto")
 
     class Meta:

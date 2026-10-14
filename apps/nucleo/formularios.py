@@ -1,6 +1,10 @@
 """Piezas comunes de formularios: BootstrapMixin da el estilo y agrupa los campos por secciones;
-SelectorField es un campo con buscador (se escribe y se elige) para listas largas como personas u organizaciones."""
+SelectorField es un campo con buscador (se abre, se escribe y se elige) para listas largas como personas u organizaciones."""
 from django import forms
+from django.db.models import Q
+from django.utils.functional import lazy
+
+from .selector import TOPE, pk_seguro
 
 
 class BootstrapMixin:
@@ -48,34 +52,100 @@ class BootstrapMixin:
 
 
 class _IteradorLimitado(forms.models.ModelChoiceIterator):
-    """Solo ofrece la opción vacía y la seleccionada; el resto se busca por HTMX (listas muy grandes)."""
+    """Opciones del <select> sin JavaScript: la vacía, la elegida y las primeras de la fuente (no la lista entera)."""
 
     def __iter__(self):
-        if self.field.empty_label is not None:
-            yield ("", self.field.empty_label)
-        pk = getattr(self.field, "valor_actual", None)
+        campo = self.field
+        if campo.empty_label is not None:
+            yield ("", campo.empty_label)
+        fuente, pk = campo.fuente, campo.valor_actual
         if pk:
-            obj = self.queryset.filter(pk=pk).first()
-            if obj:
-                yield self.choice(obj)
+            actual = fuente.con_relaciones(self.queryset.filter(pk=pk)).first()
+            if actual is not None:
+                yield self.choice(actual)
+        qs = fuente.base(**campo.filtros)
+        if pk:
+            qs = qs.exclude(pk=pk)
+        for grupo, objs in fuente.agrupar(fuente.con_relaciones(fuente.ordenar(qs))[:TOPE]):
+            if grupo and objs:
+                yield (grupo, [self.choice(o) for o in objs])
+            else:
+                yield from (self.choice(o) for o in objs)
+
+
+class SelectorWidget(forms.Select):
+    """<select> que static/js/selector.js convierte en un buscador. Cada opción lleva su nombre corto (data-texto)."""
+
+    fuente = None
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        opcion = super().create_option(name, value, label, selected, index, subindex, attrs)
+        obj = getattr(value, "instance", None)
+        if obj is not None and self.fuente is not None:
+            opcion["attrs"]["data-texto"] = self.fuente.texto(obj)
+        return opcion
+
+
+_url_lista = lazy(lambda fuente, filtros, crear: fuente.url_lista(filtros, crear), str)
 
 
 class SelectorField(forms.ModelChoiceField):
-    """Campo de selección con búsqueda: escribe, elige. La validación sigue usando el queryset completo."""
+    """Campo para elegir un registro de una lista larga, con buscador. Usa la «fuente» del tipo de registro
+    (apps/<app>/selector.py) tanto para ofrecer como para validar. Un valor ya guardado que dejó de ofrecerse
+    (por ejemplo, una persona desactivada) se conserva al editar y se marca «(desactivada)»."""
 
+    widget = SelectorWidget
     iterator = _IteradorLimitado
 
-    def __init__(self, queryset, url, **kwargs):
-        super().__init__(queryset, **kwargs)
-        self.widget.attrs["selector_url"] = url
+    def __init__(self, fuente, filtros=None, crear=True, **kwargs):
+        self.fuente = fuente
+        self.filtros = {k: str(v) for k, v in (filtros or {}).items() if v not in (None, "")}
+        self.crear = crear
+        super().__init__(fuente.base(**self.filtros), **kwargs)
         self.valor_actual = None
+        self.inactivos = set()
+        self._fijar_atributos()
+
+    def _fijar_atributos(self):
+        self.widget.fuente = self.fuente
+        self.widget.attrs.update({
+            "data-selector": "1",
+            "data-opciones-url": _url_lista(self.fuente, dict(self.filtros), self.crear),
+            "data-placeholder": self.fuente.placeholder,
+        })
+
+    def __deepcopy__(self, memo):
+        result = super().__deepcopy__(memo)
+        result.queryset = self.fuente.base(**self.filtros)  # consulta nueva en cada formulario (ajustes y fechas al día)
+        result.valor_actual = None
+        result.inactivos = set()
+        return result
+
+    def con_filtros(self, **extra):
+        """Agrega filtros (p. ej. excluir el propio registro) a lo que se ofrece y se valida."""
+        self.filtros.update({k: str(v) for k, v in extra.items() if v not in (None, "")})
+        self.queryset = self.fuente.base(**self.filtros)
+        self.inactivos = set()
+        self._fijar_atributos()
+
+    def label_from_instance(self, obj):
+        etiqueta = self.fuente.etiqueta(obj)
+        marca = self.fuente.marca(obj) if obj.pk in self.inactivos else ""
+        return f"{etiqueta} {marca}" if marca else etiqueta
 
 
 def fijar_valores_selectores(form):
+    """Para cada buscador: conserva el valor ya guardado aunque haya dejado de ofrecerse, y anota el valor
+    elegido para dibujarlo. Un valor que no es un número no provoca un error 500: queda como error del campo."""
+    instancia = getattr(form, "instance", None)
     for nombre, campo in form.fields.items():
-        if isinstance(campo, SelectorField):
-            if form.is_bound:
-                v = form.data.get(form.add_prefix(nombre))
-            else:
-                v = form.initial.get(nombre) or getattr(getattr(form, "instance", None), f"{nombre}_id", None)
-            campo.valor_actual = getattr(v, "pk", v) or None
+        if not isinstance(campo, SelectorField):
+            continue
+        guardado = pk_seguro(form.initial.get(nombre)) or pk_seguro(getattr(instancia, f"{nombre}_id", None))
+        if guardado and guardado not in campo.inactivos and not campo.queryset.filter(pk=guardado).exists():
+            modelo = campo.queryset.model
+            if modelo._default_manager.filter(pk=guardado).exists():
+                campo.queryset = modelo._default_manager.filter(Q(pk__in=campo.queryset.values("pk")) | Q(pk=guardado))
+                campo.inactivos.add(guardado)
+        valor = form.data.get(form.add_prefix(nombre)) if form.is_bound else guardado
+        campo.valor_actual = pk_seguro(valor)

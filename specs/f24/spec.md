@@ -50,6 +50,14 @@ Hoy: `SelectorField` + `_IteradorLimitado` dibujan solo la opción vacía. La b�
    - debajo, el resto;
    - la ayuda dice dónde se registra el equipo (Organizaciones → la Fundación → Personas relacionadas);
    - limitar el responsable solo al equipo es [V] y queda detrás de `RESPONSABLE_SOLO_EQUIPO=False`.
+5. **Cómo quedó (T2)** [P]:
+   - una «fuente» por tipo de registro (`apps/<app>/selector.py`) sirve para listar y para validar; `apps/nucleo/selector.py` arma la lista con `format_html`;
+   - personas en el orden en que se leen (nombre y apellidos), con el RUT o «sin RUT» y el cargo vigente como detalle, igual que antes;
+   - organizaciones con tipo y comuna; actividades con estado y fecha, las más recientes primero;
+   - si el valor elegido no está entre las primeras 25, se muestra arriba y el pie lo cuenta («Mostrando 26 de N»);
+   - «+ Crear persona» exige escribir qué la distingue si hay una parecida, igual que en Personas → Nueva; la organización creada así queda «incompleta» (le faltan dirección y contacto);
+   - con `RESPONSABLE_SOLO_EQUIPO=True` el responsable no ofrece «+ Crear» (una persona nueva no sería del equipo);
+   - el formulario de cuenta usa el mismo buscador (personas sin cuenta) en vez de su cuadro aparte.
 
 ### A2. Selección múltiple desplegable
 Afecta a todo campo de selección múltiple que hoy son casillas a la vista (áreas de interés, perfiles…).

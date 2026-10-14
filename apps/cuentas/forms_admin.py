@@ -5,8 +5,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
 
-from apps.nucleo.formularios import BootstrapMixin
-from apps.personas.models import Persona
+from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores
+from apps.personas.selector import PERSONAS_SIN_CUENTA
 
 from .models import PerfilCuenta
 
@@ -15,7 +15,7 @@ User = get_user_model()
 
 class UsuarioForm(BootstrapMixin, forms.ModelForm):
     rol = forms.ModelChoiceField(Group.objects.all(), label="Rol")
-    persona = forms.ModelChoiceField(Persona.objects.none(), required=False, label="Persona", help_text="Opcional. Vincula la cuenta con una ficha existente.")
+    persona = SelectorField(PERSONAS_SIN_CUENTA, crear=False, required=False, label="Persona", help_text="Opcional. Vincula la cuenta con una ficha existente.")
     password1 = forms.CharField(label="Contraseña", widget=forms.PasswordInput, required=False)
     password2 = forms.CharField(label="Repetir contraseña", widget=forms.PasswordInput, required=False)
 
@@ -33,10 +33,7 @@ class UsuarioForm(BootstrapMixin, forms.ModelForm):
             actual = getattr(getattr(self.instance, "perfil", None), "persona", None)
             self.initial["rol"] = self.instance.groups.first()
             self.initial["persona"] = actual
-        libres = Persona.objects.filter(activo=True, cuenta__isnull=True)
-        if actual:
-            libres = Persona.objects.filter(pk=actual.pk) | libres
-        self.fields["persona"].queryset = libres.order_by("apellido_paterno", "nombres")
+        fijar_valores_selectores(self)  # la persona que ya tiene esta cuenta se conserva aunque no esté «libre»
         if self.crear:
             self.fields["password1"].required = self.fields["password2"].required = True
             self.fields["persona"].required = True  # US-01: la cuenta se crea para una persona ya registrada

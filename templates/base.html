@@ -112,12 +112,17 @@
   {% endif %}{% endfor %}
 </div>
 {% endif %}
+{# Ventana para «+ Crear persona / organización» desde un buscador: va fuera de todo formulario (no se anidan formularios) #}
+<div class="modal fade" id="modal-rapido" tabindex="-1" aria-labelledby="modal-rapido-titulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content" id="modal-rapido-contenido"></div></div>
+</div>
 {% else %}
 {% block publico %}{% endblock %}
 {% endif %}
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
 <script src="{% static 'js/fche.js' %}"></script>
+<script src="{% static 'js/selector.js' %}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

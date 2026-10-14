@@ -1,17 +1,15 @@
 {# Qué es: Trozo que dibuja un campo de formulario con su etiqueta, ayuda y error. #}
-{# Dónde se usa: se incluye en 11 plantillas, p. ej. actividades/pestanas/resultados.html · Proceso: Todos #}
-{% load fche %}<div class="fche-campo{% if campo.errors %} fche-campo--error{% endif %}{% if campo.widget_type == 'textarea' or campo.widget_type == 'checkboxselectmultiple' or campo.widget_type == 'selectmultiple' or campo.field.widget.attrs.selector_url %} fche-campo--ancho{% endif %}">
+{# Dónde se usa: se incluye en 12 plantillas, p. ej. actividades/pestanas/resultados.html · Proceso: Todos #}
+{% load fche %}<div class="fche-campo{% if campo.errors %} fche-campo--error{% endif %}{% if campo.widget_type == 'textarea' or campo.widget_type == 'checkboxselectmultiple' or campo.widget_type == 'selectmultiple' %} fche-campo--ancho{% endif %}">
   {% if campo.widget_type == 'checkbox' %}
     <div class="form-check">{{ campo }} <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label></div>
   {% else %}
     <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %}<span class="fche-requerido" aria-hidden="true">*</span><span class="visually-hidden"> (obligatorio)</span>{% endif %}</label>
-    {% if campo.field.widget.attrs.selector_url %}
-    <div class="fche-campo__buscar">{% icono "buscar" 15 %}
-    <input class="form-control form-control-sm" type="search" name="q" placeholder="Escribe para buscar…" aria-label="Buscar para {{ campo.label }}" autocomplete="off"
-           hx-get="{{ campo.field.widget.attrs.selector_url }}" hx-trigger="input changed delay:300ms" hx-target="#{{ campo.id_for_label }}" hx-swap="innerHTML"></div>
-    {% endif %}
-    {% if campo.widget_type == 'checkboxselectmultiple' %}<div class="fche-opciones">{{ campo }}</div>{% else %}{{ campo }}{% endif %}
+    {% if campo.widget_type == 'checkboxselectmultiple' %}<div class="fche-opciones">{{ campo }}</div>
+    {% elif campo.widget_type == 'selector' %}{# buscador: sin JavaScript es un desplegable con las primeras opciones; static/js/selector.js lo convierte en un cuadro que busca #}
+    <div class="fche-selector"><span class="fche-selector__icono" hidden>{% icono "buscar" 15 %}</span>{{ campo }}</div>
+    {% else %}{{ campo }}{% endif %}
   {% endif %}
-  {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
+  {% if campo.help_text %}<div class="form-text" id="{{ campo.id_for_label }}_helptext">{{ campo.help_text }}</div>{% endif %}
   {% for e in campo.errors %}<div class="fche-campo__error text-danger">{% icono "error" 14 %}{{ e }}</div>{% endfor %}
 </div>

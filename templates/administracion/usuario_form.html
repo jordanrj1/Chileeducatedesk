@@ -3,13 +3,7 @@
 {% extends "generico/formulario.html" %}
 {% block despues_form %}{% if editando and bloqueado %}<form id="form-desbloquear" method="post" action="{% url 'cuentas_admin:usuario_desbloquear' editando.pk %}">{% csrf_token %}</form>{% endif %}{% endblock %}
 {% block campos %}
-{% for campo in form %}
-  {% if campo.name == "persona" %}
-  <div class="fche-campo"><label class="form-label" for="q_persona">Buscar persona</label>
-    <input class="form-control" id="q_persona" name="q_persona" type="search" placeholder="Nombre o RUT…" hx-get="/administracion/usuarios/personas" hx-trigger="input changed delay:300ms" hx-target="#id_persona"></div>
-  {% endif %}
-  {% include "generico/_campo.html" %}
-{% endfor %}
+{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
 {% endblock %}
 
 {% block extra_form %}

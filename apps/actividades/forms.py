@@ -2,27 +2,28 @@
 agregar participantes (o crearlos en el momento), organizaciones, comunidades, territorios, sesiones y resultado.
 Cada formulario valida en el servidor lo mismo que se ve en pantalla."""
 from django import forms
-from django.urls import reverse_lazy
 
 from apps.lugares.campos import LugarChoiceField
 from apps.lugares.models import Lugar
-from apps.nucleo.formularios import BootstrapMixin, SelectorField
+from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores
 from apps.nucleo.models import AreaTematica, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion
-from apps.organizaciones.models import Organizacion
+from apps.organizaciones.selector import ORGANIZACIONES
 from apps.personas.models import Persona
+from apps.personas.selector import AYUDA_RESPONSABLE, PERSONAS
 from apps.proyectos.models import Proyecto
 from apps.territorio.models import Comuna, Provincia, Region, Sector
 
+from .selector import ACTIVIDADES
 from .models import Actividad, ActividadComunidad, ActividadOrganizacion, ActividadTerritorio, Participacion, SesionActividad, SesionFacilitador
 
 
 def selector_persona(**kw):
-    return SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"), **kw)
+    return SelectorField(PERSONAS, **kw)
 
 
 class ActividadForm(BootstrapMixin, forms.ModelForm):
-    responsable = selector_persona(required=False)
-    actividad_padre = SelectorField(Actividad.objects.filter(actividad_padre__isnull=True), reverse_lazy("actividades:opciones"), required=False, label="Actividad padre (jornada)")
+    responsable = SelectorField(PERSONAS, filtros={"equipo_primero": 1}, required=False, help_text=AYUDA_RESPONSABLE)
+    actividad_padre = SelectorField(ACTIVIDADES, filtros={"raiz": 1}, required=False, label="Actividad padre (jornada)")
 
     secciones = [
         ("Qué es", "Solo el nombre es obligatorio; la fecha y el lugar se definen al programar.", ["nombre", "tipo", "area_tematica", "proyecto", "actividad_padre", "modalidad", "responsable"]),
@@ -42,6 +43,9 @@ class ActividadForm(BootstrapMixin, forms.ModelForm):
         self.fields["tipo"].queryset = TipoActividad.objects.filter(activo=True)
         self.fields["modalidad"].queryset = Modalidad.objects.filter(activo=True)
         self.fields["area_tematica"].queryset = AreaTematica.objects.filter(activo=True)
+        if self.instance.pk:  # una actividad no se ofrece como su propia actividad padre
+            self.fields["actividad_padre"].con_filtros(excluir=self.instance.pk)
+            fijar_valores_selectores(self)
 
     def clean_actividad_padre(self):
         p = self.cleaned_data.get("actividad_padre")
@@ -131,7 +135,7 @@ class ParticipanteNuevoForm(BootstrapMixin, forms.ModelForm):
 
 
 class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
-    institucion = SelectorField(Organizacion.objects.filter(activo=True), reverse_lazy("organizaciones:opciones"), required=False, label="Institución de procedencia",
+    institucion = SelectorField(ORGANIZACIONES, filtros={"tipo": "institucion_educativa"}, required=False, label="Institución de procedencia",
                                 help_text="Universidad, instituto o liceo del que viene (estudiantes). Se completa sola con la formación vigente.")
     secciones = [
         ("Participación", "", ["rol", "estado", "observaciones"]),
@@ -171,7 +175,7 @@ class PersonaRapidaForm(BootstrapMixin, forms.Form):
 
 
 class ActividadOrganizacionForm(BootstrapMixin, forms.ModelForm):
-    organizacion = SelectorField(Organizacion.objects.filter(activo=True), reverse_lazy("organizaciones:opciones"))
+    organizacion = SelectorField(ORGANIZACIONES)
     contacto = selector_persona(required=False, label="Persona de contacto")
 
     class Meta:

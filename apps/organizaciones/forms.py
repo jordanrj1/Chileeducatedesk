@@ -1,8 +1,9 @@
-"""Formularios de organización (tipo, RUT u otro identificador, sitio web, si es la Fundación, comuna si es municipalidad)
-y de carrera de una institución educativa."""
+"""Formularios de organización (tipo, RUT u otro identificador, sitio web, si es la Fundación, comuna si es municipalidad),
+de carrera de una institución educativa y de la ventana «+ Crear organización» de los buscadores."""
 from django import forms
 
 from apps.nucleo.formularios import BootstrapMixin
+from apps.nucleo.models import TipoOrganizacion
 from apps.nucleo.rut import CampoRut
 
 from .models import Carrera, Organizacion
@@ -64,3 +65,20 @@ class CarreraForm(BootstrapMixin, forms.ModelForm):
         if Carrera.objects.filter(organizacion=self.organizacion, nombre__iexact=nombre).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError("Esa carrera ya existe en esta institución.")
         return nombre
+
+
+class OrganizacionRapidaForm(BootstrapMixin, forms.Form):
+    """Ventana «+ Crear organización» de los buscadores: solo nombre y tipo; el resto se completa en su ficha."""
+
+    nombre = forms.CharField(max_length=200, label="Nombre")
+    tipo = forms.ModelChoiceField(TipoOrganizacion.objects.filter(activo=True), label="Tipo")
+
+    def __init__(self, *a, tipo_fijo="", **kw):
+        super().__init__(*a, **kw)
+        if tipo_fijo:  # el campo de origen solo acepta un tipo (p. ej. instituciones educativas)
+            self.fields["tipo"].queryset = TipoOrganizacion.objects.filter(codigo=tipo_fijo)
+            self.fields["tipo"].empty_label = None
+            self.fields["tipo"].help_text = "Este campo solo acepta organizaciones de este tipo."
+
+    def clean_nombre(self):
+        return self.cleaned_data["nombre"].strip()

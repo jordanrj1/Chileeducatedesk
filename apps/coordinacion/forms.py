@@ -1,29 +1,28 @@
 """Formularios de coordinación: interacción (con quién, canal, resultado y próxima acción),
 invitación, solicitud de apoyo, y los de 2.ª fase (reunión, asistentes, tarea y responsables)."""
 from django import forms
-from django.urls import reverse_lazy
 
-from apps.actividades.models import Actividad
+from apps.actividades.selector import ACTIVIDADES
 from apps.lugares.models import Lugar
 from apps.nucleo.formularios import BootstrapMixin, SelectorField
 from apps.nucleo.models import Canal, Modalidad, RolParticipacion, TipoIntervencion
-from apps.organizaciones.models import Organizacion
-from apps.personas.models import Persona
+from apps.organizaciones.selector import ORGANIZACIONES
+from apps.personas.selector import AYUDA_RESPONSABLE, PERSONAS
 from apps.proyectos.models import Proyecto
 
 from .models import Colaboracion, Interaccion, Invitacion, Reunion, ReunionAsistente, Tarea, TareaResponsable
 
 
 def _p(**kw):
-    return SelectorField(Persona.objects.filter(activo=True), reverse_lazy("personas:opciones"), **kw)
+    return SelectorField(PERSONAS, **kw)
 
 
 def _o(**kw):
-    return SelectorField(Organizacion.objects.filter(activo=True), reverse_lazy("organizaciones:opciones"), **kw)
+    return SelectorField(ORGANIZACIONES, **kw)
 
 
 def _a(**kw):
-    return SelectorField(Actividad.objects.all(), reverse_lazy("actividades:opciones"), **kw)
+    return SelectorField(ACTIVIDADES, **kw)
 
 
 class InteraccionForm(BootstrapMixin, forms.ModelForm):
@@ -77,7 +76,7 @@ class AsistenteForm(BootstrapMixin, forms.ModelForm):
 
 
 class TareaForm(BootstrapMixin, forms.ModelForm):
-    responsable = _p(required=False, label="Responsable", help_text="Obligatorio para los compromisos de una reunión.")
+    responsable = _p(required=False, filtros={"equipo_primero": 1}, label="Responsable", help_text="Obligatorio para los compromisos de una reunión. " + AYUDA_RESPONSABLE)
 
     class Meta:
         model = Tarea
