@@ -159,38 +159,89 @@ Afecta a los 14 listados que usan `ListaBase`.
 
 ---
 
-## Parte B — Fichas por tipo de persona (espera decisiones del usuario)
+## Parte B — Fichas por tipo de persona (decidido por el usuario el 14-10-2026)
 
-**Lo que pidió el usuario:** al registrar a alguien, elegir si es **estudiante** (institución, casa matriz o sede, carrera, año…), **vecino o vecina** (sexo, edad, número de casa, familiares, hijos, nietos…), **invitado o invitada**, o una persona sin ficha especial, y que cada tipo tenga **su propia tabla**.
+**Lo que pidió el usuario:**
+- al registrar a alguien, elegir si es:
+  - **estudiante**: institución, casa matriz o sede, carrera, año…;
+  - **vecino o vecina**: sexo, edad, número de casa, familiares, hijos, nietos…;
+  - **invitado o invitada**;
+  - **voluntario o voluntaria**;
+  - u otra persona sin ficha especial;
+- que cada tipo tenga **su propia tabla**;
+- que el formulario cambie según el tipo.
 
-**Diseño base** [P] (detalle en `analisis/personas.md`):
-- **Identidad única.** `Persona` sigue siendo la única identidad. El «tipo de registro» es el catálogo `PerfilPersona`, que gana el campo `ficha`, el cual dice qué sección abre cada perfil. Así Claudio puede crear un perfil nuevo que abra una ficha existente.
-- **Formulario:**
-  - arriba, botones para marcar uno o varios tipos;
-  - debajo, solo las secciones de esos tipos, con cascadas (institución → sede o carrera; comuna → sector → comunidad);
-  - funciona también sin JavaScript.
+**Decisiones del usuario:**
+- **Tipos con ficha:** los cuatro (estudiante, vecino, invitado y voluntario).
+- **Familia del vecino:** **ambas**:
+  - conteos sin nombres por parentesco y tramo de edad;
+  - **y** la opción de vincular a un familiar que ya esté registrado como persona.
+- **Sexo:** **dato general opcional** de toda persona (mujer, hombre, otro, no informa). La identidad de género sigue en la sección restringida 🔒.
+- **Hogar:** **restringido 🔒 sin consentimiento extra**:
+  - lo ve quien puede ver la ficha de la persona;
+  - el tramo del Registro Social de Hogares sigue siendo dato sensible, con permiso y consentimiento.
+
+### B1. Modelo (migraciones aditivas)
+- **`PerfilPersona.ficha`**: estudiante, vecino, invitado, voluntario o ninguna. Se edita en Catálogos, así que un perfil nuevo puede abrir una ficha existente.
+  - Asignación inicial: estudiante → estudiante; vecino o vecina de la comunidad → vecino; voluntario o voluntaria → voluntario; perfil nuevo «Invitado o invitada» → invitado.
+  - El resto, sin ficha [P].
+- **`Persona.sexo`** (opcional) y **`Persona.fecha_nacimiento_aproximada`**: si solo se conoce la edad, se guarda el 1 de enero del año que corresponde, marcado como aproximado.
 - **Estudiante:**
-  - su tabla es `PersonaFormacion`, que ya existe: institución, carrera, estado, años, jornada y nivel;
-  - la **sede o casa matriz** pasa a ser un `Lugar` de la institución, elegido en cascada y creado en el momento si falta.
-- **Vecino o vecina:**
-  - dirección de residencia (calle, **número de casa**, comuna y sector) y comunidad;
-  - edad (fecha de nacimiento o edad aproximada) y sexo [V];
-  - tabla nueva de hogar con **conteos por parentesco y tramo de edad** (por ejemplo, «2 hijos de 6 a 12»), sin nombres de menores [V#2].
-- **Invitado o invitada:** tabla nueva con quién invita, de qué organización viene, el motivo y la actividad [V].
-- La ficha de la persona muestra cada tipo como una tarjeta en «Datos», sin sumar pestañas.
-- **Hay que adaptar:**
-  - la fusión de fichas repetidas;
-  - la exportación de datos personales;
-  - la importación de planillas (columna «perfil»);
-  - la creación rápida desde la actividad (asigna el perfil del rol).
+  - su tabla es **`PersonaFormacion`**, que ya existe (institución, carrera, estado, año de inicio, año que cursa, jornada);
+  - gana **`sede_institucion`** → `Lugar` de esa institución, de tipo «Sede» o «Casa matriz» (valor nuevo del catálogo de tipos de lugar);
+  - el texto `sede` actual se conserva como «texto anterior».
+- **Vecino:** **`FichaVecino`** (1 a 0..1 con Persona; restringida 🔒):
+  - jefatura de hogar e integrantes del hogar, copiados desde `PerfilSensible` (sus columnas se conservan sin uso);
+  - **`IntegranteHogar`**: parentesco (catálogo nuevo **Parentesco**), tramo de edad (catálogo **TramoEtario** de A7), cantidad y si vive en el hogar. Sin nombres;
+  - **`FamiliarVinculado`**: persona, familiar (otra persona registrada) y parentesco. No se repite, y nadie puede ser su propio familiar;
+  - **dirección** (número de casa, comuna y sector) en `PersonaDireccion` de residencia, y **comunidad** en `ComunidadMiembro`. No se duplican.
+- **Invitado:** **`FichaInvitado`**:
+  - tipo (catálogo nuevo **TipoInvitado**: autoridad, expositor o expositora, invitado o invitada especial, prensa, aliado o patrocinador, otro);
+  - invitado por (persona), organización de procedencia, cargo, motivo y actividad (opcional).
+- **Voluntario:** **`FichaVoluntario`**:
+  - estado (catálogo nuevo **EstadoVoluntario**: postulante, activo, en pausa, retirado);
+  - fecha de ingreso y horas disponibles por semana;
+  - motivación u observaciones;
+  - la disponibilidad, la experiencia y el contacto de emergencia siguen en sus tablas actuales.
+- Historial de cambios en las fichas nuevas.
 
-**Decisiones pendientes del usuario:**
-- qué tipos tienen ficha;
-- la familia: ¿conteos o personas vinculadas?;
-- el sexo: ¿dato general o restringido?;
-- los datos del hogar: ¿restringidos con consentimiento o no?
+### B2. Formulario dinámico y ficha
+- **Formulario:**
+  - arriba, botones para marcar uno o varios tipos de registro (los perfiles con ficha);
+  - debajo aparecen **solo** las secciones de esos tipos;
+  - con JavaScript, sin recargar; sin JavaScript, un botón «Mostrar secciones» vuelve a dibujar el formulario sin guardar;
+  - se guardan solo las secciones elegidas, en una transacción, y se mantiene el aviso de duplicados.
+- **Cascadas dentro de las secciones:**
+  - estudiante: institución → sede o casa matriz (con «+ Crear sede», que pide nombre y comuna) y carrera (con «+ Crear carrera»);
+  - vecino: comuna → sector → comunidad (con crear en el momento);
+  - hogar: filas de «cantidad · parentesco · tramo», y «vincular familiar» con el buscador de personas.
+- **Ficha de la persona:**
+  - cada tipo es una **tarjeta** en la pestaña Datos, con su resumen y «Editar»;
+  - no se suman pestañas;
+  - el hogar lleva 🔒.
 
-Se construye después de su respuesta, con su propia sección en este documento.
+### B3. Lo que hay que adaptar
+- **Fusión de fichas repetidas:**
+  - las fichas 1 a 1 se completan desde la otra ficha sin pisar lo que ya está;
+  - los conteos y los vínculos familiares se mueven sin duplicar.
+- **Exportación de datos personales:** una hoja por ficha.
+- **Importación:** una columna opcional «tipo» o «perfil» asigna el perfil.
+- **Crear desde la actividad:**
+  - `RolParticipacion` gana `perfil`;
+  - el rol asigna el perfil (estudiante → estudiante, voluntario → voluntario…).
+- **Filtro de Personas por tipo:** usa el filtro de perfil que ya existe.
+
+### Criterios de aceptación (Parte B)
+1. En `/personas/nueva`, al marcar «Estudiante» aparece su sección. Al elegir la institución se ofrecen sus sedes y carreras, y se pueden crear en el momento. Al guardar queda la formación con la sede.
+2. Al marcar «Vecino o vecina»:
+   - se piden dirección con número de casa, comuna, sector y comunidad (en cascada), edad y sexo;
+   - el hogar se registra con filas de conteo;
+   - se puede vincular un familiar ya registrado;
+   - todo queda en sus tablas.
+3. «Invitado» y «Voluntario» guardan sus fichas. Una persona puede tener varios tipos a la vez.
+4. Sin marcar ningún tipo, la persona se crea solo con sus datos básicos, como hoy. Las pruebas actuales de creación siguen pasando.
+5. La ficha muestra una tarjeta por tipo. Fusión, exportación, importación y creación desde la actividad conocen las fichas nuevas.
+6. Los datos del hogar no aparecen en resúmenes territoriales, exportaciones territoriales ni opciones del buscador.
 
 ---
 
@@ -225,4 +276,4 @@ Se construye después de su respuesta, con su propia sección en este documento.
 - Limitar el responsable al equipo de la Fundación (`RESPONSABLE_SOLO_EQUIPO`).
 - Los valores de los catálogos Tramo etario y Naturaleza jurídica.
 - Las 6 diferencias de escritura entre la SUBDERE y el INE (se usó el INE).
-- Toda la Parte B.
+- Parte B: perfiles sin ficha (por ejemplo beneficiario), los valores de Parentesco, TipoInvitado y EstadoVoluntario, el sexo como dato general y el hogar como dato restringido sin consentimiento (decidido por el usuario; validar con el tutor por la Ley 21.719) [V#2].

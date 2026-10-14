@@ -172,6 +172,50 @@
   - Organización con 3 secciones y ayuda en Naturaleza jurídica;
   - ninguna ayuda con códigos internos (prueba que recorre los formularios).
 
+### T9 · Modelo de las fichas por tipo (spec B1)
+- **Catálogos:**
+  - `PerfilPersona.ficha` (campo extra editable en Catálogos, siguiendo el patrón de `RolParticipacion`);
+  - catálogos nuevos `Parentesco`, `TipoInvitado` y `EstadoVoluntario`, agregados a `CATALOGOS` y a `roles.py`;
+  - «Casa matriz» en tipos de lugar;
+  - perfil «Invitado o invitada».
+- **Persona y estudiante:**
+  - `Persona.sexo` y `Persona.fecha_nacimiento_aproximada`;
+  - `PersonaFormacion.sede_institucion` (FK a `Lugar`), con `clean()`: la sede debe pertenecer a la institución.
+- **Tablas nuevas, con historial:** `FichaVecino`, `IntegranteHogar`, `FamiliarVinculado`, `FichaInvitado` y `FichaVoluntario`, con sus restricciones (cantidad ≥ 1; no repetir; nadie es su propio familiar).
+- **Migraciones de datos:**
+  - asigna la ficha de cada perfil;
+  - crea el perfil invitado;
+  - copia la jefatura y los integrantes del hogar de `PerfilSensible` a `FichaVecino` (las columnas viejas se conservan).
+- **Pruebas:** restricciones, migración de datos y el `clean()` de la sede.
+
+### T10 · Formulario dinámico y tarjetas en la ficha (spec B2)
+- **Formulario `PersonaNuevaForm` / edición:** fila de tipos (perfiles con ficha) y una sección por ficha.
+  - Las secciones las arma un registro, `apps/personas/fichas.py`.
+  - Con JavaScript se muestran u ocultan; sin JavaScript, el botón «Mostrar secciones» vuelve a dibujar sin guardar.
+  - Se validan y guardan solo las elegidas, en una transacción, y el aviso de duplicados se mantiene.
+- **Cascadas**, reutilizando el combobox de T2 y la ubicación de T5:
+  - institución → sede (+ crear sede con nombre y comuna) y carrera (+ crear carrera);
+  - comuna → sector → comunidad;
+  - hogar con filas de conteo (formset) y «vincular familiar» con el buscador de personas.
+- **Ficha de la persona:** una tarjeta por tipo en Datos, con «Editar» (vistas de edición por ficha). El hogar va con 🔒.
+- **Pruebas:**
+  - crear estudiante con sede y carrera;
+  - crear vecino con hogar y familiar vinculado;
+  - crear invitado y voluntario;
+  - persona con dos tipos;
+  - sin tipo, igual que hoy;
+  - sin JavaScript: «Mostrar secciones».
+
+### T11 · Fusión, exportación, importación y creación desde la actividad (spec B3)
+- **Fusión** (`apps/personas/fusion.py` o equivalente):
+  - completa las fichas 1 a 1 sin pisar;
+  - mueve los conteos y los vínculos sin duplicar, resolviendo la restricción única.
+- **Exportación de datos personales:** hojas por ficha.
+- **Importación:** columna opcional «tipo» o «perfil».
+- **`RolParticipacion.perfil`** (campo extra en Catálogos), con su asignación inicial; `ParticipanteRapido` asigna el perfil del rol.
+- **Privacidad:** los datos del hogar no salen en el resumen ni en el Excel territorial ni en las opciones del buscador.
+- **Pruebas** de cada punto.
+
 ### Cierre
 - Revisión final de toda la rama.
 - Pruebas completas y recorrido de páginas.
