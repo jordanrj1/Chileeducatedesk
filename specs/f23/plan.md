@@ -87,7 +87,7 @@
 - modificar `apps/territorio/models.py` (`Comuna.Meta.permissions += [("exportar_territorio", "Puede exportar resúmenes territoriales")]`) y crear la migración;
 - crear `apps/territorio/exportar.py` con `libro_territorial(usuario, comuna=None, sectores=None, titulo="") -> Workbook`;
 - vistas `ComunaExportar` y `SectorExportar`;
-- rutas `territorio/comunas/<pk>/exportar` y `territorio/sectores/<pk>/exportar`.
+- rutas `territorio/comuna/<pk>/exportar` y `territorio/sector/<pk>/exportar`.
 - [ ] Pruebas: `test_exportacion_con_7_hojas`, `test_exportacion_403_sin_permiso`, `test_exportacion_sin_rut_ni_contactos_sin_exportar_persona`, `test_exportacion_queda_en_auditoria`.
 - [ ] Implementar (aviso con `agregar_aviso`, auditoría con `registrar`); pruebas en verde; commit.
 

@@ -89,3 +89,8 @@ El parámetro `?comuna=<id>` prellena la comuna en «nueva organización» y «n
 
 ## Pendiente de validar [V]
 - Hojas y formato del Excel territorial con la Dirección y un fondo de ejemplo.
+- Las personas sin fecha de nacimiento se listan en el Excel aunque podrían ser menores [V#2].
+- Los conteos pequeños por tramo de edad y por comunidad en la hoja Alcance podrían identificar personas: ¿suprimirlos bajo un umbral en la versión para fondos?
+- El correo o teléfono principal de las organizaciones (a veces el celular de un dirigente) sale sin exigir el permiso de exportar personas.
+- El texto del aviso de confidencialidad («no compartir fuera de ella») frente al uso del archivo para fondos.
+- Si un perfil del catálogo nombrara un rol indígena, la columna Perfiles permitiría inferirlo.
