@@ -6,7 +6,7 @@
   <h2 class="h6 mb-1" id="personas-residentes">Residentes <span class="fche-contador">{{ n_residentes }}</span></h2>
   <p class="small text-muted mb-2">Con dirección de residencia vigente en {{ nombre_ambito }}{% if es_sector %} o en los sectores que contiene{% endif %}.</p>
   {% if residentes %}
-  <ul class="fche-items">{% for p in residentes %}{% include "territorio/pestanas/_persona.html" %}{% endfor %}</ul>
+  <ul class="fche-items fche-items--envolver">{% for p in residentes %}{% include "territorio/pestanas/_persona.html" %}{% endfor %}</ul>
   {% if n_residentes > limite_personas %}<p class="small text-muted mt-2 mb-0">Se muestran {{ limite_personas }} de {{ n_residentes }}. Para ver y filtrar todas, usa el <a href="/personas?comuna={{ comuna_contenedor.pk }}">listado de Personas</a>.</p>{% endif %}
   {% else %}
   <div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "personas" 18 %}</span>
@@ -19,7 +19,7 @@
   <h2 class="h6 mb-1" id="personas-integrantes">Integrantes de comunidades {% if es_sector %}del sector que no residen en él{% else %}de la comuna que no residen en ella{% endif %} <span class="fche-contador">{{ n_no_residentes }}</span></h2>
   <p class="small text-muted mb-2">Participan en una comunidad de aquí, pero su residencia registrada está en otra parte o no está registrada.</p>
   {% if integrantes_no_residentes %}
-  <ul class="fche-items">{% for p in integrantes_no_residentes %}{% include "territorio/pestanas/_persona.html" %}{% endfor %}</ul>
+  <ul class="fche-items fche-items--envolver">{% for p in integrantes_no_residentes %}{% include "territorio/pestanas/_persona.html" %}{% endfor %}</ul>
   {% if n_no_residentes > limite_personas %}<p class="small text-muted mt-2 mb-0">Se muestran {{ limite_personas }} de {{ n_no_residentes }}.</p>{% endif %}
   {% else %}
   <p class="small text-muted mb-0">Nadie por ahora. Aquí aparecerá quien integre una comunidad de {{ nombre_ambito }} sin vivir en ella.</p>

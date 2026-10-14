@@ -386,13 +386,13 @@ dl.row > dd { margin-bottom: .75rem; }
 .fche-ficha-cabecera__meta { margin-top: .45rem; color: var(--fche-texto-suave); font-size: .85rem; }
 .fche-ficha-cabecera__meta .badge { font-size: .74rem; }
 .fche-ficha-cabecera__acciones { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
-.fche-ficha-cabecera .nav-tabs { flex: 1 0 100%; margin: .35rem -1.5rem 0; padding: 0 1.5rem; border-bottom: 0; }
+.fche-ficha-cabecera .nav-tabs { flex: 1 0 100%; margin: .35rem -1.5rem 0; padding: 0 1.5rem; border-bottom: 0; --fche-desvanecido: 1.25rem; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fche-desvanecido)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--fche-desvanecido)), transparent); }  /* si hay más pestañas que ancho, la última se desvanece y se nota que se desplaza */
 .fche-ficha-cuerpo { padding: 1.5rem; background: var(--fche-superficie); border: 1px solid var(--fche-borde); border-top: 1px solid var(--fche-borde); border-radius: 0 0 var(--fche-radio-lg) var(--fche-radio-lg); box-shadow: var(--fche-sombra); min-height: 12rem; }
 .fche-ficha-cuerpo > .table-responsive, .fche-ficha-cuerpo .table-responsive { box-shadow: none; }
 .fche-ficha-cuerpo .list-group { box-shadow: none; }
 @media (max-width: 575.98px) {
   .fche-ficha-cabecera { padding: 1rem 1rem 0; }
-  .fche-ficha-cabecera .nav-tabs { margin: .25rem -1rem 0; padding: 0 1rem; }
+  .fche-ficha-cabecera .nav-tabs { margin: .25rem -1rem 0; padding: 0 1rem; --fche-desvanecido: .9rem; }
   .fche-ficha-cuerpo { padding: 1rem; }
   .fche-ficha-cabecera__titulo { font-size: 1.25rem; }
 }
@@ -459,6 +459,9 @@ details > summary:hover { text-decoration: underline; }
 .fche-items__detalle { font-size: .8rem; color: var(--fche-texto-suave); margin-top: .1rem; }
 .fche-items > li.is-inactivo .fche-items__titulo { color: var(--fche-texto-suave); font-weight: 500; }
 .fche-items__acciones { display: flex; flex-wrap: wrap; gap: .35rem; flex-shrink: 0; }
+/* Lista con etiquetas a la derecha: si no caben, bajan debajo del texto en vez de aplastarlo palabra por palabra */
+.fche-items--envolver > li { flex-wrap: wrap; row-gap: .45rem; }
+.fche-items--envolver > li > .fche-items__texto { flex: 1 1 14rem; }
 
 /* Mensajes flotantes (toasts) */
 .fche-avisos { position: fixed; top: calc(var(--fche-alto-barra) + .75rem); right: 1.25rem; z-index: 1090; display: flex; flex-direction: column; gap: .5rem; width: min(26rem, calc(100vw - 2rem)); pointer-events: none; }
@@ -488,6 +491,7 @@ a.fche-kpi:hover { border-color: var(--fche-primario-borde); box-shadow: 0 6px 1
 .fche-kpi--alerta .fche-kpi__icono { background: #fdecec; color: #b42318; }
 .fche-kpi--ok .fche-kpi__icono { background: #e7f6ec; color: #13703a; }
 /* Indicadores de un contenedor territorial (5 o 6): filas parejas en vez de dejar uno solo abajo */
+.fche-kpis--ajustados { grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)); }  /* pocas tarjetas: se reparten el ancho, sin dejar columnas vacías que las angostan */
 .fche-kpis--contenedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fche-kpis--contenedor .fche-kpi__cabecera { flex-wrap: wrap; }
 @media (min-width: 768px) { .fche-kpis--contenedor { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

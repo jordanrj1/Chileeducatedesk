@@ -1,6 +1,6 @@
 {% load fche %}{% with a=alcance %}
 <p class="small text-muted">Resumen de {{ contexto_alcance|default:"esta actividad" }}{% if a.actividades > 1 %} ({{ a.actividades }} actividades){% endif %}. Cuenta personas únicas; los asistentes sin registro vienen de las minutas de cada sesión.</p>
-<div class="fche-kpis">
+<div class="fche-kpis fche-kpis--ajustados">
   <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "comunidades" 16 %}</span>Total alcanzado</span><span class="fche-kpi__valor">{{ a.total_alcanzado }}</span><span class="fche-kpi__nota">{{ a.asistieron }} registradas + {{ a.sin_registro }} sin registro</span></div>
   <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "usuarios_check" 16 %}</span>Equipo ejecutor</span><span class="fche-kpi__valor">{{ a.equipo }}</span><span class="fche-kpi__nota">{{ a.horas_equipo|floatformat:"-1" }} h de trabajo</span></div>
   <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "personas" 16 %}</span>Asistentes registrados</span><span class="fche-kpi__valor">{{ a.asistentes }}</span><span class="fche-kpi__nota">{{ a.personas }} personas en total</span></div>
