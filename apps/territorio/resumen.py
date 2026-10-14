@@ -147,7 +147,7 @@ def resumen_territorio(comuna=None, sectores=None):
         .order_by("fecha", "hora_inicio", "pk")
     )
     minutas = (
-        SesionActividad.objects.filter(vigente=True, fecha__isnull=False, actividad_id__in=del_territorio)
+        SesionActividad.objects.filter(vigente=True, fecha__lte=hoy, actividad_id__in=del_territorio)
         .select_related("actividad")
         .order_by("-fecha", "-numero", "-pk")[:MINUTAS]
     )

@@ -1,24 +1,26 @@
-{% load fche %}{% with r=resumen c=comuna_contenedor.pk %}
+{% load fche %}{% with r=resumen %}
 {% if resumen_vacio %}
 <div class="fche-vacio">
   <span class="fche-vacio__icono">{% icono "territorio" 22 %}</span>
   <p class="fche-vacio__titulo">Aún no hay trabajo registrado en {{ nombre_ambito }}</p>
   <p class="fche-vacio__texto">Registra sus comunidades y organizaciones (la junta de vecinos, el colegio, la municipalidad). Con cada lugar, persona residente y actividad, aquí verás cuántos son, dónde están y qué viene.</p>
   <div class="d-flex flex-wrap gap-2 justify-content-center">
-    {% if perms.comunidades.add_comunidad %}<a class="btn btn-primary btn-sm" href="/comunidades/nueva?comuna={{ c }}">+ Comunidad</a>{% endif %}
-    {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva?comuna={{ c }}">+ Organización</a>{% endif %}
+    {% if perms.comunidades.add_comunidad %}<a class="btn btn-primary btn-sm" href="/comunidades/nueva?{{ parametros_nuevo }}">+ Comunidad</a>{% endif %}
+    {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva?{{ parametros_nuevo }}">+ Organización</a>{% endif %}
   </div>
 </div>
 {% else %}
-<div class="fche-kpis fche-kpis--contenedor" role="list" aria-label="Indicadores de {{ nombre_ambito }}">
+<ul class="fche-kpis fche-kpis--contenedor" role="list" aria-label="Indicadores de {{ nombre_ambito }}">
   {% for k in indicadores %}
-  {% if k.enlace %}<a class="fche-kpi" href="?tab={{ k.clave }}" role="listitem" hx-get="?tab={{ k.clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true">{% else %}<div class="fche-kpi" role="listitem">{% endif %}
+  <li>
+  {% if k.enlace %}<a class="fche-kpi" href="?tab={{ k.clave }}" hx-get="?tab={{ k.clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true">{% else %}<div class="fche-kpi">{% endif %}
     <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono k.icono 18 %}</span>{{ k.titulo }}</span>
     <span class="fche-kpi__valor">{{ k.valor }}</span>
     <span class="fche-kpi__nota">{{ k.nota }}</span>
   {% if k.enlace %}</a>{% else %}</div>{% endif %}
+  </li>
   {% endfor %}
-</div>
+</ul>
 
 <div class="row g-4">
   {# en el celular, lo que viene va primero #}
@@ -41,7 +43,7 @@
       {% else %}
       <div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "calendario" 18 %}</span>
         <p class="fche-vacio__texto">No hay actividades programadas aquí en los próximos 30 días.</p>
-        {% if perms.actividades.add_actividad %}<a class="btn btn-outline-primary btn-sm" href="/actividades/nueva?comuna={{ c }}">+ Actividad</a>{% endif %}</div>
+        {% if perms.actividades.add_actividad %}<a class="btn btn-outline-primary btn-sm" href="/actividades/nueva?{{ parametros_nuevo }}">+ Actividad</a>{% endif %}</div>
       {% endif %}
     </section>
   </div>
@@ -62,7 +64,7 @@
       {% else %}
       <div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "organizaciones" 18 %}</span>
         <p class="fche-vacio__texto">Aún no hay organizaciones aquí. Registra la junta de vecinos, el establecimiento o la municipalidad para verlas agrupadas por tipo.</p>
-        {% if perms.organizaciones.add_organizacion %}<a class="btn btn-primary btn-sm" href="/organizaciones/nueva?comuna={{ c }}">+ Organización</a>{% endif %}</div>
+        {% if perms.organizaciones.add_organizacion %}<a class="btn btn-primary btn-sm" href="/organizaciones/nueva?{{ parametros_nuevo }}">+ Organización</a>{% endif %}</div>
       {% endif %}
     </section>
 

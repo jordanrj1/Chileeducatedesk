@@ -101,6 +101,17 @@ def test_indice_muestra_comunas_con_presencia_primero(cg, comuna, crear_activida
     assert "Región de Prueba" in html.split("Todas las regiones", 1)[1] and "/territorio/region/" in html
 
 
+def test_tarjeta_dice_en_total_cuando_la_actividad_no_es_de_los_ultimos_12_meses(cg, comuna, crear_actividad, gestor):
+    """Una actividad futura (la que queda tras «+ Actividad») o una muy antigua no se presentan como «fuera de los últimos 12 meses»."""
+    futura, antigua = _otra_comuna(comuna, "99002", "Aldea Futura Ficticia"), _otra_comuna(comuna, "99003", "Aldea Antigua Ficticia")
+    _con_actividad(crear_actividad, gestor, futura, 20, "Taller futuro")
+    _con_actividad(crear_actividad, gestor, antigua, -400, "Taller antiguo")
+    tarjetas = {url: _texto(contenido) for url, contenido in _tarjetas(cg.get("/territorio").content.decode())}
+    for comuna_con_actividad in (futura, antigua):
+        texto = tarjetas[comuna_con_actividad.get_absolute_url()]
+        assert "1 actividad en total" in texto and "fuera de los últimos" not in texto, texto
+
+
 def test_indice_busqueda_de_comuna_se_mantiene(cg, comuna):
     Comunidad.objects.create(nombre="Comunidad uno", comuna=comuna)
     html = cg.get("/territorio?q=ficticia").content.decode()

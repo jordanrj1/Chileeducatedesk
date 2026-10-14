@@ -9,10 +9,15 @@ TRAMOS = [("0 a 17", 0, 17), ("18 a 29", 18, 29), ("30 a 59", 30, 59), ("60 o m�
 
 
 def horas_de(participacion, agenda=None):
-    """Horas de una participación: las registradas o, si no hay, la duración de la programación vigente."""
+    """Horas de una participación: las registradas o, si no hay, la duración de la programación vigente.
+
+    `agenda=None` (sola) busca la vigente de la actividad (una consulta); `agenda=False` dice «ya se sabe que no tiene»
+    y no consulta: así `alcance()` conserva un número fijo de consultas aunque haya actividades sin programar.
+    """
     if participacion.horas is not None:
         return Decimal(participacion.horas)
-    agenda = agenda if agenda is not None else participacion.actividad.agenda_vigente
+    if agenda is None:
+        agenda = participacion.actividad.agenda_vigente
     if agenda and agenda.duracion_minutos:
         return (Decimal(agenda.duracion_minutos) / 60).quantize(Decimal("0.1"))
     return Decimal(0)
@@ -36,8 +41,8 @@ def alcance(actividades):
     asistentes = {p.persona_id for p in partes if p.rol.grupo == "asistente"}
     asistieron = [p for p in partes if p.asistencia is True]
     personas_asistieron = {p.persona_id: p.persona for p in asistieron}
-    horas = sum((horas_de(p, agendas.get(p.actividad_id)) for p in asistieron), Decimal(0))
-    horas_equipo = sum((horas_de(p, agendas.get(p.actividad_id)) for p in asistieron if p.rol.grupo == "ejecutor"), Decimal(0))
+    horas = sum((horas_de(p, agendas.get(p.actividad_id, False)) for p in asistieron), Decimal(0))
+    horas_equipo = sum((horas_de(p, agendas.get(p.actividad_id, False)) for p in asistieron if p.rol.grupo == "ejecutor"), Decimal(0))
     instituciones = Counter(p.institucion for p in partes if p.institucion_id and p.rol.grupo == "ejecutor")
     comunidades = Counter(p.comunidad for p in partes if p.comunidad_id)
     roles = Counter(p.rol for p in partes)

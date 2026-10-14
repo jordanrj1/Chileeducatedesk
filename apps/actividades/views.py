@@ -142,32 +142,37 @@ class ActividadNueva(ComunaInicialMixin, Permiso403Mixin, CreateView):
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ctx.update(titulo="Nueva actividad", volver_url=self.request.META.get("HTTP_REFERER") or "/actividades", breadcrumb=[("Actividades", "/actividades")])
-        comunidad, comuna = self.comunidad_inicial(), self.comuna_inicial()
+        comunidad, comuna, sector = self.comunidad_inicial(), self.comuna_inicial(), self.sector_inicial()
         destinos = []
         if comunidad:
             destinos.append(f"Dirigida a la comunidad «{comunidad}» ({comunidad.territorio}).")
             ctx["comunidad_destino"] = comunidad
-        if comuna:
+        if sector:
+            destinos.append(f"Se dirige al sector {sector.nombre} de la comuna de {comuna.nombre}.")
+        elif comuna:
             destinos.append(f"Se dirige a la comuna de {comuna.nombre}.")
         if destinos:
             ctx["bajada"] = " ".join(destinos) + " Los campos marcados con * son obligatorios."
         return ctx
 
     def form_valid(self, form):
-        obj = form.save(commit=False)
-        obj.creado_por = self.request.user
-        obj.estado = EstadoActividad.objects.get(codigo="pendiente")
-        obj.save()
-        form.save_m2m()
-        comunidad = self.comunidad_inicial()
-        if comunidad:
-            ActividadComunidad.objects.create(actividad=obj, comunidad=comunidad)
-        comuna = self.comuna_inicial()  # creada desde la ficha de una comuna: queda como su territorio
-        if comuna:
-            ActividadTerritorio.objects.create(actividad=obj, comuna=comuna)
         from apps.documentos.origen import registrar_origen
 
-        registrar_origen(obj, self.request.user)
+        with transaction.atomic():  # la actividad y lo que la ubica (comunidad, territorio, origen) se guardan juntos o no se guardan
+            obj = form.save(commit=False)
+            obj.creado_por = self.request.user
+            obj.estado = EstadoActividad.objects.get(codigo="pendiente")
+            obj.save()
+            form.save_m2m()
+            comunidad = self.comunidad_inicial()
+            if comunidad:
+                ActividadComunidad.objects.create(actividad=obj, comunidad=comunidad)
+            comuna, sector = self.comuna_inicial(), self.sector_inicial()  # creada desde la ficha de una comuna o de un sector: queda como su territorio
+            if sector:
+                ActividadTerritorio.objects.create(actividad=obj, sector=sector)
+            elif comuna:
+                ActividadTerritorio.objects.create(actividad=obj, comuna=comuna)
+            registrar_origen(obj, self.request.user)
         messages.success(self.request, "Actividad creada. Completa el resto de la información cuando puedas.")
         return HttpResponseRedirect(obj.get_absolute_url())
 

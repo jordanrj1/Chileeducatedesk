@@ -45,7 +45,10 @@ class ConDireccionMixin:
 
 
 class ComunaInicialMixin:
-    """Alta «desde la comuna»: `?comuna=<id>` deja esa comuna elegida en la dirección en cascada. Un valor inválido se ignora."""
+    """Alta «desde la comuna» o «desde el sector»: `?comuna=<id>` (y `&sector=<id>`) deja esa elección en la dirección en cascada.
+
+    Un valor inválido se ignora; un sector solo vale junto a su comuna.
+    """
 
     def comuna_inicial(self):
         if not hasattr(self, "_comuna_inicial"):  # la vista vive una sola solicitud
@@ -55,6 +58,18 @@ class ComunaInicialMixin:
             self._comuna_inicial = Comuna.objects.filter(pk=valor).first() if valor.isascii() and valor.isdigit() else None
         return self._comuna_inicial
 
+    def sector_inicial(self):
+        """El sector de `?sector=` si existe y pertenece a la comuna de `?comuna=`; si no, `None`."""
+        if not hasattr(self, "_sector_inicial"):
+            from apps.territorio.models import Sector
+
+            comuna, valor = self.comuna_inicial(), self.request.GET.get("sector", "")
+            self._sector_inicial = Sector.objects.filter(pk=valor, comuna=comuna).first() if comuna and valor.isascii() and valor.isdigit() else None
+        return self._sector_inicial
+
     def direccion_inicial(self):
         comuna = self.comuna_inicial()
-        return {"comuna": comuna.pk} if comuna else {}
+        if not comuna:
+            return {}
+        sector = self.sector_inicial()
+        return {"comuna": comuna.pk, **({"sector": sector.pk} if sector else {})}

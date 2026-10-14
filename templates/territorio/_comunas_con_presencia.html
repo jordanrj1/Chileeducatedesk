@@ -16,7 +16,7 @@ Comunas donde la Fundación ya trabaja. Recibe `presencia` (lista de presencia_p
           {% if f.personas %}<span><strong>{{ f.personas }}</strong> residente{{ f.personas|pluralize }}</span>{% endif %}
           {% if f.lugares %}<span><strong>{{ f.lugares }}</strong> lugar{{ f.lugares|pluralize:"es" }}</span>{% endif %}
           {% if f.actividades_12m %}<span><strong>{{ f.actividades_12m }}</strong> actividad{{ f.actividades_12m|pluralize:"es" }} (12 meses)</span>
-          {% elif f.actividades_total %}<span><strong>{{ f.actividades_total }}</strong> actividad{{ f.actividades_total|pluralize:"es" }} fuera de los últimos 12 meses</span>{% endif %}
+          {% elif f.actividades_total %}<span><strong>{{ f.actividades_total }}</strong> actividad{{ f.actividades_total|pluralize:"es" }} en total</span>{% endif %}
         </span>
       </span>
       {% icono "derecha" 16 "text-muted flex-shrink-0" %}

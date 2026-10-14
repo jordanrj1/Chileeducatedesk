@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.utils.html import format_html_join
 from django.views import View
 
+from apps.nucleo.direccion_mixin import ComunaInicialMixin
 from apps.nucleo.vistas_base import AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo
 from apps.territorio.models import Comuna
 
@@ -46,7 +47,7 @@ class ComunidadExportar(ComunidadLista):
     permission_required = "comunidades.exportar_comunidad"
 
 
-class ComunidadNueva(CrearBase):
+class ComunidadNueva(ComunaInicialMixin, CrearBase):
     model = Comunidad
     form_class = ComunidadForm
     permission_required = "comunidades.add_comunidad"
@@ -58,6 +59,9 @@ class ComunidadNueva(CrearBase):
         ini = super().get_initial()
         if self.request.GET.get("comuna", "").isdigit():
             ini["comuna"] = self.request.GET["comuna"]
+        sector = self.sector_inicial()  # desde la ficha de un sector: parte con ese sector elegido
+        if sector:
+            ini["sector"] = sector.pk
         return ini
 
 

@@ -5,5 +5,5 @@
 {% else %}
 <div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "actividades" 18 %}</span>
   <p class="fche-vacio__texto">Aún no hay actividades aquí. Una actividad aparece cuando se programa en un lugar de {{ nombre_ambito }} o cuando se indica este territorio como destino.</p>
-  {% if perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="/actividades/nueva?comuna={{ comuna_contenedor.pk }}">+ Actividad</a>{% endif %}</div>
+  {% if perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="/actividades/nueva?{{ parametros_nuevo }}">+ Actividad</a>{% endif %}</div>
 {% endif %}

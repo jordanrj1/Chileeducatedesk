@@ -83,7 +83,7 @@ class _FichaTerritorio(FichaBase):
     descripcion_ambito = ""  # «esta comuna», «este sector y los que contiene»
     ruta_exportar = ""  # nombre de la ruta del Excel del resumen (ComunaExportar, SectorExportar)
 
-    # --- qué es de este territorio (solo registros activos, igual que el resumen) ---
+    # --- qué es de este territorio: las listas y los contadores traen los registros activos, igual que el resumen; los desactivados se piden aparte (`activo=False`) ---
     def _comunidades(self):
         from apps.comunidades.models import Comunidad
 
@@ -141,9 +141,13 @@ class _FichaTerritorio(FichaBase):
         ctx["puede_agregar"] = self.request.user.has_perm("territorio.add_sector")
         return ctx
 
+    def parametros_nuevo(self):
+        """Consulta de los enlaces «+ Actividad», «+ Lugar»…: lo creado desde aquí parte en este territorio."""
+        return f"comuna={self.comuna.pk}"
+
     def contexto_ficha(self):
         return {
-            "comuna_contenedor": self.comuna, "nombre_ambito": self.object.nombre,
+            "comuna_contenedor": self.comuna, "nombre_ambito": self.object.nombre, "parametros_nuevo": self.parametros_nuevo(),
             "url_exportar_resumen": reverse(self.ruta_exportar, args=[self.object.pk]),
         }
 
@@ -209,7 +213,7 @@ class _FichaTerritorio(FichaBase):
         return {"grupos_organizaciones": [(tipo, len(lista), lista) for tipo, lista in grupos], "organizaciones_inactivas": list(inactivas)}
 
     def ctx_comunidades(self):
-        return {"comunidades": self._comunidades(), "url_nueva_comunidad": f"/comunidades/nueva?comuna={self.comuna.pk}"}
+        return {"comunidades": self._comunidades(), "url_nueva_comunidad": f"/comunidades/nueva?{self.parametros_nuevo()}"}
 
     def ctx_actividades(self):
         """BU-E7: distingue «realizada en» (su lugar está aquí) de «dirigida a» (solo indica el territorio), sin consultas por fila."""
@@ -311,6 +315,9 @@ class SectorFicha(_FichaTerritorio):
     @property
     def breadcrumb(self):
         return RAIZ + [(self.object.comuna.nombre, self.object.comuna.get_absolute_url())]
+
+    def parametros_nuevo(self):
+        return f"comuna={self.object.comuna_id}&sector={self.object.pk}"
 
     def _ids(self):
         if not hasattr(self, "_ids_cache"):

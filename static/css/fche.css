@@ -481,6 +481,10 @@ details > summary:hover { text-decoration: underline; }
 
 /* Indicadores (KPIs) */
 .fche-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: 1rem; margin-bottom: 1.75rem; }
+/* Con <ul><li>: la lista conserva su significado para el lector de pantalla y el enlace no pierde su rol; cada <li> envuelve a una tarjeta que ocupa toda su celda */
+ul.fche-kpis { list-style: none; padding-left: 0; }
+.fche-kpis > li { display: flex; }
+.fche-kpis > li > .fche-kpi { flex: 1 1 auto; }
 .fche-kpi { position: relative; display: flex; flex-direction: column; gap: .3rem; padding: 1rem 1.1rem; background: var(--fche-superficie); border: 1px solid var(--fche-borde); border-radius: var(--fche-radio-lg); box-shadow: var(--fche-sombra); color: inherit; text-decoration: none !important; transition: border-color var(--fche-transicion), box-shadow var(--fche-transicion), transform var(--fche-transicion); }
 a.fche-kpi:hover { border-color: var(--fche-primario-borde); box-shadow: 0 6px 18px -8px rgba(36, 80, 212, .35); transform: translateY(-1px); }
 .fche-kpi__cabecera { display: flex; align-items: center; gap: .55rem; font-size: .8rem; font-weight: 600; color: var(--fche-texto-suave); }

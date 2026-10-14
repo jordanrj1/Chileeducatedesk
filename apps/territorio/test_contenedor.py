@@ -1,6 +1,6 @@
 """Ficha de comuna y de sector como contenedor (F23): resumen, personas, alcance y consultas acotadas. Datos ficticios."""
 import re
-from datetime import timedelta
+from datetime import time, timedelta
 
 import pytest
 from django.contrib.auth.models import Permission, User
@@ -245,7 +245,9 @@ def test_sector_incluye_hijos(cg, comuna, crear_actividad, crear_persona, gestor
     assert [f["sector"] for f in resumen["sectores"]] == [padre, etapa, nieto]
     html = r.content.decode()
     assert set(_enlaces_de_indicadores(html)) == INDICADORES
-    assert f'href="/actividades/nueva?comuna={comuna.pk}"' in html  # las acciones usan la comuna del sector
+    for ruta in ("/comunidades/nueva", "/organizaciones/nueva", "/lugares/nuevo", "/actividades/nueva"):  # lo creado desde el sector parte en el sector
+        assert f'href="{ruta}?comuna={comuna.pk}&amp;sector={padre.pk}"' in html, ruta
+        assert f'href="{ruta}?comuna={comuna.pk}"' not in html, ruta
 
     personas = cg.get(f"{url}?tab=personas").content.decode()
     assert "Nieta Residente" in personas and "Vecina Aparte" not in personas
@@ -364,3 +366,83 @@ def test_pestanas_bajo_tope_de_consultas(cg, comuna, crear_actividad, gestor):
     for clave in claves_sector:
         assert treinta_sector[clave] - uno_sector[clave] <= 2, (clave, uno_sector[clave], treinta_sector[clave])
         assert treinta_sector[clave] <= 60, (clave, treinta_sector[clave])
+
+
+def test_actividad_sin_programacion_no_suma_consultas_por_asistente(cg, comuna, crear_actividad, crear_persona):
+    """«+ Actividad» desde la comuna crea una actividad sin agenda: sus asistentes no deben costar consultas propias."""
+    sin_agenda = crear_actividad("Operativo sin fecha todavía")
+    ActividadTerritorio.objects.create(actividad=sin_agenda, comuna=comuna)
+    cg.get(comuna.get_absolute_url())  # calienta cachés de la sesión y del catálogo
+
+    def medir_todo():
+        servicio = CaptureQueriesContext(connection)
+        with servicio:
+            resultado = alcance([sin_agenda])
+        pestanas = _medir(cg, comuna.get_absolute_url(), ["resumen", "alcance"])
+        return len(servicio), pestanas, resultado
+
+    _participa(sin_agenda, crear_persona("Asistente Ficticia 0"))
+    uno_servicio, uno_pestanas, uno = medir_todo()
+    for i in range(1, 21):
+        _participa(sin_agenda, crear_persona(f"Asistente Ficticia {i}"))
+    veintiuno_servicio, veintiuno_pestanas, veintiuno = medir_todo()
+
+    assert (uno["asistieron"], veintiuno["asistieron"]) == (1, 21)
+    assert veintiuno["horas"] == 0  # sin agenda ni horas registradas no hay horas que sumar
+    assert veintiuno_servicio == uno_servicio
+    assert veintiuno_pestanas == uno_pestanas
+
+
+def test_horas_de_sola_sigue_buscando_la_agenda_vigente(lugar, crear_actividad, crear_persona, gestor):
+    """Sin `agenda`, `horas_de` consulta la vigente (la usa `horas_persona`); con `False` sabe que no hay y no consulta."""
+    from apps.actividades.alcance import horas_de, horas_persona
+
+    a = crear_actividad("Taller de dos horas Ficticio")
+    programar(a, gestor, HOY, time(10), time(12), lugar, None)
+    agenda = a.agenda_vigente
+    persona = crear_persona("Asistente de dos horas")
+    p = _participa(a, persona)
+    assert horas_de(p) == 2 and horas_persona(persona) == 2
+    assert horas_de(p, agenda) == 2
+    with CaptureQueriesContext(connection) as ctx:
+        assert horas_de(p, False) == 0
+    assert len(ctx) == 0
+
+
+def test_sector_vacio_ofrece_crear_en_el_sector(cg, comuna):
+    """Los vacíos de cada pestaña de un sector también llevan el sector, no solo la comuna."""
+    sector = _sector(comuna, "Villa Sin Nada Ficticia", tipo="villa")
+    esperado = f"comuna={comuna.pk}&amp;sector={sector.pk}"
+    for pestana, url in (("resumen", "/comunidades/nueva"), ("resumen", "/organizaciones/nueva"), ("organizaciones", "/organizaciones/nueva"),
+                         ("lugares", "/lugares/nuevo"), ("actividades", "/actividades/nueva"), ("comunidades", "/comunidades/nueva")):
+        html = cg.get(f"{sector.get_absolute_url()}?tab={pestana}").content.decode()
+        assert f'href="{url}?{esperado}"' in html, (pestana, url)
+        assert f'href="{url}?comuna={comuna.pk}"' not in html, (pestana, url)
+    # en la comuna, todo sigue igual: solo la comuna
+    html = cg.get(f"{comuna.get_absolute_url()}?tab=lugares").content.decode()
+    assert f'href="/lugares/nuevo?comuna={comuna.pk}"' in html and "sector=" not in html.split("/lugares/nuevo?", 1)[1].split('"', 1)[0]
+
+
+def test_enlace_a_personas_dice_que_filtra_por_comuna(cg, comuna, crear_persona):
+    """El listado de Personas filtra por comuna (residencia o procedencia): el enlace no promete «este sector» ni «solo residentes»."""
+    sector = _sector(comuna, "Villa Aparte Ficticia", tipo="villa")
+    _reside(crear_persona("Vecina Ficticia"), _dir(comuna, sector))
+    for url in (comuna.get_absolute_url(), sector.get_absolute_url()):
+        html = cg.get(f"{url}?tab=personas").content.decode()
+        assert f'href="/personas?comuna={comuna.pk}"' in html
+        assert "Ver personas de la comuna en el listado" in html and "Ver en el listado de Personas" not in html
+        assert "residencia o de procedencia" in html
+    assert "dentro o fuera de este sector" in cg.get(f"{sector.get_absolute_url()}?tab=personas").content.decode()
+
+
+def test_indicadores_son_una_lista_de_enlaces_sin_pisar_el_rol(cg, comuna, crear_persona):
+    """Cada indicador es `<li><a>`: el lector de pantalla anuncia un enlace dentro de una lista, no un «ítem de lista» sin enlace."""
+    _reside(crear_persona("Vecina Ficticia"), _dir(comuna))
+    html = cg.get(comuna.get_absolute_url()).content.decode()
+    assert 'role="listitem"' not in html
+    lista = re.search(r'<ul class="fche-kpis fche-kpis--contenedor" role="list" aria-label="[^"]+">(.*?)</ul>', html, flags=re.S).group(1)
+    assert lista.count("<li>") == lista.count("</li>") == len(INDICADORES)
+    assert len(re.findall(r'<li>\s*<a class="fche-kpi" href="\?tab=\w+"', lista)) == len(INDICADORES)
+    # el tablero hace lo mismo
+    tablero = cg.get("/dashboard").content.decode()
+    assert 'role="listitem"' not in tablero and '<ul class="fche-kpis" role="list"' in tablero

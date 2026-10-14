@@ -135,6 +135,96 @@ def test_nueva_actividad_con_comuna_y_comunidad_conserva_ambas(cg, comuna):
     assert ActividadTerritorio.objects.get().comuna == comuna
 
 
+# ---------- crear desde un sector ----------
+
+def test_nueva_actividad_desde_un_sector_crea_territorio_del_sector(cg, comuna):
+    sector = Sector.objects.create(comuna=comuna, nombre="Villa Ficticia", tipo="villa")
+    consulta = f"comuna={comuna.pk}&sector={sector.pk}"
+    r = cg.get(f"/actividades/nueva?{consulta}")
+    assert r.status_code == 200 and "sector Villa Ficticia" in r.context["bajada"] and "Comuna Ficticia" in r.context["bajada"]
+
+    assert cg.post(f"/actividades/nueva?{consulta}", {"nombre": "Taller en la villa"}).status_code == 302
+    t = ActividadTerritorio.objects.get()  # una sola fila: la del sector, no además la de la comuna
+    assert t.actividad.nombre == "Taller en la villa" and t.sector == sector and t.vigente
+    assert not (t.region_id or t.provincia_id or t.comuna_id)
+
+    # y aparece donde se la busca: en el resumen y en la pestaña Actividades del sector (y también en la comuna, fuera de «Sin sector»)
+    ficha = cg.get(sector.get_absolute_url())
+    assert ficha.context["resumen"]["actividades_total"] == 1
+    assert "Taller en la villa" in cg.get(f"{sector.get_absolute_url()}?tab=actividades").content.decode()
+    en_comuna = cg.get(comuna.get_absolute_url()).context["resumen"]
+    assert en_comuna["actividades_total"] == 1
+    assert {(f["sector"], f["actividades"]) for f in en_comuna["sectores"]} == {(sector, 1), (None, 0)}
+
+
+def test_nueva_actividad_ignora_un_sector_invalido(cg, comuna):
+    otra = Comuna.objects.create(provincia=comuna.provincia, codigo="99002", nombre="Otra Comuna")
+    ajeno = Sector.objects.create(comuna=otra, nombre="Sector de Otra Comuna")
+    propio = Sector.objects.create(comuna=comuna, nombre="Sector Propio")
+    # sin comuna el sector no vale; con un sector de otra comuna, que no existe o no es un número, cae a la comuna
+    for consulta in (f"sector={propio.pk}", f"comuna={comuna.pk}&sector={ajeno.pk}", f"comuna={comuna.pk}&sector=999999",
+                     f"comuna={comuna.pk}&sector=abc", f"comuna={comuna.pk}&sector=99999999999999999999", f"comuna={comuna.pk}&sector="):
+        antes = ActividadTerritorio.objects.count()
+        r = cg.get(f"/actividades/nueva?{consulta}")
+        assert r.status_code == 200 and "sector" not in r.context.get("bajada", ""), consulta
+        assert cg.post(f"/actividades/nueva?{consulta}", {"nombre": f"Valor {consulta}"}).status_code == 302, consulta
+        creados = ActividadTerritorio.objects.all()[antes:]
+        if consulta.startswith("sector="):
+            assert not creados  # sin comuna no hay territorio
+        else:
+            assert [(t.comuna, t.sector) for t in creados] == [(comuna, None)], consulta
+
+
+def test_nueva_organizacion_y_lugar_desde_un_sector_eligen_el_sector(cg, comuna):
+    sector = Sector.objects.create(comuna=comuna, nombre="Villa Ficticia", tipo="villa")
+    Sector.objects.create(comuna=comuna, nombre="Otra Villa Ficticia", tipo="villa")
+    consulta = f"comuna={comuna.pk}&sector={sector.pk}"
+    for url in ("/organizaciones/nueva", "/lugares/nuevo"):
+        r = cg.get(f"{url}?{consulta}")
+        assert r.status_code == 200, url
+        direccion = r.context["form_direccion"]
+        assert direccion.initial["comuna"] == comuna.pk and direccion.initial["sector"] == sector.pk, url
+        assert f'<option value="{sector.pk}" selected>' in r.content.decode(), url
+    # lo prellenado se guarda: el lugar queda con dirección en el sector
+    r = cg.post(f"/lugares/nuevo?{consulta}", {
+        "nombre": "Sede de la Villa", "tipo": TipoLugar.objects.get(codigo="sala").pk, "capacidad": 15,
+        "dir-calle": "Calle Inventada", "dir-comuna": comuna.pk, "dir-sector": sector.pk,
+    })
+    assert r.status_code == 302 and Lugar.objects.get(nombre="Sede de la Villa").direccion.sector == sector
+
+    # un sector inválido se ignora: la comuna sigue elegida y el sector no
+    ajeno = Sector.objects.create(comuna=Comuna.objects.create(provincia=comuna.provincia, codigo="99003", nombre="Tercera Comuna"), nombre="Sector Ajeno")
+    for invalido in (f"sector={ajeno.pk}", "sector=999999", "sector=abc", "sector="):
+        for url in ("/organizaciones/nueva", "/lugares/nuevo"):
+            r = cg.get(f"{url}?comuna={comuna.pk}&{invalido}")
+            direccion = r.context["form_direccion"]
+            assert r.status_code == 200 and direccion.initial["comuna"] == comuna.pk and not direccion.initial.get("sector"), (url, invalido)
+    assert not cg.get(f"/lugares/nuevo?sector={sector.pk}").context["form_direccion"].initial.get("sector")  # sin comuna, el sector no vale
+
+
+def test_nueva_comunidad_desde_un_sector_eligen_el_sector(cg, comuna):
+    sector = Sector.objects.create(comuna=comuna, nombre="Villa Ficticia", tipo="villa")
+    ajeno = Sector.objects.create(comuna=Comuna.objects.create(provincia=comuna.provincia, codigo="99002", nombre="Otra Comuna"), nombre="Sector Ajeno")
+    r = cg.get(f"/comunidades/nueva?comuna={comuna.pk}&sector={sector.pk}")
+    assert r.status_code == 200 and r.context["form"].initial["sector"] == sector.pk and r.context["form"].initial["comuna"] == str(comuna.pk)
+    for invalido in (f"sector={ajeno.pk}", "sector=999999", "sector=abc"):
+        r = cg.get(f"/comunidades/nueva?comuna={comuna.pk}&{invalido}")
+        assert r.status_code == 200 and not r.context["form"].initial.get("sector"), invalido
+
+
+def test_crear_actividad_es_atomico(cg, comuna, monkeypatch):
+    """Si algo falla después de guardar la actividad (el territorio, el origen), no queda una actividad a medias."""
+    from apps.actividades.models import Actividad
+
+    def falla(*a, **kw):
+        raise RuntimeError("falla simulada al registrar el origen")
+
+    monkeypatch.setattr("apps.documentos.origen.registrar_origen", falla)
+    with pytest.raises(RuntimeError):
+        cg.post(f"/actividades/nueva?comuna={comuna.pk}", {"nombre": "Actividad a medias"})
+    assert not Actividad.objects.filter(nombre="Actividad a medias").exists() and not ActividadTerritorio.objects.exists()
+
+
 # ---------- enlaces hacia arriba ----------
 
 def test_fichas_enlazan_a_su_comuna(cg, comuna, lugar, crear_persona, crear_actividad, gestor):

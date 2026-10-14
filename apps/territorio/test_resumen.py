@@ -228,6 +228,20 @@ def test_resumen_proximas_y_minutas(comuna, lugar, crear_actividad, gestor):
     assert all(m.actividad == serie for m in minutas)
 
 
+def test_minutas_son_de_sesiones_que_ya_ocurrieron(comuna, lugar, crear_actividad, gestor):
+    """Una serie planificada (sesiones futuras) no esconde la sesión real: solo cuentan las de hoy o antes."""
+    serie = crear_actividad("Serie con sesiones planificadas")
+    programar(serie, gestor, HOY + timedelta(days=60), None, None, lugar, None)
+    real = SesionActividad.objects.create(actividad=serie, numero=1, fecha=HOY - timedelta(days=1), nombre="Sesión realizada")
+    de_hoy = SesionActividad.objects.create(actividad=serie, numero=2, fecha=HOY)
+    for n in range(3, 9):
+        SesionActividad.objects.create(actividad=serie, numero=n, fecha=HOY + timedelta(weeks=n - 2))
+
+    minutas = resumen_territorio(comuna=comuna)["minutas"]
+    assert [m.pk for m in minutas] == [de_hoy.pk, real.pk]  # la de ayer está, ninguna de las 6 futuras
+    assert all(m.fecha <= HOY for m in minutas)
+
+
 # ---------- presencia ----------
 
 def test_presencia_ordenada_y_sin_comunas_vacias(comuna, crear_actividad, crear_persona, gestor):
