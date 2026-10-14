@@ -20,4 +20,5 @@
 {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva?comuna={{ comuna_contenedor.pk }}">+ Organización</a>{% endif %}
 {% if perms.lugares.add_lugar %}<a class="btn btn-outline-primary btn-sm" href="/lugares/nuevo?comuna={{ comuna_contenedor.pk }}">+ Lugar</a>{% endif %}
 {% if perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="/actividades/nueva?comuna={{ comuna_contenedor.pk }}">+ Actividad</a>{% endif %}
+{% if perms.territorio.exportar_territorio %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_exportar_resumen }}" title="Descarga en Excel el resumen de {{ nombre_ambito }}">{% icono "descargar" 15 %}Exportar resumen</a>{% endif %}
 {% endblock %}

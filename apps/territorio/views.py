@@ -1,3 +1,4 @@
+from io import BytesIO
 from itertools import groupby
 
 from django.contrib import messages
@@ -7,13 +8,17 @@ from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import format_html, format_html_join
+from django.utils.text import slugify
 from django.views import View
 from django.views.generic import TemplateView
 
+from apps.nucleo.auditoria import registrar
 from apps.nucleo.vistas_base import FichaBase, Permiso403Mixin
 
 from . import consultas
+from .exportar import detalle_de, libro_territorial
 from .forms import AliasForm, SectorForm
 from .models import Comuna, Provincia, Region, Sector
 from .reconocer import mismo_sector, sectores_parecidos
@@ -76,6 +81,7 @@ class _FichaTerritorio(FichaBase):
 
     template_name = "territorio/ficha.html"
     descripcion_ambito = ""  # «esta comuna», «este sector y los que contiene»
+    ruta_exportar = ""  # nombre de la ruta del Excel del resumen (ComunaExportar, SectorExportar)
 
     # --- qué es de este territorio (solo registros activos, igual que el resumen) ---
     def _comunidades(self):
@@ -136,7 +142,10 @@ class _FichaTerritorio(FichaBase):
         return ctx
 
     def contexto_ficha(self):
-        return {"comuna_contenedor": self.comuna, "nombre_ambito": self.object.nombre}
+        return {
+            "comuna_contenedor": self.comuna, "nombre_ambito": self.object.nombre,
+            "url_exportar_resumen": reverse(self.ruta_exportar, args=[self.object.pk]),
+        }
 
     # --- pestañas ---
     def ctx_resumen(self):
@@ -229,6 +238,7 @@ class ComunaFicha(_FichaTerritorio):
     model = Comuna
     permission_required = "territorio.view_comuna"
     descripcion_ambito = "esta comuna"
+    ruta_exportar = "territorio:comuna_exportar"
     pestanas = [
         ("resumen", "Resumen", "territorio/pestanas/resumen.html"),
         ("sectores", "Sectores", "territorio/pestanas/sectores.html"),
@@ -274,6 +284,7 @@ class SectorFicha(_FichaTerritorio):
     model = Sector
     permission_required = "territorio.view_sector"
     descripcion_ambito = "este sector y los que contiene"
+    ruta_exportar = "territorio:sector_exportar"
     pestanas = [
         ("resumen", "Resumen", "territorio/pestanas/resumen.html"),
         ("sectores", "Sectores dentro", "territorio/pestanas/sectores.html"),
@@ -318,6 +329,46 @@ class SectorFicha(_FichaTerritorio):
 
     def ctx_nombres(self):
         return {"form_alias": AliasForm(), "url_alias": reverse("territorio:alias_nuevo", args=[self.object.pk])}
+
+
+class _Exportar(Permiso403Mixin, View):
+    """Excel del resumen territorial (F23) de una comuna o un sector. Queda en la auditoría; lleva el aviso de confidencialidad.
+
+    Hace falta `territorio.exportar_territorio` y poder ver el territorio. Lo que lleva el archivo depende además de los permisos
+    sobre personas, comunidades, organizaciones y actividades (ver `exportar.py`).
+    """
+
+    def get(self, request, pk):
+        objeto = get_object_or_404(self.queryset(), pk=pk)
+        libro = libro_territorial(request.user, **self.ambito(objeto))
+        buffer = BytesIO()
+        libro.save(buffer)
+        registrar(request.user, "resumen_territorial_exportado", objeto, detalle_de(request.user, libro))
+        r = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        r["Content-Disposition"] = f'attachment; filename="territorio_{slugify(str(objeto))}_{timezone.localdate():%Y-%m-%d}.xlsx"'
+        return r
+
+
+class ComunaExportar(_Exportar):
+    permission_required = ("territorio.exportar_territorio", "territorio.view_comuna")
+
+    def queryset(self):
+        return Comuna.objects.all()
+
+    def ambito(self, comuna):
+        return {"comuna": comuna, "titulo": str(comuna)}
+
+
+class SectorExportar(_Exportar):
+    """El sector y los que contiene (etapas, villas…), igual que su ficha."""
+
+    permission_required = ("territorio.exportar_territorio", "territorio.view_sector")
+
+    def queryset(self):
+        return Sector.objects.select_related("comuna", "sector_padre__sector_padre")
+
+    def ambito(self, sector):
+        return {"comuna": sector.comuna, "sectores": sector.descendientes_ids(), "titulo": str(sector)}
 
 
 class SectorNuevo(Permiso403Mixin, View):
