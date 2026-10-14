@@ -1,3 +1,5 @@
+"""Tabla de lugares: nombre, tipo, dirección, capacidad, condiciones y organización dueña.
+La capacidad se usa al revisar si se puede confirmar una actividad."""
 from django.conf import settings
 from django.db import models
 from django.urls import reverse

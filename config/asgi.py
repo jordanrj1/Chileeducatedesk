@@ -1,11 +1,5 @@
-"""
-ASGI config for config project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
-"""
+"""Punto de arranque alternativo (ASGI) que Django crea por defecto.
+Este sistema no lo usa: arranca con waitress a través de wsgi.py."""
 
 import os
 

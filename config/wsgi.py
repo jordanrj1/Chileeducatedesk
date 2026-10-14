@@ -1,11 +1,5 @@
-"""
-WSGI config for config project.
-
-It exposes the WSGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
-"""
+"""Punto de arranque que usa el servidor waitress para atender las páginas (lo llama iniciar.bat).
+Usa los ajustes de producción (config/settings/produccion.py)."""
 
 import os
 

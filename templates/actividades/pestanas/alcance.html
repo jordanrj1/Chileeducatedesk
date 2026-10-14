@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Alcance: cuántas personas, horas y comunidades alcanzó. La reutilizan comuna, sector, comunidad y proyecto. #}
+{# Dónde se usa: 5 rutas, p. ej. /actividades/<int:pk> · Proceso: P9 #}
 {% load fche %}{% with a=alcance %}
 <p class="small text-muted">Resumen de {{ contexto_alcance|default:"esta actividad" }}{% if a.actividades > 1 %} ({{ a.actividades }} actividades){% endif %}. Cuenta personas únicas; los asistentes sin registro vienen de las minutas de cada sesión.</p>
 <div class="fche-kpis fche-kpis--ajustados">

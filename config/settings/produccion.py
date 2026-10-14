@@ -1,4 +1,5 @@
-"""Uso real con waitress. DEBUG debe ser False."""
+"""Ajustes para el uso real con waitress: DEBUG apagado y cookies protegidas.
+Si algún día se publica con HTTPS, HTTPS=True en .env activa las protecciones adicionales."""
 from .base import *  # noqa: F401,F403
 from .base import env
 

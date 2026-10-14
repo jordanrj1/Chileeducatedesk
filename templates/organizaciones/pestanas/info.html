@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Información de la organización. #}
+{# Dónde se usa: /organizaciones/<int:pk> · Proceso: P4 #}
 {% load fche %}<dl class="fche-datos mb-4">
   <div><dt>Tipo</dt><dd>{{ object.tipo }}</dd></div>
   <div><dt>RUT</dt><dd>{{ object.rut|default:"—" }}{% if object.otro_identificador %} · {{ object.otro_identificador }}{% endif %}</dd></div>

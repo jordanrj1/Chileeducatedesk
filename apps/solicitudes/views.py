@@ -1,3 +1,5 @@
+"""Pantallas de solicitudes: listado, crear casi sin datos, ficha con seguimiento, cambiar estado (descartar pide motivo),
+reabrir, y convertir en actividad o en proyecto sin volver a escribir los datos."""
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404

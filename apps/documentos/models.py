@@ -1,3 +1,6 @@
+"""Tablas de documentos. Documento: el archivo (guardado fuera del código) y sus datos (tipo, fecha, folio, emisor,
+vencimiento, restringido), ligado a una ficha. OrigenDato: de dónde salió un dato (sistema, documento, planilla, llamada…).
+Aquí está la lista de tipos de archivo permitidos y el tamaño máximo (25 MB)."""
 import os
 
 from django.conf import settings

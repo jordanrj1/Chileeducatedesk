@@ -1,3 +1,5 @@
+"""Tabla de solicitudes: origen, canal, fecha, motivo, estado, contacto opcional y la actividad o el proyecto
+en que se convirtió (puede quedar sin ninguno). Sabe cuántos días lleva abierta."""
 from django.conf import settings
 from django.db import models
 from django.db.models import Exists, OuterRef

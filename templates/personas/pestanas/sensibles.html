@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Datos sensibles 🔒 (género, pueblo originario, salud, discapacidad), solo con permiso y consentimiento. #}
+{# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
 {% load fche %}<div class="alert alert-info d-flex gap-2 small">{% icono "candado" 18 %}<div><strong>Datos sensibles (Ley 21.719).</strong> Solo los ve quien tiene permiso de datos sensibles y se guardan únicamente con consentimiento explícito.
 {% if consentimiento_sensibles %}Consentimiento vigente desde el {{ consentimiento_sensibles.fecha|date:"d-m-Y" }} ({{ consentimiento_sensibles.get_medio_display|lower }}).{% else %}<strong>Aún no hay consentimiento registrado.</strong>{% endif %}</div></div>
 <div class="fche-seccion"><h2 class="h6">Datos sensibles</h2>

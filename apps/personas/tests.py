@@ -1,3 +1,5 @@
+"""Pruebas automáticas de personas: ficha rápida y completa, RUT, duplicados, contactos y teléfonos, formación y cargos,
+datos sensibles con permiso, historial, desactivar sin borrar, filtros y búsqueda."""
 import pytest
 from django.db import IntegrityError, transaction
 

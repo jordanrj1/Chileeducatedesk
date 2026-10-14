@@ -1,3 +1,5 @@
+{# Qué es: Resumen de una carga ya hecha, con botón para revertirla. #}
+{# Dónde se usa: /importaciones/<int:pk> · Proceso: P3 #}
 {% load fche %}{% if object.estado == "previa" %}<div class="alert alert-info d-flex gap-2 align-items-center justify-content-between"><span class="d-flex gap-2 align-items-center">{% icono "info" 18 %}Esta carga está en revisión: aún no se ha guardado nada.</span><a class="btn btn-primary btn-sm" href="{% url 'importaciones:revisar' object.pk %}">Continuar revisión</a></div>{% endif %}
 {% if aplicado %}<div class="fche-kpis">
   <div class="fche-kpi fche-kpi--ok"><span class="fche-kpi__cabecera">Creados</span><span class="fche-kpi__valor">{{ aplicado.creados }}</span></div>

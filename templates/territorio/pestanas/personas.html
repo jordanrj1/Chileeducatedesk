@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Personas: residentes y miembros de comunidades de la comuna. #}
+{# Dónde se usa: /territorio/comuna/<int:pk>, /territorio/sector/<int:pk> · Proceso: P9 #}
 {% load fche %}
 <div class="fche-seccion"><p class="small text-muted mb-0">Quién vive en {{ nombre_ambito }} y quién participa en sus comunidades. Aquí solo se muestran nombre, perfiles y comunidad; el RUT, los contactos y los datos sensibles quedan en la ficha de cada persona.</p>
   <div class="fche-seccion__acciones"><a class="btn btn-outline-secondary btn-sm" href="/personas?comuna={{ comuna_contenedor.pk }}" title="El listado filtra por comuna: incluye a quien tiene una dirección vigente de residencia o de procedencia en {{ comuna_contenedor.nombre }}{% if es_sector %}, dentro o fuera de este sector{% endif %}.">{% icono "lista" 15 %}Ver personas de la comuna en el listado</a></div></div>

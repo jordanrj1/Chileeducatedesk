@@ -1,3 +1,5 @@
+{# Qué es: Datos de un movimiento de dinero (2F: oculta, fuera de alcance). #}
+{# Dónde se usa: /finanzas/<int:pk> · Proceso: 2F #}
 {% load fche %}<dl class="fche-datos mb-4">
   <div><dt>Monto</dt><dd class="fs-4 fw-bold fche-num">${{ object.monto|floatformat:"0g" }}</dd></div>
   <div><dt>Tipo</dt><dd>{{ object.get_tipo_display }}</dd></div>

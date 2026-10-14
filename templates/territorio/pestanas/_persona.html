@@ -1,3 +1,5 @@
+{# Qué es: Trozo: una fila de persona con su comunidad y perfiles. #}
+{# Dónde se usa: se incluye en territorio/pestanas/personas.html · Proceso: P9 #}
 <li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ p.get_absolute_url }}">{{ p }}</a>
   <div class="fche-items__detalle">{% for m in p.membresias %}<a href="{{ m.comunidad.get_absolute_url }}">{{ m.comunidad.nombre }}</a>{% if not forloop.last %} · {% endif %}{% empty %}Sin comunidad registrada{% endfor %}</div></div>
   {% if p.perfiles.all %}<div class="d-flex flex-wrap gap-1 justify-content-end">{% for perfil in p.perfiles.all %}<span class="badge text-bg-light border">{{ perfil.nombre }}</span>{% endfor %}</div>{% endif %}</li>

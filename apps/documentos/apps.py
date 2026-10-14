@@ -1,3 +1,5 @@
+"""Registro de la app «documentos» en Django.
+Guarda los archivos de evidencia (cartas, minutas, certificados) y de dónde salió cada dato."""
 from django.apps import AppConfig
 
 

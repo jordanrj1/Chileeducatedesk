@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Disponibilidad: elegir un día y ver qué actividades ocupan el lugar. #}
+{# Dónde se usa: /lugares/<int:pk> · Proceso: P5 #}
 {% load fche %}<form class="d-flex flex-wrap gap-2 align-items-center mb-4" method="get"><input type="hidden" name="tab" value="disponibilidad">
   <label class="small fw-semibold" for="fecha-disp">Consultar el día</label>
   <input class="form-control" style="max-width:12rem;" type="date" id="fecha-disp" name="fecha" value="{{ fecha|date:'Y-m-d' }}">

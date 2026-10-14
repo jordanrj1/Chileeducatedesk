@@ -1,3 +1,4 @@
+"""Registro de la app «lugares» en Django. Un lugar se anota una vez y se reutiliza en muchas actividades."""
 from django.apps import AppConfig
 
 

@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Personas relacionadas: cargos con fechas (quién era presidente en cada período). #}
+{# Dónde se usa: /organizaciones/<int:pk> · Proceso: P4 #}
 {% include "generico/_hijos.html" %}
 {% if hay_autoridades and perms.personas.change_personaorganizacion %}
 <form method="post" action="{% url 'organizaciones:cerrar_autoridades' object.pk %}" class="d-flex flex-wrap gap-2 align-items-end mt-4 p-3 rounded-3 border bg-light-subtle">{% csrf_token %}

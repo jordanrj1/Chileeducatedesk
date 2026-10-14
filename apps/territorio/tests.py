@@ -1,3 +1,5 @@
+"""Pruebas automáticas del territorio: sectores dentro de sectores, sector de la comuna correcta,
+cascada de opciones, crear sector sin salir del formulario, nombres alternativos y carga oficial."""
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.management import call_command

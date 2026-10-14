@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Resultados: observaciones, incidencias, resultado y botón Finalizar. #}
+{# Dónde se usa: /actividades/<int:pk> · Proceso: P8 #}
 {% load fche %}<h2 class="h6 mb-3">Resultados de la actividad</h2>
 {% if finalizada %}
 <div class="alert alert-secondary d-flex gap-2">{% icono "ok" 18 %}<div>Actividad <strong>realizada</strong>{% if agenda %} el {{ agenda.fecha|date:"d-m-Y" }}{% endif %}; finalizada en el sistema el {{ object.finalizada_en|date:"d-m-Y H:i"|default:"—" }}{% if object.finalizada_por %} por {{ object.finalizada_por }}{% endif %}.

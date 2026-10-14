@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Participantes: personas con su rol y estado, botones agregar, crear en el momento, cargar listado y buscar candidatos. #}
+{# Dónde se usa: /actividades/<int:pk> · Proceso: P3 #}
 {% load fche %}<div class="fche-seccion">
   <h2 class="h6">{{ titulo_pestana }} <span class="fche-contador">{{ participaciones|length }}</span></h2>
   {% if puede_agregar and perms.actividades.add_participacion %}<div class="fche-seccion__acciones">

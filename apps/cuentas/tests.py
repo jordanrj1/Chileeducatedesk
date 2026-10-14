@@ -1,3 +1,5 @@
+"""Pruebas automáticas de ingreso y cuentas: ingreso con correo o usuario, cuenta desactivada, bloqueo,
+roles y permisos, crear cuentas solo para personas registradas, cambiar y restablecer contraseñas, auditoría."""
 import pytest
 from django.contrib.auth.models import Group, User
 from django.test import Client

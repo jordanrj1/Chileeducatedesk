@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Nombres alternativos de un sector (para reconocer escrituras distintas). #}
+{# Dónde se usa: /territorio/sector/<int:pk> · Proceso: P5 #}
 <p class="small text-muted">Otras formas de escribir este sector. Sirven para reconocerlo y no crearlo dos veces.</p>
 <ul class="fche-items mb-3" style="max-width:36rem;">{% for a in object.alias.all %}<li>{{ a.nombre }}</li>{% empty %}<li class="text-muted">Sin nombres alternativos.</li>{% endfor %}</ul>
 {% if perms.territorio.change_sector %}

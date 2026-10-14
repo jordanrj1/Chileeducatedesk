@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de la cuenta propia: Mi cuenta y cambiar contraseña.
+Las usa cualquier usuario que haya ingresado, sea Gestor o Administrador."""
 from django.urls import path
 
 from . import views

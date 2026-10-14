@@ -1,3 +1,6 @@
+"""Pantallas de documentos: listado con filtros, subir, asociar existente, ficha, editar, reemplazar el archivo
+(conserva el anterior), archivar, transcribir con el documento al lado y registrar el origen de un dato.
+Los archivos nunca se sirven directo: DocumentoArchivo y DocumentoVer revisan el permiso y anotan la descarga."""
 import mimetypes
 from urllib.parse import quote
 

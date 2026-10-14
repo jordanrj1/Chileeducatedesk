@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de organizaciones: listado, nueva, ficha, editar, desactivar, unir repetidas,
+carreras, personas con cargo, contactos y exportar."""
 from django.urls import path
 
 from apps.nucleo.hijos import urls_hijo

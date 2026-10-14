@@ -1,3 +1,4 @@
+"""Direcciones (rutas) de lugares: listado, nuevo, crear rápido desde la agenda, ficha, editar, desactivar y exportar."""
 from django.urls import path
 
 from . import views

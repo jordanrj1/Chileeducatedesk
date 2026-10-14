@@ -1,3 +1,5 @@
+"""Pruebas automáticas de documentos: subir, tipos y tamaños no permitidos, descarga con permiso y auditoría,
+restringidos, archivar sin borrar, asociar sin duplicar el archivo, vencimiento, origen y transcripción."""
 import pytest
 from django.contrib.auth.models import Group, Permission
 from django.core.files.uploadedfile import SimpleUploadedFile

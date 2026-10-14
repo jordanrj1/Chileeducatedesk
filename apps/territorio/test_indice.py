@@ -1,4 +1,5 @@
-"""F23, Task 4: índice «Dónde trabajamos» y página de región. Todos los datos son ficticios."""
+"""Pruebas automáticas del índice «Dónde trabajamos» y de la página de región (F23):
+comunas con presencia primero, orden, estado vacío y número fijo de consultas. Todos los datos son ficticios."""
 import re
 from datetime import timedelta
 

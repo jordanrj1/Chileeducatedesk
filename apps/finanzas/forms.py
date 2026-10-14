@@ -1,3 +1,4 @@
+"""Formularios de finanzas (2.ª fase, oculta): ítems de presupuesto de un proyecto y movimientos de dinero."""
 from django import forms
 from django.urls import reverse_lazy
 

@@ -1,4 +1,5 @@
-"""F20 — Escenarios reales de punta a punta. Todos los datos son ficticios."""
+"""Pruebas de escenarios reales de punta a punta (F20): de la solicitud a la actividad realizada,
+duplicados, conflictos de horario, cupos, archivos inválidos y permisos. Todos los datos son ficticios."""
 from datetime import date, time, timedelta
 
 import pytest

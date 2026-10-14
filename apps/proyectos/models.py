@@ -1,3 +1,5 @@
+"""Tablas de proyectos: Proyecto (nombre, estado, zona, fechas, responsable) y sus vínculos con personas (equipo y
+beneficiarios), organizaciones y comunidades. Postulacion (fondos) es de 2.ª fase y no lleva montos."""
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models

@@ -1,3 +1,5 @@
+"""Registro de la app «personas» en Django. Una persona se registra una vez y acumula su historia;
+existir como persona no implica tener cuenta."""
 from django.apps import AppConfig
 
 

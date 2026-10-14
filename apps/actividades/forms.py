@@ -1,3 +1,6 @@
+"""Formularios de la actividad: crear y editar, programar o reprogramar, crear una serie, cambiar el estado,
+agregar participantes (o crearlos en el momento), organizaciones, comunidades, territorios, sesiones y resultado.
+Cada formulario valida en el servidor lo mismo que se ve en pantalla."""
 from django import forms
 from django.urls import reverse_lazy
 

@@ -1,3 +1,5 @@
+"""Pruebas automáticas de la 2.ª fase: con SEGUNDA_FASE=False sus rutas, menús y pestañas no aparecen,
+y los datos no se borran al ocultarlos."""
 from datetime import date, timedelta
 
 import pytest

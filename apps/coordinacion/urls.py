@@ -1,3 +1,4 @@
+"""Direcciones (rutas) de coordinación: interacciones, invitaciones, solicitudes de apoyo, reuniones y tareas."""
 from django.urls import path
 
 from apps.nucleo.hijos import urls_hijo

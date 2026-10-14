@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-"""Django's command-line utility for administrative tasks."""
+"""Puerta de entrada a los comandos del sistema desde la consola: migrar, crear usuarios, cargar territorio, respaldar…
+Ejemplo: python manage.py crear_usuario claudio --correo … --rol Gestor (con el entorno virtual activado).
+Por defecto usa los ajustes de desarrollo; iniciar.bat y respaldar.bat eligen los de producción."""
 import os
 import sys
 

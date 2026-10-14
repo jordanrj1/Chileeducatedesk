@@ -1,3 +1,4 @@
+"""Suma lo presupuestado, gastado y aportado de un proyecto, para la pestaña Presupuesto (2.ª fase, oculta)."""
 from django.db.models import Sum
 
 

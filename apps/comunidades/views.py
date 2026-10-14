@@ -1,3 +1,5 @@
+"""Pantallas de comunidades: listado con filtros, crear (con la comuna ya elegida si viene del territorio),
+ficha con integrantes, actividades y alcance, desactivar sin borrar y exportar."""
 from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.urls import reverse

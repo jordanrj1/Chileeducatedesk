@@ -1,3 +1,5 @@
+{# Qué es: Asociar un documento ya subido a otra ficha, sin copiar el archivo. #}
+{# Dónde se usa: /documentos/asociar · Proceso: P7 #}
 {% extends "generico/formulario.html" %}
 {% block campos %}
 <input type="hidden" name="{{ campo }}" value="{{ destino.pk }}">

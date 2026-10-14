@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Interacciones de la persona: llamadas, correos y reuniones con ella. #}
+{# Dónde se usa: /personas/<int:pk> · Proceso: P6 #}
 {% load fche %}<div class="fche-seccion"><h2 class="h6">Interacciones{% if interacciones %} <span class="fche-contador">{{ interacciones|length }}</span>{% endif %}</h2>
 {% if perms.coordinacion.add_interaccion %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_interaccion }}">+ Registrar interacción</a></div>{% endif %}</div>
 {% if interacciones %}

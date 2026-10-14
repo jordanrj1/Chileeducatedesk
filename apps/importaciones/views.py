@@ -1,3 +1,5 @@
+"""Pantallas de carga de listados: subir o pegar, revisar la vista previa y decidir fila por fila,
+confirmar, ver el resumen y revertir."""
 import os
 
 from django.contrib import messages

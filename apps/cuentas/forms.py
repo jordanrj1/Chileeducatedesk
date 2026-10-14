@@ -1,3 +1,5 @@
+"""Formulario de la pantalla de ingreso (usuario o correo y contraseña),
+con mensajes que no dicen qué dato estaba mal y que explican si la cuenta está desactivada o bloqueada."""
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm

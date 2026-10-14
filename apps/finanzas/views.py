@@ -1,3 +1,4 @@
+"""Pantallas de finanzas (2.ª fase, oculta): listado, nuevo, ficha, editar, anular y exportar movimientos."""
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404

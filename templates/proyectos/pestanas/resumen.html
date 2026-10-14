@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Resumen del proyecto: estado, zona, área, fechas y responsable. #}
+{# Dónde se usa: /proyectos/<int:pk> · Proceso: P11 #}
 {% load fche %}<dl class="fche-datos">
   <div><dt>Estado</dt><dd>{% estado object.estado object.get_estado_display %}</dd></div>
   <div><dt>Zona</dt><dd>{{ object.zona|default:"—" }}</dd></div>

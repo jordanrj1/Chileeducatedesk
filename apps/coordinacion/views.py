@@ -1,3 +1,5 @@
+"""Pantallas de coordinación: registrar y editar interacciones (desde persona, organización, solicitud o actividad),
+marcar una próxima acción como cumplida, invitaciones, solicitudes de apoyo, y reuniones y tareas (2.ª fase)."""
 from django.contrib import messages
 from django.db import transaction
 from django.http import HttpResponseRedirect

@@ -1,3 +1,5 @@
+{# Qué es: Crear una persona nueva con solo el nombre y dejarla agregada a la actividad. #}
+{# Dónde se usa: /actividades/<int:pk>/participantes/rapido · Proceso: P3 #}
 {% extends "generico/formulario.html" %}
 {% block extra_form %}{% if llego %}<input type="hidden" name="llego" value="1"><p class="small text-muted mt-2">Quedará marcada como asistente.</p>{% endif %}
 {% if candidatos %}

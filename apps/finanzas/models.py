@@ -1,3 +1,5 @@
+"""Tablas de finanzas (2.ª fase, oculta): ItemPresupuesto (monto estimado por proyecto)
+y Movimiento (gasto, aporte o donación, con monto en pesos). Un movimiento no se borra: se anula."""
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models

@@ -1,3 +1,4 @@
+"""Pantallas de la cuenta propia: Mi cuenta (datos y último ingreso) y cambiar la contraseña."""
 from django.contrib.auth.views import PasswordChangeView
 from django.shortcuts import render
 from django.urls import reverse_lazy

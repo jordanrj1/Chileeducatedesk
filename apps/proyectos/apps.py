@@ -1,3 +1,5 @@
+"""Registro de la app «proyectos» en Django. Un proyecto agrupa actividades que van juntas;
+es opcional y ninguna actividad lo exige."""
 from django.apps import AppConfig
 
 

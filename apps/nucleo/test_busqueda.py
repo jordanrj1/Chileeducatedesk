@@ -1,3 +1,5 @@
+"""Pruebas automáticas del buscador, las exportaciones y el Panel: búsqueda en todos los tipos y con permisos,
+filtros, exportaciones con permiso y auditoría, pendientes y cola de personas incompletas."""
 from datetime import date, time, timedelta
 
 import pytest

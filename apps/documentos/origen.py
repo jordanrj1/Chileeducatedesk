@@ -1,3 +1,5 @@
+"""Funciones para anotar y leer el origen de un dato (formulario, documento, planilla).
+Las usan las demás apps al crear registros, y la pestaña Origen de cada ficha."""
 from django.contrib.contenttypes.models import ContentType
 
 from .models import OrigenDato

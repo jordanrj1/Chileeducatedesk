@@ -1,3 +1,5 @@
+"""Pantallas de lugares: listado, crear y editar con dirección en cascada, crear rápido desde la agenda
+sin salir de la actividad, desactivar sin borrar y ficha con uso histórico y disponibilidad."""
 from datetime import date
 
 from django.contrib import messages

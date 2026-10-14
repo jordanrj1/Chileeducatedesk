@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Actividades de la comuna o sector. #}
+{# Dónde se usa: /territorio/comuna/<int:pk>, /territorio/sector/<int:pk> · Proceso: P9 #}
 {% load fche %}
 {% if actividades %}
 <ul class="fche-items">{% for a in actividades %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ a.get_absolute_url }}">{{ a.nombre }}</a>{% if a.tipo %} <span class="small text-muted">{{ a.tipo }}</span>{% endif %}

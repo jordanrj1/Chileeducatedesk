@@ -1,3 +1,6 @@
+"""Formularios de persona: ficha rápida (solo nombre) y completa por secciones, contactos, direcciones, formación,
+cargos en organizaciones, experiencia, disponibilidad, y los restringidos (emergencia, datos sensibles,
+consentimientos, apoderados, verificaciones)."""
 from django import forms
 
 from django.urls import reverse_lazy

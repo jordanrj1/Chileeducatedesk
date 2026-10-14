@@ -1,3 +1,5 @@
+"""Piezas comunes de formularios: BootstrapMixin da el estilo y agrupa los campos por secciones;
+SelectorField es un campo con buscador (se escribe y se elige) para listas largas como personas u organizaciones."""
 from django import forms
 
 

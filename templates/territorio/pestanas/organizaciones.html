@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Organizaciones de la comuna, agrupadas por tipo. #}
+{# Dónde se usa: /territorio/comuna/<int:pk>, /territorio/sector/<int:pk> · Proceso: P4 #}
 {% load fche %}
 <div class="fche-seccion"><div><h2 class="h6">Organizaciones por tipo</h2>
   <p class="small text-muted mb-0">Activas con su dirección en {{ nombre_ambito }}{% if not es_sector %}, más la municipalidad de la comuna{% endif %}.{% if organizaciones_inactivas %} Las desactivadas quedan al final, atenuadas, para no perder su historia.{% endif %}</p></div>

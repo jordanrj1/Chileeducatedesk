@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Información de la actividad: objetivo, descripción, modalidad, responsable, territorios y actividades hijas. #}
+{# Dónde se usa: /actividades/<int:pk> · Proceso: P2 #}
 {% load fche %}<dl class="fche-datos mb-4">
   <div class="fche-datos__ancho"><dt>Objetivo</dt><dd>{{ object.objetivo|default:"—"|linebreaksbr }}</dd></div>
   <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>

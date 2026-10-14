@@ -1,3 +1,5 @@
+"""Pruebas automáticas de actividades: crear con datos parciales, programar y reprogramar con versiones,
+revisar compatibilidad, agregar participantes sin repetir, asistencia, finalizar, calendario, candidatos y series."""
 from datetime import date, time, timedelta
 
 import pytest

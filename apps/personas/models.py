@@ -1,3 +1,6 @@
+"""Tablas de personas: Persona (solo el nombre es obligatorio; RUT opcional y único si existe) y lo que se le vincula:
+contactos, direcciones, formación, cargos históricos, experiencia y disponibilidad. Aparte, los datos restringidos
+(contacto de emergencia, datos sensibles, consentimientos, apoderados, verificaciones), que exigen permiso propio."""
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models

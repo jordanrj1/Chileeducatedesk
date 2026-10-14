@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Consentimientos: qué autorizó la persona o su apoderado y cuándo. #}
+{# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
 {% load fche %}<div class="fche-seccion"><div><h2 class="h6">Consentimientos y autorizaciones</h2><p class="small text-muted mb-0">Sin consentimiento la persona no se excluye: solo no se guardan sus datos sensibles y se avisa antes de usar su imagen.</p></div>
 {% if puede_agregar_consentimiento %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'personas:consentimientos_nuevo' object.pk %}">+ Registrar consentimiento</a></div>{% endif %}</div>
 <div class="fche-mosaico mb-4">{% for e in estado_consentimientos %}

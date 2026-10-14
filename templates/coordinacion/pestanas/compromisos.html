@@ -1,3 +1,5 @@
+{# Qué es: Compromisos de una reunión (2F: oculta). #}
+{# Dónde se usa: /reuniones/<int:pk> · Proceso: 2F #}
 {% load fche %}<div class="fche-seccion"><h2 class="h6">Compromisos{% if tareas %} <span class="fche-contador">{{ tareas|length }}</span>{% endif %}</h2>
 {% if puede_agregar and perms.coordinacion.add_tarea %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'coordinacion:tarea_nueva' %}?reunion={{ object.pk }}{% if object.actividad_id %}&actividad={{ object.actividad_id }}{% endif %}{% if object.proyecto_id %}&proyecto={{ object.proyecto_id }}{% endif %}">+ Compromiso</a></div>{% endif %}</div>
 <ul class="fche-items">{% for t in tareas %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ t.get_absolute_url }}">{{ t.titulo }}</a>

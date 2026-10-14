@@ -1,3 +1,5 @@
+"""Formularios del Administrador: crear o editar una cuenta (ligada a una persona registrada, con su rol)
+y restablecer la contraseña de otra cuenta."""
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group

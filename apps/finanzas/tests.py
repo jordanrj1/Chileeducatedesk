@@ -1,3 +1,4 @@
+"""Pruebas automáticas de finanzas (2.ª fase): permisos, montos positivos, anular sin borrar y presupuesto por proyecto."""
 import pytest
 from django.db import IntegrityError, transaction
 

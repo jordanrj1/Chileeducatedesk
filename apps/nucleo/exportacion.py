@@ -1,4 +1,5 @@
-"""Exportación autorizada a Excel (RF-28). Siempre queda en auditoría."""
+"""Genera los archivos Excel de las exportaciones. Toda exportación queda en la auditoría,
+lleva una hoja de aviso de confidencialidad y neutraliza textos que Excel podría tomar como fórmulas (RF-28)."""
 from datetime import datetime
 from io import BytesIO
 

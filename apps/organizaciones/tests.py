@@ -1,3 +1,5 @@
+"""Pruebas automáticas de organizaciones: crear con lo mínimo, RUT, aviso de duplicados, una sola «Fundación»,
+carreras, municipalidad por comuna, contactos con propósito, historial y desactivar sin borrar."""
 import pytest
 from django.db import IntegrityError, transaction
 

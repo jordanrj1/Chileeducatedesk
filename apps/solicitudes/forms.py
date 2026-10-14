@@ -1,3 +1,4 @@
+"""Formulario de solicitud u oportunidad: origen, canal, fecha, motivo y contacto (que puede quedar «por identificar»)."""
 from django import forms
 from django.urls import reverse_lazy
 

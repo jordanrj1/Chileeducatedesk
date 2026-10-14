@@ -1,3 +1,5 @@
+"""Arma el menú lateral y las acciones rápidas para cada página. Cada opción lleva el permiso que exige
+y solo se muestra si el usuario lo tiene, así cada rol ve su propio menú. Oculta lo de 2.ª fase."""
 # (etiqueta, ruta, permiso, icono, grupo[, módulo de segunda fase])
 MENU = [
     ("Inicio", "/dashboard", None, "inicio", ""),

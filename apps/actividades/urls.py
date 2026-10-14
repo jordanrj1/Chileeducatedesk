@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de actividades y calendario: qué vista atiende cada dirección.
+Ejemplo: /actividades/7/participantes/nuevo la atiende la vista ParticipanteNuevo."""
 from django.urls import path
 
 from apps.nucleo.hijos import urls_hijo

@@ -1,3 +1,4 @@
+"""Pantalla del Panel de inicio (/dashboard): saludo y tarjetas con lo pendiente de hoy (ver tablero.py)."""
 from django.utils import timezone
 from django.views.generic import TemplateView
 

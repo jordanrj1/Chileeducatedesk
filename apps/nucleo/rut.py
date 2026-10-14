@@ -1,3 +1,5 @@
+"""Campo de formulario para el RUT chileno: acepta con o sin puntos, revisa el dígito verificador
+y lo entrega separado en número y dígito. Es opcional: hay personas sin RUT."""
 from django import forms
 
 from .utilidades import separar_rut

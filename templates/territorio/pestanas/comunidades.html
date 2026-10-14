@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Comunidades de la comuna o sector. #}
+{# Dónde se usa: /territorio/comuna/<int:pk>, /territorio/sector/<int:pk> · Proceso: Grupo #}
 {% load fche %}<div class="fche-seccion"><div><h2 class="h6">Comunidades</h2><p class="small text-muted mb-0">Grupos de personas de este territorio a quienes se dirigen las actividades.</p></div>
 {% if perms.comunidades.add_comunidad %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_comunidad }}">+ Nueva comunidad</a></div>{% endif %}</div>
 {% if comunidades %}

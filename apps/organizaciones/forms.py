@@ -1,3 +1,5 @@
+"""Formularios de organización (tipo, RUT u otro identificador, sitio web, si es la Fundación, comuna si es municipalidad)
+y de carrera de una institución educativa."""
 from django import forms
 
 from apps.nucleo.formularios import BootstrapMixin

@@ -1,3 +1,6 @@
+/* Calendario de actividades (/calendario): muestra la agenda vigente por mes, semana o lista con FullCalendar,
+   que está guardado en static/vendor (sin internet). Un clic en un evento abre la actividad; en pantallas
+   angostas parte en la vista de lista. */
 document.addEventListener("DOMContentLoaded", function () {
   var el = document.getElementById("calendario");
   if (!el || !window.FullCalendar) return;

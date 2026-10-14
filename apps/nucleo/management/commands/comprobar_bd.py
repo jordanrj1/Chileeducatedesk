@@ -1,4 +1,5 @@
-"""OP-E3: responde con código 0 si la base contesta; si no, explica qué revisar."""
+"""Comando que revisa si la base de datos responde, antes de arrancar el sistema.
+Si no responde, explica qué revisar (servicio de PostgreSQL, datos de conexión en .env) (OP-E3)."""
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 from django.db.utils import Error

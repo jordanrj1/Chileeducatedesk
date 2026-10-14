@@ -1,3 +1,5 @@
+{# Qué es: Crear o editar una cuenta, eligiendo una persona ya registrada y su rol. #}
+{# Dónde se usa: /administracion/usuarios/<int:pk>/editar, /administracion/usuarios/nuevo · Proceso: P13 #}
 {% extends "generico/formulario.html" %}
 {% block despues_form %}{% if editando and bloqueado %}<form id="form-desbloquear" method="post" action="{% url 'cuentas_admin:usuario_desbloquear' editando.pk %}">{% csrf_token %}</form>{% endif %}{% endblock %}
 {% block campos %}

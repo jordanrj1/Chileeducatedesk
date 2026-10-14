@@ -1,3 +1,5 @@
+"""Pruebas automáticas básicas del sistema: arranca, /salud responde, ingreso y cierre de sesión,
+pantallas 403 y 404 propias, roles, y que no se cargue nada desde internet."""
 import pytest
 from django.contrib.auth.models import Group, User
 from django.db.utils import OperationalError

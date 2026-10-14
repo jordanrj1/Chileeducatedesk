@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Historial: qué cambió, quién y cuándo, con la versión anterior. #}
+{# Dónde se usa: 7 rutas, p. ej. /comunidades/<int:pk> · Proceso: P9 #}
 {% load fche %}{% if origenes_historial %}
 <div class="alert alert-info small mb-4"><strong class="d-block mb-1">Fuente de la información</strong>
 {% for o in origenes_historial %}{{ o.get_fuente_display }}{% if o.documento %} (<a href="{{ o.documento.get_absolute_url }}">{{ o.documento }}</a>){% endif %} · {{ o.fecha|date:"d-m-Y" }} · {{ o.registrado_por|default:"sistema" }} · {{ o.get_estado_verificacion_display }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>

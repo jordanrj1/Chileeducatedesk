@@ -1,3 +1,4 @@
+"""Direcciones (rutas) de proyectos: listado, nuevo, ficha, editar, exportar y las secciones de la ficha."""
 from django.urls import path
 
 from apps.nucleo.hijos import urls_hijo

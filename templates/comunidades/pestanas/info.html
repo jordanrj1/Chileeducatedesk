@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Información de la comunidad. #}
+{# Dónde se usa: /comunidades/<int:pk> · Proceso: Grupo #}
 {% load fche %}<dl class="fche-datos mb-4">
   <div><dt>Tipo</dt><dd>{{ object.get_tipo_display }}</dd></div>
   <div><dt>Comuna</dt><dd><a href="{{ object.comuna.get_absolute_url }}">{{ object.comuna }}</a> <span class="small text-muted">· {{ object.comuna.provincia.region }}</span></dd></div>

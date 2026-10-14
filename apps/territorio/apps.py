@@ -1,3 +1,5 @@
+"""Registro de la app «territorio» en Django: región, provincia, comuna, sector y dirección,
+la cadena de ubicación que comparten personas, organizaciones, lugares y actividades."""
 from django.apps import AppConfig
 
 

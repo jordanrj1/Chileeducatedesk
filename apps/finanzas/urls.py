@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de finanzas (2.ª fase).
+Con SEGUNDA_FASE=False responden «no existe», aunque estén escritas aquí."""
 from django.urls import path
 
 from apps.nucleo.hijos import urls_hijo

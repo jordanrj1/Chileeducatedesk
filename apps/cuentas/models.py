@@ -1,3 +1,5 @@
+"""Tablas propias de las cuentas: PerfilCuenta liga una cuenta con la ficha de su persona (una persona tiene como máximo una cuenta);
+PermisoInicial recuerda qué permisos ya se dieron a cada rol, para no deshacer los cambios del Administrador al migrar."""
 from django.contrib.auth.models import Group, Permission
 from django.db import models
 

@@ -1,3 +1,5 @@
+{# Qué es: Trozo de dirección en cascada: región → comuna → sector, con «+ Crear sector». #}
+{# Dónde se usa: se incluye en lugares/formulario.html, organizaciones/formulario.html, personas/direccion.html · Proceso: P5 #}
 {% comment %}Dirección en cascada región → provincia → comuna → sector, con [+ Crear sector] sin salir del formulario.{% endcomment %}
 {% if form_direccion.non_field_errors %}<div class="alert alert-danger">{{ form_direccion.non_field_errors }}</div>{% endif %}
 <div class="row g-0 gx-md-3">

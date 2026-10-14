@@ -1,3 +1,5 @@
+"""Formularios de territorio: sector (con sector padre), nombre alternativo de un sector,
+y la dirección en cascada (región → provincia → comuna → sector), que exige que el sector sea de esa comuna."""
 from django import forms
 
 from apps.nucleo.formularios import BootstrapMixin

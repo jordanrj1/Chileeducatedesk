@@ -1,4 +1,6 @@
-"""F15 — Búsqueda transversal. Cada tipo respeta el permiso de ver ese tipo de registro."""
+"""Buscador general (la caja de arriba): busca en personas, organizaciones, proyectos, actividades, lugares,
+documentos, comunidades y minutas, sin tildes ni mayúsculas. Cada tipo solo aparece si el usuario tiene permiso
+para verlo, y los documentos restringidos nunca se muestran a quien no puede abrirlos (F15)."""
 from dataclasses import dataclass
 from datetime import date
 

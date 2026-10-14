@@ -1,3 +1,5 @@
+"""Tablas de organizaciones: Organizacion (nombre, tipo, identificadores, dirección, si es la Fundación,
+comuna si es municipalidad) y Carrera (solo en instituciones educativas). Nunca se borran: se desactivan."""
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models

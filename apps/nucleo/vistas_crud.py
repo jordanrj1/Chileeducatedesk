@@ -1,4 +1,5 @@
-"""Vistas base de alta, edición y detalle simple, reutilizadas por varios módulos."""
+"""Vistas base para crear, editar y ver un registro simple, reutilizadas por varios módulos
+(interacciones, invitaciones, solicitudes de apoyo). Evitan repetir el mismo código en cada app."""
 from django import forms
 from django.contrib import messages
 from django.db import transaction

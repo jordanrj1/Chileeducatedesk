@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de cargas de listados: listado, nueva, revisar (vista previa), ficha y revertir.
+La carga también se abre desde la pestaña Participantes de una actividad."""
 from django.urls import path
 
 from . import views

@@ -1,3 +1,5 @@
+"""Pantalla base para unir dos fichas repetidas (personas u organizaciones): se elige cuál queda,
+se pide motivo y confirmación, y el historial de ambas se junta. Solo para el Administrador."""
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied

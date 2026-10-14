@@ -1,3 +1,5 @@
+"""Direcciones (rutas) del territorio: índice, región, comuna, sector, exportar, crear y editar sectores,
+y las listas que alimentan la dirección en cascada."""
 from django.urls import path
 
 from . import views

@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de catálogos, dentro de Administración.
+El Gestor agrega y edita valores; desactivar y unir valores repetidos es solo del Administrador."""
 from django.urls import path
 
 from . import vistas_catalogos as vc

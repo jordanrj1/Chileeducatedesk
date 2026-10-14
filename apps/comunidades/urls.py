@@ -1,3 +1,4 @@
+"""Direcciones (rutas) de comunidades: listado, nueva, ficha, editar, desactivar, exportar e integrantes."""
 from django.urls import path
 
 from apps.nucleo.hijos import urls_hijo

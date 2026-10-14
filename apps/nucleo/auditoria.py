@@ -1,3 +1,5 @@
+"""Función para anotar una acción importante en la auditoría (quién, qué, sobre qué y cuándo).
+La usan las demás apps al exportar, descargar, crear cuentas, cambiar roles, etc."""
 from .models import Auditoria
 
 

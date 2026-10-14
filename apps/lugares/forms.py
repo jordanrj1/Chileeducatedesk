@@ -1,3 +1,4 @@
+"""Formulario de lugar: nombre, tipo, capacidad, condiciones y organización dueña (la dirección va aparte)."""
 from django import forms
 
 from apps.nucleo.formularios import BootstrapMixin

@@ -1,3 +1,5 @@
+"""Vistas generales: la portada lleva al Panel, /salud dice si la base responde,
+y las pantallas propias de error 403 (sin permiso), 404 (no existe) y 500 (error interno)."""
 from django.contrib.auth.decorators import login_not_required
 from django.db import connection
 from django.db.utils import Error as ErrorBD

@@ -1,3 +1,5 @@
+"""Direcciones principales del sistema: ingreso y salida, y el reparto de rutas a cada app
+(personas, actividades, documentos…). También define qué vista muestra los errores 403, 404 y 500."""
 from django.contrib.auth.decorators import login_not_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import include, path

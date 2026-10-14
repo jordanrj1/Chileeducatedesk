@@ -1,3 +1,5 @@
+"""Pruebas automáticas de las utilidades: RUT (dígito verificador, K mayúscula, formatos),
+teléfonos en formato internacional y separación de nombres."""
 import pytest
 from django.core.exceptions import ValidationError
 

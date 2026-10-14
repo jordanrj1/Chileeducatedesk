@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Agenda: programación vigente y versiones anteriores, con botones programar y reprogramar. #}
+{# Dónde se usa: /actividades/<int:pk> · Proceso: P5 #}
 {% load fche %}<div class="fche-seccion"><h2 class="h6">Programaciones{% if versiones %} <span class="fche-contador">{{ versiones|length }}</span>{% endif %}</h2>
 {% if puede_programar %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'actividades:programar' object.pk %}">{% icono "calendario" 15 %}{% if agenda %}Reprogramar{% else %}Programar{% endif %}</a></div>{% endif %}</div>
 {% if versiones %}

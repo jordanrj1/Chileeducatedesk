@@ -1,3 +1,5 @@
+"""Cuando cambia la respuesta a una invitación, actualiza el estado de esa persona en la actividad.
+Así «aceptó» la deja como confirmada sin tener que anotarlo dos veces. Nunca borra."""
 from apps.actividades.models import Participacion
 from apps.nucleo.models import EstadoParticipacion
 

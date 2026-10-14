@@ -1,3 +1,5 @@
+"""Pantallas de proyectos: listado, crear, editar y ficha con pestañas (resumen, equipo, organizaciones, comunidades,
+actividades, alcance, documentos, historial; beneficiarios, postulación y presupuesto son de 2.ª fase)."""
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.http import HttpResponseRedirect

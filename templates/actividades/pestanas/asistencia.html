@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Asistencia: marcar quién asistió y agregar a quien llegó sin estar previsto. #}
+{# Dónde se usa: /actividades/<int:pk> · Proceso: P8 #}
 {% load fche %}<div class="fche-seccion"><h2 class="h6">Asistencia{% if participaciones %} <span class="fche-contador">{{ participaciones|length }}</span>{% endif %}</h2>
 {% if puede_asistencia and perms.actividades.add_participacion %}<div class="fche-seccion__acciones">
   <a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:participante_nuevo' object.pk %}?llego=1">+ Agregar persona que llegó</a>

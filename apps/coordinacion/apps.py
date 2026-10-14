@@ -1,3 +1,5 @@
+"""Registro de la app «coordinación» en Django.
+Guarda el seguimiento: llamadas y correos (interacciones), invitaciones y solicitudes de apoyo; reuniones y tareas son de 2.ª fase."""
 from django.apps import AppConfig
 
 

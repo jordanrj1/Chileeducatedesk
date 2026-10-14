@@ -1,4 +1,5 @@
-"""Qué hay en un territorio: lugares, organizaciones y actividades (TE-04, BU-05)."""
+"""Consultas de qué hay en un territorio: lugares, organizaciones y actividades de una comuna o sector
+(incluidos sus sectores hijos). Las usan las fichas de comuna y sector y el buscador (TE-04, BU-05)."""
 from django.db.models import Q
 
 

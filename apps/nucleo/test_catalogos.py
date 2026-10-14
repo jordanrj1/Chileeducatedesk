@@ -1,3 +1,5 @@
+"""Pruebas automáticas de catálogos: el Gestor agrega y edita, el Administrador desactiva,
+nada se borra y un valor usado se conserva."""
 import pytest
 from django.db.models import ProtectedError
 

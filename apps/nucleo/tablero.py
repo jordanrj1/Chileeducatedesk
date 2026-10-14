@@ -1,4 +1,5 @@
-"""Tarjetas del dashboard: qué tengo que hacer hoy."""
+"""Tarjetas del Panel de inicio: lo que Claudio tiene que hacer hoy (actividades incompletas o próximas,
+solicitudes sin respuesta, personas por completar, próximas acciones, invitaciones sin respuesta) y avisos del sistema."""
 from django.db import models
 from django.utils import timezone
 

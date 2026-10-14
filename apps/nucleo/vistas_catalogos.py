@@ -1,4 +1,5 @@
-"""F17 — Administración de catálogos. Desactivar nunca borra; se muestran las dependencias."""
+"""Pantallas de catálogos (F17): lista de catálogos, valores de cada uno, agregar, editar, desactivar y unir repetidos.
+Desactivar nunca borra, y antes de hacerlo se muestra cuántos registros usan ese valor."""
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied

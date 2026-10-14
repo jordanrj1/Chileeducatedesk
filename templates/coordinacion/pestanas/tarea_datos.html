@@ -1,3 +1,5 @@
+{# Qué es: Datos de una tarea con responsables (2F: oculta). #}
+{# Dónde se usa: /tareas/<int:pk> · Proceso: 2F #}
 {% load fche %}<dl class="fche-datos mb-4">
   <div><dt>Estado</dt><dd>{% estado object.estado object.get_estado_display %}{% if object.vencida %} {% estado "vencida" "Vencida" %}{% endif %}</dd></div>
   <div><dt>Fecha límite</dt><dd>{{ object.fecha_limite|date:"d-m-Y"|default:"—" }}</dd></div>

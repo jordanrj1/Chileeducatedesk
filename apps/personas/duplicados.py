@@ -1,4 +1,5 @@
-"""Buscar antes de crear (RNF-16). Muestra coincidencias; nunca fusiona ni bloquea sola."""
+"""Buscar antes de crear: encuentra personas parecidas por RUT, correo, teléfono o nombre aproximado.
+Solo muestra las coincidencias; Claudio decide si usa la existente o crea de todos modos. Nunca fusiona ni bloquea (RNF-16)."""
 from django.contrib.postgres.lookups import Unaccent
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Value

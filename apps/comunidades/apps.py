@@ -1,3 +1,5 @@
+"""Registro de la app «comunidades» en Django.
+Una comunidad es un grupo de personas (vecinos de una villa, un curso, un comité) al que se dirigen actividades."""
 from django.apps import AppConfig
 
 

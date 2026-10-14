@@ -1,3 +1,6 @@
+"""Permite ingresar con el correo o con el nombre de usuario.
+Si el dato no corresponde a una sola cuenta, tarda lo mismo que un ingreso normal, para no revelar si el correo existe.
+El bloqueo por intentos fallidos está en bloqueo.py."""
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 

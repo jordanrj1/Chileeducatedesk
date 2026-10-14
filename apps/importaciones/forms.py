@@ -1,3 +1,5 @@
+"""Formulario para subir o pegar una planilla y elegir qué se carga (participantes de una actividad,
+personas, organizaciones o lugares)."""
 from django import forms
 from django.urls import reverse_lazy
 

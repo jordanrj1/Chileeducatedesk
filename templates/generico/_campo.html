@@ -1,3 +1,5 @@
+{# Qué es: Trozo que dibuja un campo de formulario con su etiqueta, ayuda y error. #}
+{# Dónde se usa: se incluye en 11 plantillas, p. ej. actividades/pestanas/resultados.html · Proceso: Todos #}
 {% load fche %}<div class="fche-campo{% if campo.errors %} fche-campo--error{% endif %}{% if campo.widget_type == 'textarea' or campo.widget_type == 'checkboxselectmultiple' or campo.widget_type == 'selectmultiple' or campo.field.widget.attrs.selector_url %} fche-campo--ancho{% endif %}">
   {% if campo.widget_type == 'checkbox' %}
     <div class="form-check">{{ campo }} <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label></div>

@@ -1,3 +1,5 @@
+"""Pruebas automáticas de la carga de listados: formatos de archivo, teléfonos como texto, separación de nombres,
+duplicados, nada guardado antes de confirmar, confirmar, corregir y revertir."""
 import io
 
 import pytest

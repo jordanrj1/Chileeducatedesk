@@ -1,3 +1,4 @@
+"""Direcciones (rutas) de Administración: usuarios, roles y permisos, y auditoría. Solo para el Administrador."""
 from django.urls import path
 
 from . import views_admin as v

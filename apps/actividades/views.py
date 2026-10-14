@@ -1,3 +1,6 @@
+"""Pantallas de actividades: listado, ficha con pestañas, crear y editar, programar, confirmar, cambiar estado,
+participantes, asistencia, resultados, finalizar, sesiones, candidatos, constancia y calendario.
+Cada vista revisa el permiso en el servidor; la lógica de reglas vive en servicios.py y reglas.py."""
 from datetime import date, timedelta
 
 from django.contrib import messages

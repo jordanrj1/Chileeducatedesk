@@ -1,3 +1,5 @@
+"""Formularios de coordinación: interacción (con quién, canal, resultado y próxima acción),
+invitación, solicitud de apoyo, y los de 2.ª fase (reunión, asistentes, tarea y responsables)."""
 from django import forms
 from django.urls import reverse_lazy
 

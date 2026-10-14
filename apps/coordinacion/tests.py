@@ -1,3 +1,5 @@
+"""Pruebas automáticas de coordinación: interacciones con próxima acción, invitaciones y su efecto en la participación,
+solicitudes de apoyo, reuniones, tareas y permisos."""
 from datetime import timedelta
 
 import pytest

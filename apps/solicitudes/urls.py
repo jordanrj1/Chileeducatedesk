@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de solicitudes: listado, nueva, ficha, editar, cambiar estado, reabrir,
+crear actividad, crear proyecto y exportar."""
 from django.urls import path
 
 from . import views

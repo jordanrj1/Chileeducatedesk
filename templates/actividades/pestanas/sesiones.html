@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Sesiones y minutas: cada encuentro de una actividad que se repite, con su minuta. #}
+{# Dónde se usa: /actividades/<int:pk> · Proceso: P8 #}
 {% load fche %}<div class="fche-seccion"><div><h2 class="h6">Bitácora de sesiones{% if sesiones %} <span class="fche-contador">{{ sesiones|length }}</span>{% endif %}</h2>
 <p class="small text-muted mb-0">Cada sesión guarda su minuta: qué se hizo, avances, acuerdos, asistencia y evidencias.</p></div>
 {% if puede_sesiones %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_sesion }}">{% icono "minuta" 15 %}Nueva sesión</a></div>{% endif %}</div>

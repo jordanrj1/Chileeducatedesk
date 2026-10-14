@@ -1,3 +1,4 @@
+"""Ayuda para exigir que el usuario pertenezca a un rol (Gestor o Administrador); si no, pantalla 403."""
 from functools import wraps
 
 from django.core.exceptions import PermissionDenied

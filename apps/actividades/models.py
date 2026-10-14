@@ -1,3 +1,7 @@
+"""Tablas del centro del sistema: la actividad y todo lo que se le vincula.
+Actividad; Participacion (persona en la actividad, con rol, estado y asistencia); ActividadOrganizacion
+(cómo intervino una organización); ActividadComunidad y ActividadTerritorio (a quién y dónde va dirigida);
+SesionActividad (encuentros con minuta) y AgendaActividad (cada programación es una versión; solo una vigente)."""
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models

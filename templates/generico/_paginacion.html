@@ -1,3 +1,5 @@
+{# Qué es: Trozo con los botones de página anterior y siguiente de los listados. #}
+{# Dónde se usa: se incluye en generico/lista.html · Proceso: P10 #}
 {% if is_paginated %}
 <div class="fche-paginacion">
   <span>Mostrando {{ page_obj.start_index }}–{{ page_obj.end_index }} de <strong>{{ paginator.count }} registros</strong></span>

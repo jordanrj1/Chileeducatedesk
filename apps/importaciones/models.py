@@ -1,3 +1,5 @@
+"""Tablas de cargas: Lote (cada planilla subida, quién, cuándo, cifras y estado) y LoteItem (cada fila,
+con lo que se decidió y lo que se creó). Guardar el detalle es lo que permite revertir una carga."""
 import os
 
 from django.conf import settings

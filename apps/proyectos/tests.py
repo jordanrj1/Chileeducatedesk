@@ -1,3 +1,5 @@
+"""Pruebas automáticas de proyectos: existir sin actividades, fechas, actividades agrupadas, equipo, beneficiarios,
+organizaciones, historial y permisos."""
 import pytest
 
 from apps.proyectos.models import Postulacion, Proyecto, ProyectoPersona

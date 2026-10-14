@@ -1,3 +1,6 @@
+"""Tablas del seguimiento: Interaccion (llamada, correo, mensaje o reunión, con próxima acción y fecha),
+Invitacion y Colaboracion (a quién se invitó o a qué organización se pidió apoyo, y qué respondió).
+Reunion, ReunionAsistente, Tarea y TareaResponsable son de 2.ª fase (ocultas con SEGUNDA_FASE=False)."""
 from datetime import timedelta
 
 from django.conf import settings

@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Datos de la persona: nombre, RUT, origen, estado y observaciones. #}
+{# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
 {% load fche %}<dl class="fche-datos mb-4">
   <div><dt>RUT <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ object.rut|default:"—" }}</dd></div>
   {% if object.numero_documento %}<div><dt>{{ object.get_tipo_documento_display }} <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ object.numero_documento }}</dd></div>{% endif %}

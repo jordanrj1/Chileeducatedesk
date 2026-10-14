@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de documentos: listado, subir, asociar, ficha, editar, ver, descargar, reemplazar,
+archivar, transcribir y origen de datos."""
 from django.urls import path
 
 from . import views

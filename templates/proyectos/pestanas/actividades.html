@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Actividades del proyecto, con «+ Nueva actividad» ya ligada. #}
+{# Dónde se usa: /proyectos/<int:pk> · Proceso: P11 #}
 {% load fche %}<div class="fche-seccion"><h2 class="h6">Actividades del proyecto{% if actividades %} <span class="fche-contador">{{ actividades|length }}</span>{% endif %}</h2>
 {% if puede_agregar and perms.actividades.add_actividad %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'actividades:nueva' %}?proyecto={{ object.pk }}">+ Nueva actividad</a></div>{% endif %}</div>
 {% if actividades %}<div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Actividad</th><th>Tipo</th><th>Estado</th><th>Responsable</th></tr></thead>

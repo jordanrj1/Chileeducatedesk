@@ -1,3 +1,5 @@
+"""Pantalla de resultados del buscador general (/buscar), agrupados por tipo y con filtros.
+La búsqueda en sí está en busqueda.py."""
 from django.core.paginator import Paginator
 from django.views.generic import TemplateView
 

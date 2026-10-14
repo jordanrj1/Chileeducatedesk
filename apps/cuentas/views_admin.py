@@ -1,3 +1,6 @@
+"""Pantallas de Administración (solo Administrador): usuarios (crear, editar, activar o desactivar, desbloquear,
+restablecer contraseña), roles con sus permisos, y la auditoría con filtros por fecha y acción.
+Cada cambio de cuenta o de rol queda registrado en la auditoría."""
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission

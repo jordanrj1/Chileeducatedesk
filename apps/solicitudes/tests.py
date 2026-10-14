@@ -1,3 +1,5 @@
+"""Pruebas automáticas de solicitudes: crear con datos parciales, «por identificar», seguimiento y descarte,
+convertir en actividad o proyecto, historial y permisos."""
 import pytest
 
 from apps.solicitudes.models import Solicitud

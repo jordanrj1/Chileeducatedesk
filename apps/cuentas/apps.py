@@ -1,3 +1,5 @@
+"""Registro de la app «cuentas». Después de cada migración crea los permisos que falten
+y asigna a los roles Gestor y Administrador los suyos (ver roles.py)."""
 from django.apps import AppConfig
 from django.db.models.signals import post_migrate
 

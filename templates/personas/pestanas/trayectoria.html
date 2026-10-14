@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Participaciones: todas las actividades de la persona, con rol y asistencia. #}
+{# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
 {% load fche %}<div class="fche-kpis">
   <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "actividades" 16 %}</span>Participaciones</span><span class="fche-kpi__valor">{{ participaciones|length }}</span></div>
   <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "reloj" 16 %}</span>Horas acumuladas</span><span class="fche-kpi__valor">{{ horas_acumuladas|floatformat:"-1" }}</span><span class="fche-kpi__nota">en actividades a las que asistió</span></div>

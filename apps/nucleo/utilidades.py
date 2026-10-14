@@ -1,4 +1,6 @@
-"""Utilidades puras: RUT, teléfonos y nombres. Sin acceso a la base."""
+"""Funciones de apoyo sin acceso a la base: validar y formatear el RUT (dígito verificador, K mayúscula),
+pasar teléfonos al formato internacional (+56…) y separar «Nombre Apellido» o «Apellido, Nombre».
+Las usan los formularios y la carga de planillas."""
 import re
 
 from django.core.exceptions import ValidationError

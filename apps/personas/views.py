@@ -1,3 +1,5 @@
+"""Pantallas de personas: listado con filtros, crear con aviso de duplicados, ficha con pestañas (las restringidas solo
+con permiso), editar, desactivar, unir repetidas (Administrador), reasignar, datos personales y datos sensibles."""
 from django.contrib import messages
 from django.db import transaction
 from django.http import HttpResponseRedirect

@@ -1,3 +1,5 @@
+{# Qué es: Pestaña común para listas dentro de una ficha (contactos, cargos, carreras, organizaciones de una actividad…) con su botón «+ Agregar». #}
+{# Dónde se usa: 7 rutas, p. ej. /actividades/<int:pk> · Proceso: P3/P4/P9 #}
 {% load fche %}{% if titulo_pestana or puede_agregar and url_nuevo %}
 <div class="fche-seccion">
   {% if titulo_pestana %}<h2 class="h6 mb-0">{{ titulo_pestana }}{% if hijos %} <span class="fche-contador">{{ hijos|length }}</span>{% endif %}</h2>{% else %}<span></span>{% endif %}

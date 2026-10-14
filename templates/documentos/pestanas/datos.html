@@ -1,3 +1,5 @@
+{# Qué es: Pestaña Datos de la ficha de documento: tipo, fechas, folio, emisor y dónde está asociado. #}
+{# Dónde se usa: /documentos/<int:pk> · Proceso: P7 #}
 {% load fche %}{% if not archivo_existe %}<div class="alert alert-danger d-flex gap-2">{% icono "error" 18 %}<div>El archivo no se encuentra en el servidor. Quedó registrado; restáuralo desde el respaldo o reemplázalo.</div></div>{% endif %}
 {% for v in versiones_siguientes %}<div class="alert alert-info py-2">Esta versión fue reemplazada: <a href="{{ v.get_absolute_url }}">ver la versión actual</a>.</div>{% endfor %}
 <div class="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">

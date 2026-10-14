@@ -1,1 +1,3 @@
+{# Qué es: Trozo que dibuja las migas de pan (Inicio › Actividades › …). #}
+{# Dónde se usa: se incluye en 16 plantillas, p. ej. actividades/candidatos.html · Proceso: Todos #}
 {% for etiqueta, url in breadcrumb %}<li class="breadcrumb-item">{% if url %}<a href="{{ url }}">{{ etiqueta }}</a>{% else %}{{ etiqueta }}{% endif %}</li>{% endfor %}

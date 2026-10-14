@@ -1,4 +1,6 @@
-"""Ajustes comunes. Lo específico de cada entorno va en local.py / produccion.py."""
+"""Ajustes comunes del sistema: apps instaladas, base de datos, idioma (es-cl) y zona horaria (Santiago), sesión,
+contraseñas, carpetas de archivos y respaldos, y los interruptores de .env (SEGUNDA_FASE, DATOS_SENSIBLES, etc.).
+Lo propio de cada entorno va en local.py (desarrollo) y produccion.py (uso real)."""
 import sys
 import tempfile
 from pathlib import Path

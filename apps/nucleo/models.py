@@ -1,3 +1,5 @@
+"""Catálogos (las listas de opciones que Claudio puede ampliar: tipos, estados, roles, canales…) y la tabla de auditoría.
+Los valores de un catálogo no se borran: se desactivan, y los registros antiguos los conservan."""
 from django.conf import settings
 from django.db import models
 from django.utils.text import slugify

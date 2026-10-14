@@ -1,4 +1,6 @@
-"""Crea una cuenta con rol (Gestor o Administrador). Pide la contraseña sin mostrarla."""
+"""Comando de consola para crear una cuenta con rol Gestor o Administrador.
+Sirve para la primera cuenta, cuando aún no hay nadie que pueda crearla desde la pantalla.
+Pide la contraseña por teclado sin mostrarla; ninguna contraseña queda escrita en el código."""
 from getpass import getpass
 
 from django.contrib.auth import get_user_model

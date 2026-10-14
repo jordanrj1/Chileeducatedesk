@@ -1,3 +1,6 @@
+"""Tablas del territorio: Region, Provincia y Comuna (se cargan desde la fuente oficial CUT), Sector (villa, población,
+etapa o barrio; puede estar dentro de otro sector), SectorAlias (nombres escritos distinto) y Direccion
+(calle, número, comuna y sector; el sector debe pertenecer a la comuna)."""
 from django.core.exceptions import ValidationError
 from django.db import models
 

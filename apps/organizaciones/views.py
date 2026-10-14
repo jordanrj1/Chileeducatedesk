@@ -1,3 +1,6 @@
+"""Pantallas de organizaciones: listado, crear con aviso de parecidas, ficha con pestañas (contactos, carreras,
+personas con cargo, actividades, documentos, historial), cerrar autoridades al cambiar de administración,
+unir repetidas (Administrador) y buscador para elegir una organización desde otros formularios."""
 from django.contrib import messages
 from django.db.models import Count
 from django.http import HttpResponseRedirect

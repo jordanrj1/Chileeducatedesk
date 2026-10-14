@@ -1,3 +1,4 @@
+"""Formularios de proyecto: datos del proyecto, su equipo, organizaciones, comunidades, beneficiarios y postulaciones."""
 from django import forms
 from django.urls import reverse_lazy
 

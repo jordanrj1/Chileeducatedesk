@@ -1,3 +1,5 @@
+"""Direcciones (rutas) de personas: listado, nueva, ficha, editar, desactivar, unir repetidas, datos personales
+(Excel para entregar a la persona) y cada sección de la ficha (contactos, formación, cargos…)."""
 from django.urls import path
 
 from apps.comunidades.forms import MembresiaDesdePersonaForm

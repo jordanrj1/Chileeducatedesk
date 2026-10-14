@@ -1,3 +1,6 @@
+"""Pantallas del territorio: índice «Dónde trabajamos», región, ficha de comuna y de sector como contenedor
+(resumen, sectores, comunidades, organizaciones, personas, lugares, actividades y alcance), exportar a Excel,
+crear y editar sectores, y las listas de la dirección en cascada."""
 from io import BytesIO
 from itertools import groupby
 

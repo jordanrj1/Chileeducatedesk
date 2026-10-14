@@ -1,3 +1,5 @@
+"""Campo para elegir un lugar que muestra su comuna y capacidad,
+para distinguir lugares con el mismo nombre."""
 from django import forms
 
 from .models import Lugar

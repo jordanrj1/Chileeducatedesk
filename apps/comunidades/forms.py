@@ -1,3 +1,5 @@
+"""Formularios de comunidades: crear o editar una comunidad y agregar integrantes,
+desde la comunidad o desde la ficha de la persona."""
 from django import forms
 from django.urls import reverse_lazy
 

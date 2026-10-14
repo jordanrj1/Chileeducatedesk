@@ -1,3 +1,5 @@
+"""Formularios de documentos: subir uno nuevo, asociar uno ya subido a otra ficha (sin copiar el archivo)
+y registrar de qué documento salió un dato."""
 from django import forms
 from django.urls import reverse_lazy
 

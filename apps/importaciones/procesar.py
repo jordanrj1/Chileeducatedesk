@@ -1,4 +1,6 @@
-"""Análisis (vista previa), aplicación y reversión de lotes. Nada se guarda sin revisión."""
+"""Lectura y análisis de planillas: separa nombres, normaliza RUT y teléfonos, y clasifica cada fila en
+nueva, existente, posible duplicado o con error. Nada se guarda hasta que Claudio confirma,
+y una carga confirmada se puede revertir."""
 import re
 
 from django.contrib.postgres.search import TrigramSimilarity

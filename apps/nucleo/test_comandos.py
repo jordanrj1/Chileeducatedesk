@@ -1,3 +1,4 @@
+"""Pruebas automáticas de los comandos de consola: datos de demostración (siempre ficticios) y respaldos."""
 import shutil
 import zipfile
 from pathlib import Path
