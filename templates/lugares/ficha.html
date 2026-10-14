@@ -4,7 +4,7 @@
 <div class="d-flex flex-wrap gap-2 align-items-center">
   {% if not object.activo %}{% estado "inactivo" "Inactivo" %}{% endif %}
   {% if object.tipo %}<span class="badge text-bg-light border">{{ object.tipo }}</span>{% endif %}
-  {% if object.direccion_id %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}{{ object.direccion.comuna }}</span>{% endif %}
+  {% if comuna_ficha %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></span>{% endif %}
   <span class="d-inline-flex align-items-center gap-1">{% icono "personas" 15 %}{% if object.capacidad %}Capacidad {{ object.capacidad }}{% else %}Capacidad no registrada{% endif %}</span>
 </div>
 {% endblock %}

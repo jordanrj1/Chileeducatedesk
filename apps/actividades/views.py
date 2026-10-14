@@ -11,6 +11,7 @@ from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
 from apps.nucleo.auditoria import registrar
+from apps.nucleo.direccion_mixin import ComunaInicialMixin
 from apps.nucleo.models import EstadoActividad, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad
 from apps.nucleo.vistas_base import (
     EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, cambios_historial, opciones_modelo,
@@ -25,7 +26,7 @@ from . import servicios
 from .forms import (
     SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
 )
-from .models import Actividad, ActividadComunidad, AgendaActividad, Participacion, SesionActividad, SesionAsistencia
+from .models import Actividad, ActividadComunidad, ActividadTerritorio, AgendaActividad, Participacion, SesionActividad, SesionAsistencia
 from .reglas import TRANSICIONES, ReglaNegocio, antes_de_la_fecha, personas_que_ocupan, revisar
 
 
@@ -118,7 +119,7 @@ class ActividadOpciones(Permiso403Mixin, View):
         return HttpResponse(format_html_join("", '<option value="{}">{}</option>', opciones))
 
 
-class ActividadNueva(Permiso403Mixin, CreateView):
+class ActividadNueva(ComunaInicialMixin, Permiso403Mixin, CreateView):
     model = Actividad
     form_class = ActividadForm
     permission_required = "actividades.add_actividad"
@@ -141,10 +142,15 @@ class ActividadNueva(Permiso403Mixin, CreateView):
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ctx.update(titulo="Nueva actividad", volver_url=self.request.META.get("HTTP_REFERER") or "/actividades", breadcrumb=[("Actividades", "/actividades")])
-        comunidad = self.comunidad_inicial()
+        comunidad, comuna = self.comunidad_inicial(), self.comuna_inicial()
+        destinos = []
         if comunidad:
-            ctx["bajada"] = f"Dirigida a la comunidad «{comunidad}» ({comunidad.territorio}). Los campos marcados con * son obligatorios."
+            destinos.append(f"Dirigida a la comunidad «{comunidad}» ({comunidad.territorio}).")
             ctx["comunidad_destino"] = comunidad
+        if comuna:
+            destinos.append(f"Se dirige a la comuna de {comuna.nombre}.")
+        if destinos:
+            ctx["bajada"] = " ".join(destinos) + " Los campos marcados con * son obligatorios."
         return ctx
 
     def form_valid(self, form):
@@ -156,6 +162,9 @@ class ActividadNueva(Permiso403Mixin, CreateView):
         comunidad = self.comunidad_inicial()
         if comunidad:
             ActividadComunidad.objects.create(actividad=obj, comunidad=comunidad)
+        comuna = self.comuna_inicial()  # creada desde la ficha de una comuna: queda como su territorio
+        if comuna:
+            ActividadTerritorio.objects.create(actividad=obj, comuna=comuna)
         from apps.documentos.origen import registrar_origen
 
         registrar_origen(obj, self.request.user)
@@ -218,6 +227,7 @@ class ActividadFicha(FichaBase):
         codigo = a.estado.codigo
         siguientes = [c for c in TRANSICIONES.get(codigo, set()) if c not in ("confirmada", "realizada")]
         editable = codigo != "realizada"
+        agenda = a.agenda_vigente
         return {
             "url_editar": reverse("actividades:editar", args=[a.pk]) if editable else None,
             "url_volver": a.proyecto.get_absolute_url() if a.proyecto_id else "/actividades",
@@ -230,9 +240,20 @@ class ActividadFicha(FichaBase):
             "puede_resultado": u.has_perm("actividades.change_actividad") and codigo not in ("cancelada", "pendiente", "suspendida") and not antes_de_la_fecha(a),
             "puede_finalizar": u.has_perm("actividades.cerrar_actividad") and "realizada" in TRANSICIONES.get(codigo, set()) and not antes_de_la_fecha(a),
             "puede_reabrir": u.has_perm("actividades.reabrir_actividad") and codigo == "realizada",
-            "agenda": a.agenda_vigente,
+            "agenda": agenda,
             "faltantes": a.faltantes(),
+            "comuna_ficha": self.comuna_de_la_actividad(agenda),
         }
+
+    def comuna_de_la_actividad(self, agenda):
+        """Comuna del lugar programado; si no hay, la del primer territorio vigente que sea una comuna o un sector. A lo más dos consultas."""
+        if agenda and agenda.lugar_id:
+            return Comuna.objects.filter(direcciones__pk=agenda.lugar.direccion_id).first()
+        territorio = (
+            self.object.territorios.filter(Q(comuna__isnull=False) | Q(sector__isnull=False), vigente=True)
+            .select_related("comuna", "sector__comuna").order_by("pk").first()
+        )
+        return (territorio.comuna or territorio.sector.comuna) if territorio else None
 
     def _participantes(self, beneficiarios):
         from apps.nucleo.fases import modulo_activo

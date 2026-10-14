@@ -5,7 +5,7 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
 
-from apps.nucleo.direccion_mixin import ConDireccionMixin
+from apps.nucleo.direccion_mixin import ComunaInicialMixin, ConDireccionMixin
 from apps.nucleo.models import TipoLugar
 from apps.nucleo.vistas_base import ControlVersionMixin, AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo
 from apps.territorio.models import Comuna
@@ -75,7 +75,7 @@ class _Formulario(ConDireccionMixin, Permiso403Mixin):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
-class LugarNuevo(_Formulario, CreateView):
+class LugarNuevo(ComunaInicialMixin, _Formulario, CreateView):
     permission_required = "lugares.add_lugar"
     titulo = "Nuevo lugar"
 
@@ -154,11 +154,15 @@ class LugarFicha(FichaBase):
         ("historial", "Historial", "generico/_historial.html", "lugares.view_historicallugar"),
     ]
 
+    def get_queryset(self):
+        return super().get_queryset().select_related("direccion__comuna")
+
     def contexto_ficha(self):
         return {
             "url_editar": reverse("lugares:editar", args=[self.object.pk]),
             "url_volver": "/lugares",
             "puede_agregar": self.request.user.has_perm("lugares.change_lugar"),
+            "comuna_ficha": self.object.direccion.comuna,
         }
 
     def ctx_uso(self):
