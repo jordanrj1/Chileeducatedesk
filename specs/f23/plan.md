@@ -1,6 +1,6 @@
 # F23 Contenedor Territorio — Plan de implementación
 
-> **Para quien ejecute:** usar superpowers:executing-plans (tarea por tarea, TDD). Los pasos usan casillas `- [ ]`.
+> **Para quien ejecute:** usar superpowers:executing-plans (tarea por tarea, TDD). Los pasos usan casillas `- [ ]`; las marcadas `[x]` ya están hechas.
 
 **Meta:** convertir comuna y sector en contenedores con resumen, agrupaciones, personas, alcance y exportación, y dejar el detector visual en 0.
 
@@ -15,7 +15,7 @@
 - Migraciones solo aditivas; nada se borra; sin dependencias nuevas; sin CDN.
 - Datos de prueba ficticios (skill `fche-datos-ficticios`); nada sensible en resúmenes ni exportaciones sin permiso (`fche-ley-datos`).
 - Sin consultas en bucle: conteos con `annotate`/`aggregate`/`values().annotate()`.
-- Pruebas: `.venv/bin/python -m pytest -q`; las 475 actuales siguen en verde.
+- Pruebas: `.venv/bin/python -m pytest -q`; las existentes siguen en verde.
 
 ## Foco de revisión
 1. Comuna sin ningún dato → resumen con ceros y estados vacíos que enseñan (no error).
@@ -28,12 +28,12 @@
 
 ### Task 1: Deuda visual del detector
 **Archivos:** modificar `static/css/fche.css` (alertas, `.fche-nivel`, `.fche-prosa blockquote`, `.fche-indice a`, `.fche-error__codigo`), `templates/nucleo/dashboard.html` (etiqueta del día), `templates/actividades/candidatos.html` (icono), `templates/cuentas/login.html` (texto del panel).
-- [ ] Alertas y niveles: sin `border-left` grueso; fondo tintado, borde de 1 px del mismo tono e icono como marcador.
-- [ ] Cita e índice: fondo suave o subrayado del ítem activo, sin barra lateral.
-- [ ] Código de error con color sólido.
-- [ ] Etiqueta del día de 0.72rem como mínimo y espaciado ≤ 0.05em; icono de candidato con relleno interno; contraste AA en el panel de ingreso.
-- [ ] Ejecutar `impeccable detect --json templates static/css/fche.css` → `[]`.
-- [ ] Pruebas completas en verde; commit «Detector visual en cero: sin acentos laterales ni texto degradado».
+- [x] Alertas y niveles: sin `border-left` grueso; fondo tintado, borde de 1 px del mismo tono e icono como marcador.
+- [x] Cita e índice: fondo suave o subrayado del ítem activo, sin barra lateral.
+- [x] Código de error con color sólido.
+- [x] Etiqueta del día de 0.72rem como mínimo y espaciado ≤ 0.05em; icono de candidato con relleno interno; contraste AA en el panel de ingreso.
+- [x] Ejecutar `impeccable detect --json templates static/css/fche.css` → `[]`.
+- [x] Pruebas completas en verde; commit «Detector visual en cero: sin acentos laterales ni texto degradado».
 
 ### Task 2: Servicio de resumen territorial
 **Archivos:** crear `apps/territorio/resumen.py`; prueba `apps/territorio/test_resumen.py`.
@@ -41,7 +41,7 @@
 - `personas_residentes(comuna=None, sectores=None) -> QuerySet[Persona]` (distinct, solo activas).
 - `resumen_territorio(comuna=None, sectores=None) -> dict` con claves `comunidades`, `organizaciones`, `personas`, `lugares`, `actividades_12m`, `actividades_total`, `organizaciones_por_tipo` (lista de `(TipoOrganizacion, total, [Organizacion…≤5])`), `sectores` (lista de dicts `{"sector", "comunidades", "organizaciones", "lugares", "personas", "actividades"}` + fila `sector=None`), `proximas` (agendas ≤30 días), `minutas` (≤5 `SesionActividad`).
 - `presencia_por_comuna(region=None) -> list[dict]` con `{"comuna", "comunidades", "organizaciones", "personas", "actividades_12m", "total"}`, solo total > 0, ordenada por `(-actividades_12m, -total, nombre)`.
-- [ ] Pruebas que fallan primero:
+- [x] Pruebas que fallan primero:
   - `test_residentes_por_comuna_y_sector_con_hijos`;
   - `test_resumen_cuenta_una_vez_actividad_con_agenda_y_territorio`;
   - `test_resumen_comuna_vacia_en_cero`;
@@ -49,7 +49,7 @@
   - `test_tabla_de_sectores_con_fila_sin_sector`;
   - `test_presencia_ordenada_y_sin_comunas_vacias`;
   - `test_resumen_consultas_acotadas` (`django_assert_max_num_queries(20)` con 1 y con 30 registros).
-- [ ] Implementar; pruebas en verde; commit.
+- [x] Implementar; pruebas en verde; commit.
 
 ### Task 3: Ficha de comuna y sector como contenedor
 **Archivos:**
@@ -59,19 +59,19 @@
 - pruebas en `apps/territorio/test_contenedor.py`.
 
 **Consume:** Tarea 2; `apps.actividades.alcance.alcance`; `actividades/pestanas/alcance.html`.
-- [ ] Pruebas que fallan primero:
+- [x] Pruebas que fallan primero:
   - `test_comuna_abre_en_resumen_con_indicadores_clicables` (cada indicador enlaza a `?tab=`);
   - `test_pestana_personas_separa_residentes_y_no_muestra_sensibles` (con `PerfilSensible` presente, su contenido no aparece);
   - `test_pestana_personas_oculta_sin_permiso`;
   - `test_alcance_de_la_comuna_coincide_con_servicio`;
   - `test_sector_incluye_hijos`;
   - `test_pestanas_bajo_tope_de_consultas`.
-- [ ] Implementar; pruebas en verde; commit.
+- [x] Implementar; pruebas en verde; commit.
 
 ### Task 4: Índice «Dónde trabajamos» y región
 **Archivos:** modificar `apps/territorio/views.py` (`TerritorioIndice`, `RegionDetalle`), `templates/territorio/indice.html`, `templates/territorio/region.html`; crear el parcial `templates/territorio/_comunas_con_presencia.html`.
-- [ ] Pruebas: `test_indice_muestra_comunas_con_presencia_primero`, `test_indice_vacio_ofrece_acciones`, `test_region_lista_sus_comunas_con_presencia`.
-- [ ] Implementar; pruebas en verde; commit.
+- [x] Pruebas: `test_indice_muestra_comunas_con_presencia_primero`, `test_indice_vacio_ofrece_acciones`, `test_region_lista_sus_comunas_con_presencia`.
+- [x] Implementar; pruebas en verde; commit.
 
 ### Task 5: Crear en contexto y enlaces «en esta comuna»
 **Archivos:**
@@ -79,8 +79,8 @@
 - modificar `apps/actividades/views.py` (`ActividadNueva`: crea `ActividadTerritorio(comuna=…)`);
 - modificar las cabeceras de `templates/personas/ficha.html`, `organizaciones/ficha.html`, `lugares/ficha.html` y `actividades/ficha.html`;
 - contexto nuevo `comuna_residencia` en `PersonaFicha`.
-- [ ] Pruebas: `test_nueva_organizacion_con_comuna_prellenada`, `test_nuevo_lugar_con_comuna_prellenada`, `test_nueva_actividad_con_comuna_crea_territorio`, `test_fichas_enlazan_a_su_comuna`.
-- [ ] Implementar; pruebas en verde; commit.
+- [x] Pruebas: `test_nueva_organizacion_con_comuna_prellenada`, `test_nuevo_lugar_con_comuna_prellenada`, `test_nueva_actividad_con_comuna_crea_territorio`, `test_fichas_enlazan_a_su_comuna`.
+- [x] Implementar; pruebas en verde; commit.
 
 ### Task 6: Exportar resumen territorial
 **Archivos:**
@@ -88,11 +88,11 @@
 - crear `apps/territorio/exportar.py` con `libro_territorial(usuario, comuna=None, sectores=None, titulo="") -> Workbook`;
 - vistas `ComunaExportar` y `SectorExportar`;
 - rutas `territorio/comuna/<pk>/exportar` y `territorio/sector/<pk>/exportar`.
-- [ ] Pruebas: `test_exportacion_con_7_hojas`, `test_exportacion_403_sin_permiso`, `test_exportacion_sin_rut_ni_contactos_sin_exportar_persona`, `test_exportacion_queda_en_auditoria`.
-- [ ] Implementar (aviso con `agregar_aviso`, auditoría con `registrar`); pruebas en verde; commit.
+- [x] Pruebas: `test_exportacion_con_7_hojas`, `test_exportacion_403_sin_permiso`, `test_exportacion_sin_rut_ni_contactos_sin_exportar_persona`, `test_exportacion_queda_en_auditoria`.
+- [x] Implementar (aviso con `agregar_aviso`, auditoría con `registrar`); pruebas en verde; commit.
 
 ### Task 7: Cierre
-- [ ] `docs/manual_de_uso.md` (sección Territorio como contenedor), docs/CONTEXTO.md §0.5 y `specs/f23/tasks.md` con `[x]`.
-- [ ] Skill `fche-revision`: pruebas completas, recorrido de páginas, capturas de escritorio y celular de `/territorio` y de la ficha de comuna, una ronda de correcciones.
-- [ ] Detector de impeccable sobre lo cambiado → 0.
-- [ ] Merge a `main` (`--no-ff`), reinicio del servidor.
+- [x] `docs/manual_de_uso.md` (sección Territorio como contenedor), docs/CONTEXTO.md §0.5 y `specs/f23/tasks.md` con `[x]`.
+- [x] Skill `fche-revision`: pruebas completas, recorrido de páginas, capturas de escritorio y celular de `/territorio` y de la ficha de comuna, una ronda de correcciones.
+- [x] Detector de impeccable sobre lo cambiado → 0.
+- [ ] Merge a `main` (`--no-ff`), reinicio del servidor (pendiente: lo hace el controlador).

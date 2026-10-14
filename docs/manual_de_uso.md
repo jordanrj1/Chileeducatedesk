@@ -67,25 +67,25 @@ La comuna (y cada sector, villa o población) es un **contenedor**: reúne sus c
 3. Si aún no hay nada registrado, la pantalla lo explica y ofrece **+ Comunidad** y **+ Organización**.
 
 **La ficha de una comuna** abre en **Resumen**:
-1. Arriba, los **indicadores**: comunidades, organizaciones, residentes, lugares, actividades de los últimos 12 meses y total alcanzado. Cada uno es un botón que lleva a su pestaña. Cuentan solo lo que está activo, así que el número coincide con la lista de esa pestaña.
+1. Arriba, los **indicadores**: comunidades, organizaciones, residentes, lugares, actividades de los últimos 12 meses y total alcanzado. Cada uno es un botón que lleva a su pestaña. Cuentan solo lo que está activo. Tres no calzan uno a uno con la lista de su pestaña: **Actividades** muestra las de los últimos 12 meses (la pestaña las lista todas; el total va en la nota del indicador), **Residentes** cuenta a quienes tienen residencia vigente aquí (la pestaña Personas suma además a los integrantes de comunidades que viven en otra parte) y **Total alcanzado** suma asistentes registrados y sin registro.
 2. **Organizaciones por tipo**: junta de vecinos, institución educativa, municipalidad, empresa, fundación u ONG y otras, con la cantidad y hasta cinco nombres. «ver las n» abre la lista completa de ese tipo.
 3. **Por sector**: una tabla con comunidades, organizaciones, lugares, residentes y actividades de cada sector; cada fila lleva a la ficha del sector. «Sin sector» reúne lo que no lo tiene en su dirección y las actividades dirigidas a toda la comuna.
-4. **Próximas actividades** (los siguientes 30 días) y **Últimas minutas** (las 5 sesiones más recientes con minuta).
+4. **Próximas actividades** (los siguientes 30 días) y **Últimas minutas** (las 5 sesiones más recientes que ya ocurrieron; las planificadas a futuro no cuentan).
 5. Las otras pestañas, cada una con su cantidad: **Sectores** (para crearlos y editarlos), **Comunidades**, **Organizaciones**, **Personas**, **Lugares**, **Actividades** y **Alcance**.
    - **Organizaciones** va agrupada por tipo. Al final, un grupo atenuado reúne las **inactivas**: no se cuentan en los indicadores, pero siguen a la vista porque tienen historia. Lo mismo vale para los lugares.
-   - **Personas** separa a los **residentes** (dirección de residencia vigente en la comuna) de los **integrantes de comunidades de la comuna que viven en otra parte**. Solo se ven nombre, perfiles y comunidad; el RUT, los contactos y los datos sensibles están en la ficha de cada persona. «Ver en el listado de Personas» abre el listado ya filtrado por la comuna. Solo la ve quien puede ver personas.
+   - **Personas** separa a los **residentes** (dirección de residencia vigente en la comuna) de los **integrantes de comunidades de la comuna que viven en otra parte**. Solo se ven nombre, perfiles y comunidad; el RUT, los contactos y los datos sensibles están en la ficha de cada persona. «Ver personas de la comuna en el listado» abre el listado de Personas filtrado por la comuna: trae a quien tiene una dirección vigente allí, de residencia o de procedencia, así que puede mostrar más gente que los residentes. En la ficha de un sector el filtro sigue siendo la comuna entera. Solo la ve quien puede ver personas.
    - **Alcance** suma a las personas alcanzadas en todas las actividades de la comuna, como el Alcance de una actividad.
 6. Arriba, junto a la región y la provincia, aparece la **municipalidad** de la comuna. Si no está registrada, **+ Registrar municipalidad** abre el formulario ya con la comuna y el tipo elegidos. Si la municipalidad fue desactivada, igual se enlaza y se marca «Inactiva».
-7. La **ficha de un sector** tiene lo mismo, calculado sobre el sector y los sectores que contiene.
+7. La **ficha de un sector** tiene las mismas pestañas, calculadas sobre el sector y los sectores que contiene. Cambia en cuatro cosas: no muestra la municipalidad (es de la comuna), «Por sector» lista solo los sectores que contiene (sin la fila «Sin sector»), la pestaña de sectores se llama **Sectores dentro** y suma **Nombres alternativos**.
 
-**Crear desde la comuna**
+**Crear desde la comuna o el sector**
 1. En la cabecera: **+ Comunidad**, **+ Organización**, **+ Lugar** y **+ Actividad**.
-2. El formulario llega con la comuna ya elegida (en la dirección, en cascada). En una actividad nueva, la comuna queda registrada como su territorio, aunque todavía no tenga lugar.
+2. El formulario llega con la comuna ya elegida (en la dirección, en cascada); si lo abres desde la ficha de un sector, llega también con ese sector. En una actividad nueva, la comuna (o el sector, si la creaste desde su ficha) queda registrada como su territorio, aunque todavía no tenga lugar.
 3. Cuando una sección está vacía, también ofrece su botón (por ejemplo, **+ Actividad** si no hay nada en los próximos 30 días).
 
 **Exportar el resumen** (para la Dirección o un fondo)
 1. En la cabecera de la comuna o del sector: **Exportar resumen**. Descarga un Excel. Solo lo ve quien tiene el permiso para exportar resúmenes territoriales, y cada descarga queda en la auditoría.
-2. Las hojas son siete: *Resumen*, *Sectores*, *Comunidades*, *Organizaciones* (con el correo o teléfono principal), *Personas residentes*, *Actividades* y *Alcance*. Una hoja falta si quien exporta no podría ver ese dato en la ficha.
+2. Las hojas son siete: *Resumen*, *Sectores*, *Comunidades*, *Organizaciones* (con el correo o teléfono principal), *Personas residentes*, *Actividades* y *Alcance*, más una hoja final *Aviso* con la advertencia de confidencialidad. Una hoja falta si quien exporta no podría ver ese dato en la ficha.
 3. Privacidad:
    - **RUT, correo y teléfono** de las personas residentes salen solo con el permiso de exportar personas; sin él, esas columnas no existen.
    - Los **menores de edad** no se listan por nombre: una fila final dice cuántos son. Quien no tiene fecha de nacimiento sí se lista, porque no se sabe su edad.
