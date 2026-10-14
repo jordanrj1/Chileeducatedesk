@@ -288,6 +288,47 @@ def test_exportacion_cuenta_a_cada_menor_y_sin_menores_no_agrega_la_fila(cg, mun
     assert not any("Menor Uno" in str(c) or "Menor Dos" in str(c) for f in filas for c in f)
 
 
+def test_exportacion_omite_la_pertenencia_a_comunidades_indigenas_de_las_personas(cg, mundo, crear_persona):
+    comuna, villa, vecinal = mundo["comuna"], mundo["villa"], mundo["comunidad"]
+    indigena = Comunidad.objects.create(nombre="Comunidad Pehuen Ficticia", tipo="indigena", comuna=comuna, sector=villa)
+    ambas = _con_edad(crear_persona, comuna, villa, "Marta Ambas", 45)
+    ComunidadMiembro.objects.create(comunidad=vecinal, persona=ambas)
+    ComunidadMiembro.objects.create(comunidad=indigena, persona=ambas)
+
+    for url in (_url_comuna(comuna), _url_sector(villa)):
+        libro = _libro(cg.get(url))
+        personas = _filas(libro, "Personas residentes")
+        marta = next(f for f in personas[1:] if f[0] == "Marta Ambas Ficticio")
+        assert marta[2] == "Comunidad Los Aromos Ficticia"  # la fila se queda, solo con la comunidad vecinal
+        assert personas[-1][0] == "Pertenencias a comunidades indígenas omitidas: 1 (dato sensible, Ley 21.719)"
+        assert all(c is None for c in personas[-1][1:])
+        assert "Pehuen" not in " ".join(str(c) for f in personas for c in f)
+    # la hoja de comunidades puede seguir listando la comunidad y su tipo: no lleva nombres de personas
+    assert ["Comunidad Pehuen Ficticia", "Comunidad indígena", "Villa Las Araucarias Ficticia", None, 1] in _filas(libro, "Comunidades")
+
+
+def test_exportacion_cuenta_las_pertenencias_indigenas_y_pone_primero_la_nota_de_menores(cg, mundo, crear_persona):
+    comuna, villa = mundo["comuna"], mundo["villa"]
+    pehuen = Comunidad.objects.create(nombre="Comunidad Pehuen Ficticia", tipo="indigena", comuna=comuna, sector=villa)
+    lof = Comunidad.objects.create(nombre="Comunidad Lof Ficticia", tipo="indigena", comuna=comuna, sector=villa)
+    inactiva = Comunidad.objects.create(nombre="Comunidad Antigua Ficticia", tipo="indigena", comuna=comuna, activo=False)
+    solo_indigena = _con_edad(crear_persona, comuna, villa, "Luis Solo", 30)
+    ComunidadMiembro.objects.create(comunidad=pehuen, persona=solo_indigena)
+    ComunidadMiembro.objects.create(comunidad=lof, persona=solo_indigena)
+    ComunidadMiembro.objects.create(comunidad=inactiva, persona=solo_indigena)  # una comunidad inactiva ni se lista ni se cuenta
+    menor = _con_edad(crear_persona, comuna, villa, "Nina Menor", 8)
+    ComunidadMiembro.objects.create(comunidad=pehuen, persona=menor)  # el menor no se lista: sus pertenencias tampoco cuentan
+
+    personas = _filas(_libro(cg.get(_url_comuna(comuna))), "Personas residentes")
+    luis = next(f for f in personas[1:] if f[0] == "Luis Solo Ficticio")
+    assert luis[2] is None  # sin otra comunidad, la celda queda vacía y la persona sigue en la lista
+    assert [f[0] for f in personas[-2:]] == [
+        "Menores de edad residentes: 1 (no se listan por protección de datos; pendiente V#2)",
+        "Pertenencias a comunidades indígenas omitidas: 2 (dato sensible, Ley 21.719)",
+    ]
+    assert not any("Pehuen" in str(c) or "Lof" in str(c) or "Antigua" in str(c) for f in personas for c in f)
+
+
 def test_exportacion_sin_ver_personas_omite_la_hoja(mundo):
     sin_personas = _cliente(_usuario("sin_ver_personas", *[v for v in VISTAS if v != "view_persona"], "exportar_territorio", "exportar_persona"))
     for url in (_url_comuna(mundo["comuna"]), _url_sector(mundo["villa"])):

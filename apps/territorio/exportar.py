@@ -8,6 +8,8 @@ Datos personales (Ley 21.719, RNF-02):
   sin ese permiso las columnas no existen (no van vacías).
 - Los menores de edad residentes (`Persona.es_menor`) no se listan por nombre: una fila final dice cuántos son (V#2). Quien no tiene
   fecha de nacimiento se lista, porque su edad se desconoce.
+- Pertenecer a una comunidad indígena revela pueblo originario (dato sensible): esas pertenencias no aparecen en la celda «Comunidad»
+  de la persona; una fila final dice cuántas se omitieron. La hoja «Comunidades» puede listar la comunidad y su tipo (no lleva nombres de personas).
 - Nunca salen datos sensibles (perfil sensible, apoderados, contactos de emergencia, verificaciones, género, salud…) ni el desglose por género del alcance.
 - Todo texto pasa por `_seguro` (sin inyección de fórmulas). Los números y las fechas se escriben como tales para que se puedan sumar y ordenar.
 
@@ -46,6 +48,8 @@ PERMISO_HOJA = {
 PERMISO_RUT_Y_CONTACTOS = "personas.exportar_persona"
 DETALLE_RUT_Y_CONTACTOS = "con RUT y contactos"
 NOTA_MENORES = "Menores de edad residentes"
+NOTA_INDIGENAS = "Pertenencias a comunidades indígenas omitidas"
+TIPO_INDIGENA = "indigena"  # Comunidad.TIPOS
 
 
 def _celda(valor):
@@ -159,17 +163,21 @@ def _hoja_personas(libro, comuna, sectores, con_rut_y_contactos):
     if con_rut_y_contactos:
         prefetch.append(_prefetch_contactos())
     encabezados = ["Nombre", "Perfiles", "Comunidad"] + (["RUT", "Correo", "Teléfono"] if con_rut_y_contactos else [])
-    filas, menores = [], 0
+    filas, menores, indigenas = [], 0, 0
     for p in personas_residentes(comuna, sectores).prefetch_related(*prefetch):
         if p.es_menor:  # menores: nunca por nombre; solo se cuentan (V#2). Sin fecha de nacimiento no se sabe la edad: se listan
             menores += 1
             continue
-        fila = [p.nombre_completo, ", ".join(x.nombre for x in p.perfiles.all()), ", ".join(m.comunidad.nombre for m in p.membresias)]
+        comunidades = [m.comunidad.nombre for m in p.membresias if m.comunidad.tipo != TIPO_INDIGENA]
+        indigenas += len(p.membresias) - len(comunidades)  # pertenecer a una comunidad indígena revela pueblo originario: dato sensible
+        fila = [p.nombre_completo, ", ".join(x.nombre for x in p.perfiles.all()), ", ".join(comunidades)]
         if con_rut_y_contactos:
             fila += [p.rut, _contacto(p, ("correo",)), _contacto(p, TELEFONOS)]
         filas.append(fila)
     if menores:
         filas.append([f"{NOTA_MENORES}: {menores} (no se listan por protección de datos; pendiente V#2)"])
+    if indigenas:
+        filas.append([f"{NOTA_INDIGENAS}: {indigenas} (dato sensible, Ley 21.719)"])
     _agregar_hoja(libro, "Personas residentes", encabezados, filas)
 
 
