@@ -86,15 +86,18 @@ Afecta a los 14 listados que usan `ListaBase`.
   - las fuentes quedan anotadas en `apps/territorio/datos/LEEME.md`.
 - **Carga:**
   - `cargar_territorio` sin argumentos usa ese archivo;
-  - valida la jerarquía y los totales;
-  - acepta `--si-falta` (no hace nada si ya hay comunas oficiales) y `--simular`;
+  - antes de escribir revisa todo el archivo: columnas, ceros a la izquierda (un «8112» que dejó Excel se lee como «08112»), que cada comuna sea de su provincia y cada provincia de su región, códigos repetidos y, si el archivo trae códigos oficiales (regiones 01 a 16), los totales 16/56/346. Con cualquier error no carga nada;
+  - acepta `--si-falta` (no hace nada si ya están todas las comunas del archivo; si falta alguna, la agrega sin duplicar) y `--simular` (muestra lo que cambiaría y no guarda);
   - no es una migración de datos, para no cambiar las pruebas;
-  - `iniciar.bat` e `iniciar.sh` lo ejecutan con `--si-falta`;
+  - `iniciar.bat` e `iniciar.sh` lo ejecutan con `--si-falta`; si falla, el sistema arranca igual;
   - la «Región Demo» (código 99) no choca con los códigos oficiales y nunca se borra.
+- **Aviso en `/territorio`:** si faltan comunas oficiales (códigos de las regiones 01 a 16), lo dice aunque exista la Región Demo. Las regiones y comunas que no son oficiales llevan la pastilla «De demostración».
 - **Sin servicios externos:** no se usa Google Maps ni ningún servicio de mapas. El sistema funciona sin internet (docs/CONTEXTO.md §15).
 - **Sector:**
-  - gana `activo` y un historial de cambios (migración aditiva);
-  - se crea, se edita y se **desactiva**; nunca se borra.
+  - gana `activo` y un historial de cambios (migración aditiva), con la pestaña Historial en su ficha;
+  - se crea, se edita y se **desactiva** (lo hace quien puede editar sectores, es decir, el Gestor); nunca se borra;
+  - un sector desactivado deja de ofrecerse en las listas para elegir (dirección, comunidad, territorio de la actividad, «dentro de»), no recibe sectores nuevos dentro ni sirve de punto de partida para crear registros; lo registrado en él lo conserva, y al editar ese registro se ve como «(desactivado)»;
+  - si alguien intenta crear un sector con el nombre de uno desactivado, el sistema lo avisa y no lo duplica.
 - **`/territorio` y las fichas de comuna y sector** explican en un bloque breve:
   - **de dónde sale**: regiones y comunas de la lista oficial; sectores, villas, poblaciones y etapas que crea Claudio;
   - **qué reúne**: personas por su dirección, organizaciones y lugares por su dirección, comunidades, y actividades por su lugar o territorio;

@@ -17,7 +17,9 @@ def normalizar(texto):
 
 
 def mismo_sector(comuna, nombre, padre=None):
-    """Sector existente cuyo nombre o nombre alternativo coincide tras normalizar, en el mismo nivel."""
+    """Sector existente cuyo nombre o nombre alternativo coincide tras normalizar, en el mismo nivel.
+
+    Reconoce también los desactivados, para avisar en vez de crear uno repetido."""
     clave = normalizar(nombre)
     if not clave:
         return None
@@ -32,8 +34,8 @@ def mismo_sector(comuna, nombre, padre=None):
 
 
 def sectores_parecidos(comuna, nombre, padre=None, excluir=None):
-    """Parecidos (para avisar, nunca para decidir solo)."""
-    qs = Sector.objects.filter(comuna=comuna, sector_padre=padre).annotate(sim=TrigramSimilarity("nombre", nombre)).filter(sim__gte=UMBRAL_PARECIDO)
+    """Parecidos entre los activos (para avisar, nunca para decidir solo)."""
+    qs = Sector.objects.filter(comuna=comuna, sector_padre=padre, activo=True).annotate(sim=TrigramSimilarity("nombre", nombre)).filter(sim__gte=UMBRAL_PARECIDO)
     if excluir:
         qs = qs.exclude(pk=excluir)
     return list(qs.order_by("-sim")[:5])

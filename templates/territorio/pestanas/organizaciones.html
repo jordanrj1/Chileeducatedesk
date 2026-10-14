@@ -3,7 +3,7 @@
 {% load fche %}
 <div class="fche-seccion"><div><h2 class="h6">Organizaciones por tipo</h2>
   <p class="small text-muted mb-0">Activas con su dirección en {{ nombre_ambito }}{% if not es_sector %}, más la municipalidad de la comuna{% endif %}.{% if organizaciones_inactivas %} Las desactivadas quedan al final, atenuadas, para no perder su historia.{% endif %}</p></div>
-  {% if perms.organizaciones.add_organizacion %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="/organizaciones/nueva?{{ parametros_nuevo }}">+ Organización</a></div>{% endif %}</div>
+  {% if crear_aqui and perms.organizaciones.add_organizacion %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="/organizaciones/nueva?{{ parametros_nuevo }}">+ Organización</a></div>{% endif %}</div>
 {% for tipo, total, organizaciones in grupos_organizaciones %}
 <section class="{% if not forloop.last %}mb-4{% endif %}" id="tipo-{{ tipo.codigo }}" aria-labelledby="titulo-tipo-{{ tipo.codigo }}">
   <h3 class="h6 mb-2" id="titulo-tipo-{{ tipo.codigo }}">{{ tipo.nombre }} <span class="fche-contador">{{ total }}</span></h3>
@@ -13,7 +13,7 @@
 {% empty %}
 <div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "organizaciones" 18 %}</span>
   <p class="fche-vacio__texto">{% if organizaciones_inactivas %}No hay organizaciones activas aquí.{% else %}Aún no hay organizaciones registradas aquí.{% endif %} Registra la junta de vecinos, el establecimiento educacional o la municipalidad con su dirección en {{ nombre_ambito }} y aparecerán agrupadas por tipo.</p>
-  {% if perms.organizaciones.add_organizacion %}<a class="btn btn-primary btn-sm" href="/organizaciones/nueva?{{ parametros_nuevo }}">+ Organización</a>{% endif %}</div>
+  {% if crear_aqui and perms.organizaciones.add_organizacion %}<a class="btn btn-primary btn-sm" href="/organizaciones/nueva?{{ parametros_nuevo }}">+ Organización</a>{% endif %}</div>
 {% endfor %}
 {% if organizaciones_inactivas %}
 <section class="mt-4" aria-labelledby="organizaciones-inactivas">

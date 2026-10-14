@@ -27,11 +27,12 @@
 ### T1 · Territorio oficial y Sector desactivable (spec A4)
 - `apps/territorio/datos/cut_chile.csv` ya está hecho.
 - **Cargador común** (`apps/territorio/carga.py`):
-  - valida 16 regiones, 56 provincias y 346 comunas, la jerarquía de códigos y los códigos repetidos;
-  - hace `update_or_create` por código.
+  - rellena los códigos con ceros a la izquierda (2, 3 y 5 dígitos);
+  - valida 16 regiones, 56 provincias y 346 comunas (si el archivo trae códigos oficiales), la jerarquía de códigos y los códigos repetidos, y junta todos los errores antes de escribir;
+  - agrega lo nuevo y actualiza nombre y padre por código, por nivel y con un número fijo de consultas; nunca borra.
 - **`cargar_territorio`:**
   - archivo por defecto;
-  - `--si-falta` (no hace nada si ya hay comunas con código oficial);
+  - `--si-falta` (no hace nada si ya están todas las comunas del archivo);
   - `--simular`.
 - `iniciar.bat` e `iniciar.sh` lo llaman con `--si-falta` después de migrar.
 - `Sector.activo` + `HistoricalSector`, con migración aditiva. Desactivar y reactivar el sector siguen `AlternarActivoBase`. Las opciones en cascada solo ofrecen sectores activos; un formulario de edición conserva un sector desactivado.

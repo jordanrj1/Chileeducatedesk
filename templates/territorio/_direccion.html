@@ -14,7 +14,7 @@
         </select>
         <button type="button" class="btn btn-outline-primary" hx-post="/territorio/sectores/crear" hx-include="closest .crear-sector, [name$='comuna']" hx-target="#{{ campo.id_for_label }}">+ Crear sector</button>
       </div>
-      <div id="aviso-sector" class="small mt-1"></div>
+      <div id="aviso-sector" class="small mt-1" role="status"></div>
     </div>
   {% endif %}
   </div>

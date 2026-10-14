@@ -1,5 +1,6 @@
 """Formularios de territorio: sector (con sector padre), nombre alternativo de un sector,
-y la dirección en cascada (región → provincia → comuna → sector), que exige que el sector sea de esa comuna."""
+y la dirección en cascada (región → provincia → comuna → sector), que exige que el sector sea de esa comuna.
+Las listas solo ofrecen sectores activos; al editar, se conserva el sector desactivado que el registro ya tenía."""
 from django import forms
 
 from apps.nucleo.formularios import BootstrapMixin
@@ -16,13 +17,20 @@ class SectorForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *args, comuna=None, **kw):
         super().__init__(*args, **kw)
         self.comuna = comuna or getattr(self.instance, "comuna", None)
-        # el nombre de cada opción incluye el de su padre y su abuelo: se traen en la misma consulta
-        qs = Sector.objects.filter(comuna=self.comuna).select_related("sector_padre__sector_padre") if self.comuna else Sector.objects.none()
+        # el nombre de cada opción incluye el de su padre y su abuelo: se traen en la misma consulta.
+        # Un sector desactivado no recibe sectores nuevos dentro; al editar se conserva el padre que ya tenía.
+        if self.comuna:
+            qs = Sector.para_elegir(conservar=self.instance.sector_padre_id).filter(comuna=self.comuna).select_related("sector_padre__sector_padre")
+        else:
+            qs = Sector.objects.none()
         if self.instance.pk:
             qs = qs.exclude(pk__in=self.instance.descendientes_ids())  # no puede quedar dentro de sí mismo
-        self.fields["sector_padre"].queryset = qs
-        self.fields["sector_padre"].required = False
-        self.fields["sector_padre"].label = "Dentro de (opcional)"
+        campo = self.fields["sector_padre"]
+        campo.queryset = qs
+        campo.required = False
+        campo.label = "Dentro de (opcional)"
+        campo.label_from_instance = Sector.etiqueta
+        campo.error_messages["invalid_choice"] = "Ese sector está desactivado o no es de esta comuna: elige otro."
 
     def _post_clean(self):
         self.instance.comuna = self.comuna
@@ -36,6 +44,8 @@ class SectorForm(BootstrapMixin, forms.ModelForm):
         nombre, padre = datos.get("nombre"), datos.get("sector_padre")
         if nombre:
             igual = mismo_sector(self.comuna, nombre, padre)
+            if igual and igual.pk != self.instance.pk and not igual.activo:
+                raise forms.ValidationError(f"Ya existe «{igual}» en este nivel, pero está desactivado. Reactívalo desde su ficha en vez de crearlo de nuevo.")
             if igual and igual.pk != self.instance.pk:
                 raise forms.ValidationError(f"Ya existe «{igual}» en este nivel (mismo nombre o nombre alternativo).")
         return datos
@@ -82,7 +92,12 @@ class DireccionForm(BootstrapMixin, forms.ModelForm):
         self.fields["comuna"].queryset = comunas  # validación contra todas las comunas
         if provincia_id:
             self.fields["comuna"].choices = [("", "---------")] + [(c.pk, c.nombre) for c in comunas.filter(provincia_id=provincia_id)]
-        self.fields["sector"].queryset = Sector.objects.filter(comuna_id=comuna_id) if comuna_id else Sector.objects.none()
+        # solo sectores activos; al editar se conserva el que la dirección ya tenía aunque esté desactivado
+        if comuna:
+            self.fields["sector"].queryset = Sector.para_elegir(conservar=self.instance.sector_id).filter(comuna=comuna).select_related("sector_padre__sector_padre")
+        else:
+            self.fields["sector"].queryset = Sector.objects.none()
+        self.fields["sector"].label_from_instance = Sector.etiqueta
         p = self.add_prefix
         self.fields["region"].widget.attrs.update({"hx-get": "/territorio/provincias", "hx-target": f"#id_{p('provincia')}", "hx-trigger": "change"})
         self.fields["provincia"].widget.attrs.update({"hx-get": "/territorio/comunas", "hx-target": f"#id_{p('comuna')}", "hx-trigger": "change"})

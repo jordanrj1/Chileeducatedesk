@@ -1,11 +1,11 @@
-{# Qué es: Ficha de región: comunas con presencia y lista por provincia. #}
+{# Qué es: Ficha de región: comunas con presencia y lista por provincia; la que no es de la lista oficial lleva «De demostración». #}
 {# Dónde se usa: /territorio/region/<int:pk> · Proceso: P5 #}
 {% extends "base.html" %}
 {% load fche %}
 {% block titulo %}{{ region.nombre }}{% endblock %}
 {% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">{{ region.nombre }}</li>{% endblock %}
 {% block contenido %}
-<header class="fche-pagina"><div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Región</p><h1 class="fche-pagina__titulo">{{ region.nombre }}</h1></div>
+<header class="fche-pagina"><div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Región</p><h1 class="fche-pagina__titulo">{{ region.nombre }}</h1>{% if not region.es_oficial %}<p class="mb-0">{% estado "demostracion" "De demostración" %}</p>{% endif %}</div>
 <div class="fche-pagina__acciones"><a href="/territorio" class="btn btn-outline-secondary btn-sm volver">{% icono "volver" 15 %}Todas las regiones</a></div></header>
 {% include "territorio/_comunas_con_presencia.html" %}
 <div class="row g-4">{% for p in provincias %}

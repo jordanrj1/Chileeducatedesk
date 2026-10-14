@@ -1,4 +1,4 @@
-{# Qué es: «Dónde trabajamos»: comunas con trabajo registrado, buscador de comuna y todas las regiones. #}
+{# Qué es: «Dónde trabajamos»: comunas con trabajo registrado, buscador de comuna y todas las regiones; avisa si falta la lista oficial y explica cómo funciona el territorio. #}
 {# Dónde se usa: /territorio · Proceso: P5/P10 #}
 {% extends "base.html" %}
 {% load fche %}
@@ -8,16 +8,28 @@
 {% block contenido %}
 <header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">Dónde trabajamos</h1>
 <p class="fche-pagina__bajada">Las comunas donde ya hay trabajo registrado, primero las de más actividad en los últimos 12 meses. Cada comuna reúne sus comunidades, organizaciones, lugares y actividades.</p></div></header>
+{% if avisar_lista_oficial %}
+<div class="alert alert-warning d-flex gap-2" role="status">{% icono "alerta" 18 %}<div>
+  {% if lista_oficial.hay %}
+  <strong class="d-block">La lista oficial está incompleta</strong>
+  Hay {{ lista_oficial.hay }} de {{ lista_oficial.esperadas }} comunas de Chile. El Administrador agrega las que faltan con <code>python manage.py cargar_territorio</code>, sin duplicar ni borrar nada.
+  {% else %}
+  <strong class="d-block">Falta la lista oficial de Chile</strong>
+  Aún no están las 16 regiones, 56 provincias y 346 comunas; lo que se ve aquí es solo de demostración. El Administrador la carga con <code>python manage.py cargar_territorio</code> (el sistema ya trae la lista; al arrancar con <code>iniciar.bat</code> se carga sola).
+  {% endif %}
+</div></div>
+{% endif %}
+{% include "territorio/_como_funciona.html" with abierto=False %}
 <form class="fche-filtros" method="get" role="search" style="max-width:40rem;"><div class="fche-filtros__busqueda">{% icono "buscar" 16 %}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar una comuna…" aria-label="Buscar comuna"></div><div class="fche-filtros__acciones"><button class="btn btn-outline-primary">Buscar</button></div></form>
 {% if q %}
-  <ul class="fche-items" style="max-width:48rem;">{% for c in comunas %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ c.get_absolute_url }}">{{ c.nombre }}</a><div class="fche-items__detalle">{{ c.provincia.nombre }} · {{ c.provincia.region.nombre }}</div></div>{% icono "derecha" 16 "text-muted" %}</li>{% empty %}<li class="text-muted">Sin resultados para «{{ q }}». <a href="/territorio">Volver a dónde trabajamos</a></li>{% endfor %}</ul>
+  <ul class="fche-items" style="max-width:48rem;">{% for c in comunas %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ c.get_absolute_url }}">{{ c.nombre }}</a>{% if not c.es_oficial %} {% estado "demostracion" "De demostración" %}{% endif %}<div class="fche-items__detalle">{{ c.provincia.nombre }} · {{ c.provincia.region.nombre }}</div></div>{% icono "derecha" 16 "text-muted" %}</li>{% empty %}<li class="text-muted">Sin resultados para «{{ q }}». <a href="/territorio">Volver a dónde trabajamos</a></li>{% endfor %}</ul>
 {% elif regiones %}
   {% include "territorio/_comunas_con_presencia.html" with con_vacio=True %}
   <section aria-labelledby="regiones-titulo">
     <div class="fche-seccion"><h2 class="h6" id="regiones-titulo">Todas las regiones <span class="fche-contador">{{ regiones|length }}</span></h2></div>
-    <div class="fche-mosaico">{% for r in regiones %}<a class="fche-mosaico__item align-items-center" href="{{ r.get_absolute_url }}"><span class="fche-mosaico__icono">{% icono "territorio" 18 %}</span><span class="flex-grow-1"><span class="fche-mosaico__titulo">{{ r.nombre }}</span><span class="fche-mosaico__texto">{{ r.n_provincias }} provincias · {{ r.n_comunas }} comunas</span></span>{% icono "derecha" 16 "text-muted" %}</a>{% endfor %}</div>
+    <div class="fche-mosaico">{% for r in regiones %}<a class="fche-mosaico__item align-items-center" href="{{ r.get_absolute_url }}"><span class="fche-mosaico__icono">{% icono "territorio" 18 %}</span><span class="flex-grow-1"><span class="fche-mosaico__titulo">{{ r.nombre }}</span><span class="fche-mosaico__texto">{{ r.n_provincias }} provincias · {{ r.n_comunas }} comunas</span>{% if not r.es_oficial %}<span class="d-block mt-1">{% estado "demostracion" "De demostración" %}</span>{% endif %}</span>{% icono "derecha" 16 "text-muted" %}</a>{% endfor %}</div>
   </section>
 {% else %}
-  <div class="fche-vacio"><span class="fche-vacio__icono">{% icono "territorio" 22 %}</span><p class="fche-vacio__titulo">El territorio aún no se ha cargado</p><p class="fche-vacio__texto">El Administrador debe ejecutar <code>cargar_territorio</code> con el archivo oficial de códigos CUT.</p></div>
+  <div class="fche-vacio"><span class="fche-vacio__icono">{% icono "territorio" 22 %}</span><p class="fche-vacio__titulo">El territorio aún no se ha cargado</p><p class="fche-vacio__texto">El Administrador lo carga con <code>python manage.py cargar_territorio</code>, que usa la lista oficial de regiones, provincias y comunas que ya trae el sistema.</p></div>
 {% endif %}
 {% endblock %}

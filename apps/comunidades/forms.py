@@ -35,8 +35,9 @@ class ComunidadForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.fields["comuna"].queryset = Comuna.objects.select_related("provincia").order_by("nombre")
-        self.fields["sector"].queryset = Sector.objects.select_related("comuna").order_by("comuna__nombre", "nombre")
-        self.fields["sector"].label_from_instance = lambda s: f"{s.nombre} ({s.comuna})"
+        # solo sectores activos; al editar se conserva el que la comunidad ya tenía aunque esté desactivado
+        self.fields["sector"].queryset = Sector.para_elegir(conservar=self.instance.sector_id).select_related("comuna").order_by("comuna__nombre", "nombre")
+        self.fields["sector"].label_from_instance = lambda s: s.etiqueta(con_comuna=True)
         self.fields["areas_interes"].queryset = AreaTematica.objects.filter(activo=True)
         fijar_valores_selectores(self)
 

@@ -281,7 +281,9 @@ class TerritorioForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.fields["comuna"].queryset = Comuna.objects.select_related("provincia")
-        self.fields["sector"].queryset = Sector.objects.select_related("comuna")
+        # solo sectores activos; al editar se conserva el que la fila ya tenía aunque esté desactivado
+        self.fields["sector"].queryset = Sector.para_elegir(conservar=self.instance.sector_id).select_related("comuna", "sector_padre__sector_padre")
+        self.fields["sector"].label_from_instance = Sector.etiqueta
 
     def clean(self):
         d = super().clean()

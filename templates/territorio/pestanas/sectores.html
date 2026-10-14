@@ -1,13 +1,13 @@
-{# Qué es: Pestaña Sectores de la comuna (con sectores dentro de sectores). #}
+{# Qué es: Pestaña Sectores de la comuna (con sectores dentro de sectores); los desactivados se marcan y se pueden reactivar desde su ficha. #}
 {# Dónde se usa: /territorio/comuna/<int:pk>, /territorio/sector/<int:pk> · Proceso: P5 #}
 {% load fche %}<div class="row g-4">
 <div class="col-12 {% if puede_agregar %}col-xl-7{% endif %}">
 <h2 class="h6 mb-2">Sectores</h2>
 {% if raices %}
 <ul class="fche-items">{% for s in raices %}
-  <li class="d-block"><a class="fche-items__titulo" href="{{ s.get_absolute_url }}">{{ s.nombre }}</a> <span class="text-muted small">({{ s.get_tipo_display }}{% for a in s.alias.all %} · también «{{ a.nombre }}»{% endfor %})</span>
-    {% if s.hijos.all %}<ul class="small mt-1 mb-0">{% for h in s.hijos.all %}<li><a href="{{ h.get_absolute_url }}">{{ h.nombre }}</a> <span class="text-muted">({{ h.get_tipo_display }})</span>
-      {% if h.hijos.all %}<ul>{% for n in h.hijos.all %}<li><a href="{{ n.get_absolute_url }}">{{ n.nombre }}</a></li>{% endfor %}</ul>{% endif %}</li>{% endfor %}</ul>{% endif %}
+  <li class="d-block"><a class="fche-items__titulo" href="{{ s.get_absolute_url }}">{{ s.nombre }}</a>{% if not s.activo %} {% estado "desactivado" "Desactivado" %}{% endif %} <span class="text-muted small">({{ s.get_tipo_display }}{% for a in s.alias.all %} · también «{{ a.nombre }}»{% endfor %})</span>
+    {% if s.hijos.all %}<ul class="small mt-1 mb-0">{% for h in s.hijos.all %}<li><a href="{{ h.get_absolute_url }}">{{ h.nombre }}</a>{% if not h.activo %} {% estado "desactivado" "Desactivado" %}{% endif %} <span class="text-muted">({{ h.get_tipo_display }})</span>
+      {% if h.hijos.all %}<ul>{% for n in h.hijos.all %}<li><a href="{{ n.get_absolute_url }}">{{ n.nombre }}</a>{% if not n.activo %} {% estado "desactivado" "Desactivado" %}{% endif %}</li>{% endfor %}</ul>{% endif %}</li>{% endfor %}</ul>{% endif %}
   </li>{% endfor %}</ul>
 {% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "territorio" 18 %}</span><p class="fche-vacio__texto mb-0">Aún no hay sectores registrados aquí.</p></div>{% endif %}
 </div>

@@ -1,4 +1,4 @@
-"""Direcciones (rutas) del territorio: índice, región, comuna, sector, exportar, crear y editar sectores,
+"""Direcciones (rutas) del territorio: índice, región, comuna, sector, exportar, crear, editar, desactivar y reactivar sectores,
 y las listas que alimentan la dirección en cascada."""
 from django.urls import path
 
@@ -14,6 +14,7 @@ urlpatterns = [
     path("territorio/sector/<int:pk>", views.SectorFicha.as_view(), name="sector"),
     path("territorio/sector/<int:pk>/exportar", views.SectorExportar.as_view(), name="sector_exportar"),
     path("territorio/sector/<int:pk>/editar", views.SectorEditar.as_view(), name="sector_editar"),
+    path("territorio/sector/<int:pk>/alternar", views.SectorAlternar.as_view(), name="sector_alternar"),
     path("territorio/sector/<int:pk>/alias", views.AliasNuevo.as_view(), name="alias_nuevo"),
     path("territorio/provincias", views.ProvinciasOpciones.as_view(), name="provincias"),
     path("territorio/comunas", views.ComunasOpciones.as_view(), name="comunas"),

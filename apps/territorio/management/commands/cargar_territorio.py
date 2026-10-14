@@ -1,39 +1,48 @@
-"""Carga regiones, provincias y comunas desde un CSV con códigos CUT (fuente oficial).
+"""Comando `cargar_territorio`: carga o actualiza las regiones, provincias y comunas de Chile (códigos CUT oficiales).
 
-Columnas: region_codigo, region_nombre, provincia_codigo, provincia_nombre, comuna_codigo, comuna_nombre
-Es idempotente: se puede ejecutar de nuevo para actualizar.
+Sin argumentos usa la lista oficial guardada en `apps/territorio/datos/cut_chile.csv`; también acepta otro CSV con las columnas
+region_codigo, region_nombre, provincia_codigo, provincia_nombre, comuna_codigo, comuna_nombre. Revisa todo el archivo antes de
+escribir y, si hay errores, no carga nada. Se puede repetir: agrega lo nuevo, corrige nombres y nunca borra ni duplica.
+  --si-falta  no hace nada si ya están todas las comunas del archivo (lo usan iniciar.bat e iniciar.sh al arrancar).
+  --simular   muestra lo que cambiaría, sin guardar nada.
 """
-import csv
-
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
 
-from apps.territorio.models import Comuna, Provincia, Region
+from apps.territorio.carga import ARCHIVO_OFICIAL, ErrorCarga, cargar, comunas_que_faltan, leer
 
-COLUMNAS = ["region_codigo", "region_nombre", "provincia_codigo", "provincia_nombre", "comuna_codigo", "comuna_nombre"]
+DETALLE_MAXIMO = 30  # cuántos cambios se listan uno por uno
 
 
 class Command(BaseCommand):
-    help = "Carga el territorio desde un CSV con códigos CUT."
+    help = "Carga o actualiza las regiones, provincias y comunas de Chile desde la lista oficial (códigos CUT). Nunca borra."
 
     def add_arguments(self, parser):
-        parser.add_argument("archivo")
+        parser.add_argument("archivo", nargs="?", default=str(ARCHIVO_OFICIAL), help="CSV con códigos CUT. Si no se indica, usa la lista oficial del sistema.")
+        parser.add_argument("--si-falta", action="store_true", help="No hace nada si ya están todas las comunas del archivo.")
+        parser.add_argument("--simular", action="store_true", help="Muestra lo que cambiaría, sin guardar nada.")
 
-    @transaction.atomic
-    def handle(self, *args, archivo, **opts):
+    def handle(self, *args, archivo, si_falta, simular, **opts):
         try:
-            f = open(archivo, newline="", encoding="utf-8-sig")
-        except OSError as e:
-            raise CommandError(f"No se pudo abrir el archivo: {e}")
-        with f:
-            lector = csv.DictReader(f)
-            faltan = [c for c in COLUMNAS if c not in (lector.fieldnames or [])]
-            if faltan:
-                raise CommandError(f"Faltan columnas: {', '.join(faltan)}")
-            n = 0
-            for fila in lector:
-                region, _ = Region.objects.update_or_create(codigo=fila["region_codigo"].strip(), defaults={"nombre": fila["region_nombre"].strip()})
-                prov, _ = Provincia.objects.update_or_create(codigo=fila["provincia_codigo"].strip(), defaults={"region": region, "nombre": fila["provincia_nombre"].strip()})
-                Comuna.objects.update_or_create(codigo=fila["comuna_codigo"].strip(), defaults={"provincia": prov, "nombre": fila["comuna_nombre"].strip()})
-                n += 1
-        self.stdout.write(self.style.SUCCESS(f"{n} comunas procesadas."))
+            filas = leer(archivo)
+        except ErrorCarga as e:
+            raise CommandError(str(e))
+        if si_falta and not comunas_que_faltan(filas):
+            self.stdout.write(f"Territorio: ya están las {len(filas)} comunas del archivo; no se cambió nada.")
+            return
+        resultados = cargar(filas, simular=simular)
+        if simular:
+            self.stdout.write(f"Simulación con «{archivo}»: así cambiaría la base (no se guardó nada).")
+        else:
+            self.stdout.write(f"Territorio cargado desde «{archivo}».")
+        for r in resultados:
+            self.stdout.write(f"  {r.linea()}")
+            if 0 < len(r.nuevas) <= DETALLE_MAXIMO:
+                self.stdout.write("    Nuevas: " + "; ".join(r.nuevas))
+            for texto in r.actualizadas[:DETALLE_MAXIMO]:
+                self.stdout.write(f"    Actualizada {texto}")
+            if len(r.actualizadas) > DETALLE_MAXIMO:
+                self.stdout.write(f"    … y {len(r.actualizadas) - DETALLE_MAXIMO} más.")
+        if simular:
+            self.stdout.write("Simulación terminada: no se guardó nada.")
+        else:
+            self.stdout.write(self.style.SUCCESS("Listo. No se borró nada; lo que no está en el archivo (como la Región Demo) sigue igual."))

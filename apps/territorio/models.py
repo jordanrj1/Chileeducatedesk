@@ -1,13 +1,27 @@
 """Tablas del territorio: Region, Provincia y Comuna (se cargan desde la fuente oficial CUT), Sector (villa, población,
-etapa o barrio; puede estar dentro de otro sector), SectorAlias (nombres escritos distinto) y Direccion
-(calle, número, comuna y sector; el sector debe pertenecer a la comuna)."""
+etapa o barrio; puede estar dentro de otro sector; se desactiva, no se borra), SectorAlias (nombres escritos distinto)
+y Direccion (calle, número, comuna y sector; el sector debe pertenecer a la comuna)."""
 from django.core.exceptions import ValidationError
 from django.db import models
+from simple_history.models import HistoricalRecords
+
+REGIONES_OFICIALES = frozenset(f"{n:02d}" for n in range(1, 17))  # 01 Tarapacá … 16 Ñuble (CUT 2018)
+
+
+def es_codigo_oficial(codigo):
+    """Si un código CUT es de una de las 16 regiones de Chile. La Región Demo y las de prueba usan 97, 98 o 99."""
+    codigo = codigo or ""
+    return codigo.isascii() and codigo.isdigit() and codigo[:2] in REGIONES_OFICIALES
+
+
+# Región, provincia y comuna: si vienen de la lista oficial de Chile (si no, son de demostración o de prueba). Sin consultas.
+ES_OFICIAL = property(lambda self: es_codigo_oficial(self.codigo), doc="Viene de la lista oficial de Chile (por su código).")
 
 
 class Region(models.Model):
     codigo = models.CharField("código CUT", max_length=3, unique=True)
     nombre = models.CharField(max_length=120)
+    es_oficial = ES_OFICIAL
 
     class Meta:
         ordering = ["codigo"]
@@ -27,6 +41,7 @@ class Provincia(models.Model):
     region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name="provincias")
     codigo = models.CharField("código CUT", max_length=3, unique=True)
     nombre = models.CharField(max_length=120)
+    es_oficial = ES_OFICIAL
 
     class Meta:
         ordering = ["codigo"]
@@ -41,6 +56,7 @@ class Comuna(models.Model):
     provincia = models.ForeignKey(Provincia, on_delete=models.PROTECT, related_name="comunas")
     codigo = models.CharField("código CUT", max_length=5, unique=True)
     nombre = models.CharField(max_length=120)
+    es_oficial = ES_OFICIAL
 
     class Meta:
         ordering = ["nombre"]
@@ -62,13 +78,19 @@ class Comuna(models.Model):
 
 
 class Sector(models.Model):
-    """Jerárquico: San Pedro de la Costa contiene Etapa 1 a 4; existen villas y poblaciones."""
+    """Jerárquico: San Pedro de la Costa contiene Etapa 1 a 4; existen villas y poblaciones.
+
+    Nunca se borra: se desactiva. Un sector desactivado deja de ofrecerse para elegir (ver `para_elegir`), pero lo que ya está
+    registrado en él lo conserva.
+    """
 
     TIPOS = [("sector", "Sector"), ("etapa", "Etapa"), ("villa", "Villa"), ("poblacion", "Población"), ("barrio", "Barrio")]
     comuna = models.ForeignKey(Comuna, on_delete=models.PROTECT, related_name="sectores")
     nombre = models.CharField(max_length=120)
     tipo = models.CharField(max_length=10, choices=TIPOS, default="sector")
     sector_padre = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="hijos")
+    activo = models.BooleanField(default=True, help_text="Un sector desactivado ya no se ofrece para elegir; lo registrado en él se conserva.")
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ["nombre"]
@@ -86,6 +108,20 @@ class Sector(models.Model):
         from django.urls import reverse
 
         return reverse("territorio:sector", args=[self.pk])
+
+    @classmethod
+    def para_elegir(cls, conservar=None):
+        """Sectores que se ofrecen en una lista para elegir: los activos y, al editar, el que el registro ya tiene (`conservar`,
+        un id) aunque esté desactivado, para no perderlo al guardar."""
+        filtro = models.Q(activo=True)
+        if conservar:
+            filtro |= models.Q(pk=conservar)
+        return cls.objects.filter(filtro)
+
+    def etiqueta(self, con_comuna=False):
+        """Texto de la opción en una lista: «Villa X» o «Villa X (Hualpén)», con «(desactivado)» si ya no está activo."""
+        texto = f"{self.nombre} ({self.comuna})" if con_comuna else str(self)
+        return texto if self.activo else f"{texto} (desactivado)"
 
     def descendientes_ids(self):
         """Ids de este sector y de todos los que contiene (etapas dentro de un sector, etc.)."""

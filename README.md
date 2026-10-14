@@ -18,7 +18,7 @@ Requisitos: Python 3.12 (o compatible con Django 5.2 LTS) y PostgreSQL 14 o supe
 | Arrancar | `./iniciar.sh` | `iniciar.bat` |
 | Respaldo | `./respaldar.sh` | `respaldar.bat` |
 
-Luego: `python manage.py cargar_territorio comunas.csv` (archivo oficial CUT), `python manage.py crear_usuario …` (Gestor y Administrador) y, para ensayar, `python manage.py cargar_demo --si-estoy-seguro` (datos ficticios).
+Luego: `python manage.py cargar_territorio` (lista oficial de regiones, provincias y comunas que ya trae el sistema; `iniciar` la carga sola si falta), `python manage.py crear_usuario …` (Gestor y Administrador) y, para ensayar, `python manage.py cargar_demo --si-estoy-seguro` (datos ficticios).
 
 ## Pruebas
 `.venv/bin/python -m pytest -q` (Mac) · `.venv\Scripts\python -m pytest -q` (Windows)

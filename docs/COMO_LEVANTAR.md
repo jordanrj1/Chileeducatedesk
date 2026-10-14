@@ -81,12 +81,13 @@ set DJANGO_SETTINGS_MODULE=config.settings.produccion
 ## 6. Cargar el territorio oficial
 
 ```bat
-.venv\Scripts\python manage.py cargar_territorio C:\ruta\comunas.csv
+.venv\Scripts\python manage.py cargar_territorio
 ```
 
-- El archivo es un CSV con las columnas `region_codigo, region_nombre, provincia_codigo, provincia_nombre, comuna_codigo, comuna_nombre` (códigos CUT oficiales).
-- **Ese archivo aún no está en el repositorio:** hay que conseguirlo.
-- Se puede ejecutar de nuevo sin duplicar nada.
+- Sin argumentos usa la lista oficial que ya trae el sistema: `apps/territorio/datos/cut_chile.csv` (16 regiones, 56 provincias y 346 comunas; fuentes en `apps/territorio/datos/LEEME.md`).
+- `iniciar.bat` lo ejecuta solo con `--si-falta`: si ya están todas las comunas, no hace nada.
+- `--simular` muestra lo que cambiaría, sin guardar nada. También acepta otro CSV con las columnas `region_codigo, region_nombre, provincia_codigo, provincia_nombre, comuna_codigo, comuna_nombre`.
+- Antes de escribir revisa todo el archivo; si hay un error, no carga nada. Se puede ejecutar de nuevo sin duplicar ni borrar nada (la «Región Demo» sigue igual).
 - Los **sectores** (villas, poblaciones, etapas) no vienen en ese archivo: los crea Claudio desde el sistema.
 
 ## 7. Crear las cuentas

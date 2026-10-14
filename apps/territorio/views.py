@@ -1,6 +1,6 @@
-"""Pantallas del territorio: índice «Dónde trabajamos», región, ficha de comuna y de sector como contenedor
-(resumen, sectores, comunidades, organizaciones, personas, lugares, actividades y alcance), exportar a Excel,
-crear y editar sectores, y las listas de la dirección en cascada."""
+"""Pantallas del territorio: índice «Dónde trabajamos» (con el aviso si falta la lista oficial), región, ficha de comuna
+y de sector como contenedor (resumen, sectores, comunidades, organizaciones, personas, lugares, actividades, alcance e
+historial del sector), exportar a Excel, crear, editar, desactivar y reactivar sectores, y las listas de la dirección en cascada."""
 from io import BytesIO
 from itertools import groupby
 
@@ -18,9 +18,10 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.nucleo.auditoria import registrar
-from apps.nucleo.vistas_base import FichaBase, Permiso403Mixin
+from apps.nucleo.vistas_base import AlternarActivoBase, FichaBase, Permiso403Mixin
 
 from . import consultas
+from .carga import TOTALES_OFICIALES, comunas_oficiales
 from .exportar import detalle_de, libro_territorial
 from .forms import AliasForm, SectorForm
 from .models import Comuna, Provincia, Region, Sector
@@ -40,7 +41,10 @@ def _valor(request):
 
 
 class TerritorioIndice(Permiso403Mixin, TemplateView):
-    """«Dónde trabajamos»: primero las comunas con presencia de la Fundación, luego todas las regiones; o búsqueda directa de una comuna."""
+    """«Dónde trabajamos»: primero las comunas con presencia de la Fundación, luego todas las regiones; o búsqueda directa de una comuna.
+
+    Si faltan comunas de la lista oficial (regiones 01 a 16) lo avisa, aunque esté la Región Demo.
+    """
 
     permission_required = "territorio.view_comuna"
     template_name = "territorio/indice.html"
@@ -54,6 +58,10 @@ class TerritorioIndice(Permiso403Mixin, TemplateView):
         else:
             ctx["regiones"] = regiones = Region.objects.annotate(n_provincias=Count("provincias", distinct=True), n_comunas=Count("provincias__comunas"))
             ctx["presencia"] = presencia_por_comuna() if regiones else []  # sin territorio cargado no hay nada que contar
+        hay, esperadas = comunas_oficiales().count(), TOTALES_OFICIALES["comunas"]
+        ctx["lista_oficial"] = {"hay": hay, "esperadas": esperadas, "completa": hay >= esperadas}
+        # sin ninguna región, el estado vacío ya explica que falta cargar el territorio
+        ctx["avisar_lista_oficial"] = hay < esperadas and bool(q or ctx["regiones"])
         return ctx
 
 
@@ -141,7 +149,9 @@ class _FichaTerritorio(FichaBase):
         ctx = super().get_context_data(**kw)
         conteos = self.conteos()
         ctx["pestanas"] = [(c, f"{e} ({conteos[c]()})" if c in conteos else e) for c, e in ctx["pestanas"]]
-        ctx["puede_agregar"] = self.request.user.has_perm("territorio.add_sector")
+        # un sector desactivado no recibe sectores nuevos dentro ni sirve de punto de partida para crear registros
+        ctx["crear_aqui"] = getattr(self.object, "activo", True)
+        ctx["puede_agregar"] = ctx["crear_aqui"] and self.request.user.has_perm("territorio.add_sector")
         return ctx
 
     def parametros_nuevo(self):
@@ -302,6 +312,7 @@ class SectorFicha(_FichaTerritorio):
         ("lugares", "Lugares", "territorio/pestanas/lugares.html", "lugares.view_lugar"),
         ("actividades", "Actividades", "territorio/pestanas/actividades.html", "actividades.view_actividad"),
         ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
+        ("historial", "Historial", "generico/_historial.html", "territorio.view_historicalsector"),
     ]
     permiso_editar = "territorio.change_sector"
 
@@ -331,7 +342,10 @@ class SectorFicha(_FichaTerritorio):
         return {"sectores": lambda: self.object.hijos.count(), "nombres": lambda: self.object.alias.count(), **super().conteos()}
 
     def contexto_ficha(self):
-        return {**super().contexto_ficha(), "es_sector": True, "url_editar": reverse("territorio:sector_editar", args=[self.object.pk]), "url_volver": self.object.comuna.get_absolute_url()}
+        return {
+            **super().contexto_ficha(), "es_sector": True, "url_volver": self.object.comuna.get_absolute_url(),
+            "url_editar": reverse("territorio:sector_editar", args=[self.object.pk]), "url_alternar": reverse("territorio:sector_alternar", args=[self.object.pk]),
+        }
 
     def ctx_sectores(self):
         form = SectorForm(comuna=self.object.comuna, initial={"sector_padre": self.object.pk})
@@ -420,6 +434,13 @@ class SectorEditar(Permiso403Mixin, View):
         return render(request, "generico/formulario.html", self._ctx(s, form), status=400)
 
 
+class SectorAlternar(AlternarActivoBase):
+    """Desactiva o reactiva un sector; nunca se borra. Desactivado, deja de ofrecerse para elegir y lo registrado en él se conserva."""
+
+    modelo = Sector
+    permission_required = "territorio.change_sector"
+
+
 class AliasNuevo(Permiso403Mixin, View):
     permission_required = "territorio.change_sector"
 
@@ -459,21 +480,27 @@ class ComunasOpciones(Permiso403Mixin, View):
         return HttpResponse(_opciones([(c.pk, c.nombre) for c in qs]))
 
 
+def _sectores_activos(comuna):
+    """[(id, nombre)] de los sectores activos de una comuna, con el nombre de su padre y su abuelo en la misma consulta."""
+    return [(s.pk, str(s)) for s in Sector.objects.filter(comuna=comuna, activo=True).select_related("sector_padre__sector_padre")]
+
+
 class SectoresOpciones(Permiso403Mixin, View):
-    """Devuelve <option> de los sectores de una comuna (para HTMX)."""
+    """Devuelve <option> de los sectores activos de una comuna (para HTMX)."""
 
     permission_required = "territorio.view_sector"
 
     def get(self, request):
         v = _valor(request)
-        return HttpResponse(_opciones([(s.pk, str(s)) for s in Sector.objects.filter(comuna_id=v).select_related("sector_padre")] if v else []))
+        return HttpResponse(_opciones(_sectores_activos(v) if v else []))
 
 
 class SectorCrearRapido(Permiso403Mixin, View):
     """[+ Crear sector] dentro de un formulario de dirección, sin salir (TE-06).
 
-    Si el nombre coincide con uno existente (o con un nombre alternativo) se usa ese. Si solo se parece, avisa y pide confirmar.
-    Responde las opciones del sector con el elegido seleccionado y un mensaje fuera de banda.
+    Si el nombre coincide con uno existente (o con un nombre alternativo) se usa ese; si ese está desactivado, lo avisa y no crea
+    otro. Si solo se parece, avisa y pide confirmar. Responde las opciones del sector (solo los activos) con el elegido
+    seleccionado y un mensaje fuera de banda.
     """
 
     permission_required = "territorio.add_sector"
@@ -487,6 +514,12 @@ class SectorCrearRapido(Permiso403Mixin, View):
         if not comuna or not nombre:
             return self._respuesta(comuna, None, "Elige la comuna y escribe el nombre del sector.", "danger")
         existente = mismo_sector(comuna, nombre)
+        if existente and not existente.activo:
+            aviso = format_html(
+                "Ya existe «{}», pero está desactivado: no se creó otro. Si se vuelve a usar, reactívalo desde <a href=\"{}\">su ficha</a>.",
+                existente, existente.get_absolute_url(),
+            )
+            return self._respuesta(comuna, None, aviso, "warning")
         if existente:
             return self._respuesta(comuna, existente.pk, f"Ya existía «{existente}»: quedó seleccionado.", "info")
         parecidos = sectores_parecidos(comuna, nombre)
@@ -499,10 +532,11 @@ class SectorCrearRapido(Permiso403Mixin, View):
         return self._respuesta(comuna, s.pk, f"Sector «{s}» creado y seleccionado.", "success")
 
     def _respuesta(self, comuna, seleccionado, mensaje, nivel, confirmar=False):
-        pares = [(s.pk, str(s)) for s in Sector.objects.filter(comuna=comuna).select_related("sector_padre")] if comuna else []
+        pares = _sectores_activos(comuna) if comuna else []
         boton = format_html(
             ' <button type="button" class="btn btn-sm btn-outline-warning" hx-post="/territorio/sectores/crear" hx-include="closest .crear-sector, [name$=\'comuna\']" '
             'hx-vals=\'{{"confirmar_sector": "1"}}\' hx-target="#{}">Crear igual</button>', getattr(self, "destino", "") or "id_sector"
         ) if confirmar else ""
-        aviso = format_html('<div id="aviso-sector" hx-swap-oob="true" class="small text-{}">{}{}</div>', nivel, mensaje, boton)
+        # «-emphasis»: el tono oscuro de cada color, con contraste AA sobre blanco
+        aviso = format_html('<div id="aviso-sector" hx-swap-oob="true" class="small mt-1 text-{}-emphasis" role="status">{}{}</div>', nivel, mensaje, boton)
         return HttpResponse(_opciones(pares, seleccionado) + aviso)

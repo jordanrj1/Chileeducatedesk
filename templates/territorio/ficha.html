@@ -1,4 +1,4 @@
-{# Qué es: Cabecera de la ficha de comuna o sector: región, municipalidad y botones «+ Comunidad / Organización / Lugar / Actividad». #}
+{# Qué es: Cabecera de la ficha de comuna o sector: región, código, municipalidad, estado del sector y botones «+ Comunidad / Organización / Lugar / Actividad» y «Desactivar / Reactivar sector». #}
 {# Dónde se usa: /territorio/comuna/<int:pk>, /territorio/sector/<int:pk> · Proceso: P5/P9 #}
 {% extends "generico/ficha.html" %}
 {% load fche %}
@@ -6,21 +6,32 @@
 <div class="d-flex flex-wrap gap-2 align-items-center">
   {% if es_sector %}
   <span class="badge text-bg-light border">{{ object.get_tipo_display }}</span>
+  {% if not object.activo %}{% estado "desactivado" "Desactivado" %}{% endif %}
   <span class="d-inline-flex align-items-center gap-1">{% icono "territorio" 15 %}<span><a href="{{ comuna_contenedor.get_absolute_url }}">{{ comuna_contenedor }}</a>{% if object.sector_padre %} › <a href="{{ object.sector_padre.get_absolute_url }}">{{ object.sector_padre }}</a>{% endif %}</span></span>
   {% else %}
   <span class="d-inline-flex align-items-center gap-1">{% icono "territorio" 15 %}<span><a href="{{ object.provincia.region.get_absolute_url }}">{{ object.provincia.region }}</a> › {{ object.provincia }}</span></span>
+  <span>Código {{ object.codigo }}</span>{% if not object.es_oficial %}{% estado "demostracion" "De demostración" %}{% endif %}
   <span class="d-inline-flex align-items-center gap-1">{% icono "organizaciones" 15 %}<span>Municipalidad:
     {% if municipalidad %}<a href="{{ municipalidad.get_absolute_url }}">{{ municipalidad }}</a>{% if not municipalidad.activo %} {% estado "inactiva" "Inactiva" %}{% endif %}
     {% elif perms.organizaciones.add_organizacion %}<a href="/organizaciones/nueva?comuna={{ object.pk }}&amp;tipo=municipalidad">+ Registrar municipalidad</a>
     {% else %}sin registrar{% endif %}</span>
   </span>
   {% endif %}
+  {% if es_sector and not object.activo %}<p class="small text-muted mb-0 w-100">Ya no se ofrece para elegir ni para crear registros en él. Lo registrado aquí se conserva.</p>{% endif %}
 </div>
 {% endblock %}
 {% block acciones %}
+{% if crear_aqui %}
 {% if perms.comunidades.add_comunidad %}<a class="btn btn-outline-primary btn-sm" href="/comunidades/nueva?{{ parametros_nuevo }}">+ Comunidad</a>{% endif %}
 {% if perms.organizaciones.add_organizacion %}<a class="btn btn-outline-primary btn-sm" href="/organizaciones/nueva?{{ parametros_nuevo }}">+ Organización</a>{% endif %}
 {% if perms.lugares.add_lugar %}<a class="btn btn-outline-primary btn-sm" href="/lugares/nuevo?{{ parametros_nuevo }}">+ Lugar</a>{% endif %}
 {% if perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="/actividades/nueva?{{ parametros_nuevo }}">+ Actividad</a>{% endif %}
+{% endif %}
 {% if perms.territorio.exportar_territorio %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_exportar_resumen }}" title="Descarga en Excel el resumen de {{ nombre_ambito }}">{% icono "descargar" 15 %}Exportar resumen</a>{% endif %}
+{% if es_sector and puede_editar %}
+<form method="post" action="{{ url_alternar }}" class="d-inline">{% csrf_token %}
+  {% if object.activo %}<button class="btn btn-outline-secondary btn-sm" title="Deja de ofrecerse para elegir; lo registrado en él se conserva">Desactivar sector</button>
+  {% else %}<button class="btn btn-primary btn-sm">Reactivar sector</button>{% endif %}
+</form>
+{% endif %}
 {% endblock %}

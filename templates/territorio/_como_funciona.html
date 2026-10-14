@@ -1,0 +1,34 @@
+{# Qué es: Bloque plegable «Cómo funciona el territorio»: de dónde salen regiones, comunas y sectores, qué reúne cada comuna o sector y qué se puede hacer. #}
+{# Dónde se usa: se incluye en territorio/indice.html y territorio/pestanas/resumen.html (/territorio, /territorio/comuna/<int:pk>, /territorio/sector/<int:pk>) · Proceso: P5 #}
+{% comment %}Recibe `abierto` (se muestra desplegado) cuando todavía no hay nada que mirar.{% endcomment %}
+<details class="fche-tarjeta mb-4"{% if abierto %} open{% endif %}>
+  <summary class="px-3 py-2">Cómo funciona el territorio: de dónde sale y qué reúne</summary>
+  <div class="fche-tarjeta__cuerpo pt-1">
+    <div class="row g-4">
+      <section class="col-12 col-lg-4" aria-labelledby="como-sale">
+        <h2 class="h6" id="como-sale">De dónde sale</h2>
+        <ul class="small mb-0 ps-3">
+          <li><strong>Regiones, provincias y comunas:</strong> de la lista oficial de Chile (códigos de la SUBDERE y nombres del INE). Ya vienen en el sistema y no se escriben a mano.</li>
+          <li><strong>Sectores, villas, poblaciones, etapas y barrios:</strong> no hay una lista oficial, así que se crean aquí, dentro de cada comuna.</li>
+        </ul>
+      </section>
+      <section class="col-12 col-lg-4" aria-labelledby="como-reune">
+        <h2 class="h6" id="como-reune">Qué reúne cada comuna o sector</h2>
+        <ul class="small mb-0 ps-3">
+          <li><strong>Personas:</strong> por su dirección de residencia.</li>
+          <li><strong>Organizaciones y lugares:</strong> por su dirección (la municipalidad, también por su comuna).</li>
+          <li><strong>Comunidades:</strong> por la comuna y el sector donde viven o se reúnen.</li>
+          <li><strong>Actividades:</strong> por el lugar donde se realizan o por el territorio al que van dirigidas.</li>
+        </ul>
+      </section>
+      <section class="col-12 col-lg-4" aria-labelledby="como-hacer">
+        <h2 class="h6" id="como-hacer">Qué se puede hacer</h2>
+        <ul class="small mb-0 ps-3">
+          <li><strong>Crear sectores</strong> en la pestaña Sectores de la comuna, o con «+ Crear sector» al escribir una dirección.</li>
+          <li><strong>Editarlos</strong> y agregarles <strong>nombres alternativos</strong> (otras formas de escribirlos), para reconocerlos y no crearlos dos veces.</li>
+          <li><strong>Desactivarlos</strong> cuando ya no se usen: dejan de ofrecerse para elegir, pero lo registrado en ellos se conserva. Nada se borra.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</details>
