@@ -242,6 +242,52 @@ def test_exportacion_nunca_trae_datos_sensibles(cg, ca, mundo):
         assert [h for h in libro.sheetnames if "ensible" in h or "mergencia" in h or "erificaci" in h] == []
 
 
+def _con_edad(crear_persona, comuna, sector, nombres, anios, **kw):
+    """Residente en el sector con la edad indicada (None = sin fecha de nacimiento)."""
+    nacimiento = HOY - timedelta(days=365 * anios + anios // 4 + 2) if anios is not None else None
+    p = crear_persona(nombres, apellido_paterno="Ficticio", fecha_nacimiento=nacimiento, **kw)
+    PersonaDireccion.objects.create(persona=p, direccion=_dir(comuna, sector), tipo="residencia", vigente=True)
+    return p
+
+
+def test_exportacion_no_lista_a_los_menores_residentes(mundo, crear_persona):
+    comuna, villa = mundo["comuna"], mundo["villa"]
+    menor = _con_edad(crear_persona, comuna, villa, "Nino Menor", 9, rut_numero=23456789, rut_dv=calcular_dv(23456789))
+    Contacto.objects.create(persona=menor, tipo=TipoContacto.objects.get(codigo="correo"), valor="nino.menor@ejemplo.invalid")
+    adulta = _con_edad(crear_persona, comuna, villa, "Elena Adulta", 40)
+    sin_fecha = mundo["vecina"]  # la residente del escenario no tiene fecha de nacimiento: se desconoce su edad y se lista
+    assert menor.es_menor and not adulta.es_menor and not sin_fecha.es_menor
+    exporta = _cliente(_usuario("exporta_personas", *VISTAS, "exportar_territorio", "exportar_persona"))
+    sin = _cliente(_usuario("no_exporta_personas", *VISTAS, "exportar_territorio"))
+
+    for cliente in (exporta, sin):
+        for url in (_url_comuna(comuna), _url_sector(villa)):
+            libro = _libro(cliente.get(url))
+            personas = _filas(libro, "Personas residentes")
+            nombres = [f[0] for f in personas[1:-1]]
+            assert sorted(nombres) == ["Elena Adulta Ficticio", "Rosa Ficticia Araya"]  # la adulta y la que no tiene fecha de nacimiento
+            assert personas[-1][0] == "Menores de edad residentes: 1 (no se listan por protección de datos; pendiente V#2)"
+            assert all(c is None for c in personas[-1][1:])  # la nota ocupa una sola celda
+            todo = " ".join(_celdas(libro))
+            for reservado in ("Nino Menor", "nino.menor@ejemplo.invalid", formatear_rut(23456789, calcular_dv(23456789)), "23456789"):
+                assert reservado not in todo, reservado
+            # el conteo del Resumen es solo una cifra: incluye al menor sin identificarlo
+            assert dict(f[:2] for f in _filas(libro, "Resumen")[1:])["Personas residentes"] == 3
+
+
+def test_exportacion_cuenta_a_cada_menor_y_sin_menores_no_agrega_la_fila(cg, mundo, crear_persona):
+    comuna, villa = mundo["comuna"], mundo["villa"]
+    filas = _filas(_libro(cg.get(_url_comuna(comuna))), "Personas residentes")
+    assert [f[0] for f in filas[1:]] == ["Rosa Ficticia Araya"]  # sin menores no hay fila de nota
+    _con_edad(crear_persona, comuna, villa, "Menor Uno", 5)
+    _con_edad(crear_persona, comuna, villa, "Menor Dos", 17)
+    _con_edad(crear_persona, comuna, villa, "Recien Adulto", 18)
+    filas = _filas(_libro(cg.get(_url_comuna(comuna))), "Personas residentes")
+    assert filas[-1][0].startswith("Menores de edad residentes: 2 (")
+    assert "Recien Adulto Ficticio" in [f[0] for f in filas[1:-1]]  # a los 18 ya no es menor
+    assert not any("Menor Uno" in str(c) or "Menor Dos" in str(c) for f in filas for c in f)
+
+
 def test_exportacion_sin_ver_personas_omite_la_hoja(mundo):
     sin_personas = _cliente(_usuario("sin_ver_personas", *[v for v in VISTAS if v != "view_persona"], "exportar_territorio", "exportar_persona"))
     for url in (_url_comuna(mundo["comuna"]), _url_sector(mundo["villa"])):
@@ -306,7 +352,8 @@ def test_exportacion_usa_un_numero_fijo_de_consultas(cg, mundo, crear_persona, c
     base = {(c, u): consultas(c, u) for c in (cg, exporta) for u in (_url_comuna(comuna), _url_sector(villa))}
     perfil = PerfilPersona.objects.get(codigo="vecino_o_vecina_de_la_comunidad")
     for i in range(30):
-        p = crear_persona(f"Vecina{i}", rut_numero=20000000 + i, rut_dv=calcular_dv(20000000 + i))
+        edad = 8 if i % 3 == 0 else 30  # una de cada tres es menor: no se lista, solo se cuenta
+        p = crear_persona(f"Vecina{i}", rut_numero=20000000 + i, rut_dv=calcular_dv(20000000 + i), fecha_nacimiento=HOY - timedelta(days=365 * edad))
         p.perfiles.add(perfil)
         PersonaDireccion.objects.create(persona=p, direccion=_dir(comuna, villa), tipo="residencia", vigente=True)
         ComunidadMiembro.objects.create(comunidad=Comunidad.objects.create(nombre=f"Comunidad {i}", comuna=comuna, sector=villa), persona=p)
