@@ -5,7 +5,7 @@ from django.db import models
 from django.urls import reverse
 from simple_history.models import HistoricalRecords
 
-from apps.nucleo.models import AreaTematica
+from apps.nucleo.models import AreaTematica, TramoEtario
 
 
 class Comunidad(models.Model):
@@ -24,7 +24,8 @@ class Comunidad(models.Model):
     referente = models.ForeignKey("personas.Persona", null=True, blank=True, on_delete=models.PROTECT, related_name="comunidades_referente",
                                   verbose_name="referente o dirigente principal")
     poblacion_estimada = models.PositiveIntegerField("población estimada (personas)", null=True, blank=True)
-    rango_etario = models.CharField("rango etario predominante", max_length=100, blank=True, help_text="Ej.: familias con niños, personas mayores, jóvenes de 15 a 29 años.")
+    rango_etario = models.CharField("rango etario predominante", max_length=100, blank=True, help_text="Ej.: familias con niños, personas mayores, jóvenes de 15 a 29 años.")  # texto anterior a los tramos
+    tramos_etarios = models.ManyToManyField(TramoEtario, blank=True, related_name="comunidades", verbose_name="edades principales")
     areas_interes = models.ManyToManyField(AreaTematica, blank=True, related_name="+", verbose_name="áreas de interés")
     diagnostico = models.TextField("diagnóstico y necesidades", blank=True, help_text="Qué necesita esta comunidad, según lo levantado en terreno.")
     activo = models.BooleanField(default=True)

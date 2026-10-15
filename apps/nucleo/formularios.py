@@ -75,6 +75,22 @@ class BootstrapMixin:
         return res
 
 
+def preparar_tramos(form, etiqueta_texto="Rango etario (texto anterior)"):
+    """Campo «tramos_etarios» con los tramos activos (más los que el registro ya tenía) y su rango de edad a la vista.
+    El texto antiguo «rango_etario» solo se muestra si tiene algo, para revisarlo y borrarlo; si está vacío, sale del formulario."""
+    from .models import TramoEtario
+
+    campo = form.fields["tramos_etarios"]
+    campo.queryset = TramoEtario.para_elegir(conservar=form.instance.tramos_etarios.all() if form.instance.pk else None)
+    campo.label_from_instance = lambda t: t.etiqueta
+    if not form.instance.rango_etario:
+        form.fields.pop("rango_etario", None)
+    elif "rango_etario" in form.fields:
+        form.fields["rango_etario"].label = etiqueta_texto
+        form.fields["rango_etario"].help_text = ("Se escribió antes de que existieran los tramos de edad. "
+                                                 "Revisa que los tramos marcados digan lo mismo y luego borra este texto.")
+
+
 class _IteradorLimitado(forms.models.ModelChoiceIterator):
     """Opciones del <select> sin JavaScript: la vacía, la elegida y las primeras de la fuente (no la lista entera)."""
 

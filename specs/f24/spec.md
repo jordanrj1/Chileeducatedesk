@@ -156,6 +156,12 @@ Afecta a los 14 listados que usan `ListaBase`.
   - Personas mayores (60 o más).
 - **Selección múltiple** en Actividad (público) y en Comunidad (tramos predominantes).
 - El texto libre actual (`rango_etario`) se conserva como «texto anterior», y un intérprete lo convierte cuando reconoce los números o palabras.
+- Cómo quedó (T6):
+  - el texto anterior se ve en la ficha como «Antes decía: «…» · Por revisar»; en el formulario aparece solo si tiene algo, y se revisa borrándolo (el historial lo conserva);
+  - en Catálogos el tramo muestra sus edades y no acepta una edad máxima menor que la mínima;
+  - duplicar una actividad copia sus tramos; fusionar comunidades los suma;
+  - los informes de alcance siguen con sus cuatro tramos (0–17, 18–29, 30–59, 60 o más): los seis tramos caben dentro de ellos;
+  - quedan para después: filtrar listados por tramo y registrar en el historial los cambios de tramos [P].
 
 ### A8. Formularios claros
 - **Etiquetas y ayudas** en español simple, con ejemplo, en `Meta.labels` y `help_texts` de cada formulario (sin migraciones).

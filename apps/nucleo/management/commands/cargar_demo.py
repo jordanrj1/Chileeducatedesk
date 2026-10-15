@@ -65,7 +65,7 @@ class Command(BaseCommand):
         """Comunidad con padrón, actividad dirigida, estudiante con formación y una sesión con minuta (F22). Todo ficticio."""
         from apps.actividades.models import ActividadComunidad, SesionActividad, SesionFacilitador
         from apps.comunidades.models import Comunidad, ComunidadMiembro
-        from apps.nucleo.models import AreaTematica, PerfilPersona
+        from apps.nucleo.models import AreaTematica, PerfilPersona, TramoEtario
         from apps.personas.models import PersonaFormacion
 
         comuna = actividad.agenda_vigente.lugar.direccion.comuna if actividad.agenda_vigente and actividad.agenda_vigente.lugar else Comuna.objects.first()
@@ -77,8 +77,10 @@ class Command(BaseCommand):
         actividad.beneficiarios_estimados = 20
         actividad.save()
         com = Comunidad.objects.create(nombre="Vecinos de la Villa Demo", tipo="vecinal", comuna=comuna, organizacion=junta, poblacion_estimada=120,
-                                       rango_etario="Personas adultas y mayores", diagnostico="Interés en alfabetización y uso del celular (ficticio).")
+                                       diagnostico="Interés en alfabetización y uso del celular (ficticio).")
         com.areas_interes.add(area)
+        com.tramos_etarios.add(*TramoEtario.objects.filter(codigo__in=["personas_adultas", "personas_mayores"]))
+        actividad.tramos_etarios.add(*TramoEtario.objects.filter(codigo="personas_adultas"))
         vecinos = []
         for i in range(1, 4):
             v = Persona.objects.create(nombres=f"Vecina{i}", apellido_paterno="Demo", fecha_nacimiento=date(1950 + i * 8, 3, i))

@@ -7,7 +7,7 @@
   <div><dt>Organización que la representa</dt><dd>{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd></div>
   <div><dt>Referente o dirigente</dt><dd>{% if object.referente %}<a href="{{ object.referente.get_absolute_url }}">{{ object.referente }}</a>{% else %}—{% endif %}</dd></div>
   <div><dt>Población estimada</dt><dd>{{ object.poblacion_estimada|default:"—" }}</dd></div>
-  <div><dt>Rango etario predominante</dt><dd>{{ object.rango_etario|default:"—" }}</dd></div>
+  <div><dt>Edades principales</dt><dd>{% include "generico/_tramos.html" with tramos=object.tramos_etarios.all texto_anterior=object.rango_etario %}</dd></div>
   <div class="fche-datos__ancho"><dt>Áreas de interés</dt><dd>{% for a in object.areas_interes.all %}<span class="badge text-bg-primary me-1">{{ a }}</span>{% empty %}—{% endfor %}</dd></div>
   <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
   <div class="fche-datos__ancho"><dt>Diagnóstico y necesidades</dt><dd>{{ object.diagnostico|default:"—"|linebreaksbr }}</dd></div>

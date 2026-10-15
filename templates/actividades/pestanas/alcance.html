@@ -21,6 +21,7 @@
   </div>
   <div class="col-12 col-lg-6">
     <h2 class="h6 mb-2">Edad de quienes asistieron</h2>
+    {% with tramos=object.tramos_etarios.all %}{% if tramos %}<p class="small text-muted mb-2">Edades indicadas en la ficha: {% for t in tramos %}{{ t.etiqueta }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}{% endwith %}
     {% for n, v in a.edades_registradas %}<div class="fche-barra-dato"><span>{{ n }} <span class="text-muted small">(registradas)</span></span><span class="fche-barra-dato__pista"><span class="fche-barra-dato__relleno d-block" style="width:{% widthratio v a.asistieron|add:a.sin_registro|default:1 100 %}%"></span></span><strong class="fche-num text-end">{{ v }}</strong></div>{% endfor %}
     {% for n, v in a.sin_registro_edades %}{% if v %}<div class="fche-barra-dato"><span>{{ n }} <span class="text-muted small">(sin registro)</span></span><span class="fche-barra-dato__pista"><span class="fche-barra-dato__relleno d-block" style="width:{% widthratio v a.asistieron|add:a.sin_registro|default:1 100 %}%"></span></span><strong class="fche-num text-end">{{ v }}</strong></div>{% endif %}{% endfor %}
   </div>

@@ -8,7 +8,7 @@
 <header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">{{ titulo }}</h1></div></header>
 <form method="post" class="fche-tarjeta" style="max-width:44rem;">{% csrf_token %}
   <div class="fche-tarjeta__cuerpo d-flex gap-3"><span class="fche-mosaico__icono">{% icono "copiar" 20 %}</span>
-  <p class="mb-0">Se crea una actividad nueva con los mismos datos (tipo, objetivo, responsable, condiciones, zona y organizaciones), <strong>sin participantes ni fechas</strong>.</p></div>
+  <p class="mb-0">Se crea una actividad nueva con los mismos datos (tipo, objetivo, responsable, condiciones, tramos de edad, zona y organizaciones), <strong>sin participantes ni fechas</strong>.</p></div>
   <div class="fche-form__acciones"><button class="btn btn-primary">{% icono "copiar" 15 %}Duplicar</button>
   <a class="btn btn-outline-secondary volver" href="{{ actividad.get_absolute_url }}">Cancelar</a></div>
 </form>

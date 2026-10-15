@@ -19,8 +19,9 @@ def dependencias(obj):
         if not (rel.auto_created and (rel.one_to_many or rel.one_to_one)) or rel.related_model.__name__.startswith("Historical"):
             continue
         n = rel.related_model._default_manager.filter(**{rel.field.name: obj}).count()
-        if n:
-            res.append((str(rel.related_model._meta.verbose_name_plural), n))
+        if n:  # en una selección múltiple (tabla intermedia automática) se nombra al dueño: «3 actividades», no la tabla intermedia
+            dueno = rel.related_model._meta.auto_created or rel.related_model
+            res.append((str(dueno._meta.verbose_name_plural), n))
     return res
 
 
@@ -61,6 +62,7 @@ class Lista(View):
         form = _form(modelo)(initial={"activo": True})
         return render(request, "administracion/catalogo.html", {
             "slug": slug, "filas": filas, "form": form, "titulo": modelo._meta.verbose_name_plural.capitalize(),
+            "con_edades": "edad_min" in getattr(modelo, "campos_extra", []),
             "puede_crear": request.user.has_perm(f"nucleo.add_{modelo._meta.model_name}"),
             "puede_editar": request.user.has_perm(f"nucleo.change_{modelo._meta.model_name}"),
             "puede_desactivar": request.user.has_perm(f"nucleo.desactivar_{modelo._meta.model_name}"),

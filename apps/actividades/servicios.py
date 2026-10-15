@@ -178,6 +178,7 @@ def duplicar(actividad, usuario):
         descripcion=actividad.descripcion, modalidad=actividad.modalidad, responsable=actividad.responsable, condiciones=actividad.condiciones,
         estado=_estado("pendiente"), creado_por=usuario,
     )
+    nueva.tramos_etarios.set(actividad.tramos_etarios.all())
     for t in actividad.territorios.filter(vigente=True):
         t.pk = None
         t.actividad = nueva

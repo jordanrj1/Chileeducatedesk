@@ -10,7 +10,7 @@ from django.urls import reverse
 from simple_history.models import HistoricalRecords
 
 from apps.nucleo.models import (
-    AreaTematica, EstadoActividad, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion,
+    AreaTematica, EstadoActividad, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion, TramoEtario,
 )
 
 
@@ -40,7 +40,8 @@ class Actividad(models.Model):
     # F22: a quién va dirigida
     area_tematica = models.ForeignKey(AreaTematica, null=True, blank=True, on_delete=models.PROTECT, related_name="+", verbose_name="línea o área temática")
     publico_objetivo = models.TextField("público objetivo", blank=True, help_text="A quién va dirigida: por ejemplo, vecinos del sector, estudiantes de 3.º medio, personas mayores.")
-    rango_etario = models.CharField("rango etario", max_length=100, blank=True)
+    rango_etario = models.CharField("rango etario", max_length=100, blank=True)  # texto anterior a los tramos; se conserva para revisarlo
+    tramos_etarios = models.ManyToManyField(TramoEtario, blank=True, related_name="actividades", verbose_name="tramos de edad")
     beneficiarios_estimados = models.PositiveIntegerField("beneficiarios estimados", null=True, blank=True)
     # Ejecución y cierre (F13)
     observaciones = models.TextField(blank=True)

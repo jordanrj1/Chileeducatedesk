@@ -2,7 +2,7 @@
 desde la comunidad o desde la ficha de la persona."""
 from django import forms
 
-from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores
+from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores, preparar_tramos
 from apps.nucleo.models import AreaTematica
 from apps.organizaciones.selector import ORGANIZACIONES
 from apps.personas.selector import PERSONAS
@@ -23,13 +23,16 @@ class ComunidadForm(BootstrapMixin, forms.ModelForm):
         ("Identificación", "", ["nombre", "tipo", "descripcion"]),
         ("Territorio", "Dónde vive o se reúne esta comunidad.", ["comuna", "sector", "organizacion", "referente"]),
         ("Caracterización", "Lo levantado en terreno: sirve para diseñar actividades pertinentes y medir el alcance.",
-         ["poblacion_estimada", "rango_etario", "areas_interes", "diagnostico"]),
+         ["poblacion_estimada", "tramos_etarios", "rango_etario", "areas_interes", "diagnostico"]),
     ]
 
     class Meta:
         model = Comunidad
-        fields = ["nombre", "tipo", "descripcion", "comuna", "sector", "organizacion", "referente", "poblacion_estimada", "rango_etario", "areas_interes", "diagnostico"]
+        fields = ["nombre", "tipo", "descripcion", "comuna", "sector", "organizacion", "referente", "poblacion_estimada", "tramos_etarios", "rango_etario",
+                  "areas_interes", "diagnostico"]
         widgets = {"areas_interes": forms.CheckboxSelectMultiple, "descripcion": forms.Textarea(attrs={"rows": 2})}
+        labels = {"tramos_etarios": "Edades principales"}
+        help_texts = {"tramos_etarios": "Las edades que más se ven en esta comunidad. Marca uno o más. Ej.: Personas adultas y Personas mayores."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -38,6 +41,7 @@ class ComunidadForm(BootstrapMixin, forms.ModelForm):
         self.fields["sector"].queryset = Sector.para_elegir(conservar=self.instance.sector_id).select_related("comuna").order_by("comuna__nombre", "nombre")
         self.fields["sector"].label_from_instance = lambda s: s.etiqueta(con_comuna=True)
         self.fields["areas_interes"].queryset = AreaTematica.objects.filter(activo=True)
+        preparar_tramos(self, "Rango etario predominante (texto anterior)")
         fijar_valores_selectores(self)
 
 

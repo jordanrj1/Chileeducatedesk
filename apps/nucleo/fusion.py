@@ -73,7 +73,7 @@ def fusionar(origen, destino, usuario, motivo):
         if not getattr(destino, c) and getattr(origen, c):
             setattr(destino, c, getattr(origen, c))
     destino.save()
-    for m2m in ("perfiles", "areas_interes"):  # F22: perfiles e intereses se suman
+    for m2m in ("perfiles", "areas_interes", "tramos_etarios"):  # perfiles, intereses y tramos de edad se suman
         if hasattr(destino, m2m):
             getattr(destino, m2m).add(*getattr(origen, m2m).all())
     # La ficha de origen se desactiva y queda la nota

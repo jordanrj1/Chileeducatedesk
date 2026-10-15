@@ -5,7 +5,7 @@ from django import forms
 
 from apps.lugares.campos import LugarChoiceField
 from apps.lugares.models import Lugar
-from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores
+from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores, preparar_tramos
 from apps.nucleo.models import AreaTematica, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion
 from apps.organizaciones.selector import ORGANIZACIONES
 from apps.personas.models import Persona
@@ -28,14 +28,16 @@ class ActividadForm(BootstrapMixin, forms.ModelForm):
     secciones = [
         ("Qué es", "Solo el nombre es obligatorio; la fecha y el lugar se definen al programar.", ["nombre", "tipo", "area_tematica", "proyecto", "actividad_padre", "modalidad", "responsable"]),
         ("Para qué y para quién", "A quién va dirigida y qué se espera lograr. Las comunidades destinatarias se agregan en la pestaña «Público y comunidades».",
-         ["objetivo", "publico_objetivo", "rango_etario", "beneficiarios_estimados"]),
+         ["objetivo", "publico_objetivo", "tramos_etarios", "rango_etario", "beneficiarios_estimados"]),
         ("Detalle", "", ["descripcion", "condiciones"]),
     ]
 
     class Meta:
         model = Actividad
-        fields = ["nombre", "proyecto", "actividad_padre", "tipo", "area_tematica", "objetivo", "publico_objetivo", "rango_etario", "beneficiarios_estimados",
-                  "descripcion", "modalidad", "responsable", "condiciones"]
+        fields = ["nombre", "proyecto", "actividad_padre", "tipo", "area_tematica", "objetivo", "publico_objetivo", "tramos_etarios", "rango_etario",
+                  "beneficiarios_estimados", "descripcion", "modalidad", "responsable", "condiciones"]
+        labels = {"tramos_etarios": "Tramos de edad"}
+        help_texts = {"tramos_etarios": "A qué edades va dirigida. Marca uno o más. Ej.: Personas adultas y Personas mayores."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -43,6 +45,7 @@ class ActividadForm(BootstrapMixin, forms.ModelForm):
         self.fields["tipo"].queryset = TipoActividad.objects.filter(activo=True)
         self.fields["modalidad"].queryset = Modalidad.objects.filter(activo=True)
         self.fields["area_tematica"].queryset = AreaTematica.objects.filter(activo=True)
+        preparar_tramos(self)
         if self.instance.pk:  # una actividad no se ofrece como su propia actividad padre
             self.fields["actividad_padre"].con_filtros(excluir=self.instance.pk)
             fijar_valores_selectores(self)

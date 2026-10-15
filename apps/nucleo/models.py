@@ -1,6 +1,7 @@
 """Catálogos (las listas de opciones que Claudio puede ampliar: tipos, estados, roles, canales…) y la tabla de auditoría.
 Los valores de un catálogo no se borran: se desactivan, y los registros antiguos los conservan."""
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 
@@ -59,6 +60,51 @@ class RolParticipacion(Catalogo):
         permissions = [("desactivar_rolparticipacion", "Puede desactivar valores de roles de participación")]
 
 
+class TramoEtario(Catalogo):
+    """Tramo de edad: a qué edades va dirigida una actividad o qué edades predominan en una comunidad (y, más adelante,
+    los integrantes del hogar). Sin edad máxima quiere decir «o más». Los valores iniciales están por validar con el cliente."""
+
+    edad_min = models.PositiveSmallIntegerField("edad mínima", null=True, blank=True, help_text="En años. Ej.: 18.")
+    edad_max = models.PositiveSmallIntegerField("edad máxima", null=True, blank=True, help_text="En años. Déjala vacía si no tiene tope (Ej.: 60 o más).")
+    campos_extra = ["edad_min", "edad_max"]
+
+    class Meta(Catalogo.Meta):
+        verbose_name = "tramo de edad"
+        verbose_name_plural = "tramos de edad"
+        permissions = [("desactivar_tramoetario", "Puede desactivar valores de tramos de edad")]
+        constraints = [models.CheckConstraint(
+            condition=models.Q(edad_min__isnull=True) | models.Q(edad_max__isnull=True) | models.Q(edad_max__gte=models.F("edad_min")),
+            name="tramo_etario_edad_max_mayor_o_igual",
+        )]
+
+    def clean(self):
+        if self.edad_min is not None and self.edad_max is not None and self.edad_max < self.edad_min:
+            raise ValidationError({"edad_max": "La edad máxima no puede ser menor que la mínima."})
+
+    @property
+    def edades(self):
+        """«18 a 29 años», «60 años o más», «hasta 5 años» o vacío si no tiene edades."""
+        if self.edad_min is not None and self.edad_max is not None:
+            return f"{self.edad_min} a {self.edad_max} años"
+        if self.edad_min is not None:
+            return f"{self.edad_min} años o más"
+        if self.edad_max is not None:
+            return f"hasta {self.edad_max} años"
+        return ""
+
+    @property
+    def etiqueta(self):
+        return f"{self.nombre} ({self.edades})" if self.edades else self.nombre
+
+    @classmethod
+    def para_elegir(cls, conservar=None):
+        """Tramos activos más los que el registro ya tenía (`conservar`: consulta o lista de ids), para no perderlos al editar."""
+        filtro = models.Q(activo=True)
+        if conservar is not None:
+            filtro |= models.Q(pk__in=conservar)
+        return cls.objects.filter(filtro)
+
+
 TipoOrganizacion = _catalogo("TipoOrganizacion", "tipo de organización", "tipos de organización")
 TipoActividad = _catalogo("TipoActividad", "tipo de actividad", "tipos de actividad")
 TipoContacto = _catalogo("TipoContacto", "tipo de contacto", "tipos de contacto")
@@ -89,6 +135,7 @@ CATALOGOS = {
     "tipo-intervencion": TipoIntervencion,
     "perfil-persona": PerfilPersona,
     "area-tematica": AreaTematica,
+    "tramo-etario": TramoEtario,
 }
 
 
