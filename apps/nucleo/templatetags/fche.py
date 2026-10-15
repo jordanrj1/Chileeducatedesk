@@ -1,4 +1,5 @@
-"""Componentes de interfaz: iconos SVG propios (sin dependencias), estados con color e iniciales."""
+"""Componentes de interfaz: iconos SVG propios (sin dependencias), estados con color, iniciales
+y el resumen de lo elegido en una selección múltiple."""
 from django import template
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -134,6 +135,24 @@ def celda(valor, encabezado=""):
 def iniciales(texto):
     partes = [p for p in str(texto or "").replace(",", " ").split() if p[:1].isalpha()]
     return ("".join(p[0] for p in partes[:2]) or "·").upper()
+
+
+@register.filter
+def elegidas(campo):
+    """Nombres de las opciones marcadas de una selección múltiple (usa las opciones ya cargadas: sin consultas extra)."""
+    return [str(opcion.choice_label) for opcion in campo if opcion.data.get("selected")]
+
+
+@register.filter
+def resumen_elegidas(nombres):
+    """Texto del botón de una selección múltiple, útil también sin JavaScript:
+    «Elegir…», «1 opción elegida: Salud» o «4 opciones elegidas: Salud, Deporte y 2 más»."""
+    n = len(nombres)
+    if not n:
+        return "Elegir…"
+    cuenta = "1 opción elegida" if n == 1 else f"{n} opciones elegidas"
+    lista = " y ".join(nombres) if n <= 2 else f"{nombres[0]}, {nombres[1]} y {n - 2} más"
+    return f"{cuenta}: {lista}"
 
 
 @register.filter

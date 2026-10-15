@@ -472,9 +472,7 @@ class PersonaReasignar(Permiso403Mixin, View):
             nuevo = SelectorField(PERSONAS, filtros={"equipo_primero": 1, "excluir": persona.pk}, crear=False, label="Nuevo responsable", help_text=AYUDA_RESPONSABLE)
             motivo = f.CharField(max_length=250)
 
-        form = F(data, initial={"actividades": list(a_cargo_de(persona))})
-        form.fields["actividades"].widget.attrs["class"] = ""
-        return form
+        return F(data, initial={"actividades": list(a_cargo_de(persona))})
 
     def get(self, request, pk):
         p = get_object_or_404(Persona, pk=pk)

@@ -64,6 +64,12 @@ Afecta a todo campo de selección múltiple que hoy son casillas a la vista (ár
 - Se convierte en un **botón que despliega la lista con buscador**.
 - Lo elegido se muestra como **etiquetas**, cada una con una × para quitarla.
 - **Sin JavaScript** siguen siendo casillas nativas, dentro de un bloque plegable (`<details>`).
+- **Cómo quedó (T3)** [P]:
+  - `BootstrapMixin` cambia **toda** selección múltiple (casillas o lista) por `SelectorMultiple`, sin umbral de cantidad de opciones; también la lista «Actividades a reasignar», que muestra lo marcado como etiquetas;
+  - el botón dice «Elegir…» o «3 opciones elegidas»; sin JavaScript agrega los nombres («2 opciones elegidas: Salud y Deporte»);
+  - con JavaScript la lista flota como la del buscador de T2, con un cuadro para filtrar sin tildes ni mayúsculas; ↑ y ↓ recorren, Enter marca o desmarca sin enviar el formulario, Esc o un clic fuera cierran;
+  - lo que se envía no cambia (`perfiles=3&perfiles=7`); escribir en el cuadro para filtrar no cuenta como cambio sin guardar;
+  - la pantalla de permisos de un rol (Administración) sigue con sus casillas: no es un campo de formulario.
 
 ### A3. Filtros con menos ruido
 Afecta a los 14 listados que usan `ListaBase`.

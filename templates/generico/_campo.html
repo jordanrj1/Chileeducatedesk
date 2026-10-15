@@ -3,6 +3,8 @@
 {% load fche %}<div class="fche-campo{% if campo.errors %} fche-campo--error{% endif %}{% if campo.widget_type == 'textarea' or campo.widget_type == 'checkboxselectmultiple' or campo.widget_type == 'selectmultiple' %} fche-campo--ancho{% endif %}">
   {% if campo.widget_type == 'checkbox' %}
     <div class="form-check">{{ campo }} <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label></div>
+  {% elif campo.widget_type == 'selectormultiple' %}{# selección múltiple desplegable: botón, buscador y etiquetas con × #}
+    {% include "generico/_selector_multiple.html" %}
   {% else %}
     <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %}<span class="fche-requerido" aria-hidden="true">*</span><span class="visually-hidden"> (obligatorio)</span>{% endif %}</label>
     {% if campo.widget_type == 'checkboxselectmultiple' %}<div class="fche-opciones">{{ campo }}</div>
@@ -10,6 +12,6 @@
     <div class="fche-selector"><span class="fche-selector__icono" hidden>{% icono "buscar" 15 %}</span>{{ campo }}</div>
     {% else %}{{ campo }}{% endif %}
   {% endif %}
-  {% if campo.help_text %}<div class="form-text" id="{{ campo.id_for_label }}_helptext">{{ campo.help_text }}</div>{% endif %}
+  {% if campo.help_text %}<div class="form-text" id="{{ campo.auto_id }}_helptext">{{ campo.help_text }}</div>{% endif %}
   {% for e in campo.errors %}<div class="fche-campo__error text-danger">{% icono "error" 14 %}{{ e }}</div>{% endfor %}
 </div>

@@ -1,5 +1,6 @@
 """Piezas comunes de formularios: BootstrapMixin da el estilo y agrupa los campos por secciones;
-SelectorField es un campo con buscador (se abre, se escribe y se elige) para listas largas como personas u organizaciones."""
+SelectorField es un campo con buscador (se abre, se escribe y se elige) para listas largas como personas u organizaciones;
+SelectorMultiple es la selección múltiple desplegable (botón, buscador y etiquetas) en vez de casillas a la vista."""
 from django import forms
 from django.db.models import Q
 from django.utils.functional import lazy
@@ -7,16 +8,39 @@ from django.utils.functional import lazy
 from .selector import TOPE, pk_seguro
 
 
+class SelectorMultiple(forms.CheckboxSelectMultiple):
+    """Selección múltiple desplegable: un botón con el resumen de lo elegido que despliega la lista con un buscador.
+    Lo dibuja generico/_selector_multiple.html (desde generico/_campo.html) y static/js/selector.js muestra lo elegido
+    como etiquetas con × para quitarlas. Sin JavaScript son casillas nativas dentro de un bloque plegable (<details>).
+    Lo que se envía no cambia (perfiles=3&perfiles=7), así que las vistas y la validación siguen iguales."""
+
+
+def a_desplegable(campo):
+    """Cambia las casillas a la vista (o la lista de selección múltiple) de un campo por el SelectorMultiple.
+    Se conservan sus opciones y atributos; si el formulario cambia después la consulta del campo, el nuevo
+    control recibe las opciones nuevas (Django las asigna al widget del campo)."""
+    w = campo.widget
+    if isinstance(w, SelectorMultiple) or not isinstance(w, (forms.CheckboxSelectMultiple, forms.SelectMultiple)):
+        return
+    attrs = {k: v for k, v in w.attrs.items() if k != "class"}
+    attrs["class"] = "form-check-input"
+    nuevo = SelectorMultiple(attrs=attrs)
+    nuevo.choices = w.choices
+    nuevo.is_required, nuevo.is_localized = w.is_required, w.is_localized
+    campo.widget = nuevo
+
+
 class BootstrapMixin:
-    """Aplica clases de Bootstrap a todos los campos."""
+    """Aplica clases de Bootstrap a todos los campos. Toda selección múltiple pasa a ser desplegable (SelectorMultiple)."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         fijar_valores_selectores(self)
         for campo in self.fields.values():
+            a_desplegable(campo)
             w = campo.widget
             if isinstance(w, forms.CheckboxSelectMultiple):
-                continue  # Django pone la clase también en el contenedor: se estiliza con .fche-opciones
+                continue  # la clase de cada casilla la pone a_desplegable (Django la pondría también en el contenedor)
             if isinstance(w, forms.CheckboxInput):
                 clase = "form-check-input"
             elif isinstance(w, (forms.Select, forms.SelectMultiple)):

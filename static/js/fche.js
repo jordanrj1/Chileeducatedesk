@@ -68,6 +68,7 @@
   }
 
   function marcar(e) {
+    if (!e.target.name) return; // cuadros para filtrar o buscar (sin nombre): no son datos del formulario
     var form = e.target.closest("form[data-aviso-cambios]");
     if (form) { sucio = true; guardarBorrador(form); }
   }

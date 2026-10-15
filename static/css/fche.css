@@ -455,6 +455,35 @@ dl.row > dd { margin-bottom: .75rem; }
 }
 .fche-selector__estado { padding: .6rem; font-size: .85rem; color: var(--fche-texto-suave); }
 .fche-selector__aviso:empty { display: none; }
+/* Selección múltiple desplegable (generico/_selector_multiple.html). Sin JavaScript: casillas dentro de un <details>
+   que empuja el contenido; con JavaScript (.is-listo) la lista flota como la del buscador y lo elegido son etiquetas con ×. */
+.fche-multi__desplegable { position: relative; }
+.fche-multi__boton { display: block; list-style: none; cursor: pointer; color: var(--fche-texto); font-weight: 400; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fche-multi__boton::-webkit-details-marker { display: none; }
+.fche-multi__boton:hover { text-decoration: none; }
+.fche-multi__resumen.is-vacio { color: var(--fche-texto-suave); }
+.fche-multi__panel { margin-top: .35rem; padding: .35rem; background: var(--fche-superficie); border: 1px solid var(--fche-borde); border-radius: var(--fche-radio); }
+.fche-multi .fche-selector__panel { margin-top: 0; max-height: none; overflow: visible; }  /* solo la lista se desplaza; el buscador queda a la vista */
+.fche-multi__buscar { margin-bottom: .35rem; }
+.fche-multi__buscar .fche-selector__entrada { padding-right: .8rem; }
+.fche-multi__lista { max-height: 16rem; overflow: auto; }
+.fche-multi__lista ul { list-style: none; margin: 0; padding: 0; }
+.fche-multi__opcion { display: flex; align-items: center; gap: .55rem; margin: 0; padding: .42rem .6rem; border-radius: var(--fche-radio-sm); cursor: pointer; }
+.fche-multi__opcion:hover, .fche-multi__opcion:focus-within { background: var(--fche-primario-suave); }
+.fche-multi__opcion:has(input:checked) { font-weight: 600; color: var(--fche-primario-oscuro); }
+.fche-multi__opcion .form-check-input { flex-shrink: 0; margin: 0; border-color: var(--fche-texto-suave); }  /* borde con contraste 3:1 o más */
+.fche-multi__opcion .form-check-input:checked { border-color: var(--fche-primario); }
+.fche-multi__vacio { margin: 0; }
+.fche-multi__vacio:empty { display: none; }
+.fche-multi__etiquetas { display: flex; flex-wrap: wrap; gap: .35rem; margin: .45rem 0 0; padding: 0; list-style: none; }
+.fche-multi__etiqueta {
+  display: inline-flex; align-items: center; gap: .15rem; max-width: 100%; padding: .14rem .2rem .14rem .65rem;
+  border: 1px solid var(--fche-primario-borde); border-radius: 2rem; background: var(--fche-primario-suave); color: var(--fche-primario-oscuro); font-size: .82rem; font-weight: 600;
+}
+.fche-multi__etiqueta > span { overflow-wrap: anywhere; }
+.fche-multi__quitar { display: inline-grid; place-items: center; flex-shrink: 0; width: 1.45rem; height: 1.45rem; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; }
+.fche-multi__quitar:hover { background: var(--fche-superficie); }
+.fche-multi__quitar:focus-visible { outline: 2px solid var(--fche-primario); outline-offset: 1px; }
 .fche-rapido__candidatos li { padding: .35rem 0; border-top: 1px solid rgba(0, 0, 0, .08); }
 .fche-rapido__candidatos li:first-child { border-top: 0; }
 .fche-errores { margin-bottom: 1.25rem; }

@@ -1,0 +1,21 @@
+{# Qué es: Trozo que dibuja una selección múltiple desplegable: botón con el resumen de lo elegido, buscador y casillas (sin JavaScript, casillas en un bloque plegable). #}
+{# Dónde se usa: generico/_campo.html, en todo campo de selección múltiple (perfiles, áreas de interés, facilitadores…) · Proceso: Todos #}
+{% load fche %}<span class="form-label d-inline-block" id="{{ campo.auto_id }}_etiqueta">{{ campo.label }}{% if campo.field.required %}<span class="fche-requerido" aria-hidden="true">*</span><span class="visually-hidden"> (obligatorio)</span>{% endif %}</span>
+<div class="fche-multi" data-multi data-etiqueta="{{ campo.label }}">
+  <details class="fche-multi__desplegable">
+    {% with nombres=campo|elegidas %}<summary class="form-select fche-multi__boton" aria-labelledby="{{ campo.auto_id }}_etiqueta {{ campo.auto_id }}_resumen"{% if campo.help_text %} aria-describedby="{{ campo.auto_id }}_helptext"{% endif %}><span class="fche-multi__resumen{% if not nombres %} is-vacio{% endif %}" id="{{ campo.auto_id }}_resumen" data-multi-resumen>{{ nombres|resumen_elegidas }}</span></summary>{% endwith %}
+    <div class="fche-multi__panel">
+      <div class="fche-selector fche-multi__buscar" data-multi-filtro hidden>
+        <span class="fche-selector__icono">{% icono "buscar" 15 %}</span>
+        <input type="search" class="form-control fche-selector__entrada" placeholder="Escribe para filtrar…" autocomplete="off" spellcheck="false" aria-label="Filtrar las opciones de {{ campo.label }}" aria-controls="{{ campo.auto_id }}">
+      </div>
+      <div class="fche-multi__lista" id="{{ campo.auto_id }}" role="group" aria-labelledby="{{ campo.auto_id }}_etiqueta">
+        <ul>{% for opcion in campo %}
+          <li><label class="fche-multi__opcion" for="{{ opcion.id_for_label }}">{{ opcion.tag }}<span>{{ opcion.choice_label }}</span></label></li>{% empty %}
+          <li class="fche-selector__estado">No hay opciones para elegir.</li>{% endfor %}
+        </ul>
+      </div>
+      <p class="fche-selector__estado fche-multi__vacio" role="status" data-multi-vacio></p>
+    </div>
+  </details>
+</div>
