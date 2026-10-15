@@ -116,14 +116,17 @@ class SelectorField(forms.ModelChoiceField):
 
     def __deepcopy__(self, memo):
         result = super().__deepcopy__(memo)
-        result.queryset = self.fuente.base(**self.filtros)  # consulta nueva en cada formulario (ajustes y fechas al día)
+        # Cada formulario lleva su propia copia de los filtros: excluir un registro en uno no afecta a los demás.
+        result.filtros = dict(self.filtros)
+        result.queryset = self.fuente.base(**result.filtros)  # consulta nueva en cada formulario (ajustes y fechas al día)
         result.valor_actual = None
         result.inactivos = set()
         return result
 
     def con_filtros(self, **extra):
         """Agrega filtros (p. ej. excluir el propio registro) a lo que se ofrece y se valida."""
-        self.filtros.update({k: str(v) for k, v in extra.items() if v not in (None, "")})
+        # Se reemplaza el diccionario (no se modifica): así nunca se toca el del campo declarado en la clase.
+        self.filtros = {**self.filtros, **{k: str(v) for k, v in extra.items() if v not in (None, "")}}
         self.queryset = self.fuente.base(**self.filtros)
         self.inactivos = set()
         self._fijar_atributos()

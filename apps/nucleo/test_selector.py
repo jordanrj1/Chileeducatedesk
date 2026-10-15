@@ -85,6 +85,19 @@ def test_lo_que_se_ofrece_es_lo_que_se_valida(cg, crear_actividad):
     assert cancelada.estado == EstadoActividad.objects.get(codigo="cancelada") and hija.actividad_padre_id == abierta.pk
 
 
+def test_excluir_al_editar_no_afecta_a_otros_formularios(cg, crear_actividad):
+    """Editar una jornada la excluye solo de su propio formulario: después se puede crear una charla dentro de ella."""
+    from apps.actividades.forms import ActividadForm
+    from apps.actividades.models import Actividad
+
+    jornada = crear_actividad("Jornada inventada")
+    assert cg.get(f"/actividades/{jornada.pk}/editar").status_code == 200
+    r = cg.post("/actividades/nueva", {"nombre": "Charla de la jornada", "actividad_padre": jornada.pk})
+    assert r.status_code == 302
+    assert Actividad.objects.get(nombre="Charla de la jornada").actividad_padre_id == jornada.pk
+    assert ActividadForm.base_fields["actividad_padre"].filtros == {"raiz": "1"}
+
+
 # --- «+ Crear…» sin salir del formulario ----------------------------------------
 def test_crear_persona_rapida_avisa_parecida_y_deja_elegida(cg, persona):
     datos = {"campo": "id_responsable", "rapida-nombres": "Ana María", "rapida-apellido_paterno": "Pérez"}
