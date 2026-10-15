@@ -63,6 +63,7 @@ class Lista(View):
         return render(request, "administracion/catalogo.html", {
             "slug": slug, "filas": filas, "form": form, "titulo": modelo._meta.verbose_name_plural.capitalize(),
             "con_edades": "edad_min" in getattr(modelo, "campos_extra", []),
+            "con_ficha": "ficha" in getattr(modelo, "campos_extra", []),
             "puede_crear": request.user.has_perm(f"nucleo.add_{modelo._meta.model_name}"),
             "puede_editar": request.user.has_perm(f"nucleo.change_{modelo._meta.model_name}"),
             "puede_desactivar": request.user.has_perm(f"nucleo.desactivar_{modelo._meta.model_name}"),

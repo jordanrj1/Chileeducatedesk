@@ -1,6 +1,7 @@
 """Tablas de personas: Persona (solo el nombre es obligatorio; RUT opcional y único si existe) y lo que se le vincula:
 contactos, direcciones, formación, cargos históricos, experiencia y disponibilidad. Aparte, los datos restringidos
-(contacto de emergencia, datos sensibles, consentimientos, apoderados, verificaciones), que exigen permiso propio."""
+(contacto de emergencia, datos sensibles, consentimientos, apoderados, verificaciones), que exigen permiso propio.
+Al final, las fichas por tipo de persona: vecino (hogar y familiares), invitado y voluntario."""
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -73,6 +74,12 @@ class Persona(models.Model):
     # F22: identificación y perfil (todo opcional; crear nunca se bloquea)
     nombre_social = models.CharField("nombre social", max_length=100, blank=True, help_text="Cómo prefiere que la llamen, si es distinto de su nombre legal.")
     fecha_nacimiento = models.DateField("fecha de nacimiento", null=True, blank=True)
+    fecha_nacimiento_aproximada = models.BooleanField("fecha de nacimiento aproximada", default=False,
+                                                      help_text="Marcada si solo se conoce la edad: se guarda el 1 de enero del año que corresponde.")
+    # F24: dato general y opcional. La identidad de género sigue en los datos sensibles.
+    SEXOS = [("mujer", "Mujer"), ("hombre", "Hombre"), ("otro", "Otro"), ("no_informa", "No informa")]
+    sexo = models.CharField(max_length=10, choices=SEXOS, blank=True,
+                            help_text="Opcional. La identidad de género se registra aparte, en los datos sensibles.")
     nacionalidad = models.CharField(max_length=60, blank=True)
     NIVELES_EDUCACIONALES = [
         ("sin_estudios", "Sin estudios formales"), ("basica_incompleta", "Básica incompleta"), ("basica_completa", "Básica completa"),
@@ -136,6 +143,13 @@ class Persona(models.Model):
     def es_menor(self):
         return self.edad is not None and self.edad < 18
 
+    def fijar_edad_aproximada(self, edad, hoy=None):
+        """Cuando solo se conoce la edad («tengo 67 años»): guarda el 1 de enero de (año actual − edad) y la marca como aproximada.
+        Desde ese día la edad calculada coincide con la declarada. No guarda: lo hace quien la llama."""
+        hoy = hoy or timezone.localdate()
+        self.fecha_nacimiento = hoy.replace(year=hoy.year - int(edad), month=1, day=1)
+        self.fecha_nacimiento_aproximada = True
+
     def consentimiento_vigente(self, tipo):
         """El último consentimiento de ese tipo, si está otorgado y no revocado."""
         c = self.consentimientos.filter(tipo=tipo).order_by("-fecha", "-pk").first()
@@ -167,6 +181,8 @@ class Persona(models.Model):
     def save(self, *args, **kwargs):
         if self.rut_dv:
             self.rut_dv = self.rut_dv.upper()
+        if not self.fecha_nacimiento:
+            self.fecha_nacimiento_aproximada = False  # sin fecha no hay nada que sea aproximado
         super().save(*args, **kwargs)
 
 
@@ -240,6 +256,10 @@ class PersonaFormacion(models.Model):
     anio_termino = models.PositiveSmallIntegerField("año de término", null=True, blank=True)
     # F22: datos del estudiante que la institución y la Fundación necesitan para coordinar y certificar
     sede = models.CharField("sede o campus", max_length=120, blank=True)
+    # F24: la sede como registro (un lugar de la institución); el texto `sede` se conserva como texto anterior
+    TIPOS_SEDE = ("sede", "casa_matriz")
+    sede_institucion = models.ForeignKey("lugares.Lugar", null=True, blank=True, on_delete=models.PROTECT, related_name="estudiantes",
+                                         verbose_name="sede o casa matriz", help_text="Un lugar de la institución, de tipo sede o casa matriz.")
     JORNADAS = [("diurna", "Diurna"), ("vespertina", "Vespertina"), ("en_linea", "En línea"), ("otra", "Otra")]
     jornada = models.CharField(max_length=12, choices=JORNADAS, blank=True)
     nivel_actual = models.PositiveSmallIntegerField("año o nivel que cursa", null=True, blank=True)
@@ -257,9 +277,18 @@ class PersonaFormacion(models.Model):
     def __str__(self):
         return f"{self.carrera or 'Sin carrera'} · {self.organizacion}"
 
+    @classmethod
+    def sedes_de(cls, organizacion):
+        """Lugares que sirven de sede o casa matriz de esa institución: lo mismo que se ofrece y que se valida."""
+        from apps.lugares.models import Lugar
+
+        return Lugar.objects.filter(organizacion_propietaria=organizacion, tipo__codigo__in=cls.TIPOS_SEDE)
+
     def clean(self):
         if self.carrera_id and self.organizacion_id and self.carrera.organizacion_id != self.organizacion_id:
             raise ValidationError({"carrera": "La carrera debe pertenecer a la institución elegida."})
+        if self.sede_institucion_id and self.organizacion_id and not self.sedes_de(self.organizacion_id).filter(pk=self.sede_institucion_id).exists():
+            raise ValidationError({"sede_institucion": "La sede debe ser un lugar de la institución elegida, de tipo sede o casa matriz."})
         if self.organizacion_id and not self.organizacion.es_educativa:
             raise ValidationError({"organizacion": "Debe ser una institución educativa."})
         if self.anio_inicio and self.anio_termino and self.anio_termino < self.anio_inicio:
@@ -473,3 +502,140 @@ class Apoderado(models.Model):
     def clean(self):
         if self.apoderado_id and self.apoderado_id == self.persona_id:
             raise ValidationError({"apoderado": "Una persona no puede ser su propio apoderado."})
+
+
+# ── Fichas por tipo de persona (F24) ─────────────────────────────────────────────────────────────────────────────
+# Cada perfil con ficha (PerfilPersona.ficha) pide sus datos propios. El estudiante no tiene tabla aparte: su tabla
+# es PersonaFormacion. Lo del vecino es restringido 🔒: lo ve quien puede ver la ficha de la persona, sin consentimiento
+# extra (decisión del usuario, por validar con el tutor [V#2]); el tramo del Registro Social de Hogares sigue siendo sensible.
+
+
+class FichaVecino(models.Model):
+    """Hogar del vecino o vecina 🔒. La dirección (número de casa, comuna y sector) y la comunidad no se repiten aquí:
+    viven en la dirección de residencia y en la comunidad. Jefatura e integrantes se copiaron desde los datos sensibles."""
+
+    persona = models.OneToOneField(Persona, on_delete=models.PROTECT, related_name="ficha_vecino")
+    jefatura_hogar = models.BooleanField("es jefe o jefa de hogar", null=True, blank=True)
+    integrantes_hogar = models.PositiveSmallIntegerField("integrantes del hogar", null=True, blank=True,
+                                                         help_text="Cuántas personas viven en el hogar, contándola a ella. Ej.: 4.")
+    actualizado_en = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = "ficha de vecino o vecina"
+        verbose_name_plural = "fichas de vecinos y vecinas"
+
+    def __str__(self):
+        return f"Hogar de {self.persona}"
+
+
+class IntegranteHogar(models.Model):
+    """Familiares contados, sin nombres, RUT ni fechas 🔒: «2 · Hijo o hija · Niñez · vive en el hogar».
+    Sirve para hijos y nietos sin crear una persona por cada uno (menores de edad, Ley 21.719)."""
+
+    ficha = models.ForeignKey(FichaVecino, on_delete=models.PROTECT, related_name="integrantes")
+    parentesco = models.ForeignKey("nucleo.Parentesco", on_delete=models.PROTECT, related_name="+")
+    tramo = models.ForeignKey("nucleo.TramoEtario", null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                              verbose_name="tramo de edad", help_text="Déjalo vacío si no se sabe la edad.")
+    cantidad = models.PositiveSmallIntegerField(default=1, help_text="Ej.: 2 si son dos hijos del mismo tramo.")
+    vive_en_hogar = models.BooleanField("vive en el hogar", default=True, help_text="Desmárcala para familiares que viven en otra casa, como nietos.")
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-vive_en_hogar", "parentesco__orden", "tramo__orden", "pk"]
+        verbose_name = "integrante del hogar"
+        verbose_name_plural = "integrantes del hogar"
+        constraints = [
+            models.CheckConstraint(condition=Q(cantidad__gte=1), name="integrante_hogar_cantidad_positiva"),
+            # no repetir la misma fila; con dos restricciones parciales, porque «sin tramo» también cuenta como un valor
+            models.UniqueConstraint(fields=["ficha", "parentesco", "tramo", "vive_en_hogar"], condition=Q(tramo__isnull=False), name="integrante_hogar_unico"),
+            models.UniqueConstraint(fields=["ficha", "parentesco", "vive_en_hogar"], condition=Q(tramo__isnull=True), name="integrante_hogar_unico_sin_tramo"),
+        ]
+
+    def __str__(self):
+        partes = [str(self.cantidad), str(self.parentesco)]
+        if self.tramo_id:
+            partes.append(str(self.tramo))
+        return " · ".join(partes) + ("" if self.vive_en_hogar else " · vive en otra casa")
+
+
+class FamiliarVinculado(models.Model):
+    """Un familiar que ya está registrado como persona 🔒. Se lee «<familiar> es <parentesco> de <persona>».
+    No se crea una persona solo para contar a un familiar: para eso están los integrantes del hogar."""
+
+    persona = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name="familiares")
+    familiar = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name="familiar_de", help_text="Otra persona ya registrada.")
+    parentesco = models.ForeignKey("nucleo.Parentesco", on_delete=models.PROTECT, related_name="+",
+                                   help_text="Qué es el familiar para esta persona. Ej.: hijo o hija.")
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["parentesco__orden", "pk"]
+        verbose_name = "familiar vinculado"
+        verbose_name_plural = "familiares vinculados"
+        constraints = [
+            models.UniqueConstraint(fields=["persona", "familiar"], name="familiar_vinculado_unico"),
+            models.CheckConstraint(condition=~Q(persona=models.F("familiar")), name="familiar_vinculado_no_es_la_misma"),
+        ]
+
+    def __str__(self):
+        return f"{self.familiar} ({self.parentesco})"
+
+    def clean(self):
+        if self.persona_id and self.persona_id == self.familiar_id:
+            raise ValidationError({"familiar": "Una persona no puede ser su propio familiar."})
+
+
+class FichaInvitado(models.Model):
+    """Quien la Fundación invita: autoridades, expositores, prensa, aliados… La invitación a cada actividad
+    sigue en Coordinación; aquí queda lo propio de la persona invitada."""
+
+    persona = models.OneToOneField(Persona, on_delete=models.PROTECT, related_name="ficha_invitado")
+    tipo = models.ForeignKey("nucleo.TipoInvitado", null=True, blank=True, on_delete=models.PROTECT, related_name="+", verbose_name="tipo de invitado")
+    invitado_por = models.ForeignKey(Persona, null=True, blank=True, on_delete=models.PROTECT, related_name="invitados_referidos",
+                                     verbose_name="invitado o invitada por", help_text="Quién la invitó o la contactó, si se sabe.")
+    organizacion = models.ForeignKey("organizaciones.Organizacion", null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                                     verbose_name="organización de procedencia")
+    cargo = models.CharField(max_length=120, blank=True, help_text="Ej.: alcaldesa, director de escuela, periodista.")
+    motivo = models.TextField("motivo de la invitación", blank=True)
+    actividad = models.ForeignKey("actividades.Actividad", null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                                  help_text="Opcional: la actividad a la que se le invitó.")
+    actualizado_en = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = "ficha de invitado o invitada"
+        verbose_name_plural = "fichas de invitados e invitadas"
+
+    def __str__(self):
+        return f"Invitación de {self.persona}"
+
+    def clean(self):
+        if self.invitado_por_id and self.invitado_por_id == self.persona_id:
+            raise ValidationError({"invitado_por": "Déjalo vacío si nadie más la invitó."})
+
+
+class FichaVoluntario(models.Model):
+    """Voluntariado: estado, fecha de ingreso y horas por semana. La disponibilidad por día, la experiencia
+    y el contacto de emergencia siguen en sus propias tablas."""
+
+    persona = models.OneToOneField(Persona, on_delete=models.PROTECT, related_name="ficha_voluntario")
+    estado = models.ForeignKey("nucleo.EstadoVoluntario", null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                               verbose_name="estado del voluntariado")
+    fecha_ingreso = models.DateField("fecha de ingreso", null=True, blank=True)
+    horas_semanales = models.PositiveSmallIntegerField("horas disponibles por semana", null=True, blank=True, help_text="Ej.: 4.")
+    motivacion = models.TextField("motivación u observaciones", blank=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = "ficha de voluntario o voluntaria"
+        verbose_name_plural = "fichas de voluntarios y voluntarias"
+        constraints = [models.CheckConstraint(condition=Q(horas_semanales__isnull=True) | Q(horas_semanales__lte=168), name="ficha_voluntario_horas_posibles")]
+
+    def __str__(self):
+        return f"Voluntariado de {self.persona}"
+
+    def clean(self):
+        if self.horas_semanales is not None and self.horas_semanales > 168:
+            raise ValidationError({"horas_semanales": "Una semana tiene 168 horas: revisa el número."})

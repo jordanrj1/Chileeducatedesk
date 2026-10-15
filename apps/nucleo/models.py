@@ -115,8 +115,31 @@ EstadoRegistro = _catalogo("EstadoRegistro", "estado de registro", "estados de r
 TipoLugar = _catalogo("TipoLugar", "tipo de lugar", "tipos de lugar")
 TipoDocumento = _catalogo("TipoDocumento", "tipo de documento", "tipos de documento")
 TipoIntervencion = _catalogo("TipoIntervencion", "tipo de intervención", "tipos de intervención")
-PerfilPersona = _catalogo("PerfilPersona", "perfil de persona", "perfiles de persona")
+
+
+class PerfilPersona(Catalogo):
+    """Qué es una persona para la Fundación (estudiante, vecina, voluntario…). Puede tener varios.
+    `ficha` dice qué datos propios se piden al marcar el perfil; así un perfil nuevo puede abrir una ficha que ya existe."""
+
+    FICHAS = [
+        ("", "Sin ficha propia"), ("estudiante", "Estudiante"), ("vecino", "Vecino o vecina"),
+        ("invitado", "Invitado o invitada"), ("voluntario", "Voluntario o voluntaria"),
+    ]
+    ficha = models.CharField(max_length=12, choices=FICHAS, blank=True,
+                             help_text="Qué datos propios se piden al registrar a alguien con este perfil. Ej.: Estudiante pide institución, sede y carrera.")
+    campos_extra = ["ficha"]
+
+    class Meta(Catalogo.Meta):
+        verbose_name = "perfil de persona"
+        verbose_name_plural = "perfiles de persona"
+        permissions = [("desactivar_perfilpersona", "Puede desactivar valores de perfiles de persona")]
+
+
 AreaTematica = _catalogo("AreaTematica", "área temática", "áreas temáticas")
+# Fichas por tipo de persona: parentesco de los familiares del vecino, tipo de invitado y estado del voluntariado
+Parentesco = _catalogo("Parentesco", "parentesco", "parentescos")
+TipoInvitado = _catalogo("TipoInvitado", "tipo de invitado", "tipos de invitado")
+EstadoVoluntario = _catalogo("EstadoVoluntario", "estado del voluntariado", "estados del voluntariado")
 
 CATALOGOS = {
     "estado-actividad": EstadoActividad,
@@ -136,6 +159,9 @@ CATALOGOS = {
     "perfil-persona": PerfilPersona,
     "area-tematica": AreaTematica,
     "tramo-etario": TramoEtario,
+    "parentesco": Parentesco,
+    "tipo-invitado": TipoInvitado,
+    "estado-voluntario": EstadoVoluntario,
 }
 
 
