@@ -1,6 +1,7 @@
 """Pantallas de personas: listado con filtros, crear con aviso de duplicados, ficha con pestañas (las restringidas solo
 con permiso), editar, desactivar, unir repetidas (Administrador), reasignar, datos personales y datos sensibles."""
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render  # noqa: F401
@@ -128,7 +129,9 @@ class PersonaExportar(PersonaLista):
 
 
 class PersonaNueva(Permiso403Mixin, CreateView):
-    """Ficha rápida (nombre y un contacto) o completa. Siempre busca coincidencias antes de crear (PE-04)."""
+    """Ficha rápida (nombre y un contacto) o completa, con el «Tipo de registro» (estudiante, vecino, invitado, voluntario)
+    y la sección de cada tipo marcado (apps/personas/fichas.py). Siempre busca coincidencias antes de crear (PE-04):
+    el aviso de duplicados aparece antes de guardar nada, también lo de las secciones."""
 
     model = Persona
     permission_required = "personas.add_persona"
@@ -144,10 +147,31 @@ class PersonaNueva(Permiso403Mixin, CreateView):
     def get_form_class(self):
         return PersonaNuevaForm if self.modo() == "completa" else PersonaRapidaForm
 
+    def get_form(self, form_class=None):
+        from .fichas import RegistroFichas
+
+        form = super().get_form(form_class)
+        form.separar_tipos()
+        datos = self.request.POST if self.request.method == "POST" else None
+        self.fichas = RegistroFichas(datos, self.request.user, base=form)
+        return form
+
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo="Nueva persona", volver_url="/personas", breadcrumb=[("Personas", "/personas")], modo=self.modo())
+        ctx.update(titulo="Nueva persona", volver_url="/personas", breadcrumb=[("Personas", "/personas")], modo=self.modo(), fichas=self.fichas)
         return ctx
+
+    def post(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        if self.fichas.solo_mostrar:  # «Mostrar secciones» o «Actualizar listas»: se vuelve a dibujar sin guardar ni marcar errores
+            from apps.territorio.ubicacion import sin_errores
+
+            sin_errores(form)
+            return self.render_to_response(self.get_context_data(form=form))
+        if all([form.is_valid(), self.fichas.is_valid()]):
+            return self.form_valid(form)
+        return self.form_invalid(form)
 
     def form_valid(self, form):
         d = form.cleaned_data
@@ -172,13 +196,14 @@ class PersonaNueva(Permiso403Mixin, CreateView):
                 codigo = "activo" if (persona.apellido_paterno and tiene_contacto) else "incompleto"
                 persona.estado_registro = EstadoRegistro.objects.filter(codigo=codigo).first()
             persona.save()
-            form.save_m2m()  # perfiles y áreas de interés (F22)
+            form.save_m2m()  # perfiles (también los «Tipo de registro») y áreas de interés (F22)
             from apps.nucleo.models import TipoContacto
 
             if d.get("correo"):
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=d["correo"], principal=True)
             if d.get("telefono"):
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"], principal=not d.get("correo"))
+            self.fichas.guardar(persona)  # las secciones de los tipos marcados
             from apps.documentos.origen import registrar_origen
 
             registrar_origen(persona, self.request.user)
@@ -193,11 +218,115 @@ class PersonaNueva(Permiso403Mixin, CreateView):
 
 
 class PersonaEditar(EditarBase):
+    """Editar la persona, con su «Tipo de registro» y la sección de cada tipo marcado, en una sola transacción."""
+
     model = Persona
     form_class = PersonaForm
     permission_required = "personas.change_persona"
     titulo = "Editar persona"
     breadcrumb = [("Personas", "/personas")]
+    template_name = "personas/editar.html"
+
+    def get_form(self, form_class=None):
+        from .fichas import RegistroFichas
+
+        form = super().get_form(form_class)
+        form.separar_tipos()
+        datos = self.request.POST if self.request.method == "POST" else None
+        self.fichas = RegistroFichas(datos, self.request.user, persona=self.object, base=form)
+        return form
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        ctx["fichas"] = self.fichas
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        if self.fichas.solo_mostrar:
+            from apps.territorio.ubicacion import sin_errores
+
+            sin_errores(form)
+            return self.render_to_response(self.get_context_data(form=form))
+        if all([form.is_valid(), self.fichas.is_valid()]):
+            return self.form_valid(form)
+        return self.form_invalid(form)
+
+    def form_valid(self, form):
+        if self.version_en_conflicto():
+            form.add_error(None, self.MENSAJE_VERSION)
+            return self.form_invalid(form)
+        with transaction.atomic():
+            respuesta = super().form_valid(form)
+            self.fichas.guardar(self.object)
+        return respuesta
+
+
+class PersonaFichaTipo(Permiso403Mixin, View):
+    """«Editar» de una tarjeta de la pestaña Datos: solo la sección de ese tipo (estudiante, vecino, invitado o voluntario).
+    Al guardar, si la persona aún no tenía un perfil con esa ficha, se le marca el primero que la abre."""
+
+    permission_required = "personas.change_persona"
+
+    def _preparar(self, request, pk, codigo, datos=None):
+        from django.http import Http404
+
+        from .fichas import POR_CODIGO, RegistroFichas
+
+        clase = POR_CODIGO.get(codigo)
+        if clase is None:
+            raise Http404
+        if not request.user.has_perm(clase.permiso):
+            raise PermissionDenied
+        persona = get_object_or_404(Persona, pk=pk)
+        return persona, clase, RegistroFichas(datos, request.user, persona=persona, solo=codigo)
+
+    def _render(self, request, persona, clase, registro):
+        ctx = {"titulo": f"{clase.titulo}: {persona.nombre_completo}", "volver_url": f"{persona.get_absolute_url()}?tab=datos",
+               "breadcrumb": [("Personas", "/personas"), (persona.nombre_completo, persona.get_absolute_url())], "seccion": registro.secciones[0],
+               "persona": persona, "bajada": clase.ayuda}
+        return render(request, "personas/ficha_tipo.html", ctx)
+
+    def get(self, request, pk, codigo):
+        return self._render(request, *self._preparar(request, pk, codigo))
+
+    def post(self, request, pk, codigo):
+        persona, clase, registro = self._preparar(request, pk, codigo, request.POST)
+        if not registro.is_valid():
+            return self._render(request, persona, clase, registro)
+        with transaction.atomic():
+            registro.guardar(persona)
+            if not persona.perfiles.filter(ficha=codigo).exists():
+                perfil = PerfilPersona.objects.filter(activo=True, ficha=codigo).order_by("orden", "nombre").first()
+                if perfil:
+                    persona.perfiles.add(perfil)
+        messages.success(request, f"{clase.titulo}: datos guardados.")
+        return HttpResponseRedirect(f"{persona.get_absolute_url()}?tab=datos")
+
+
+def formulario_con_usuario(vista):
+    """get_form_kwargs de la formación (pestaña Formación): pasa el usuario, que decide si puede crear una sede o una carrera."""
+    kw = super(type(vista), vista).get_form_kwargs()
+    kw["usuario"] = vista.request.user
+    return kw
+
+
+class EstudiosDependientes(Permiso403Mixin, View):
+    """Sede y carrera de la institución elegida: personas/fichas/_estudios.html las vuelve a dibujar al cambiarla."""
+
+    permission_required = "personas.view_persona"
+
+    def get(self, request):
+        from apps.territorio.ubicacion import prefijo_seguro
+
+        from .forms import FormacionForm
+
+        prefijo = prefijo_seguro(request.GET.get("_prefijo"))
+        datos = request.GET.copy()
+        datos[f"{prefijo}-_actualizar_estudios" if prefijo else "_actualizar_estudios"] = "1"  # solo dibujar: sin errores
+        form = FormacionForm(datos, prefix=prefijo or None, usuario=request.user)
+        return render(request, "personas/fichas/_estudios_dependientes.html", {"form": form})
 
 
 def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente="vigente"):
@@ -288,6 +417,11 @@ class PersonaFicha(FichaBase):
             "titulo_pestana": titulo, "etiqueta_nuevo": etiqueta, "url_nuevo": reverse(f"personas:{slug}_nuevo", args=[self.object.pk]),
             "hijos": _hijos(objs, pk=self.object.pk, slug=slug, **kw), "vacio": f"Sin {titulo.lower()} registrados.",
         }
+
+    def ctx_datos(self):
+        from .fichas import tarjetas
+
+        return {"tarjetas_fichas": tarjetas(self.object, self.request.user)}
 
     def ctx_trayectoria(self):
         from apps.actividades.alcance import horas_persona

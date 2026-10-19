@@ -271,6 +271,16 @@ Afecta a los 14 listados que usan `ListaBase`.
   - cada tipo es una **tarjeta** en la pestaña Datos, con su resumen y «Editar»;
   - no se suman pestañas;
   - el hogar lleva 🔒.
+- **Cómo quedó (T10)** [P]:
+  - «Tipo de registro» son botones (casillas `perfiles`) con los perfiles que abren una ficha; van después de Identificación y Contacto, en la ficha rápida, la completa y en Editar. La lista de perfiles queda como «Otros perfiles» (los demás). Lo que se envía no cambia: un POST sin tipos crea la persona como antes;
+  - el registro está en `apps/personas/fichas.py` (`RegistroFichas` y una `Seccion` por ficha). Se dibujan todas las secciones; las no marcadas van con `hidden` y `static/js/fche.js` las muestra al marcar el tipo. Sin JavaScript, «Mostrar secciones» (y «Actualizar listas» de la ubicación o de los estudios) vuelve a dibujar sin guardar ni marcar errores;
+  - solo se validan y guardan las secciones marcadas, y dentro de ellas solo lo que trae algo escrito (un campo que no llegó no cuenta). Todo va en la transacción de la persona, después del aviso de duplicados;
+  - **estudiante**: institución (buscador con «+ Crear organización», solo instituciones educativas) → sede o casa matriz y carrera de esa institución (`/personas/estudios/dependientes` vuelve a dibujar solo esa parte). «+ Crear sede» pide nombre, si es sede o casa matriz, y comuna; «+ Crear carrera», el nombre. Se crean al guardar (el lugar con una dirección solo con la comuna) y se rechaza un nombre que ya existe en esa institución (sin contar tildes, mayúsculas ni espacios). La pestaña Formación usa la misma cascada; su texto `sede` se llama «Sede escrita (texto anterior)»;
+  - **vecino**: dirección de residencia con región → comuna → sector → comunidad (la ubicación de T5 con la comunidad), número de casa y «¿No está la comunidad? Escribe su nombre» (se crea vecinal en esa comuna y sector y la persona queda como integrante). Edad y sexo se piden aquí solo si el formulario de la persona no los tiene (ficha rápida o «Editar» de la tarjeta). Hogar 🔒: jefatura, integrantes, tres filas «cantidad · parentesco · tramo · vive en el hogar» (cantidad vacía = 1) y dos filas de «familiar ya registrado» con el buscador de personas (sin crear personas). Si la persona ya tiene residencia, la sección la muestra y enlaza a Direcciones;
+  - **invitado** y **voluntario**: su ficha, con buscadores para quien invita, la organización y la actividad;
+  - la edad («Edad (si no sabes la fecha)») y el sexo se agregaron a Identificación; con la edad se guarda la fecha aproximada, y escribir una fecha exacta apaga la marca. La pestaña Datos muestra «≈ 67 años» y el sexo;
+  - tarjetas en Datos: una por tipo marcado o con datos, con «Editar» (`/personas/<id>/fichas/<tipo>`), que guarda solo esa ficha y marca el perfil si faltaba. Estudiante edita su formación vigente más reciente (las demás, en Formación);
+  - los datos sensibles ya no editan jefatura ni integrantes del hogar (quedan en la ficha del vecino; las columnas antiguas siguen sin uso); conservan el tramo del Registro Social de Hogares.
 
 ### B3. Lo que hay que adaptar
 - **Fusión de fichas repetidas:**

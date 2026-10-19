@@ -1,0 +1,13 @@
+{# Qué es: Formulario de la persona por secciones, con el «Tipo de registro» y la sección de cada tipo justo después de Identificación y Contacto. #}
+{# Dónde se usa: personas/nueva.html y personas/editar.html · Proceso: P3 #}
+{% with secciones=form.secciones_ui %}
+{% for titulo_seccion, ayuda_seccion, campos in secciones %}
+<fieldset class="fche-bloque">
+  <legend class="fche-bloque__titulo">{{ titulo_seccion }}</legend>
+  {% if ayuda_seccion %}<p class="fche-bloque__ayuda">{{ ayuda_seccion }}</p>{% endif %}
+  <div class="fche-form__rejilla">{% for campo in campos %}{% include "generico/_campo.html" %}{% endfor %}</div>
+</fieldset>
+{% if forloop.counter == 2 or forloop.last and forloop.counter < 2 %}{% include "personas/_fichas.html" %}{% endif %}
+{% endfor %}
+{% endwith %}
+{% if form.fields.nacionalidad %}<datalist id="nacionalidades"><option value="Chilena"><option value="Venezolana"><option value="Peruana"><option value="Colombiana"><option value="Haitiana"><option value="Boliviana"><option value="Argentina"><option value="Ecuatoriana"></datalist>{% endif %}

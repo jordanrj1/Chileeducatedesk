@@ -1,0 +1,9 @@
+{# Qué es: Editar los datos de un tipo de registro de la persona (estudiante, vecino o vecina, invitado o voluntario). #}
+{# Dónde se usa: /personas/<int:pk>/fichas/<codigo>, desde «Editar» en su tarjeta de la pestaña Datos · Proceso: P3 #}
+{% extends "generico/formulario.html" %}
+{% block campos %}
+{% with s=seccion %}
+{% if s.registro.hay_errores %}<div class="alert alert-danger" role="alert">Revisa los datos marcados en rojo.</div>{% endif %}
+{% include s.plantilla %}
+{% endwith %}
+{% endblock %}

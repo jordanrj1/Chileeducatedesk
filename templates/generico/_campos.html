@@ -1,5 +1,5 @@
 {# Qué es: Trozo que dibuja un formulario completo, agrupado por secciones. #}
-{# Dónde se usa: se incluye en generico/formulario.html, personas/nueva.html · Proceso: Todos #}
+{# Dónde se usa: se incluye en generico/formulario.html (Personas → Nueva y Editar usan personas/_formulario_persona.html) · Proceso: Todos #}
 {% with secciones=form.secciones_ui %}{% if secciones %}
 {% for titulo_seccion, ayuda_seccion, campos in secciones %}
 <fieldset class="fche-bloque">

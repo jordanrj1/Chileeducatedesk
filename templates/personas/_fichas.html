@@ -1,0 +1,32 @@
+{# Qué es: «Tipo de registro»: botones para marcar si la persona es estudiante, vecino o vecina, invitado o voluntario, y debajo la sección de cada tipo marcado. #}
+{# Dónde se usa: personas/_formulario_persona.html (Personas → Nueva y Editar) · Proceso: P3 #}
+{% comment %}
+Los botones son casillas `perfiles` (los perfiles con ficha propia). Con JavaScript (static/js/fche.js) cada sección se muestra u
+oculta al marcar su tipo, sin recargar; sin JavaScript, «Mostrar secciones» vuelve a dibujar el formulario sin guardar.
+Solo se guardan las secciones de los tipos marcados (apps/personas/fichas.py).
+{% endcomment %}
+{% if form.tipos %}
+<fieldset class="fche-bloque fche-tipos" aria-describedby="tipos-ayuda">
+  <legend class="fche-bloque__titulo">Tipo de registro</legend>
+  <p class="fche-bloque__ayuda" id="tipos-ayuda">Marca uno o varios: cada tipo pide sus propios datos. Si no es ninguno, déjalos sin marcar.</p>
+  <div class="fche-tipos__botones">
+    {% for perfil, marcado in form.tipos_ui %}
+    <input type="checkbox" class="btn-check" name="perfiles" value="{{ perfil.pk }}" id="tipo-{{ perfil.pk }}" data-tipo-ficha="{{ perfil.ficha }}" aria-controls="ficha-{{ perfil.ficha }}" autocomplete="off"{% if marcado %} checked{% endif %}>
+    <label class="btn btn-outline-primary fche-tipos__boton" for="tipo-{{ perfil.pk }}">{{ perfil.nombre }}</label>
+    {% endfor %}
+  </div>
+  {% if not form.perfiles_en_lista %}{% for e in form.perfiles.errors %}<div class="fche-campo__error text-danger">{{ e }}</div>{% endfor %}{% endif %}
+  <noscript><div class="fche-ubicacion__sinjs">
+    <button type="submit" class="btn btn-sm btn-outline-secondary" name="_mostrar" value="1" formnovalidate>Mostrar secciones</button>
+    <span class="form-text">Después de marcar los tipos, pulsa aquí para ver sus secciones. No se guarda nada.</span>
+  </div></noscript>
+</fieldset>
+{% endif %}
+{% if fichas.hay_errores %}<div class="alert alert-danger" role="alert">Revisa los datos marcados en rojo en las secciones de cada tipo.</div>{% endif %}
+{% for s in fichas.secciones %}
+<fieldset class="fche-bloque fche-ficha" id="ficha-{{ s.codigo }}" data-ficha-seccion="{{ s.codigo }}"{% if not s.elegida %} hidden{% endif %}>
+  <legend class="fche-bloque__titulo">{{ s.titulo }}</legend>
+  {% if s.ayuda %}<p class="fche-bloque__ayuda">{{ s.ayuda }}</p>{% endif %}
+  {% include s.plantilla %}
+</fieldset>
+{% endfor %}

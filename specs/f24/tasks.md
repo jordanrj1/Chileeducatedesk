@@ -13,5 +13,5 @@
 
 ## Parte B (decidida por el usuario el 14-10-2026)
 - [x] T9 Modelo de las fichas por tipo
-- [ ] T10 Formulario dinámico y tarjetas en la ficha
+- [x] T10 Formulario dinámico y tarjetas en la ficha
 - [ ] T11 Fusión, exportación, importación y creación desde la actividad

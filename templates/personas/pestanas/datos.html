@@ -1,9 +1,10 @@
-{# Qué es: Pestaña Datos de la persona: nombre, RUT, origen, estado y observaciones. #}
+{# Qué es: Pestaña Datos de la persona: nombre, RUT, origen, estado y observaciones, y una tarjeta por tipo de registro (estudiante, vecino…). #}
 {# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
 {% load fche %}<dl class="fche-datos mb-4">
   <div><dt>RUT <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ object.rut|default:"—" }}</dd></div>
   {% if object.numero_documento %}<div><dt>{{ object.get_tipo_documento_display }} <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ object.numero_documento }}</dd></div>{% endif %}
-  <div><dt>Fecha de nacimiento</dt><dd>{{ object.fecha_nacimiento|date:"d-m-Y"|default:"—" }}{% if object.edad is not None %} <span class="text-muted">({{ object.edad }} años)</span>{% endif %}</dd></div>
+  <div><dt>Fecha de nacimiento</dt><dd>{% if object.fecha_nacimiento_aproximada %}Aproximada{% else %}{{ object.fecha_nacimiento|date:"d-m-Y"|default:"—" }}{% endif %}{% if object.edad is not None %} <span class="text-muted">({% if object.fecha_nacimiento_aproximada %}≈ {% endif %}{{ object.edad }} años)</span>{% endif %}</dd></div>
+  <div><dt>Sexo</dt><dd>{{ object.get_sexo_display|default:"—" }}</dd></div>
   <div><dt>Nacionalidad</dt><dd>{{ object.nacionalidad|default:"—" }}</dd></div>
   <div><dt>Nombre social</dt><dd>{{ object.nombre_social|default:"—" }}</dd></div>
   <div class="fche-datos__ancho"><dt>Perfil en la Fundación</dt><dd>{% for p in object.perfiles.all %}<span class="badge text-bg-primary me-1">{{ p }}</span>{% empty %}—{% endfor %}</dd></div>
@@ -21,6 +22,7 @@
   <div><dt>Registrada</dt><dd>{{ object.creado_en|date:"d-m-Y" }}</dd></div>
   <div class="fche-datos__ancho"><dt>Observaciones</dt><dd>{{ object.observaciones|default:"—"|linebreaksbr }}</dd></div>
 </dl>
+{% include "personas/pestanas/_fichas_tarjetas.html" %}
 {% if perms.personas.exportar_persona or puede_agregar %}<div class="d-flex flex-wrap gap-2 pt-3 border-top">
 {% if perms.personas.exportar_persona %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'personas:datos_personales' object.pk %}" title="Para responder si la persona pide conocer sus datos">{% icono "descargar" 15 %}Exportar sus datos personales</a>{% endif %}
 {% if puede_agregar %}
