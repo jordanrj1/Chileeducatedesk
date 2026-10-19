@@ -58,21 +58,47 @@ class BootstrapMixin:
                 w.format = "%H:%M"
 
     secciones = ()  # [(título, ayuda, [nombres de campos])]: el formulario se dibuja por bloques
+    bloques_de_seccion = {}  # {nombre: BloqueDeSeccion}: un nombre en `secciones` que dibuja varios campos juntos
 
     def secciones_ui(self):
-        """Secciones con sus campos visibles; lo que no está en ninguna va al final en «Otros datos»."""
+        """Secciones con sus campos visibles; lo que no está en ninguna va al final en «Otros datos».
+        Un nombre de `bloques_de_seccion` (p. ej. «ubicacion») dibuja sus campos juntos con la plantilla del bloque."""
         if not self.secciones:
             return None
+        bloques = self.bloques_de_seccion or {}
         usados, res = set(), []
         for titulo, ayuda, nombres in self.secciones:
-            campos = [self[n] for n in nombres if n in self.fields]
+            campos = []
+            for n in nombres:
+                if n in bloques:
+                    campos.append(bloques[n])
+                    usados.update(bloques[n].campos)
+                elif n in self.fields:
+                    campos.append(self[n])
             usados.update(nombres)
             if campos:
                 res.append((titulo, ayuda, campos))
-        resto = [self[n] for n in self.fields if n not in usados]
+        resto = []
+        for n in self.fields:
+            if n in usados:
+                continue
+            bloque = next((b for b in bloques.values() if n in b.campos), None)
+            if bloque is None:
+                resto.append(self[n])
+            elif bloque not in resto:
+                resto.append(bloque)
         if resto:
             res.append(("Otros datos", "", resto))
         return res
+
+
+class BloqueDeSeccion:
+    """Varios campos que se dibujan juntos con su propia plantilla dentro de una sección (p. ej. la ubicación en cascada)."""
+
+    es_bloque = True
+
+    def __init__(self, form, plantilla, campos):
+        self.form, self.plantilla, self.campos = form, plantilla, tuple(campos)
 
 
 def preparar_tramos(form, etiqueta_texto="Rango etario (texto anterior)"):

@@ -1,6 +1,7 @@
 """Pantallas del territorio: índice «Dónde trabajamos» (con el aviso si falta la lista oficial), región, ficha de comuna
 y de sector como contenedor (resumen, sectores, comunidades, organizaciones, personas, lugares, actividades, alcance e
-historial del sector), exportar a Excel, crear, editar, desactivar y reactivar sectores, y las listas de la dirección en cascada."""
+historial del sector), exportar a Excel, crear, editar, desactivar y reactivar sectores, las listas de la dirección en cascada
+y el bloque de ubicación en cascada (se vuelve a dibujar al cambiar una lista; «+ Crear sector» deja el sector elegido)."""
 from io import BytesIO
 from itertools import groupby
 
@@ -18,6 +19,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.nucleo.auditoria import registrar
+from apps.nucleo.selector import pk_seguro
 from apps.nucleo.vistas_base import AlternarActivoBase, FichaBase, Permiso403Mixin
 
 from . import consultas
@@ -27,6 +29,7 @@ from .forms import AliasForm, SectorForm
 from .models import Comuna, Provincia, Region, Sector
 from .reconocer import mismo_sector, sectores_parecidos
 from .resumen import personas_residentes, presencia_por_comuna, resumen_territorio
+from .ubicacion import CAMPOS, formulario_desde_peticion, prefijo_seguro
 
 RAIZ = [("Territorio", "/territorio")]
 
@@ -495,41 +498,85 @@ class SectoresOpciones(Permiso403Mixin, View):
         return HttpResponse(_opciones(_sectores_activos(v) if v else []))
 
 
-class SectorCrearRapido(Permiso403Mixin, View):
-    """[+ Crear sector] dentro de un formulario de dirección, sin salir (TE-06).
+def decidir_sector(comuna, nombre, tipo="sector", padre=None, confirmar=False):
+    """Qué hace «+ Crear sector»: devuelve (sector elegido o None, mensaje, nivel del aviso, pedir confirmación).
 
-    Si el nombre coincide con uno existente (o con un nombre alternativo) se usa ese; si ese está desactivado, lo avisa y no crea
-    otro. Si solo se parece, avisa y pide confirmar. Responde las opciones del sector (solo los activos) con el elegido
-    seleccionado y un mensaje fuera de banda.
+    Si el nombre coincide con uno existente (o con un nombre alternativo) se usa ese; si ese está desactivado, lo avisa y no
+    crea otro. Si solo se parece, avisa y pide confirmar. Solo crea cuando no hay nada igual."""
+    largo = Sector._meta.get_field("nombre").max_length
+    if not comuna:
+        return None, "Elige la comuna primero: cada sector pertenece a una comuna.", "danger", False
+    if not nombre:
+        return None, "Escribe el nombre del sector nuevo.", "danger", False
+    if len(nombre) > largo:
+        return None, f"El nombre es muy largo: usa {largo} letras como máximo.", "danger", False
+    existente = mismo_sector(comuna, nombre, padre)
+    if existente and not existente.activo:
+        aviso = format_html(
+            "Ya existe «{}», pero está desactivado: no se creó otro. Si se vuelve a usar, reactívalo desde <a href=\"{}\">su ficha</a>.",
+            existente, existente.get_absolute_url(),
+        )
+        return None, aviso, "warning", False
+    if existente:
+        return existente, f"Ya existía «{existente}»: quedó seleccionado.", "info", False
+    parecidos = sectores_parecidos(comuna, nombre, padre)
+    if parecidos and not confirmar:
+        lista = ", ".join(f"«{p}»" for p in parecidos)
+        return None, f"Hay sectores parecidos: {lista}. Si es otro, pulsa «Crear igual».", "warning", True
+    s = Sector.objects.create(comuna=comuna, nombre=nombre, tipo=tipo if tipo in dict(Sector.TIPOS) else "sector", sector_padre=padre)
+    return s, f"Sector «{s}» creado y seleccionado.", "success", False
+
+
+class UbicacionBloque(Permiso403Mixin, View):
+    """Vuelve a dibujar el bloque de ubicación en cascada (territorio/_ubicacion.html) cuando cambia una de sus listas."""
+
+    permission_required = "territorio.view_comuna"
+
+    def get(self, request):
+        datos = request.GET
+        prefijo = prefijo_seguro(datos.get("_prefijo"))
+        disparo = request.headers.get("HX-Trigger-Name") or datos.get("_cambio", "")
+        cambio = disparo[len(prefijo) + 1:] if prefijo and disparo.startswith(prefijo + "-") else disparo
+        form = formulario_desde_peticion(datos, cambio=cambio if cambio in CAMPOS + ("comunidad",) else "")
+        return render(request, "territorio/_ubicacion.html", {"form": form})
+
+
+class SectorCrearRapido(Permiso403Mixin, View):
+    """[+ Crear sector] dentro de un formulario, sin salir (TE-06). Ver `decidir_sector`.
+
+    Desde el bloque de ubicación (`_formato=bloque`, con la comuna en `comuna_del_sector`) responde el bloque completo con el
+    sector nuevo elegido; ante un aviso conserva lo que ya estaba elegido y lo escrito. Por compatibilidad, sin ese formato
+    responde las opciones del sector (solo los activos) con el elegido seleccionado y un mensaje fuera de banda.
     """
 
     permission_required = "territorio.add_sector"
 
     def post(self, request):
-        comuna_id = next((v for k, v in request.POST.items() if k.endswith("comuna") and v.isdigit()), None)
-        nombre = request.POST.get("nuevo_sector_nombre", "").strip()
-        tipo = request.POST.get("nuevo_sector_tipo", "sector")
+        datos = request.POST
+        if datos.get("_formato") == "bloque":
+            return self._bloque(request, datos)
+        comuna_id = pk_seguro(datos.get("comuna_del_sector")) or next((v for k, v in datos.items() if k.endswith("comuna") and v.isdigit()), None)
         comuna = Comuna.objects.filter(pk=comuna_id).first() if comuna_id else None
         self.destino = request.headers.get("HX-Target", "")
-        if not comuna or not nombre:
-            return self._respuesta(comuna, None, "Elige la comuna y escribe el nombre del sector.", "danger")
-        existente = mismo_sector(comuna, nombre)
-        if existente and not existente.activo:
-            aviso = format_html(
-                "Ya existe «{}», pero está desactivado: no se creó otro. Si se vuelve a usar, reactívalo desde <a href=\"{}\">su ficha</a>.",
-                existente, existente.get_absolute_url(),
-            )
-            return self._respuesta(comuna, None, aviso, "warning")
-        if existente:
-            return self._respuesta(comuna, existente.pk, f"Ya existía «{existente}»: quedó seleccionado.", "info")
-        parecidos = sectores_parecidos(comuna, nombre)
-        if parecidos and request.POST.get("confirmar_sector") != "1":
-            lista = ", ".join(f"«{p}»" for p in parecidos)
-            return self._respuesta(comuna, None, f"Hay sectores parecidos: {lista}. Si es otro, pulsa «Crear igual».", "warning", confirmar=True)
-        if tipo not in dict(Sector.TIPOS):
-            tipo = "sector"
-        s = Sector.objects.create(comuna=comuna, nombre=nombre, tipo=tipo)
-        return self._respuesta(comuna, s.pk, f"Sector «{s}» creado y seleccionado.", "success")
+        sector, mensaje, nivel, confirmar = decidir_sector(
+            comuna, datos.get("nuevo_sector_nombre", "").strip(), datos.get("nuevo_sector_tipo", "sector"), confirmar=datos.get("confirmar_sector") == "1",
+        )
+        return self._respuesta(comuna, sector.pk if sector else None, mensaje, nivel, confirmar=confirmar)
+
+    def _bloque(self, request, datos):
+        prefijo = prefijo_seguro(datos.get("_prefijo"))
+        campo = (lambda n: f"{prefijo}-{n}") if prefijo else (lambda n: n)
+        comuna_id = pk_seguro(datos.get("comuna_del_sector"))
+        comuna = Comuna.objects.filter(pk=comuna_id).first() if comuna_id else None
+        padre_id = pk_seguro(datos.get(campo("nuevo_sector_padre")))
+        padre = Sector.objects.filter(pk=padre_id, comuna=comuna, activo=True).first() if comuna and padre_id else None
+        nombre, tipo = (datos.get(campo("nuevo_sector_nombre")) or "").strip(), datos.get(campo("nuevo_sector_tipo")) or "sector"
+        sector, mensaje, nivel, confirmar = decidir_sector(comuna, nombre, tipo, padre, datos.get("confirmar_sector") == "1")
+        form = formulario_desde_peticion(datos, cambio="sector", elegir={"sector": sector.pk} if sector else None)
+        form.ubicacion_estado.update(mensaje=mensaje, nivel=nivel, confirmar=confirmar, abierto=sector is None, enfocar="sector" if sector else "nombre")
+        if sector:  # creado o reutilizado: el cuadro queda limpio para el siguiente
+            form.ubicacion_estado.update(nuevo_sector_nombre="", nuevo_sector_tipo="", nuevo_sector_padre="")
+        return render(request, "territorio/_ubicacion.html", {"form": form})
 
     def _respuesta(self, comuna, seleccionado, mensaje, nivel, confirmar=False):
         pares = _sectores_activos(comuna) if comuna else []

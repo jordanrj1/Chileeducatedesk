@@ -1,0 +1,54 @@
+{# Qué es: Ubicación en cascada: región → comuna → sector (la provincia es opcional), con «+ Crear sector», la comunidad si se pide y, en un lugar, lo que ya hay en la comuna. #}
+{# Dónde se usa: dirección de lugar, organización y persona; formulario de comunidad; /territorio/ubicacion la vuelve a dibujar al cambiar una lista · Proceso: P5 #}
+{% comment %}
+Recibe `form` (un formulario con UbicacionMixin). Cada lista que cambia pide el bloque de nuevo (hx-get en el campo) y lo
+reemplaza entero, así una elección incoherente nunca queda en pantalla. Sin JavaScript, «Actualizar listas» envía el
+formulario sin guardar y lo vuelve a dibujar con las listas al día.
+{% endcomment %}{% with u=form.ubicacion_ui %}
+<div class="fche-ubicacion" id="{{ u.id }}" role="group" aria-label="Ubicación" hx-target="this" hx-swap="outerHTML" hx-include="this" hx-sync="this:replace" hx-vals="{{ u.vals }}">
+  <div class="fche-ubicacion__listas">
+    {% include "generico/_campo.html" with campo=u.region %}
+    {% include "generico/_campo.html" with campo=u.campo_comuna %}
+    {% include "generico/_campo.html" with campo=u.sector %}
+    {% if u.comunidad %}{% include "generico/_campo.html" with campo=u.comunidad %}{% endif %}
+  </div>
+  <details class="fche-ubicacion__provincia"{% if u.provincia_abierta %} open{% endif %}>
+    <summary>Filtrar las comunas por provincia (opcional)</summary>
+    {% include "generico/_campo.html" with campo=u.provincia %}
+  </details>
+  <noscript><div class="fche-ubicacion__sinjs">
+    <button type="submit" class="btn btn-sm btn-outline-secondary" name="{{ u.nombre_actualizar }}" value="1" formnovalidate>Actualizar listas</button>
+    <span class="form-text">Después de elegir la región o la comuna, pulsa aquí para ver sus comunas y sectores. No se guarda nada.</span>
+  </div></noscript>
+  {% if u.crear and perms.territorio.add_sector %}
+  <div class="fche-ubicacion__crear">
+    {% if u.comuna %}
+    <details{% if u.abierto %} open{% endif %}>
+      <summary>+ Crear sector en {{ u.comuna.nombre }}</summary>
+      <div class="fche-ubicacion__nuevo">
+        <div class="fche-campo">
+          <label class="form-label" for="{{ u.id }}-nombre">Nombre del sector, villa o población</label>
+          <input class="form-control" id="{{ u.id }}-nombre" name="{{ u.nombre_sector }}" value="{{ u.escrito }}" maxlength="120" autocomplete="off" placeholder="Ej.: Villa Los Aromos" data-enter-dispara="{{ u.id }}-crear"{% if u.enfocar == "nombre" %} autofocus{% endif %}>
+        </div>
+        <div class="fche-campo fche-ubicacion__tipo">
+          <label class="form-label" for="{{ u.id }}-tipo">Tipo</label>
+          <select class="form-select" id="{{ u.id }}-tipo" name="{{ u.nombre_tipo }}">{% for valor, texto in u.tipos %}<option value="{{ valor }}"{% if valor == u.tipo_escrito %} selected{% endif %}>{{ texto }}</option>{% endfor %}</select>
+        </div>
+        {% if u.padres %}<div class="fche-campo">
+          <label class="form-label" for="{{ u.id }}-padre">Dentro de (opcional)</label>
+          <select class="form-select" id="{{ u.id }}-padre" name="{{ u.nombre_padre }}"><option value="">Ninguno: es un sector de la comuna</option>{% for s in u.padres %}<option value="{{ s.pk }}"{% if u.padre_escrito == s.pk|stringformat:"s" %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+        </div>{% endif %}
+        <button type="button" class="btn btn-sm btn-primary" id="{{ u.id }}-crear" hx-post="{% url 'territorio:sector_crear_rapido' %}" hx-vals="{{ u.vals_crear }}">+ Crear sector</button>
+      </div>
+      <noscript><p class="form-text mb-0">Sin JavaScript, crea el sector en <a href="{{ u.comuna.get_absolute_url }}?tab=sectores" target="_blank" rel="noopener">la ficha de {{ u.comuna.nombre }}<span class="visually-hidden"> (se abre en otra pestaña)</span></a> y luego pulsa «Actualizar listas».</p></noscript>
+    </details>
+    {% else %}
+    <button type="button" class="btn btn-sm btn-outline-secondary" disabled aria-describedby="{{ u.id }}-sin-comuna">+ Crear sector</button>
+    <span class="form-text" id="{{ u.id }}-sin-comuna">Primero elige la comuna: cada sector pertenece a una comuna.</span>
+    {% endif %}
+    <div class="fche-ubicacion__aviso small text-{{ u.nivel }}-emphasis" id="{{ u.id }}-aviso" role="status">{% if u.mensaje %}{{ u.mensaje }}{% if u.confirmar %} <button type="button" class="btn btn-sm btn-outline-warning" hx-post="{% url 'territorio:sector_crear_rapido' %}" hx-vals="{{ u.vals_confirmar }}">Crear igual</button>{% endif %}{% endif %}</div>
+  </div>
+  {% endif %}
+  {% if u.panel %}{% include "territorio/_contexto_lugar.html" with panel=u.panel comuna=u.comuna %}{% endif %}
+</div>
+{% endwith %}

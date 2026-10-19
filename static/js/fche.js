@@ -2,6 +2,7 @@
    - aviso de cambios sin guardar (DA-03);
    - borrador en la pestaña si la sesión vence o el servidor falla (AC-E2, AC-E3, UI-E6), con el nombre elegido en los buscadores;
    - un solo envío por formulario aunque se haga doble clic (UI-E1);
+   - Enter en el cuadro de «+ Crear sector» crea el sector en vez de enviar el formulario;
    - error de una sección cargada con HTMX, con «Reintentar» (DA-05). */
 (function () {
   "use strict";
@@ -141,6 +142,17 @@
     e.preventDefault();
     buscador.focus();
     buscador.select();
+  });
+
+  // Enter en un cuadro con data-enter-dispara (p. ej. el nombre del sector nuevo) pulsa su botón en vez de enviar
+  // el formulario completo, que guardaría sin el sector escrito.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || e.isComposing || !e.target.closest) return;
+    var cuadro = e.target.closest("[data-enter-dispara]");
+    if (!cuadro) return;
+    e.preventDefault();
+    var boton = document.getElementById(cuadro.getAttribute("data-enter-dispara"));
+    if (boton && !boton.disabled) boton.click();
   });
 
   // Resultados de búsqueda: marca las palabras buscadas (sin distinguir mayúsculas ni tildes).

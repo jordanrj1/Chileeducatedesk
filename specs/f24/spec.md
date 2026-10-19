@@ -129,6 +129,16 @@ Afecta a los 14 listados que usan `ListaBase`.
   - **Se usa en:** la dirección de persona, organización y lugar; la comunidad; el territorio de la actividad; y el del proyecto.
 - **Formulario de lugar:** al elegir la comuna aparece el panel **«En Hualpén ya hay…»** con sus sectores, comunidades, lugares y organizaciones, para reutilizar en vez de duplicar.
 - **Corrección:** una actividad dirigida a un **sector** aparece al filtrar por su **comuna** en el listado de actividades, el calendario y el buscador.
+- **Cómo quedó (T5)** [P]:
+  - `apps/territorio/ubicacion.py` (`UbicacionMixin`, `UbicacionForm`) + `territorio/_ubicacion.html` + `GET /territorio/ubicacion`, que vuelve a dibujar el bloque entero al cambiar región, provincia o comuna (la lista que cambió manda y lo que no calza se suelta);
+  - la provincia va plegada en «Filtrar las comunas por provincia (opcional)»; al editar un registro con comuna se muestra abierta con su provincia, y la lista de comunas es la de esa provincia;
+  - el sector queda deshabilitado («Primero elige la comuna») hasta elegir la comuna; solo ofrece sectores activos, salvo el que el registro ya tenía («(desactivado)»);
+  - «+ Crear sector en Hualpén» va plegado bajo el sector, con nombre, tipo y «Dentro de» (opcional); manda la comuna explícita, responde el bloque con el sector nuevo elegido y el foco en la lista; ante un aviso conserva lo elegido y lo escrito, con mensajes distintos para «falta la comuna» y «falta el nombre». Enter en el nombre crea el sector (no envía el formulario); si se guarda con un nombre escrito y sin crearlo, el formulario lo avisa;
+  - sin JavaScript, «Actualizar listas» vuelve a dibujar el formulario sin guardar ni marcar errores; el sector se crea en la ficha de la comuna (enlace en otra pestaña);
+  - en `secciones`, el nombre «ubicacion» dibuja el bloque (`BloqueDeSeccion`); la comunidad lo usa en su sección Territorio;
+  - el panel «En Hualpén ya hay…» muestra hasta 6 por grupo con enlaces (en otra pestaña), los totales y «Ver … en la ficha de la comuna», con un número fijo de consultas;
+  - queda listo para varias filas (prefijo por fila, modo «destino» que guarda el nivel más fino con `ubicacion_elegida()`) y para la comunidad después del sector (`ubicacion_comunidad`);
+  - la corrección del filtro por comuna (actividades, calendario y buscador) va con los filtros (T4).
 
 ### A6. Actividad y proyecto: «¿Dónde?» con pocos clics
 - **Actividad (crear y editar):**

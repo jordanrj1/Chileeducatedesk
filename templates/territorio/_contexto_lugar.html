@@ -1,0 +1,21 @@
+{# Qué es: Panel «En <comuna> ya hay…»: sectores, comunidades, lugares y organizaciones de la comuna elegida, para reutilizarlos en vez de crearlos de nuevo. #}
+{# Dónde se usa: dentro de territorio/_ubicacion.html, en /lugares/nuevo y /lugares/<int:pk>/editar · Proceso: P5 #}
+<details class="fche-ubicacion__panel" open>
+  <summary>En {{ comuna.nombre }} ya hay: {{ panel.resumen }}</summary>
+  {% if panel.total %}
+  <p class="form-text">¿El lugar es uno de estos o está en alguno? Revísalo antes de crearlo de nuevo. Los enlaces se abren en otra pestaña.</p>
+  <div class="fche-ubicacion__grupos">
+    {% for g in panel.grupos %}
+    <div class="fche-ubicacion__grupo">
+      <p class="fche-ubicacion__grupo-titulo">{{ g.titulo }} <span class="fche-ubicacion__total">({{ g.total }})</span></p>
+      {% if g.filas %}
+      <ul>{% for texto, url, detalle in g.filas %}<li><a href="{{ url }}" target="_blank" rel="noopener">{{ texto }}<span class="visually-hidden"> (se abre en otra pestaña)</span></a>{% if detalle %} <span class="fche-ubicacion__detalle">· {{ detalle }}</span>{% endif %}</li>{% endfor %}</ul>
+      {% if g.total > g.filas|length %}<a class="small" href="{{ g.mas }}" target="_blank" rel="noopener">Ver {{ g.texto }} en la ficha de la comuna<span class="visually-hidden"> (se abre en otra pestaña)</span></a>{% endif %}
+      {% else %}<p class="form-text mt-0">Todavía no hay.</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="form-text">Aún no hay nada registrado en {{ comuna.nombre }}: este será el primer lugar de la comuna.</p>
+  {% endif %}
+</details>

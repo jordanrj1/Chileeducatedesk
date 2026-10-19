@@ -722,3 +722,23 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-accesos--compacto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 1199.98px) { .fche-accesos--compacto { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); } }
 .fche-opciones input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--fche-primario); }
+/* Ubicación en cascada (territorio/_ubicacion.html): región, comuna y sector en una fila que se apila en el celular;
+   la provincia y «+ Crear sector» van plegados debajo; en un lugar, el panel «En <comuna> ya hay…». */
+.fche-form__rejilla > .fche-ubicacion { grid-column: 1 / -1; }
+.fche-ubicacion__listas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); column-gap: 1.25rem; }
+.fche-ubicacion__provincia, .fche-ubicacion__crear, .fche-ubicacion__sinjs { margin: -.4rem 0 1rem; font-size: .85rem; }
+.fche-ubicacion__provincia .fche-campo { max-width: 22rem; margin: .6rem 0 0; }
+.fche-ubicacion__sinjs { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.fche-ubicacion__crear { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .6rem; }
+.fche-ubicacion__crear > details { flex: 1 1 100%; }
+.fche-ubicacion__nuevo { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .6rem .75rem; margin-top: .6rem; padding: .75rem; border: 1px solid var(--fche-borde); border-radius: var(--fche-radio); background: var(--fche-fondo); }
+.fche-ubicacion__nuevo .fche-campo { flex: 1 1 13rem; margin: 0; }
+.fche-ubicacion__nuevo .fche-ubicacion__tipo { flex: 0 1 9rem; }
+.fche-ubicacion__aviso { flex: 1 1 100%; }
+.fche-ubicacion__aviso:empty { display: none; }
+.fche-ubicacion__panel { margin: 0 0 1.15rem; padding: .75rem .9rem; border: 1px solid var(--fche-primario-borde); border-radius: var(--fche-radio); background: var(--fche-primario-suave); }
+.fche-ubicacion__panel > summary { color: var(--fche-primario-oscuro); }
+.fche-ubicacion__grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .75rem 1.25rem; }
+.fche-ubicacion__grupo-titulo { margin: 0 0 .25rem; font-size: .82rem; font-weight: 700; color: var(--fche-texto); }
+.fche-ubicacion__total, .fche-ubicacion__detalle { font-weight: 400; color: var(--fche-texto-suave); }
+.fche-ubicacion__grupo ul { margin: 0 0 .25rem; padding-left: 1.1rem; font-size: .85rem; }

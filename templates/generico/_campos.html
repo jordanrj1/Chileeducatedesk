@@ -5,7 +5,7 @@
 <fieldset class="fche-bloque">
   <legend class="fche-bloque__titulo">{{ titulo_seccion }}</legend>
   {% if ayuda_seccion %}<p class="fche-bloque__ayuda">{{ ayuda_seccion }}</p>{% endif %}
-  <div class="fche-form__rejilla">{% for campo in campos %}{% include "generico/_campo.html" %}{% endfor %}</div>
+  <div class="fche-form__rejilla">{% for campo in campos %}{% if campo.es_bloque %}{% include campo.plantilla with form=campo.form %}{% else %}{% include "generico/_campo.html" %}{% endif %}{% endfor %}</div>
 </fieldset>
 {% endfor %}
 {% else %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endif %}{% endwith %}

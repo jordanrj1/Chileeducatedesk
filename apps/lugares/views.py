@@ -51,6 +51,7 @@ class _Formulario(ConDireccionMixin, Permiso403Mixin):
     model = Lugar
     template_name = "lugares/formulario.html"
     direccion_requerida = True
+    direccion_contexto = "lugar"  # al elegir la comuna se ve lo que ya hay en ella, para no duplicar
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)

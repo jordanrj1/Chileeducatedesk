@@ -1,12 +1,12 @@
-"""Formularios de comunidades: crear o editar una comunidad y agregar integrantes,
-desde la comunidad o desde la ficha de la persona."""
+"""Formularios de comunidades: crear o editar una comunidad (con la ubicación en cascada: región → comuna → sector)
+y agregar integrantes, desde la comunidad o desde la ficha de la persona."""
 from django import forms
 
 from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores, preparar_tramos
 from apps.nucleo.models import AreaTematica
 from apps.organizaciones.selector import ORGANIZACIONES
 from apps.personas.selector import PERSONAS
-from apps.territorio.models import Comuna, Sector
+from apps.territorio.ubicacion import UbicacionMixin
 
 from .models import Comunidad, ComunidadMiembro
 
@@ -15,13 +15,14 @@ def selector_persona(**kw):
     return SelectorField(PERSONAS, **kw)
 
 
-class ComunidadForm(BootstrapMixin, forms.ModelForm):
+class ComunidadForm(UbicacionMixin, BootstrapMixin, forms.ModelForm):
+    ubicacion_modo = "comunidad"  # la comuna es obligatoria; el sector, opcional
     organizacion = SelectorField(ORGANIZACIONES, required=False,
                                  label="Organización que la representa", help_text="Por ejemplo, la junta de vecinos o el establecimiento.")
     referente = selector_persona(required=False, label="Referente o dirigente principal")
     secciones = [
         ("Identificación", "", ["nombre", "tipo", "descripcion"]),
-        ("Territorio", "Dónde vive o se reúne esta comunidad.", ["comuna", "sector", "organizacion", "referente"]),
+        ("Territorio", "Dónde vive o se reúne esta comunidad.", ["ubicacion", "organizacion", "referente"]),
         ("Caracterización", "Lo levantado en terreno: sirve para diseñar actividades pertinentes y medir el alcance.",
          ["poblacion_estimada", "tramos_etarios", "rango_etario", "areas_interes", "diagnostico"]),
     ]
@@ -36,10 +37,8 @@ class ComunidadForm(BootstrapMixin, forms.ModelForm):
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
-        self.fields["comuna"].queryset = Comuna.objects.select_related("provincia").order_by("nombre")
-        # solo sectores activos; al editar se conserva el que la comunidad ya tenía aunque esté desactivado
-        self.fields["sector"].queryset = Sector.para_elegir(conservar=self.instance.sector_id).select_related("comuna").order_by("comuna__nombre", "nombre")
-        self.fields["sector"].label_from_instance = lambda s: s.etiqueta(con_comuna=True)
+        # la comuna y el sector los arma UbicacionMixin: solo sectores activos de la comuna elegida; al editar se conserva
+        # el que la comunidad ya tenía aunque esté desactivado
         self.fields["areas_interes"].queryset = AreaTematica.objects.filter(activo=True)
         preparar_tramos(self, "Rango etario predominante (texto anterior)")
         fijar_valores_selectores(self)

@@ -1,8 +1,10 @@
-{# Qué es: Crear o editar lugar con su dirección en cascada. #}
+{# Qué es: Crear o editar lugar con su dirección en cascada y lo que ya hay en la comuna elegida. #}
 {# Dónde se usa: /lugares/<int:pk>/editar, /lugares/nuevo · Proceso: P5 #}
 {% extends "generico/formulario.html" %}
 {% block extra_form %}
 <fieldset class="mt-2 pt-3 mb-3 border-top"><legend class="h6 mb-3">Dirección</legend>
-  {% include "territorio/_direccion.html" %}
+  {% if form_direccion.non_field_errors %}<div class="alert alert-danger">{{ form_direccion.non_field_errors }}</div>{% endif %}
+  {% include "territorio/_ubicacion.html" with form=form_direccion %}
+  <div class="fche-form__rejilla">{% for campo in form_direccion.campos_sin_ubicacion %}{% include "generico/_campo.html" %}{% endfor %}</div>
 </fieldset>
 {% endblock %}

@@ -1,12 +1,13 @@
 """Formularios de territorio: sector (con sector padre), nombre alternativo de un sector,
-y la dirección en cascada (región → provincia → comuna → sector), que exige que el sector sea de esa comuna.
+y la dirección con la ubicación en cascada (región → comuna → sector; ver ubicacion.py), que exige que el sector sea de esa comuna.
 Las listas solo ofrecen sectores activos; al editar, se conserva el sector desactivado que el registro ya tenía."""
 from django import forms
 
 from apps.nucleo.formularios import BootstrapMixin
 
-from .models import Comuna, Direccion, Provincia, Region, Sector, SectorAlias
+from .models import Direccion, Sector, SectorAlias
 from .reconocer import mismo_sector
+from .ubicacion import UbicacionMixin
 
 
 class SectorForm(BootstrapMixin, forms.ModelForm):
@@ -58,54 +59,13 @@ class AliasForm(BootstrapMixin, forms.ModelForm):
         labels = {"nombre": "Nombre alternativo"}
 
 
-class DireccionForm(BootstrapMixin, forms.ModelForm):
-    """Dirección reutilizable con selección en cascada: región → provincia → comuna → sector (TE-01, TE-03).
+class DireccionForm(UbicacionMixin, BootstrapMixin, forms.ModelForm):
+    """Dirección reutilizable con la ubicación en cascada: región → comuna → sector, con la provincia opcional (TE-01, TE-03).
 
     Región y provincia no se guardan: se deducen de la comuna. El sector se valida contra la comuna en el servidor.
+    Se dibuja con territorio/_ubicacion.html (la cascada) más `campos_sin_ubicacion` (calle, número…).
     """
-
-    region = forms.ModelChoiceField(Region.objects.all(), required=False, label="Región")
-    provincia = forms.ModelChoiceField(Provincia.objects.all(), required=False, label="Provincia")
 
     class Meta:
         model = Direccion
-        fields = ["region", "provincia", "comuna", "sector", "calle", "numero", "block", "depto", "referencia"]
-
-    def __init__(self, *args, **kw):
-        super().__init__(*args, **kw)
-        dato = lambda n: self.data.get(self.add_prefix(n)) if self.is_bound else None
-        # sin dato enviado ni instancia, una comuna inicial (crear desde la ficha de una comuna) arma la cascada
-        inicial = None if self.is_bound else self.initial.get("comuna")
-        comuna_id = dato("comuna") or (self.instance.comuna_id if self.instance.pk else None) or inicial
-        comuna = Comuna.objects.select_related("provincia__region").filter(pk=comuna_id).first() if str(comuna_id or "").isdigit() else None
-        if comuna and not self.is_bound:
-            self.initial["region"] = comuna.provincia.region_id
-            self.initial["provincia"] = comuna.provincia_id
-        elif inicial and not comuna:
-            self.initial.pop("comuna")  # una comuna inicial que no existe se ignora
-            comuna_id = None
-        region_id = dato("region") or self.initial.get("region")
-        provincia_id = dato("provincia") or self.initial.get("provincia")
-        if region_id:
-            self.fields["provincia"].queryset = Provincia.objects.filter(region_id=region_id)
-        comunas = Comuna.objects.select_related("provincia__region")
-        self.fields["comuna"].queryset = comunas  # validación contra todas las comunas
-        if provincia_id:
-            self.fields["comuna"].choices = [("", "---------")] + [(c.pk, c.nombre) for c in comunas.filter(provincia_id=provincia_id)]
-        # solo sectores activos; al editar se conserva el que la dirección ya tenía aunque esté desactivado
-        if comuna:
-            self.fields["sector"].queryset = Sector.para_elegir(conservar=self.instance.sector_id).filter(comuna=comuna).select_related("sector_padre__sector_padre")
-        else:
-            self.fields["sector"].queryset = Sector.objects.none()
-        self.fields["sector"].label_from_instance = Sector.etiqueta
-        p = self.add_prefix
-        self.fields["region"].widget.attrs.update({"hx-get": "/territorio/provincias", "hx-target": f"#id_{p('provincia')}", "hx-trigger": "change"})
-        self.fields["provincia"].widget.attrs.update({"hx-get": "/territorio/comunas", "hx-target": f"#id_{p('comuna')}", "hx-trigger": "change"})
-        self.fields["comuna"].widget.attrs.update({"hx-get": "/territorio/sectores", "hx-target": f"#id_{p('sector')}", "hx-trigger": "change", "hx-include": "this"})
-
-    def clean(self):
-        d = super().clean()
-        c = d.get("comuna")
-        if c and d.get("provincia") and c.provincia_id != d["provincia"].pk:
-            self.add_error("comuna", "La comuna no pertenece a la provincia elegida.")
-        return d
+        fields = ["comuna", "sector", "calle", "numero", "block", "depto", "referencia"]
