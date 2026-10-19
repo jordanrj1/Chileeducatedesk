@@ -244,6 +244,18 @@ Afecta a los 14 listados que usan `ListaBase`.
   - motivación u observaciones;
   - la disponibilidad, la experiencia y el contacto de emergencia siguen en sus tablas actuales.
 - Historial de cambios en las fichas nuevas.
+- **Cómo quedó (T9)** [P]:
+  - `PerfilPersona` es una clase con `ficha` (opción vacía «Sin ficha propia»); la lista de Catálogos muestra la columna «Ficha que abre». Beneficiario, dirigente y los demás quedan sin ficha;
+  - la carga inicial solo crea por código lo que falta y solo asigna la ficha a un perfil que no tiene una: no pisa lo editado en Catálogos;
+  - valores iniciales de Parentesco: hijo o hija, nieto o nieta, pareja, padre o madre, hermano o hermana, abuelo o abuela, otro familiar, sin parentesco;
+  - `Persona.fijar_edad_aproximada(edad)` guarda el 1 de enero de (año actual − edad); si la fecha se borra, la marca «aproximada» se apaga sola;
+  - la sede se valida con `PersonaFormacion.sedes_de(institución)`: lugar de esa institución y de tipo sede o casa matriz (lo mismo que se ofrecerá en el formulario). El texto `sede` sigue igual; su etiqueta «texto anterior» llega con el formulario (T10). La migración enlaza la sede escrita con el lugar de la institución que se llama igual (sin contar tildes, mayúsculas ni espacios de más), solo si hay exactamente uno y la formación aún no tiene sede; no crea lugares, porque un `Lugar` exige dirección y el texto no la trae;
+  - `IntegranteHogar.tramo` es **opcional** («si no se sabe la edad»); no se repite la misma fila (parentesco, tramo y si vive en el hogar), tampoco «sin tramo», con dos restricciones parciales que funcionan en cualquier PostgreSQL. Cantidad ≥ 1;
+  - `FamiliarVinculado` se lee «el familiar es <parentesco> de la persona»; una sola fila por par y nadie es su propio familiar (restricción en la base y en `clean()`);
+  - `FichaInvitado`: tipo, invitado por, organización de procedencia, cargo (texto), motivo y actividad, todo opcional; quien invita no puede ser la misma persona;
+  - `FichaVoluntario`: horas por semana hasta 168;
+  - la copia del hogar desde `PerfilSensible` solo completa lo vacío y se puede repetir; las columnas antiguas siguen ahí, y la pestaña de datos sensibles las sigue escribiendo hasta que T10 las reemplace por la ficha del vecino;
+  - al fusionar duplicados, la persona que queda completa el sexo si lo tiene vacío, y la fecha de nacimiento llega con su marca «aproximada». Las fichas por tipo se completan al fusionar en T11.
 
 ### B2. Formulario dinámico y ficha
 - **Formulario:**

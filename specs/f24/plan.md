@@ -186,8 +186,10 @@
 - **Migraciones de datos:**
   - asigna la ficha de cada perfil;
   - crea el perfil invitado;
-  - copia la jefatura y los integrantes del hogar de `PerfilSensible` a `FichaVecino` (las columnas viejas se conservan).
-- **Pruebas:** restricciones, migración de datos y el `clean()` de la sede.
+  - copia la jefatura y los integrantes del hogar de `PerfilSensible` a `FichaVecino` (las columnas viejas se conservan);
+  - enlaza la sede escrita con el único lugar de la institución que se llama igual (sin crear lugares ni borrar el texto).
+- **Fusión:** `COMPLETAR` suma el sexo, y la fecha de nacimiento viaja con su marca «aproximada».
+- **Pruebas:** restricciones, migración de datos, enlace de sedes, fusión y el `clean()` de la sede.
 
 ### T10 · Formulario dinámico y tarjetas en la ficha (spec B2)
 - **Formulario `PersonaNuevaForm` / edición:** fila de tipos (perfiles con ficha) y una sección por ficha.

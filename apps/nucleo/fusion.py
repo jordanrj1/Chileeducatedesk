@@ -12,7 +12,7 @@ from .auditoria import registrar
 # Datos que se copian a la ficha que queda si allí están vacíos
 COMPLETAR = {
     "Persona": ["apellido_paterno", "apellido_materno", "profesion", "sitio_web", "origen_id", "tipo_documento", "numero_documento",
-                "nombre_social", "fecha_nacimiento", "nacionalidad", "nivel_educacional", "situacion_ocupacional", "habilidades", "idiomas", "canal_preferido_id"],
+                "nombre_social", "fecha_nacimiento", "sexo", "nacionalidad", "nivel_educacional", "situacion_ocupacional", "habilidades", "idiomas", "canal_preferido_id"],
     "Organizacion": ["otro_identificador", "descripcion", "sitio_web", "direccion_id", "naturaleza_juridica", "domicilio_legal", "vigencia_desde", "vigencia_hasta"],
 }
 
@@ -72,6 +72,8 @@ def fusionar(origen, destino, usuario, motivo):
             continue
         if not getattr(destino, c) and getattr(origen, c):
             setattr(destino, c, getattr(origen, c))
+            if c == "fecha_nacimiento":  # la fecha viaja con su marca: si era aproximada, sigue siéndolo
+                destino.fecha_nacimiento_aproximada = origen.fecha_nacimiento_aproximada
     destino.save()
     for m2m in ("perfiles", "areas_interes", "tramos_etarios"):  # perfiles, intereses y tramos de edad se suman
         if hasattr(destino, m2m):
