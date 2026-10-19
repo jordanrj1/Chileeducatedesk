@@ -61,8 +61,8 @@ class RolParticipacion(Catalogo):
 
 
 class TramoEtario(Catalogo):
-    """Tramo de edad: a qué edades va dirigida una actividad o qué edades predominan en una comunidad (y, más adelante,
-    los integrantes del hogar). Sin edad máxima quiere decir «o más». Los valores iniciales están por validar con el cliente."""
+    """Tramo de edad: a qué edades va dirigida una actividad, qué edades predominan en una comunidad y la edad de los
+    integrantes del hogar de un vecino. Sin edad máxima quiere decir «o más». Los valores iniciales están por validar con el cliente."""
 
     edad_min = models.PositiveSmallIntegerField("edad mínima", null=True, blank=True, help_text="En años. Ej.: 18.")
     edad_max = models.PositiveSmallIntegerField("edad máxima", null=True, blank=True, help_text="En años. Déjala vacía si no tiene tope (Ej.: 60 o más).")
