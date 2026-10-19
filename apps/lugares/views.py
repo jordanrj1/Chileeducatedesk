@@ -3,13 +3,16 @@ sin salir de la actividad, desactivar sin borrar y ficha con uso histórico y di
 from datetime import date
 
 from django.contrib import messages
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views.generic import CreateView, UpdateView
 
 from apps.nucleo.direccion_mixin import ComunaInicialMixin, ConDireccionMixin
 from apps.nucleo.models import TipoLugar
-from apps.nucleo.vistas_base import ControlVersionMixin, AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo
+from apps.nucleo.vistas_base import (
+    ControlVersionMixin, AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, nombre_comuna, opciones_comunas, opciones_modelo,
+)
 from apps.territorio.models import Comuna
 
 from .forms import LugarForm
@@ -29,10 +32,11 @@ class LugarLista(ListaBase):
     ordenes = {"nombre": "nombre", "capacidad": "capacidad"}
     orden_defecto = ("nombre",)
     filtros = [
+        Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoLugar), principal=True),
+        Filtro("comuna", "Comuna", "direccion__comuna_id", lambda: opciones_comunas(Q(pk__in=Lugar.objects.values("direccion__comuna_id"))),
+               principal=True, todos="Todas", etiqueta_de=nombre_comuna),
+        Filtro("capacidad_min", "Capacidad mínima", "capacidad__gte", convertir=int, entrada="number", principal=True),
         filtro_activo(),
-        Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoLugar)),
-        Filtro("comuna", "Comuna", "direccion__comuna_id", opciones_modelo(Comuna)),
-        Filtro("capacidad_min", "Capacidad mínima", "capacidad__gte", convertir=int, entrada="number"),
     ]
     url_exportar = "/lugares/exportar"
     permiso_exportar = "lugares.exportar_lugar"

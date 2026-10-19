@@ -34,10 +34,10 @@ class SolicitudLista(ListaBase):
     ordenes = {"fecha": "fecha"}
     orden_defecto = ("-fecha", "-id")
     filtros = [
-        Filtro("estado", "Estado", "estado__codigo", lambda: [(e.codigo, e.nombre) for e in EstadoSolicitud.objects.all()]),
-        Filtro("origen", "Origen", "origen", lambda: list(Solicitud.ORIGENES)),
-        Filtro("desde", "Desde", "fecha__gte", entrada="date"),
-        Filtro("hasta", "Hasta", "fecha__lte", entrada="date"),
+        Filtro("estado", "Estado", "estado__codigo", lambda: [(e.codigo, e.nombre) for e in EstadoSolicitud.objects.all()], principal=True),
+        Filtro("origen", "Origen", "origen", lambda: list(Solicitud.ORIGENES), principal=True),
+        Filtro("desde", "Desde", "fecha__gte", entrada="date", grupo="Fecha"),
+        Filtro("hasta", "Hasta", "fecha__lte", entrada="date", grupo="Fecha"),
     ]
     url_exportar = "/solicitudes/exportar"
     permiso_exportar = "solicitudes.exportar_solicitud"

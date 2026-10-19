@@ -1,6 +1,8 @@
 """Vistas genéricas reutilizadas por todos los módulos (listado, formulario, ficha con pestañas)."""
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Callable, Optional
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -21,26 +23,81 @@ class Permiso403Mixin(PermissionRequiredMixin):
 
 @dataclass
 class Filtro:
+    """Un filtro de listado. El nombre del parámetro (`param`) es parte de la dirección: no se cambia."""
+
     param: str
     etiqueta: str
     lookup: str
-    opciones: Callable = field(default=lambda: [])  # -> [(valor, etiqueta)]
+    opciones: Callable = field(default=lambda: [])  # -> [(valor, etiqueta)] o [(valor, etiqueta, grupo)] para <optgroup>
     convertir: Optional[Callable] = None
     por_defecto: str = ""
-    entrada: str = "select"  # select | text | number | date
+    entrada: str = "select"  # select | text | number | date | casilla (envía «1»)
     aplicar: Optional[Callable] = None  # (qs, valor) -> qs; reemplaza al lookup simple
+    principal: bool = False  # se ve siempre en la barra; los demás van en «Más filtros»
+    grupo: str = ""  # subtítulo dentro de «Más filtros»
+    todos: str = "Todos"  # texto de la opción vacía, con su género («Todas»)
+    oculto: bool = False  # funciona por la dirección (y se ve como filtro aplicado), pero no se dibuja
+    texto_casilla: str = ""  # casilla: texto junto a ella, p. ej. «Solo incompletas»
+    tope: int = 0  # si las opciones pasan de este número, se muestran las primeras y se avisa
+    etiqueta_de: Optional[Callable] = None  # valor -> nombre, para un valor elegido que no está entre las opciones
+
+    def texto(self, valor, opciones=()):
+        """Cómo se lee el valor aplicado en su etiqueta («Comuna: Hualpén»)."""
+        if self.entrada == "casilla":
+            return self.texto_casilla or "Sí"
+        if self.entrada == "date":
+            try:
+                return date.fromisoformat(valor).strftime("%d-%m-%Y")
+            except (TypeError, ValueError):
+                return valor
+        for o in opciones:
+            if o[0] == valor:
+                return o[1]
+        return valor
 
 
-def opciones_activo():
+def opciones_activo(femenino=False):
+    if femenino:
+        return [("1", "Activas"), ("0", "Inactivas"), ("*", "Todas")]
     return [("1", "Activos"), ("0", "Inactivos"), ("*", "Todos")]
 
 
-def filtro_activo(param="activo", lookup="activo"):
-    return Filtro(param, "Estado", lookup, opciones_activo, lambda v: v == "1", por_defecto="1")
+def filtro_activo(param="activo", lookup="activo", femenino=False, grupo="Registro"):
+    # «Mostrar: Inactivos» se lee mejor que «Estado», que se confunde con el estado del registro
+    return Filtro(param, "Mostrar", lookup, lambda: opciones_activo(femenino), lambda v: v == "1", por_defecto="1", grupo=grupo)
 
 
 def opciones_modelo(modelo, campo="nombre", **filtros):
     return lambda: [(str(o.pk), str(getattr(o, campo))) for o in modelo.objects.filter(**filtros)]
+
+
+def opciones_comunas(en_uso=None):
+    """Comunas agrupadas por región (con <optgroup>). `en_uso`: condición (Q) con las comunas que tienen registros,
+    para no ofrecer las 346 de Chile cuando solo se trabaja en unas pocas. Una sola consulta."""
+    from apps.territorio.models import Comuna
+
+    qs = Comuna.objects.select_related("provincia__region").order_by("provincia__region__codigo", "nombre")
+    if en_uso is not None:
+        qs = qs.filter(en_uso)
+    return [(str(c.pk), c.nombre, c.provincia.region.nombre) for c in qs]
+
+
+def nombre_comuna(valor):
+    from apps.territorio.models import Comuna
+
+    return Comuna.objects.filter(pk=valor).values_list("nombre", flat=True).first() if str(valor).isdigit() else None
+
+
+def opciones_organizaciones(qs, tope=300):
+    """Organizaciones agrupadas por tipo. Trae una más que el tope para saber si hay que avisar."""
+    qs = qs.select_related("tipo").order_by("tipo__nombre", "nombre")
+    return [(str(o.pk), o.nombre, o.tipo.nombre if o.tipo_id else "Sin tipo") for o in qs[: tope + 1]]
+
+
+def nombre_organizacion(valor):
+    from apps.organizaciones.models import Organizacion
+
+    return Organizacion.objects.filter(pk=valor).values_list("nombre", flat=True).first() if str(valor).isdigit() else None
 
 
 class ListaBase(Permiso403Mixin, ListView):
@@ -50,6 +107,8 @@ class ListaBase(Permiso403Mixin, ListView):
     descripcion = ""  # una frase bajo el título: para qué sirve este listado
     breadcrumb = ()  # [(etiqueta, url|None)]
     campos_busqueda = ()  # lookups con icontains
+    buscable = None  # None: hay buscador si hay campos_busqueda (Personas busca con su propio método)
+    texto_busqueda = ""  # ayuda dentro del buscador; por defecto «Buscar en <título>…»
     filtros = ()
     columnas = ()  # [(etiqueta, "atributo.anidado" | callable)]
     ordenes = {}  # clave -> campo de orden
@@ -79,10 +138,11 @@ class ListaBase(Permiso403Mixin, ListView):
         return respuesta_xlsx(self.request.user, self.titulo, [e for e, _ in self.columnas], filas)
 
     def valor_filtro(self, f):
-        v = self.request.GET.get(f.param, f.por_defecto)
-        return v
+        v = self.request.GET.get(f.param, "").strip()
+        return v if v != "" else f.por_defecto  # «?activo=» vacío vale lo predeterminado, no «todos» sin avisar
 
     def filtrar(self, qs):
+        self.aplicados = {}  # param -> valor de los filtros que de verdad se aplicaron (para sus etiquetas con ×)
         q = self.request.GET.get("q", "").strip()
         if q and self.campos_busqueda:
             cond = Q()
@@ -91,6 +151,8 @@ class ListaBase(Permiso403Mixin, ListView):
             qs = qs.filter(cond)
         for f in self.filtros:
             v = self.valor_filtro(f)
+            if v == "*" and f.por_defecto:
+                self.aplicados[f.param] = v  # «Todos» cuando lo normal es «Activos»: se ve como filtro aplicado
             if v and v != "*":
                 try:
                     valor = f.convertir(v) if f.convertir else v
@@ -99,7 +161,40 @@ class ListaBase(Permiso403Mixin, ListView):
                 except (ValueError, TypeError, ValidationError):
                     continue  # valor mal escrito: se ignora el filtro en vez de fallar
                 qs = nuevo
+                if v != f.por_defecto:
+                    self.aplicados[f.param] = v
         return qs
+
+    def _consulta_sin(self, *quitar):
+        """La consulta actual sin la página, sin los parámetros indicados y sin los vacíos."""
+        params = self.request.GET.copy()
+        for p in ("page",) + quitar:
+            params.pop(p, None)
+        for p in list(params):
+            valores = [v for v in params.getlist(p) if v.strip() != ""]
+            if valores:
+                params.setlist(p, valores)
+            else:
+                params.pop(p)
+        return params.urlencode()
+
+    def _filtro_ui(self, f, valor):
+        """Lo que la barra necesita de un filtro: opciones (con grupo), valor, aviso de tope."""
+        opciones, aviso = [], ""
+        if f.entrada == "select":
+            opciones = [(str(o[0]), o[1], o[2] if len(o) > 2 else "") for o in f.opciones()]
+            if f.tope and len(opciones) > f.tope:
+                opciones = opciones[: f.tope]
+                aviso = f"Hay más de {f.tope}: se muestran las primeras {f.tope} por orden alfabético."
+            if valor and valor != "*" and f.etiqueta_de and all(o[0] != valor for o in opciones):
+                nombre = f.etiqueta_de(valor)  # elegido desde otra pantalla y fuera de la lista: igual se muestra
+                if nombre:
+                    opciones.insert(0, (valor, nombre, ""))
+        return {
+            "param": f.param, "etiqueta": f.etiqueta, "opciones": opciones, "valor": valor, "entrada": f.entrada,
+            "todos": f.todos, "grupo": f.grupo, "por_defecto": f.por_defecto, "texto_casilla": f.texto_casilla or f.etiqueta,
+            "aviso": aviso, "principal": f.principal,
+        }
 
     def get_queryset(self):
         qs = self.filtrar(super().get_queryset())
@@ -130,30 +225,49 @@ class ListaBase(Permiso403Mixin, ListView):
         filas = []
         for obj in ctx["object_list"]:
             filas.append({"obj": obj, "celdas": [self._valor(obj, a) for _, a in self.columnas]})
-        params = self.request.GET.copy()
-        params.pop("page", None)
+        aplicados = getattr(self, "aplicados", {})
+        visibles, activos = [], []
+        for f in self.filtros:
+            valor = self.valor_filtro(f)
+            ui = None if f.oculto and f.param not in aplicados else self._filtro_ui(f, valor)
+            if not f.oculto:
+                visibles.append(ui)
+            if f.param in aplicados:
+                activos.append({
+                    "param": f.param, "etiqueta": f.etiqueta, "texto": f.texto(aplicados[f.param], ui["opciones"]),
+                    "url_quitar": self._consulta_sin(f.param), "en_mas": not f.principal and not f.oculto,
+                })
+        q = self.request.GET.get("q", "").strip()
+        buscable = self.buscable if self.buscable is not None else bool(self.campos_busqueda)
+        if q and buscable:
+            activos.insert(0, {"param": "q", "etiqueta": "Texto", "texto": f"«{q}»", "url_quitar": self._consulta_sin("q"), "en_mas": False})
+        orden = self.request.GET.get("orden", "")
+        mas = [u for u in visibles if not u["principal"]]
+        orden_grupos = list(dict.fromkeys(u["grupo"] for u in mas))
+        mas.sort(key=lambda u: orden_grupos.index(u["grupo"]))  # un grupo, un subtítulo (aunque se declaren salteados)
         ctx.update(
             titulo=self.titulo,
             descripcion=self.descripcion,
             breadcrumb=self.breadcrumb,
             filas=filas,
             encabezados=[e for e, _ in self.columnas],
-            filtros_ui=[
-                {"param": f.param, "etiqueta": f.etiqueta, "opciones": f.opciones() if f.entrada == "select" else [], "valor": self.valor_filtro(f), "entrada": f.entrada}
-                for f in self.filtros
-            ],
+            filtros_ui=visibles,  # se conserva por compatibilidad: todos los filtros dibujables
+            filtros_principales=[u for u in visibles if u["principal"]],
+            filtros_mas=mas,
+            filtros_activos=activos,
+            n_mas_activos=sum(1 for a in activos if a["en_mas"]),
+            url_limpiar=urlencode({"orden": orden}) if orden else "",  # «Limpiar» conserva el orden elegido
             q=self.request.GET.get("q", ""),
-            buscable=bool(self.campos_busqueda),
-            orden_actual=self.request.GET.get("orden", ""),
+            buscable=buscable,
+            texto_busqueda=self.texto_busqueda or f"Buscar en {self.titulo.lower()}…",
+            orden_actual=orden,
             ordenes=list(self.ordenes),
-            querystring=params.urlencode(),
+            querystring=self._consulta_sin(),
             url_crear=self.url_crear,
             puede_crear=bool(self.url_crear and (not self.permiso_crear or self.request.user.has_perm(self.permiso_crear))),
             etiqueta_crear=self.etiqueta_crear,
             texto_vacio=self.texto_vacio,
-            hay_filtros=bool(self.request.GET.get("q")) or any(
-                self.request.GET.get(f.param) not in (None, "", f.por_defecto) for f in self.filtros
-            ),
+            hay_filtros=bool(activos),
             botones_extra=[(e, u) for e, u, p in self.botones_extra if not p or self.request.user.has_perm(p)],
             url_exportar=self.url_exportar
             if self.url_exportar and (not self.permiso_exportar or self.request.user.has_perm(self.permiso_exportar))

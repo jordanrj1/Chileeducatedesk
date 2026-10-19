@@ -11,6 +11,7 @@ from django.views.generic import CreateView, DetailView, UpdateView
 
 from apps.nucleo.vistas_base import FichaBase, Filtro, ListaBase, Permiso403Mixin
 from apps.nucleo.vistas_crud import Detalle, Editar, Nuevo
+from apps.personas.models import Persona
 
 from . import servicios
 from .forms import (
@@ -89,7 +90,7 @@ class ReunionLista(ListaBase):
     campos_busqueda = ("titulo", "objetivo", "temas", "acuerdos")
     columnas = [("Reunión", "titulo"), ("Fecha", lambda r: r.fecha.strftime("%d-%m-%Y")), ("Actividad", "actividad"), ("Proyecto", "proyecto"), ("Asistentes", lambda r: r.asistentes.count())]
     orden_defecto = ("-fecha",)
-    filtros = [Filtro("desde", "Desde", "fecha__gte", entrada="date"), Filtro("hasta", "Hasta", "fecha__lte", entrada="date")]
+    filtros = [Filtro("desde", "Desde", "fecha__gte", entrada="date", principal=True), Filtro("hasta", "Hasta", "fecha__lte", entrada="date", principal=True)]
 
     def get_queryset(self):
         return super().get_queryset().select_related("actividad", "proyecto")
@@ -154,9 +155,11 @@ class TareaLista(ListaBase):
     ]
     orden_defecto = ("fecha_limite", "-creado_en")
     filtros = [
-        Filtro("estado", "Estado", "estado", lambda: list(Tarea.ESTADOS)),
-        Filtro("responsable", "Responsable (id)", "asignaciones__persona_id", entrada="number", convertir=int),
-        Filtro("vencidas", "Vencidas", "", lambda: [("1", "Solo vencidas")], aplicar=lambda qs, v: qs.filter(estado__in=["pendiente", "en_curso"], fecha_limite__lt=timezone.localdate()) if v == "1" else qs),
+        Filtro("estado", "Estado", "estado", lambda: list(Tarea.ESTADOS), principal=True),
+        Filtro("responsable", "Responsable", "asignaciones__persona_id", convertir=int, principal=True,
+               opciones=lambda: [(str(p.pk), p.nombre_completo) for p in Persona.objects.filter(tareas_asignadas__isnull=False).distinct()]),
+        Filtro("vencidas", "Vencidas", "", entrada="casilla", texto_casilla="Solo vencidas", principal=True,
+               aplicar=lambda qs, v: qs.filter(estado__in=["pendiente", "en_curso"], fecha_limite__lt=timezone.localdate()) if v == "1" else qs),
     ]
     url_exportar = "/tareas/exportar"
     permiso_exportar = "coordinacion.exportar_tarea"

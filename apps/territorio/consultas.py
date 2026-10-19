@@ -19,6 +19,19 @@ def organizaciones_de(comuna=None, sectores=None):
     return qs.filter(Q(direccion__comuna=comuna) | Q(comuna_municipal=comuna)).distinct()
 
 
+def dirigida_a_comuna(comuna, prefijo=""):
+    """Condición: la actividad se dirige a la comuna o a uno de sus sectores (los subsectores son de la misma comuna).
+    `comuna` es la comuna o su número; `prefijo` permite preguntar desde otra tabla, p. ej. «actividad__» en la agenda."""
+    p = f"{prefijo}territorios__"
+    return Q(**{f"{p}vigente": True, f"{p}comuna": comuna}) | Q(**{f"{p}vigente": True, f"{p}sector__comuna": comuna})
+
+
+def actividad_en_comuna(comuna):
+    """Condición «la actividad es en esta comuna»: su lugar programado vigente está en ella o se dirige a ella o a sus
+    sectores. La usan la ficha de la comuna, el listado de actividades y el buscador, para que cuenten lo mismo."""
+    return Q(agendas__vigente=True, agendas__lugar__direccion__comuna=comuna) | dirigida_a_comuna(comuna)
+
+
 def actividades_de(comuna=None, sectores=None):
     from apps.actividades.models import Actividad
 
@@ -26,9 +39,5 @@ def actividades_de(comuna=None, sectores=None):
     if sectores:
         cond = Q(agendas__vigente=True, agendas__lugar__direccion__sector_id__in=sectores) | Q(territorios__vigente=True, territorios__sector_id__in=sectores)
     else:
-        cond = (
-            Q(agendas__vigente=True, agendas__lugar__direccion__comuna=comuna)
-            | Q(territorios__vigente=True, territorios__comuna=comuna)
-            | Q(territorios__vigente=True, territorios__sector__comuna=comuna)
-        )
+        cond = actividad_en_comuna(comuna)
     return qs.filter(cond).distinct().order_by("-creado_en")

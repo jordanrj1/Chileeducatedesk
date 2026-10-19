@@ -34,7 +34,7 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
    - **Datos sensibles 🔒** (salud y accesibilidad, alergias, previsión, pueblo originario, género, hogar y tramo del Registro Social de Hogares): se guardan **solo con el consentimiento explícito** de la persona o de su apoderado, registrado ahí mismo (fecha y medio). Si el Administrador pone `DATOS_SENSIBLES=False` en `.env`, la sección desaparece.
    - **Consentimientos:** tratamiento de datos, datos sensibles, uso de imagen, contacto para futuras actividades y autorización del apoderado. No se borran: se **revocan** con fecha. Sin consentimiento la persona no se excluye; la ficha muestra qué falta.
    - **Menores de edad:** la ficha avisa si falta el apoderado o su autorización. El apoderado se registra como otra persona en la pestaña **Apoderados 🔒**.
-5. El listado de **Personas** se filtra por perfil, interés, comunidad, comuna, organización y tramo de edad. Así se arma el banco de personas para cada actividad.
+5. El listado de **Personas** tiene un buscador (nombre, RUT, correo o teléfono) y se filtra por perfil, comuna y comunidad a la vista; el tipo de relación, la organización, el interés, el tramo de edad y el estado del registro están en **Más filtros**. Así se arma el banco de personas para cada actividad.
 6. Una persona **no necesita cuenta** para existir ni participar.
 7. Personas extranjeras: en la ficha completa se registra el pasaporte u otro documento.
 8. Si una persona fallece: estado «Fallecida/o»; no se elimina y ya no aparece como candidata.
@@ -159,8 +159,11 @@ Cada encuentro de una actividad se registra en la pestaña **Sesiones y minutas*
    - **comuna** y **dirección**: crean la dirección de residencia;
    - **institución**, **carrera**, **sede**, **jornada**, **año que cursa** y **asignatura**: completan la formación.
 
-## 10. Exportar
-Los listados con botón **Exportar** generan un Excel con los filtros aplicados. Cada exportación queda en la auditoría.
+## 10. Filtrar y exportar
+- **Filtros de los listados:** arriba se ven el buscador y los 2 o 3 filtros más usados; el resto está en **Más filtros** (el número al lado dice cuántos de ellos están aplicados). Elige y pulsa **Filtrar**.
+- Bajo la barra aparecen cuántos resultados hay y cada filtro aplicado como una etiqueta: la **×** quita solo ese filtro y **Limpiar filtros** los quita todos, pero conserva el orden.
+- Por comuna, una actividad aparece si su lugar está en la comuna o si va dirigida a la comuna o a uno de sus sectores (listado, calendario y buscador).
+- Los listados con botón **Exportar** generan un Excel con los filtros aplicados. Cada exportación queda en la auditoría.
 
 ## 11. Segunda fase
 Reuniones con asistentes, tareas, beneficiarios, verificaciones y finanzas están construidas pero ocultas (las **sesiones y minutas** ya están siempre visibles). Para mostrarlas, el Administrador pone `SEGUNDA_FASE=True` en `.env` y reinicia.

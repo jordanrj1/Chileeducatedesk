@@ -5,8 +5,9 @@ from django.urls import reverse
 
 from apps.nucleo.direccion_mixin import ComunaInicialMixin
 from apps.nucleo.selector import OpcionesVista
-from apps.nucleo.vistas_base import AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, filtro_activo
-from apps.territorio.models import Comuna
+from apps.nucleo.vistas_base import (
+    AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, filtro_activo, nombre_comuna, opciones_comunas,
+)
 
 from .forms import ComunidadForm
 from .models import Comunidad
@@ -25,9 +26,10 @@ class ComunidadLista(ListaBase):
     ]
     orden_defecto = ("nombre",)
     filtros = [
-        filtro_activo(),
-        Filtro("tipo", "Tipo", "tipo", lambda: list(Comunidad.TIPOS)),
-        Filtro("comuna", "Comuna", "comuna_id", lambda: [(str(c.pk), c.nombre) for c in Comuna.objects.filter(comunidades__isnull=False).distinct().order_by("nombre")]),
+        Filtro("tipo", "Tipo", "tipo", lambda: list(Comunidad.TIPOS), principal=True),
+        Filtro("comuna", "Comuna", "comuna_id", lambda: opciones_comunas(Q(pk__in=Comunidad.objects.values("comuna_id"))), principal=True, todos="Todas",
+               etiqueta_de=nombre_comuna),
+        filtro_activo(femenino=True),
     ]
     url_crear = "/comunidades/nueva"
     permiso_crear = "comunidades.add_comunidad"

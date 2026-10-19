@@ -95,7 +95,9 @@ def _actividades(u, f):
     if f["tipo_actividad"]:
         qs = qs.filter(tipo_id=f["tipo_actividad"])
     if f["comuna"]:
-        qs = qs.filter(Q(agendas__vigente=True, agendas__lugar__direccion__comuna_id=f["comuna"]) | Q(territorios__vigente=True, territorios__comuna_id=f["comuna"])).distinct()
+        from apps.territorio.consultas import actividad_en_comuna
+
+        qs = qs.filter(actividad_en_comuna(f["comuna"])).distinct()  # también las dirigidas a sus sectores
     if f["desde"] or f["hasta"]:
         ag = AgendaActividad.objects.filter(actividad=OuterRef("pk"), vigente=True)
         if f["desde"]:

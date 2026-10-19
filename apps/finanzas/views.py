@@ -35,10 +35,10 @@ class MovimientoLista(ListaBase):
     ]
     orden_defecto = ("-fecha", "-id")
     filtros = [
-        Filtro("proyecto", "Proyecto", "proyecto_id", lambda: [(str(p.pk), p.nombre) for p in Proyecto.objects.all()]),
-        Filtro("tipo", "Tipo", "tipo", lambda: list(Movimiento.TIPOS)),
-        Filtro("desde", "Desde", "fecha__gte", entrada="date"),
-        Filtro("hasta", "Hasta", "fecha__lte", entrada="date"),
+        Filtro("proyecto", "Proyecto", "proyecto_id", lambda: [(str(p.pk), p.nombre) for p in Proyecto.objects.all()], principal=True),
+        Filtro("tipo", "Tipo", "tipo", lambda: list(Movimiento.TIPOS), principal=True),
+        Filtro("desde", "Desde", "fecha__gte", entrada="date", grupo="Fecha"),
+        Filtro("hasta", "Hasta", "fecha__lte", entrada="date", grupo="Fecha"),
     ]
     url_exportar = "/finanzas/exportar"
     permiso_exportar = "finanzas.exportar_movimiento"

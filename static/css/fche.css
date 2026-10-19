@@ -367,6 +367,42 @@ dl.row > dd { margin-bottom: .75rem; }
 .fche-filtros__campo .form-select, .fche-filtros__campo .form-control, .fche-filtros__busqueda input { height: 2.4rem; }
 .fche-filtros__acciones { display: flex; gap: .4rem; margin-left: auto; }
 .fche-filtros__etiqueta { display: block; font-size: .7rem; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--fche-texto-suave); margin: 0 0 .2rem .1rem; }
+/* Barra con menos ruido (generico/_filtros.html): 2 o 3 filtros a la vista, «Más filtros» plegable (un <details>, funciona
+   sin JavaScript) y la línea de filtros aplicados con su × para quitarlos. */
+.fche-filtros { position: relative; }
+.fche-filtros__campo .input-group { flex-wrap: nowrap; }
+.fche-filtros__campo .input-group-text { height: 2.4rem; font-size: .8125rem; color: var(--fche-texto-2); background: var(--fche-superficie-2); }
+.fche-filtros__casilla { display: flex; align-items: center; gap: .45rem; min-height: 2.4rem; margin: 0; padding-left: 0; }
+.fche-filtros__casilla .form-check-input { float: none; margin: 0; border-color: var(--fche-texto-suave); }
+.fche-filtros__campo:has(.fche-filtros__casilla) { flex: 0 0 auto; min-width: 0; }
+.fche-filtros__mas > summary { display: inline-flex; align-items: center; gap: .4rem; height: 2.4rem; list-style: none; color: var(--fche-texto); font-weight: 550; }
+.fche-filtros__mas > summary::-webkit-details-marker { display: none; }
+.fche-filtros__mas > summary:hover { text-decoration: none; }
+.fche-filtros__mas[open] > summary { background: var(--fche-primario-suave); border-color: var(--fche-primario-borde); color: var(--fche-primario-oscuro); }
+.fche-contador--activo { background: var(--fche-primario); color: #fff; }
+.fche-filtros__panel {
+  position: absolute; z-index: 20; top: calc(100% + .4rem); left: 0; right: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1rem 1.25rem;
+  padding: 1rem; background: var(--fche-superficie); border: 1px solid var(--fche-borde); border-radius: var(--fche-radio-lg); box-shadow: var(--fche-sombra-lg);
+}
+.fche-filtros__grupo { display: grid; gap: .6rem; align-content: start; min-width: 0; margin: 0; padding: 0; border: 0; }
+.fche-filtros__grupo .fche-filtros__campo { flex: none; min-width: 0; }
+.fche-filtros__rotulo { margin-bottom: .2rem; font-size: .8125rem; font-weight: 600; color: var(--fche-texto-2); }
+.fche-filtros__panel-acciones { grid-column: 1 / -1; display: flex; justify-content: flex-end; padding-top: .75rem; border-top: 1px solid var(--fche-borde); }
+.fche-filtros__activos { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; padding-top: .6rem; border-top: 1px solid var(--fche-borde); font-size: .8125rem; color: var(--fche-texto-2); }
+.fche-filtros__chips { display: flex; flex-wrap: wrap; gap: .4rem; list-style: none; margin: 0; padding: 0; }
+.fche-chip {
+  display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; padding: .2rem .45rem .2rem .7rem; border: 1px solid var(--fche-primario-borde); border-radius: 2rem;
+  background: var(--fche-primario-suave); color: var(--fche-primario-oscuro); text-decoration: none; overflow-wrap: anywhere;
+}
+.fche-chip:hover { background: var(--fche-superficie); color: var(--fche-primario-oscuro); }
+.fche-chip:focus-visible { outline: 2px solid var(--fche-primario); outline-offset: 2px; }
+.fche-filtros__limpiar { margin-left: auto; font-weight: 600; }
+@media (max-width: 575.98px) {
+  .fche-filtros__campo, .fche-filtros__mas { flex: 1 1 100%; }
+  .fche-filtros__mas > summary { width: 100%; justify-content: center; }
+  .fche-filtros__panel { position: static; margin-top: .6rem; grid-template-columns: 1fr; box-shadow: none; }
+  .fche-filtros__limpiar { margin-left: 0; }
+}
 .fche-resumen-lista { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; margin: 0 0 .6rem; font-size: .8125rem; color: var(--fche-texto-suave); }
 
 /* Estado vacío */

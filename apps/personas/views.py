@@ -12,9 +12,9 @@ from django.db.models import Q
 
 from apps.nucleo.models import AreaTematica, EstadoRegistro, OrigenPersona, PerfilPersona, RolParticipacion
 from apps.organizaciones.models import Organizacion
-from apps.territorio.models import Comuna
 from apps.nucleo.vistas_base import (
-    AlternarActivoBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, opciones_modelo,
+    AlternarActivoBase, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, nombre_comuna, nombre_organizacion,
+    opciones_comunas, opciones_modelo, opciones_organizaciones,
 )
 
 from apps.nucleo.selector import OpcionesVista, campo_seguro, respuesta_elegido
@@ -36,6 +36,15 @@ def _opciones_comunidad():
     from apps.comunidades.models import Comunidad
 
     return [(str(c.pk), c.nombre) for c in Comunidad.objects.filter(activo=True)]
+
+
+def _organizaciones_con_personas():
+    """Organizaciones con alguna persona vinculada o formándose en ellas: las únicas que filtran algo."""
+    from .models import PersonaFormacion, PersonaOrganizacion
+
+    return Organizacion.objects.filter(
+        Q(pk__in=PersonaOrganizacion.objects.values("organizacion_id")) | Q(pk__in=PersonaFormacion.objects.values("organizacion_id"))
+    )
 
 
 def _filtrar_edad(qs, tramo):
@@ -67,7 +76,9 @@ class PersonaLista(ListaBase):
     url_crear = "/personas/nueva"
     permiso_crear = "personas.add_persona"
     etiqueta_crear = "+ Nueva persona"
-    campos_busqueda = ()
+    campos_busqueda = ()  # busca con Persona.objects.buscar (nombre, RUT, correo o teléfono), ver filtrar()
+    buscable = True
+    texto_busqueda = "Nombre, RUT, correo o teléfono…"
     columnas = [
         ("Nombre", lambda p: p.nombre_completo),
         ("RUT 🔒", "rut"),
@@ -80,20 +91,25 @@ class PersonaLista(ListaBase):
     ordenes = {"nombre": "apellido_paterno", "creado": "creado_en"}
     orden_defecto = ("apellido_paterno", "apellido_materno", "nombres")
     filtros = [
-        filtro_activo(),
-        Filtro("registro", "Registro", "estado_registro__codigo", lambda: [(e.codigo, e.nombre) for e in EstadoRegistro.objects.all()]),
-        Filtro("origen", "Origen", "origen_id", opciones_modelo(OrigenPersona)),
-        Filtro("rol", "Tipo de relación", "", opciones_modelo(RolParticipacion), aplicar=lambda qs, v: qs.filter(participaciones__rol_id=v).distinct()),
-        Filtro("organizacion", "Organización", "", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(activo=True)[:300]],
-               aplicar=lambda qs, v: qs.filter(Q(vinculos__organizacion_id=v) | Q(formaciones__organizacion_id=v)).distinct()),
-        Filtro("comuna", "Comuna", "", opciones_modelo(Comuna), aplicar=lambda qs, v: qs.filter(direcciones__vigente=True, direcciones__direccion__comuna_id=v).distinct()),
-        # F22: el banco de personas se filtra por perfil, interés, comunidad y edad
-        Filtro("perfil", "Perfil", "", lambda: [(str(p.pk), p.nombre) for p in PerfilPersona.objects.filter(activo=True)], aplicar=lambda qs, v: qs.filter(perfiles__id=v).distinct()),
-        Filtro("interes", "Interés", "", lambda: [(str(a.pk), a.nombre) for a in AreaTematica.objects.filter(activo=True)], aplicar=lambda qs, v: qs.filter(areas_interes__id=v).distinct()),
+        # A la vista: Perfil, Comuna y Comunidad (decidido con el usuario). El resto, en «Más filtros».
+        Filtro("perfil", "Perfil", "", lambda: [(str(p.pk), p.nombre) for p in PerfilPersona.objects.filter(activo=True)], aplicar=lambda qs, v: qs.filter(perfiles__id=v).distinct(),
+               principal=True),
+        Filtro("comuna", "Comuna", "", lambda: opciones_comunas(Q(pk__in=PersonaDireccion.objects.filter(vigente=True).values("direccion__comuna_id"))),
+               aplicar=lambda qs, v: qs.filter(direcciones__vigente=True, direcciones__direccion__comuna_id=v).distinct(), principal=True, todos="Todas",
+               etiqueta_de=nombre_comuna),
         Filtro("comunidad", "Comunidad", "", lambda: _opciones_comunidad(),
-               aplicar=lambda qs, v: qs.filter(comunidades__comunidad_id=v, comunidades__vigente=True).distinct()),
+               aplicar=lambda qs, v: qs.filter(comunidades__comunidad_id=v, comunidades__vigente=True).distinct(), principal=True, todos="Todas"),
+        Filtro("rol", "Tipo de relación", "", opciones_modelo(RolParticipacion), aplicar=lambda qs, v: qs.filter(participaciones__rol_id=v).distinct(), grupo="Relación"),
+        Filtro("organizacion", "Organización", "", lambda: opciones_organizaciones(_organizaciones_con_personas()),
+               aplicar=lambda qs, v: qs.filter(Q(vinculos__organizacion_id=v) | Q(formaciones__organizacion_id=v)).distinct(), grupo="Relación", todos="Todas",
+               tope=300, etiqueta_de=nombre_organizacion),
+        Filtro("interes", "Interés", "", lambda: [(str(a.pk), a.nombre) for a in AreaTematica.objects.filter(activo=True)], aplicar=lambda qs, v: qs.filter(areas_interes__id=v).distinct(),
+               grupo="Perfil"),
         Filtro("edad", "Edad", "", lambda: [("menor", "Menores de 18"), ("18_29", "18 a 29"), ("30_59", "30 a 59"), ("60", "60 o más"), ("sin", "Sin fecha de nacimiento")],
-               aplicar=lambda qs, v: _filtrar_edad(qs, v)),
+               aplicar=lambda qs, v: _filtrar_edad(qs, v), grupo="Perfil", todos="Todas"),
+        Filtro("registro", "Estado del registro", "estado_registro__codigo", lambda: [(e.codigo, e.nombre) for e in EstadoRegistro.objects.all()], grupo="Registro"),
+        Filtro("origen", "Origen", "origen_id", opciones_modelo(OrigenPersona), grupo="Registro"),
+        filtro_activo(),
     ]
     texto_vacio = "Aún no hay personas registradas."
     url_exportar = "/personas/exportar"

@@ -29,7 +29,8 @@ class LoteLista(ListaBase):
         ("Estado", "get_estado_display"), ("Fecha", lambda l: l.creado_en.astimezone().strftime("%d-%m-%Y %H:%M")), ("Usuario", "usuario"),
     ]
     orden_defecto = ("-creado_en",)
-    filtros = [Filtro("tipo", "Tipo", "tipo", lambda: list(Lote.TIPOS)), Filtro("estado", "Estado", "estado", lambda: list(Lote.ESTADOS))]
+    campos_busqueda = ("nombre_archivo", "fuente", "actividad__nombre")
+    filtros = [Filtro("tipo", "Tipo", "tipo", lambda: list(Lote.TIPOS), principal=True), Filtro("estado", "Estado", "estado", lambda: list(Lote.ESTADOS), principal=True)]
     texto_vacio = "Aún no se ha importado nada."
 
     def get_queryset(self):

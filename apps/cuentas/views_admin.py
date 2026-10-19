@@ -233,9 +233,9 @@ class AuditoriaLista(ListaBase):
     columnas = [("Fecha", lambda a: a.fecha.astimezone().strftime("%d-%m-%Y %H:%M")), ("Usuario", "usuario_nombre"), ("Acción", "accion"), ("Objeto", "objeto"), ("Detalle", "detalle")]
     orden_defecto = ("-fecha", "-id")
     filtros = [
-        Filtro("desde", "Desde", "fecha__date__gte", entrada="date"),
-        Filtro("hasta", "Hasta", "fecha__date__lte", entrada="date"),
-        Filtro("accion", "Acción", "accion", lambda: [(a, a) for a in Auditoria.objects.values_list("accion", flat=True).distinct().order_by("accion")]),
+        Filtro("accion", "Acción", "accion", lambda: [(a, a) for a in Auditoria.objects.values_list("accion", flat=True).distinct().order_by("accion")], principal=True, todos="Todas"),
+        Filtro("desde", "Desde", "fecha__date__gte", entrada="date", principal=True),
+        Filtro("hasta", "Hasta", "fecha__date__lte", entrada="date", principal=True),
     ]
     texto_vacio = "Sin registros de auditoría."
     paginate_by = 50

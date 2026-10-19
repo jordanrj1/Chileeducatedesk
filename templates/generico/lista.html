@@ -1,4 +1,4 @@
-{# Qué es: Listado común a todos los módulos: buscador, filtros, orden, paginación, botón crear y exportar. #}
+{# Qué es: Listado común a todos los módulos: barra de filtros (generico/_filtros.html), tabla, paginación, botón crear y exportar. #}
 {# Dónde se usa: 23 rutas, p. ej. /actividades · Proceso: P10 #}
 {% extends "base.html" %}
 {% load fche %}
@@ -17,27 +17,7 @@
   </div>
 </header>
 
-{% if buscable or filtros_ui %}
-<form class="fche-filtros" method="get" role="search" aria-label="Filtrar {{ titulo|lower }}">
-  {% if buscable %}<div class="fche-filtros__busqueda">{% icono "buscar" 16 %}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Buscar en {{ titulo|lower }}…" aria-label="Buscar"></div>{% endif %}
-  {% for f in filtros_ui %}
-  <div class="fche-filtros__campo{% if f.entrada == 'date' %} fche-filtros__campo--fecha{% endif %}">
-    {% if f.entrada == "select" %}
-    <select class="form-select" name="{{ f.param }}" aria-label="{{ f.etiqueta }}" title="{{ f.etiqueta }}">
-      <option value="">{{ f.etiqueta }}: todos</option>
-      {% for valor, etiqueta in f.opciones %}<option value="{{ valor }}" {% if valor == f.valor %}selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
-    </select>
-    {% else %}
-    <input class="form-control" type="{{ f.entrada }}" name="{{ f.param }}" value="{{ f.valor }}" placeholder="{{ f.etiqueta }}" aria-label="{{ f.etiqueta }}" title="{{ f.etiqueta }}">
-    {% endif %}
-  </div>
-  {% endfor %}
-  <div class="fche-filtros__acciones">
-    <button class="btn btn-outline-primary" type="submit">{% icono "filtro" 16 %}Filtrar</button>
-    {% if hay_filtros %}<a class="btn btn-link text-decoration-none" href="?">Limpiar</a>{% endif %}
-  </div>
-</form>
-{% endif %}
+{% include "generico/_filtros.html" %}
 
 {% if resumen %}
 <div class="fche-kpis">
@@ -70,7 +50,7 @@
   <span class="fche-vacio__icono">{% icono "buscar" 22 %}</span>
   <p class="fche-vacio__titulo">Sin resultados con estos filtros</p>
   <p class="fche-vacio__texto">Prueba con otra palabra, cambia el estado o amplía las fechas.</p>
-  <a class="btn btn-outline-secondary btn-sm" href="?">Limpiar filtros</a>
+  <a class="btn btn-outline-secondary btn-sm" href="?{{ url_limpiar }}">Limpiar filtros</a>
 </div>
 {% else %}
 <div class="fche-vacio">
