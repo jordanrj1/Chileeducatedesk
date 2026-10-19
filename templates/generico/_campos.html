@@ -1,5 +1,5 @@
 {# Qué es: Trozo que dibuja un formulario completo, agrupado por secciones (las plegadas van en un bloque que se abre con un clic). #}
-{# Dónde se usa: se incluye en generico/formulario.html, personas/nueva.html · Proceso: Todos #}
+{# Dónde se usa: se incluye en generico/formulario.html (Personas → Nueva y Editar usan personas/_formulario_persona.html) · Proceso: Todos #}
 {% with secciones=form.secciones_ui %}{% if secciones %}
 {% for s in secciones %}
 {% if s.plegada %}

@@ -1,0 +1,46 @@
+{# Qué es: Cuerpo de la sección «Vecino o vecina»: dirección y comunidad en cascada, edad y sexo, y el hogar 🔒 (conteos sin nombres y familiares ya registrados). #}
+{# Dónde se usa: personas/_fichas.html y personas/ficha_tipo.html · Proceso: P3 #}
+{% load fche %}
+{% with r=s.formularios.residencia d=s.formularios.datos h=s.formularios.hogar i=s.formularios.integrantes fam=s.formularios.familiares %}
+<h2 class="fche-ficha__sub">Dónde vive</h2>
+{% if r %}
+  {% for e in r.non_field_errors %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+  {% include "territorio/_ubicacion.html" with form=r %}
+  <div class="fche-form__rejilla">{% for campo in r.campos_sin_ubicacion %}{% include "generico/_campo.html" %}{% endfor %}</div>
+{% elif s.residencia %}
+  <p class="mb-3">{{ s.residencia.direccion }}, {{ s.residencia.direccion.comuna }}. <a href="{% url 'personas:ficha' s.registro.persona.pk %}?tab=direcciones">Cambiar en Direcciones</a> · <a href="{% url 'personas:ficha' s.registro.persona.pk %}?tab=comunidades">Comunidades</a></p>
+{% endif %}
+{% if d %}<div class="fche-form__rejilla">{% for campo in d %}{% include "generico/_campo.html" %}{% endfor %}</div>{% endif %}
+
+<h2 class="fche-ficha__sub">Hogar y familia <span title="Dato restringido" aria-label="Dato restringido">🔒</span></h2>
+<p class="fche-bloque__ayuda">Lo ve quien puede ver la ficha de la persona. Los familiares se cuentan sin nombres ni RUT: cuántos son, su parentesco y su edad.</p>
+<div class="fche-form__rejilla">{% for campo in h %}{% include "generico/_campo.html" %}{% endfor %}</div>
+
+<div class="fche-filas" role="group" aria-labelledby="{{ i.prefix }}-titulo">
+  <p class="form-label mb-1" id="{{ i.prefix }}-titulo">Familiares contados (sin nombres)</p>
+  <p class="form-text mt-0">Una fila por grupo. Ej.: 2 · Hijo o hija · Niñez · vive en el hogar. Si la cantidad queda vacía, cuenta 1; si no se sabe la edad, elige «No se sabe». Desmarca «Vive en el hogar» para quien vive en otra casa, como los nietos.</p>
+  {{ i.management_form }}
+  {% for e in i.non_form_errors %}<div class="fche-campo__error text-danger">{% icono "error" 14 %}{{ e }}</div>{% endfor %}
+  {% for fila in i.forms %}
+  <fieldset class="fche-fila">
+    <legend class="visually-hidden">Fila {{ forloop.counter }}</legend>
+    {% for oculto in fila.hidden_fields %}{{ oculto }}{% endfor %}
+    {% for campo in fila.visible_fields %}{% include "generico/_campo.html" %}{% endfor %}
+  </fieldset>
+  {% endfor %}
+</div>
+
+<div class="fche-filas" role="group" aria-labelledby="{{ fam.prefix }}-titulo">
+  <p class="form-label mb-1" id="{{ fam.prefix }}-titulo">Familiares ya registrados</p>
+  <p class="form-text mt-0">Solo si el familiar ya tiene su propia ficha (por ejemplo, porque participa en actividades). No se crea una ficha solo para contarlo.</p>
+  {{ fam.management_form }}
+  {% for e in fam.non_form_errors %}<div class="fche-campo__error text-danger">{% icono "error" 14 %}{{ e }}</div>{% endfor %}
+  {% for fila in fam.forms %}
+  <fieldset class="fche-fila fche-fila--familiar">
+    <legend class="visually-hidden">Familiar {{ forloop.counter }}</legend>
+    {% for oculto in fila.hidden_fields %}{{ oculto }}{% endfor %}
+    {% for campo in fila.visible_fields %}{% include "generico/_campo.html" %}{% endfor %}
+  </fieldset>
+  {% endfor %}
+</div>
+{% endwith %}

@@ -1,0 +1,10 @@
+{# Qué es: Institución → sede o casa matriz y carrera, en cascada, con «+ Crear sede» y «+ Crear carrera» (se crean al guardar). #}
+{# Dónde se usa: sección Estudiante de Personas → Nueva, Editar y su tarjeta; pestaña Formación (agregar y editar) · Proceso: P3 #}
+{% comment %}
+Recibe `form` (FormacionForm o EstudianteForm). Al elegir la institución, su buscador pide /personas/estudios/dependientes y
+reemplaza solo la parte de sede y carrera (el buscador conserva el foco). Sin JavaScript, «Actualizar listas» hace lo mismo sin guardar.
+{% endcomment %}
+<div class="fche-estudios" role="group" aria-label="Institución, sede y carrera">
+  {% include "generico/_campo.html" with campo=form.organizacion %}
+  {% include "personas/fichas/_estudios_dependientes.html" %}
+</div>

@@ -1,0 +1,37 @@
+{# Qué es: Sede o casa matriz y carrera de la institución elegida, con «+ Crear sede» (nombre y comuna) y «+ Crear carrera». #}
+{# Dónde se usa: personas/fichas/_estudios.html; /personas/estudios/dependientes la vuelve a dibujar al cambiar la institución · Proceso: P3 #}
+{% with org=form.organizacion_elegida %}
+<div class="fche-estudios__dependientes" id="{{ form.id_dependientes }}">
+  <div class="fche-estudios__columna">
+    {% include "generico/_campo.html" with campo=form.sede_institucion %}
+    {% if org and form.fields.nueva_sede %}
+    <details class="fche-estudios__crear"{% if form.nueva_sede.value or form.nueva_sede.errors or form.nueva_sede_comuna.errors %} open{% endif %}>
+      <summary>+ Crear sede de {{ org.nombre }}</summary>
+      <div class="fche-estudios__nuevo">
+        {% include "generico/_campo.html" with campo=form.nueva_sede %}
+        {% include "generico/_campo.html" with campo=form.nueva_sede_tipo %}
+        {% include "generico/_campo.html" with campo=form.nueva_sede_comuna %}
+        <p class="form-text mb-0">Se crea al guardar, como lugar de {{ org.nombre }}. Su calle y número se completan después en Lugares.</p>
+      </div>
+    </details>
+    {% endif %}
+  </div>
+  <div class="fche-estudios__columna">
+    {% include "generico/_campo.html" with campo=form.carrera %}
+    {% if org and form.fields.nueva_carrera %}
+    <details class="fche-estudios__crear"{% if form.nueva_carrera.value or form.nueva_carrera.errors %} open{% endif %}>
+      <summary>+ Crear carrera de {{ org.nombre }}</summary>
+      <div class="fche-estudios__nuevo">
+        {% include "generico/_campo.html" with campo=form.nueva_carrera %}
+        <p class="form-text mb-0">Se crea al guardar, en {{ org.nombre }}.</p>
+      </div>
+    </details>
+    {% endif %}
+  </div>
+  {% if not org %}<p class="form-text fche-estudios__aviso">Primero elige la institución: luego aparecen sus sedes y carreras, y puedes crear las que falten.</p>{% endif %}
+  <noscript><div class="fche-ubicacion__sinjs">
+    <button type="submit" class="btn btn-sm btn-outline-secondary" name="{{ form.nombre_actualizar }}" value="1" formnovalidate>Actualizar listas</button>
+    <span class="form-text">Después de elegir la institución, pulsa aquí para ver sus sedes y carreras. No se guarda nada.</span>
+  </div></noscript>
+</div>
+{% endwith %}

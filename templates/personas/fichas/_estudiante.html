@@ -1,0 +1,10 @@
+{# Qué es: Cuerpo de la sección «Estudiante»: institución → sede y carrera en cascada, estado, jornada, año que cursa y año de inicio. #}
+{# Dónde se usa: personas/_fichas.html y personas/ficha_tipo.html · Proceso: P3 #}
+{% with f=s.formularios.estudios %}
+{% for e in f.non_field_errors %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+<div class="fche-form__rejilla">
+  {% include "personas/fichas/_estudios.html" with form=f %}
+  {% for campo in f %}{% if campo.name not in f.CAMPOS_ESTUDIOS %}{% include "generico/_campo.html" %}{% endif %}{% endfor %}
+</div>
+{% if f.instance.pk %}<p class="form-text">Aquí se edita su formación vigente más reciente. Para agregar otra, usa la pestaña Formación de su ficha.</p>{% endif %}
+{% endwith %}

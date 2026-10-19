@@ -790,3 +790,26 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-destinos__lista > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 1rem; font-size: .9rem; }
 .fche-destinos__fila + .fche-destinos__fila { padding-top: 1rem; border-top: 1px dashed var(--fche-borde-fuerte); }
 .fche-destinos__agregar { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; margin: 0 0 .5rem; }
+/* Tipo de registro de una persona (personas/_fichas.html): botones que se marcan (uno o varios); el marcado lleva ✓ además
+   del color. Debajo, la sección de cada tipo; el estudiante elige institución → sede y carrera; el hogar va en filas. */
+.fche-tipos__botones { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+.btn-check:checked + .fche-tipos__boton::before { content: "✓ "; }
+.fche-ficha__sub { margin: 1.1rem 0 .5rem; font-size: .92rem; font-weight: 700; color: var(--fche-texto); }
+.fche-form__rejilla > .fche-estudios { grid-column: 1 / -1; }
+.fche-estudios__dependientes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); column-gap: 1.25rem; }
+.fche-estudios__aviso, .fche-estudios__dependientes > noscript { grid-column: 1 / -1; }
+.fche-estudios__crear { margin: -.4rem 0 1rem; font-size: .85rem; }
+.fche-estudios__nuevo { margin-top: .6rem; padding: .75rem; border: 1px solid var(--fche-borde); border-radius: var(--fche-radio); background: var(--fche-fondo); }
+.fche-filas { margin: 0 0 1.25rem; }
+.fche-fila { display: grid; grid-template-columns: minmax(5rem, 7rem) repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: 0 1rem; margin: 0 0 .5rem;
+  padding: .6rem .75rem 0; border: 1px solid var(--fche-borde); border-radius: var(--fche-radio); background: var(--fche-superficie-2); }
+.fche-fila--familiar { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; }
+@media (max-width: 575.98px) { .fche-fila, .fche-fila--familiar { grid-template-columns: 1fr; } }
+/* Tarjetas por tipo de registro en la pestaña Datos de la persona */
+.fche-fichas-tarjetas__lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+.fche-ficha-tarjeta { padding: 1rem 1.1rem; box-shadow: none; }
+.fche-ficha-tarjeta__cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .6rem; }
+.fche-ficha-tarjeta__titulo { margin: 0; font-size: 1rem; font-weight: 700; color: var(--fche-texto); }
+.fche-ficha-tarjeta__datos { display: grid; gap: .55rem; margin: 0; }
+.fche-ficha-tarjeta__datos dt { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fche-texto-suave); }
+.fche-ficha-tarjeta__datos dd { margin: 0; overflow-wrap: anywhere; }

@@ -3,6 +3,7 @@
    - borrador en la pestaña si la sesión vence o el servidor falla (AC-E2, AC-E3, UI-E6), con el nombre elegido en los buscadores;
    - un solo envío por formulario aunque se haga doble clic (UI-E1);
    - Enter en el cuadro de «+ Crear sector» crea el sector en vez de enviar el formulario;
+   - «Tipo de registro» de una persona: marcar un tipo muestra su sección;
    - barra de filtros de los listados: dirección sin campos vacíos y «Más filtros» que se cierra con Esc;
    - error de una sección cargada con HTMX, con «Reintentar» (DA-05). */
 (function () {
@@ -209,6 +210,20 @@
     if (window.htmx) window.htmx.process(fila);
     var primera = fila.querySelector("select:not([disabled])");
     if (primera) primera.focus();
+  });
+
+  // «Tipo de registro» de una persona (personas/_fichas.html): al marcar o desmarcar un tipo se muestra u oculta su sección,
+  // sin recargar. Sin JavaScript, el botón «Mostrar secciones» vuelve a dibujar el formulario sin guardar.
+  function mostrarFichas(form) {
+    var marcadas = {};
+    Array.prototype.forEach.call(form.querySelectorAll("[data-tipo-ficha]"), function (c) { if (c.checked) marcadas[c.getAttribute("data-tipo-ficha")] = true; });
+    Array.prototype.forEach.call(form.querySelectorAll("[data-ficha-seccion]"), function (s) { s.hidden = !marcadas[s.getAttribute("data-ficha-seccion")]; });
+  }
+  document.addEventListener("change", function (e) {
+    if (e.target.matches && e.target.matches("[data-tipo-ficha]") && e.target.form) mostrarFichas(e.target.form);
+  });
+  window.addEventListener("pageshow", function () { // al volver con «Atrás», el navegador puede recordar las casillas
+    Array.prototype.forEach.call(document.querySelectorAll("form"), function (f) { if (f.querySelector("[data-tipo-ficha]")) mostrarFichas(f); });
   });
 
   // Resultados de búsqueda: marca las palabras buscadas (sin distinguir mayúsculas ni tildes).

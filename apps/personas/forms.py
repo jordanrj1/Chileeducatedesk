@@ -1,13 +1,19 @@
-"""Formularios de persona: ficha rápida (solo nombre) y completa por secciones, contactos, direcciones, formación,
-cargos en organizaciones, experiencia, disponibilidad, y los restringidos (emergencia, datos sensibles,
-consentimientos, apoderados, verificaciones)."""
-from django import forms
+"""Formularios de persona: ficha rápida (solo nombre) y completa por secciones, contactos, direcciones, formación
+(institución → sede y carrera en cascada, con crear en el momento), cargos en organizaciones, experiencia, disponibilidad,
+y los restringidos (emergencia, datos sensibles, consentimientos, apoderados, verificaciones)."""
+import json
 
-from apps.nucleo.formularios import BootstrapMixin, SelectorField
+from django import forms
+from django.db.models import Q
+from django.urls import reverse
+
+from apps.nucleo.formularios import BloqueDeSeccion, BootstrapMixin, SelectorField
 from apps.nucleo.models import AreaTematica, Canal, EstadoRegistro, OrigenPersona, PerfilPersona, TipoContacto
 from apps.nucleo.rut import CampoRut
+from apps.nucleo.selector import pk_seguro
 from apps.nucleo.utilidades import normalizar_telefono, telefono_normalizado_valido
 from apps.organizaciones.models import Carrera, Organizacion
+from apps.organizaciones.selector import ORGANIZACIONES
 from apps.territorio.forms import DireccionForm
 
 from .selector import PERSONAS
@@ -26,7 +32,8 @@ CAMPOS_PERFIL = ["nombre_social", "fecha_nacimiento", "nacionalidad", "perfiles"
 
 SECCIONES_PERSONA = [
     ("Identificación", "Solo el nombre es obligatorio; el resto se puede completar después.",
-     ["nombres", "apellido_paterno", "apellido_materno", "nombre_social", "rut", "tipo_documento", "numero_documento", "fecha_nacimiento", "nacionalidad"]),
+     ["nombres", "apellido_paterno", "apellido_materno", "nombre_social", "rut", "tipo_documento", "numero_documento", "fecha_nacimiento", "edad",
+      "sexo", "nacionalidad"]),
     ("Contacto", "Un dato basta para registrarla.", ["correo", "telefono", "canal_preferido"]),
     ("Perfil y ocupación", "Qué es esta persona para la Fundación y a qué se dedica. Sirve para filtrar el banco de personas.",
      ["perfiles", "nivel_educacional", "situacion_ocupacional", "profesion", "sitio_web"]),
@@ -36,16 +43,25 @@ SECCIONES_PERSONA = [
 ]
 
 
+def edad_aproximada():
+    return forms.IntegerField(
+        required=False, min_value=0, max_value=120, label="Edad (si no sabes la fecha)",
+        help_text="Ej.: 67. Se guarda como fecha aproximada: el 1 de enero del año que corresponde.",
+    )
+
+
 class PersonaForm(BootstrapMixin, forms.ModelForm):
-    """Ficha completa por secciones (F22). Solo el nombre es obligatorio: se puede completar después."""
+    """Ficha completa por secciones (F22). Solo el nombre es obligatorio: se puede completar después.
+    Los perfiles con ficha propia (estudiante, vecino…) se pueden mostrar aparte como «Tipo de registro» (ver `separar_tipos`)."""
 
     rut = CampoRut(label="RUT")
+    edad = edad_aproximada()
     secciones = SECCIONES_PERSONA
 
     class Meta:
         model = Persona
-        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", *CAMPOS_PERFIL[:3],
-                  "profesion", "sitio_web", *CAMPOS_PERFIL[3:], "origen", "estado_registro", "observaciones"]
+        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", *CAMPOS_PERFIL[:2], "sexo",
+                  CAMPOS_PERFIL[2], "profesion", "sitio_web", *CAMPOS_PERFIL[3:], "origen", "estado_registro", "observaciones"]
         widgets = {
             "perfiles": forms.CheckboxSelectMultiple, "areas_interes": forms.CheckboxSelectMultiple,
             "fecha_nacimiento": forms.DateInput, "habilidades": forms.Textarea(attrs={"rows": 2}),
@@ -67,6 +83,39 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
             self.fields["nacionalidad"].widget.attrs.update(list="nacionalidades", placeholder="Ej.: chilena")
         if self.instance.pk and self.instance.rut_numero:
             self.initial["rut"] = self.instance.rut
+        if "fecha_nacimiento" in self.fields and self.instance.fecha_nacimiento_aproximada:
+            self.fields["fecha_nacimiento"].help_text = "Fecha aproximada: se calculó desde la edad. Si sabes la fecha exacta, escríbela."
+        if "sexo" in self.fields:
+            self.fields["sexo"].help_text = "Opcional. La identidad de género se registra aparte, en los datos sensibles 🔒."
+        self.tipos = []  # perfiles con ficha propia, cuando se muestran aparte (separar_tipos)
+
+    def separar_tipos(self):
+        """Los perfiles con ficha propia (estudiante, vecino, invitado, voluntario) se marcan arriba como «Tipo de registro»
+        (botones que muestran su sección); la lista de perfiles queda con los demás. Lo enviado sigue siendo `perfiles`."""
+        campo = self.fields.get("perfiles")
+        if campo is None:
+            return
+        todos = list(campo.queryset)
+        self.tipos = [p for p in todos if p.ficha]
+        campo.widget.choices = [(p.pk, str(p)) for p in todos if not p.ficha]
+        campo.label = "Otros perfiles"
+        campo.help_text = "Los tipos con datos propios (como estudiante o voluntario) se marcan arriba, en «Tipo de registro»."
+
+    def tipos_ui(self):
+        """Botones de «Tipo de registro»: [(perfil, marcado)]."""
+        if not self.tipos:
+            return []
+        marcados = {str(v) for v in (self["perfiles"].value() or [])}
+        return [(p, str(p.pk) in marcados) for p in self.tipos]
+
+    perfiles_en_lista = True  # la ficha rápida solo muestra los tipos, no la lista de otros perfiles
+
+    def secciones_ui(self):
+        res = super().secciones_ui()
+        if res and self.tipos and not self.perfiles_en_lista:
+            res = [(t, a, [c for c in campos if getattr(c, "name", "") != "perfiles"]) for t, a, campos in res]
+            res = [s for s in res if s[2]]
+        return res
 
     def clean_rut(self):
         valor = self.cleaned_data.get("rut")
@@ -88,12 +137,18 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
             otra = Persona.objects.filter(tipo_documento=tipo, numero_documento=numero).exclude(pk=self.instance.pk).first()
             if otra:
                 self.add_error("numero_documento", f"Ya existe una persona con ese documento: {otra.nombre_completo}.")
+        if d.get("edad") is not None and d.get("fecha_nacimiento") and "fecha_nacimiento" in self.changed_data:
+            self.add_error("edad", "Escribe la fecha de nacimiento o la edad, no las dos.")
         return d
 
     def save(self, commit=True):
         obj = super().save(commit=False)
         rut = self.cleaned_data.get("rut")
         obj.rut_numero, obj.rut_dv = rut if rut else (None, None)
+        if self.cleaned_data.get("edad") is not None:
+            obj.fijar_edad_aproximada(self.cleaned_data["edad"])
+        elif "fecha_nacimiento" in self.changed_data:
+            obj.fecha_nacimiento_aproximada = False  # se escribió la fecha: ya no es aproximada
         if commit:
             obj.save()
         return obj
@@ -106,8 +161,8 @@ class PersonaNuevaForm(PersonaForm):
     telefono = forms.CharField(label="teléfono", required=False, max_length=40)
 
     class Meta(PersonaForm.Meta):
-        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", *CAMPOS_PERFIL[:3], "correo", "telefono",
-                  "profesion", *CAMPOS_PERFIL[3:], "origen", "observaciones"]
+        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", *CAMPOS_PERFIL[:2], "sexo",
+                  CAMPOS_PERFIL[2], "correo", "telefono", "profesion", *CAMPOS_PERFIL[3:], "origen", "observaciones"]
 
     def clean_telefono(self):
         t = self.cleaned_data.get("telefono", "").strip()
@@ -119,10 +174,11 @@ class PersonaNuevaForm(PersonaForm):
 class PersonaRapidaForm(PersonaNuevaForm):
     """Ficha rápida (IG-01): nombre y un dato de contacto, para registrar mientras se habla por teléfono."""
 
-    rut = None  # campos de la ficha completa que aquí no se piden
+    rut = edad = None  # campos de la ficha completa que aquí no se piden
+    perfiles_en_lista = False
 
     class Meta(PersonaNuevaForm.Meta):
-        fields = ["nombres", "apellido_paterno", "correo", "telefono"]
+        fields = ["nombres", "apellido_paterno", "correo", "telefono", "perfiles"]  # perfiles: solo los «Tipo de registro»
 
     def clean(self):
         return super(PersonaForm, self).clean()  # sin documento en la ficha rápida
@@ -190,27 +246,179 @@ class PersonaDireccionForm(DireccionForm):
         return PersonaDireccion.objects.create(persona=persona, direccion=direccion, tipo=self.cleaned_data["tipo"])
 
 
+def _mismo_nombre(qs, nombre):
+    """El registro de `qs` que se llama igual, sin contar tildes, mayúsculas ni espacios de más (o None)."""
+    return qs.filter(nombre__unaccent__iexact=" ".join(nombre.split())).first()
+
+
 class FormacionForm(BootstrapMixin, forms.ModelForm):
+    """Estudios de una persona. Institución → sede o casa matriz y carrera, en cascada: al elegir la institución se ofrecen
+    sus sedes y carreras (personas/fichas/_estudios.html; con JavaScript la lista se renueva sola, sin JavaScript con
+    «Actualizar listas»). Si falta la sede o la carrera, se escribe y se crea al guardar, en la misma transacción.
+    Crear exige `usuario` con permiso (lugares.add_lugar, organizaciones.add_carrera); sin él, solo se elige."""
+
+    organizacion = SelectorField(ORGANIZACIONES, filtros={"tipo": "institucion_educativa"}, label="Institución educativa",
+                                 help_text="Ej.: un instituto profesional o una universidad. Si no está, créala desde aquí.")
     docente = selector_persona(required=False, label="Docente o tutor a cargo")
+    nueva_sede = forms.CharField(required=False, max_length=200, label="Nombre de la sede o casa matriz",
+                                 widget=forms.TextInput(attrs={"placeholder": "Ej.: Sede San Andrés", "autocomplete": "off"}))
+    nueva_sede_tipo = forms.ChoiceField(required=False, label="Es", choices=[("sede", "Sede"), ("casa_matriz", "Casa matriz")], initial="sede")
+    nueva_sede_comuna = forms.ModelChoiceField(queryset=None, required=False, label="Comuna de la sede")
+    nueva_carrera = forms.CharField(required=False, max_length=200, label="Nombre de la carrera",
+                                    widget=forms.TextInput(attrs={"placeholder": "Ej.: Técnico en Trabajo Social", "autocomplete": "off"}))
+    CAMPOS_ESTUDIOS = ("organizacion", "sede_institucion", "carrera", "nueva_sede", "nueva_sede_tipo", "nueva_sede_comuna", "nueva_carrera")
     secciones = [
-        ("Estudios", "", ["organizacion", "carrera", "estado", "sede", "jornada", "nivel_actual", "anio_inicio", "anio_termino"]),
+        ("Estudios", "", ["estudios", "estado", "sede", "jornada", "nivel_actual", "anio_inicio", "anio_termino"]),
         ("Vínculo con la Fundación", "Para coordinar con la institución y certificar las horas.", ["asignatura", "docente", "horas_comprometidas", "vigente"]),
     ]
 
     class Meta:
         model = PersonaFormacion
-        fields = ["organizacion", "carrera", "estado", "sede", "jornada", "nivel_actual", "anio_inicio", "anio_termino", "asignatura", "docente", "horas_comprometidas", "vigente"]
+        fields = ["organizacion", "sede_institucion", "carrera", "estado", "sede", "jornada", "nivel_actual", "anio_inicio", "anio_termino", "asignatura", "docente",
+                  "horas_comprometidas", "vigente"]
 
-    def __init__(self, *args, **kw):
+    def __init__(self, *args, usuario=None, **kw):
         super().__init__(*args, **kw)
-        self.fields["organizacion"].queryset = Organizacion.objects.filter(tipo__codigo="institucion_educativa", activo=True)
-        self.fields["carrera"].queryset = Carrera.objects.filter(activo=True).select_related("organizacion")
-        self.fields["carrera"].required = False
+        from apps.territorio.models import Comuna
+
+        self.usuario = usuario
+        self.puede_crear_sede = bool(usuario and usuario.has_perm("lugares.add_lugar"))
+        self.puede_crear_carrera = bool(usuario and usuario.has_perm("organizaciones.add_carrera"))
+        if not self.puede_crear_sede:
+            for n in ("nueva_sede", "nueva_sede_tipo", "nueva_sede_comuna"):
+                self.fields.pop(n)
+        if not self.puede_crear_carrera:
+            self.fields.pop("nueva_carrera")
+        org = self.institucion_elegida()
+        sede, carrera = self.fields["sede_institucion"], self.fields["carrera"]
+        sede.label, sede.required, carrera.required = "Sede o casa matriz", False, False
+        sede.label_from_instance = carrera.label_from_instance = lambda o: o.nombre
+        if org:
+            sede.queryset = PersonaFormacion.sedes_de(org).filter(Q(activo=True) | Q(pk=self.instance.sede_institucion_id or 0)).order_by("nombre")
+            carrera.queryset = Carrera.objects.filter(organizacion=org).filter(Q(activo=True) | Q(pk=self.instance.carrera_id or 0)).order_by("nombre")
+            sede.help_text = "" if sede.queryset.exists() else f"{org.nombre} aún no tiene sedes registradas."
+            carrera.help_text = "" if carrera.queryset.exists() else f"{org.nombre} aún no tiene carreras registradas."
+        else:
+            sede.queryset, carrera.queryset = sede.queryset.none(), Carrera.objects.none()
+            for campo in (sede, carrera):
+                campo.empty_label = "Primero elige la institución"
+                campo.widget.attrs["disabled"] = True
+        if "nueva_sede_comuna" in self.fields:
+            from itertools import groupby
+
+            campo = self.fields["nueva_sede_comuna"]
+            campo.queryset = Comuna.objects.all()
+            todas = Comuna.objects.select_related("provincia__region").order_by("provincia__region__codigo", "nombre") if org else []
+            campo.choices = [("", "---------")] + [(r.nombre, [(c.pk, c.nombre) for c in lista]) for r, lista in groupby(todas, key=lambda c: c.provincia.region)]
+            if org and not self.is_bound and org.direccion_id:
+                self.initial.setdefault("nueva_sede_comuna", org.direccion.comuna_id)  # la comuna de la institución, como punto de partida
+        if "sede" in self.fields:
+            self.fields["sede"].label = "Sede escrita (texto anterior)"
+            self.fields["sede"].help_text = "Se escribía antes de poder elegir la sede de la lista. Elige la sede arriba y luego borra este texto."
+        self.organizacion_elegida = org
+        # al elegir otra institución, se vuelven a dibujar su sede y su carrera (personas/fichas/_estudios.html)
+        self.fields["organizacion"].widget.attrs.update({
+            "hx-get": reverse("personas:estudios_dependientes"), "hx-trigger": "change", "hx-target": f"#{self.id_dependientes}",
+            "hx-swap": "outerHTML", "hx-include": "closest .fche-estudios", "hx-vals": json.dumps({"_prefijo": self.prefix or ""}),
+        })
+
+    @property
+    def id_dependientes(self):
+        return f"estudios-{self.prefix or 'principal'}-dependientes"
+
+    @property
+    def nombre_actualizar(self):
+        return self.add_prefix("_actualizar_estudios")
+
+    @property
+    def actualizando(self):
+        """Sin JavaScript, «Actualizar listas» vuelve a dibujar el formulario con las sedes y carreras de la institución, sin guardar."""
+        return self.is_bound and bool(self.data.get(self.nombre_actualizar))
+
+    def full_clean(self):
+        if self.actualizando:
+            from apps.territorio.ubicacion import sin_errores
+
+            sin_errores(self)
+            return
+        super().full_clean()
+
+    def is_valid(self):
+        return super().is_valid() and not self.actualizando
+
+    def institucion_elegida(self):
+        """La institución elegida (al volver a dibujar, la del formulario enviado), sin errores si el valor no sirve."""
+        pk = pk_seguro(self.data.get(self.add_prefix("organizacion"))) if self.is_bound else pk_seguro(self.initial.get("organizacion") or self.instance.organizacion_id)
+        if not pk:
+            return None
+        return Organizacion.objects.filter(pk=pk, tipo__codigo="institucion_educativa").select_related("direccion").first()
+
+    @property
+    def bloques_de_seccion(self):
+        """En `secciones`, «estudios» dibuja juntos la institución, la sede y la carrera (con «+ Crear»)."""
+        return {"estudios": BloqueDeSeccion(self, "personas/fichas/_estudios.html", self.CAMPOS_ESTUDIOS)}
 
     def clean(self):
         d = super().clean()
-        # PersonaFormacion.clean() valida carrera ↔ institución; ModelForm la llama con la instancia ya armada
+        org = d.get("organizacion")
+        nueva_sede, nueva_carrera = (d.get("nueva_sede") or "").strip(), (d.get("nueva_carrera") or "").strip()
+        if nueva_sede:
+            if d.get("sede_institucion"):
+                self.add_error("nueva_sede", "Elige una sede de la lista o escribe una nueva, no las dos.")
+            elif not org:
+                self.add_error("nueva_sede", "Primero elige la institución de la sede.")
+            elif not d.get("nueva_sede_comuna"):
+                self.add_error("nueva_sede_comuna", "Indica en qué comuna está la sede.")
+            else:
+                igual = _mismo_nombre(PersonaFormacion.sedes_de(org), nueva_sede)
+                if igual:
+                    self.add_error("nueva_sede", f"{org.nombre} ya tiene la sede «{igual.nombre}»: elígela en la lista.")
+        if nueva_carrera:
+            if d.get("carrera"):
+                self.add_error("nueva_carrera", "Elige una carrera de la lista o escribe una nueva, no las dos.")
+            elif not org:
+                self.add_error("nueva_carrera", "Primero elige la institución de la carrera.")
+            else:
+                igual = _mismo_nombre(Carrera.objects.filter(organizacion=org), nueva_carrera)
+                if igual:
+                    self.add_error("nueva_carrera", f"{org.nombre} ya tiene la carrera «{igual.nombre}»: elígela en la lista.")
+        # PersonaFormacion.clean() valida carrera y sede ↔ institución; ModelForm la llama con la instancia ya armada
         return d
+
+    def crear_lo_escrito(self, obj):
+        """Crea la sede y la carrera escritas (si las hay) y las deja elegidas. Se llama dentro de la transacción de guardar."""
+        from apps.lugares.models import Lugar
+        from apps.nucleo.models import TipoLugar
+        from apps.territorio.models import Direccion
+
+        d = self.cleaned_data
+        org = d.get("organizacion")
+        nombre = " ".join((d.get("nueva_sede") or "").split())
+        if nombre and org and self.puede_crear_sede:
+            tipo = TipoLugar.objects.get(codigo=d.get("nueva_sede_tipo") or "sede")
+            obj.sede_institucion = Lugar.objects.create(nombre=nombre, tipo=tipo, direccion=Direccion.objects.create(comuna=d["nueva_sede_comuna"]),
+                                                        organizacion_propietaria=org, creado_por=self.usuario)
+        nombre = " ".join((d.get("nueva_carrera") or "").split())
+        if nombre and org and self.puede_crear_carrera:
+            obj.carrera = Carrera.objects.create(organizacion=org, nombre=nombre)
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if commit:
+            self.crear_lo_escrito(obj)
+            obj.save()
+            self._save_m2m()
+        return obj
+
+
+class EstudianteForm(FormacionForm):
+    """Sección «Estudiante» al registrar a una persona: lo principal de sus estudios (el resto, en la pestaña Formación)."""
+
+    docente = None
+    secciones = ()
+
+    class Meta(FormacionForm.Meta):
+        fields = ["organizacion", "sede_institucion", "carrera", "estado", "jornada", "nivel_actual", "anio_inicio"]
 
 
 class VinculoForm(BootstrapMixin, forms.ModelForm):
@@ -275,18 +483,16 @@ class PerfilSensibleForm(BootstrapMixin, forms.ModelForm):
         ("Género y origen", "Solo para estadísticas desagregadas. Siempre se puede responder «Prefiere no responder».", ["genero", "pueblo_originario"]),
         ("Salud y accesibilidad", "Para preparar el lugar y la actividad, y actuar en una emergencia.",
          ["discapacidad", "necesidades_apoyo", "condiciones_salud", "alergias", "prevision_salud"]),
-        ("Hogar", "Para focalizar beneficios e informar a fondos.", ["jefatura_hogar", "integrantes_hogar", "tramo_rsh"]),
+        ("Hogar", "Para focalizar beneficios e informar a fondos. La jefatura y los integrantes del hogar van en la ficha de vecino o vecina "
+                  "(pestaña Datos).", ["tramo_rsh"]),
         ("Consentimiento", "", ["consentimiento", "consentimiento_fecha", "consentimiento_medio"]),
     ]
 
     class Meta:
         model = PerfilSensible
-        fields = ["genero", "pueblo_originario", "discapacidad", "necesidades_apoyo", "condiciones_salud", "alergias", "prevision_salud",
-                  "jefatura_hogar", "integrantes_hogar", "tramo_rsh"]
-        widgets = {
-            "discapacidad": forms.Select(choices=[("", "Sin información"), (True, "Sí"), (False, "No")]),
-            "jefatura_hogar": forms.Select(choices=[("", "Sin información"), (True, "Sí"), (False, "No")]),
-        }
+        # jefatura_hogar e integrantes_hogar pasaron a la ficha de vecino (FichaVecino); sus columnas se conservan sin uso
+        fields = ["genero", "pueblo_originario", "discapacidad", "necesidades_apoyo", "condiciones_salud", "alergias", "prevision_salud", "tramo_rsh"]
+        widgets = {"discapacidad": forms.Select(choices=[("", "Sin información"), (True, "Sí"), (False, "No")])}
 
     def __init__(self, *a, persona=None, **kw):
         super().__init__(*a, **kw)

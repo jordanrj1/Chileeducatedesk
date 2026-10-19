@@ -1,0 +1,23 @@
+{# Qué es: Una tarjeta por tipo de registro de la persona (estudiante, vecino o vecina, invitado, voluntario), con su resumen y «Editar». El hogar va con 🔒. #}
+{# Dónde se usa: personas/pestanas/datos.html (/personas/<int:pk>, pestaña Datos) · Proceso: P9 #}
+{% if tarjetas_fichas %}
+<section class="fche-fichas-tarjetas mb-4" aria-labelledby="fichas-titulo">
+  <h2 class="fche-ficha__sub mt-0" id="fichas-titulo">Tipo de registro</h2>
+  <div class="fche-fichas-tarjetas__lista">
+  {% for t in tarjetas_fichas %}
+    <article class="fche-tarjeta fche-ficha-tarjeta" aria-labelledby="tarjeta-{{ t.codigo }}">
+      <div class="fche-ficha-tarjeta__cabeza">
+        <h3 class="fche-ficha-tarjeta__titulo" id="tarjeta-{{ t.codigo }}">{{ t.titulo }}</h3>
+        {% if t.url_editar %}<a class="btn btn-outline-secondary btn-sm" href="{{ t.url_editar }}">Editar<span class="visually-hidden"> {{ t.titulo|lower }}</span></a>{% endif %}
+      </div>
+      {% if t.filas %}
+      <dl class="fche-ficha-tarjeta__datos">
+        {% for f in t.filas %}<div><dt>{{ f.etiqueta }}{% if f.restringido %} <span title="Dato restringido" aria-label="Dato restringido">🔒</span>{% endif %}</dt>
+          <dd>{% if f.enlaces %}{% for texto, url in f.enlaces %}<a href="{{ url }}">{{ texto }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}{{ f.valor|default:"—" }}{% endif %}</dd></div>{% endfor %}
+      </dl>
+      {% else %}<p class="text-muted small mb-0">{{ t.vacio }}</p>{% endif %}
+    </article>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
