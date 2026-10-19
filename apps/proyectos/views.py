@@ -28,7 +28,7 @@ class ProyectoLista(ListaBase):
     ]
     ordenes = {"nombre": "nombre", "inicio": "fecha_inicio"}
     orden_defecto = ("-creado_en",)
-    filtros = [Filtro("estado", "Estado", "estado", lambda: list(Proyecto.ESTADOS))]
+    filtros = [Filtro("estado", "Estado", "estado", lambda: list(Proyecto.ESTADOS), principal=True)]
     url_exportar = "/proyectos/exportar"
     permiso_exportar = "proyectos.exportar_proyecto"
 

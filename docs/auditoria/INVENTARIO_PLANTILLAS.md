@@ -63,6 +63,8 @@ Procesos: P1 a P13 son los de `docs/Procesos_y_pruebas_de_Claudio.md`. «Grupo»
 | `generico/_breadcrumb.html` | incluida en 16 plantillas, p. ej. `actividades/candidatos.html` | Todos | Fragmento | Trozo que dibuja las migas de pan (Inicio › Actividades › …). |
 | `generico/_campo.html` | incluida en 11 plantillas, p. ej. `actividades/pestanas/resultados.html` | Todos | Fragmento | Trozo que dibuja un campo de formulario con su etiqueta, ayuda y error. |
 | `generico/_campos.html` | incluida en `generico/formulario.html`, `personas/nueva.html` | Todos | Fragmento | Trozo que dibuja un formulario completo, agrupado por secciones. |
+| `generico/_filtro_campo.html` | incluida en `generico/_filtros.html` | P10 | Fragmento | Trozo que dibuja un filtro de listado: lista desplegable (con grupos), casilla, fecha, número o texto. |
+| `generico/_filtros.html` | incluida en `generico/lista.html` | P10 | Fragmento | Barra de filtros de los listados: buscador, 2 o 3 filtros a la vista, «Más filtros» plegable y los filtros aplicados como etiquetas con ×. |
 | `generico/_hijos.html` | 7 rutas, p. ej. `/actividades/<int:pk>`, `/comunidades/<int:pk>` | P3/P4/P9 | Fragmento | Pestaña común para listas dentro de una ficha (contactos, cargos, carreras, organizaciones de una actividad…) con su botón «+ Agregar». |
 | `generico/_historial.html` | 7 rutas, p. ej. `/comunidades/<int:pk>`, `/finanzas/<int:pk>` | P9 | Fragmento | Pestaña Historial: qué cambió, quién y cuándo, con la versión anterior. |
 | `generico/_paginacion.html` | incluida en `generico/lista.html` | P10 | Fragmento | Trozo con los botones de página anterior y siguiente de los listados. |

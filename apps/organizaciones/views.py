@@ -33,7 +33,7 @@ class OrganizacionLista(ListaBase):
     columnas = [("Nombre", "nombre"), ("Tipo", "tipo"), ("RUT", "rut"), ("Comuna", lambda o: o.direccion.comuna if o.direccion_id else ""), ("Estado", "estado_registro")]
     ordenes = {"nombre": "nombre"}
     orden_defecto = ("nombre",)
-    filtros = [filtro_activo(), Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoOrganizacion))]
+    filtros = [Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoOrganizacion), principal=True), filtro_activo(femenino=True)]
     url_exportar = "/organizaciones/exportar"
     permiso_exportar = "organizaciones.exportar_organizacion"
 

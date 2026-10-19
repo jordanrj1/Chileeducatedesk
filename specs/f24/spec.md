@@ -91,6 +91,13 @@ Afecta a los 14 listados que usan `ListaBase`.
   - Tareas deja de pedir el «id» del responsable;
   - si un filtro tiene más de 300 organizaciones, lo avisa.
 - **Filtros principales por listado:** la lista exacta está en `analisis/listados.md`. En Personas son Perfil, Comuna y Comunidad.
+- **Cómo quedó (T4):**
+  - `?activo=` vacío vale lo predeterminado (activos); «Todos» (`*`) se ve como filtro aplicado;
+  - Comuna y Organización ofrecen solo los valores con registros, agrupados por región o por tipo; si se llega con un valor que no está en la lista (desde la ficha de una comuna), igual se muestra;
+  - en Actividades, Institución queda dentro de Organización y `?institucion=` sigue funcionando sin dibujarse;
+  - en Actividades se agrega el filtro «Cuándo» (`periodo`: próximas, esta semana, este mes, pasadas, sin programar) [P]; Desde y Hasta siguen en «Más filtros»;
+  - con JavaScript, la dirección queda sin campos vacíos y «Más filtros» se cierra con Esc o un clic fuera; los filtros se aplican con «Filtrar», no al elegir;
+  - el filtro por comuna de `/actividades`, `/calendario` y `/buscar` incluye las actividades dirigidas a sus sectores (y subsectores), igual que la ficha de la comuna (`territorio/consultas.py`).
 
 ### A4. Territorio oficial de Chile
 - **Datos:**
@@ -309,4 +316,5 @@ Afecta a los 14 listados que usan `ListaBase`.
 - Limitar el responsable al equipo de la Fundación (`RESPONSABLE_SOLO_EQUIPO`).
 - Los valores de los catálogos Tramo etario y Naturaleza jurídica.
 - Las 6 diferencias de escritura entre la SUBDERE y el INE (se usó el INE).
+- Filtro «Cuándo» en Actividades (propuesta: se quita borrando una línea en `ActividadLista.filtros`).
 - Parte B: perfiles sin ficha (por ejemplo beneficiario), los valores de Parentesco, TipoInvitado y EstadoVoluntario, el sexo como dato general y el hogar como dato restringido sin consentimiento (decidido por el usuario; validar con el tutor por la Ley 21.719) [V#2].

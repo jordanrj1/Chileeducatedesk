@@ -9,6 +9,7 @@ from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
@@ -17,12 +18,14 @@ from apps.nucleo.direccion_mixin import ComunaInicialMixin
 from apps.nucleo.selector import OpcionesVista
 from apps.nucleo.models import EstadoActividad, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad
 from apps.nucleo.vistas_base import (
-    EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, cambios_historial, opciones_modelo,
+    EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, cambios_historial, nombre_comuna, nombre_organizacion,
+    opciones_comunas, opciones_modelo, opciones_organizaciones,
 )
 from apps.organizaciones.models import Organizacion
 from apps.personas.duplicados import candidatos
 from apps.personas.models import Contacto, Persona
 from apps.proyectos.models import Proyecto
+from apps.territorio.consultas import actividad_en_comuna, dirigida_a_comuna
 from apps.territorio.models import Comuna
 
 from . import servicios
@@ -44,9 +47,41 @@ def _agenda_vigente_qs():
 
 
 def _filtro_comuna(qs, v):
-    return qs.filter(
-        Q(agendas__vigente=True, agendas__lugar__direccion__comuna_id=v) | Q(territorios__vigente=True, territorios__comuna_id=v)
-    ).distinct()
+    """La comuna incluye las actividades dirigidas a sus sectores, igual que la ficha de la comuna."""
+    return qs.filter(actividad_en_comuna(int(v))).distinct()
+
+
+def _comunas_con_actividades():
+    """Comunas del lugar programado o del público objetivo (también por sector): las únicas que vale la pena ofrecer."""
+    territorios = ActividadTerritorio.objects.filter(vigente=True)
+    return (
+        Q(pk__in=AgendaActividad.objects.filter(vigente=True).values("lugar__direccion__comuna_id"))
+        | Q(pk__in=territorios.values("comuna_id"))
+        | Q(pk__in=territorios.values("sector__comuna_id"))
+    )
+
+
+PERIODOS = (("proximas", "Próximas"), ("semana", "Esta semana"), ("mes", "Este mes"), ("pasadas", "Pasadas"), ("sin", "Sin programar"))
+
+
+def _filtro_periodo(qs, v):
+    """«Cuándo»: según la fecha programada vigente. «Sin programar» son las que no tienen fecha."""
+    hoy = timezone.localdate()
+    agenda = AgendaActividad.objects.filter(actividad=OuterRef("pk"), vigente=True)
+    if v == "sin":
+        return qs.filter(~Exists(agenda))
+    if v == "proximas":
+        agenda = agenda.filter(fecha__gte=hoy)
+    elif v == "semana":
+        lunes = hoy - timedelta(days=hoy.weekday())
+        agenda = agenda.filter(fecha__gte=lunes, fecha__lte=lunes + timedelta(days=6))
+    elif v == "mes":
+        agenda = agenda.filter(fecha__year=hoy.year, fecha__month=hoy.month)
+    elif v == "pasadas":
+        agenda = agenda.filter(fecha__lt=hoy)
+    else:
+        raise ValueError(v)
+    return qs.filter(Exists(agenda))
 
 
 def _filtro_fecha(operador):
@@ -80,17 +115,23 @@ class ActividadLista(ListaBase):
     ordenes = {"nombre": "nombre", "estado": "estado__orden", "creada": "creado_en"}
     orden_defecto = ("-creado_en",)
     filtros = [
-        Filtro("estado", "Estado", "estado_id", opciones_modelo(EstadoActividad)),
-        Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoActividad)),
-        Filtro("proyecto", "Proyecto", "proyecto_id", lambda: [(str(p.pk), p.nombre) for p in Proyecto.objects.all()]),
-        Filtro("comuna", "Zona (comuna)", "", opciones_modelo(Comuna), aplicar=_filtro_comuna),
-        Filtro("organizacion", "Organización", "organizaciones__organizacion_id", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(activo=True)[:300]], aplicar=lambda qs, v: qs.filter(organizaciones__organizacion_id=v).distinct()),
-        Filtro("responsable", "Responsable", "responsable_id", lambda: [(str(p.pk), p.nombre_completo) for p in Persona.objects.filter(actividades_a_cargo__isnull=False).distinct()]),
-        Filtro("institucion", "Institución", "", lambda: [(str(o.pk), o.nombre) for o in Organizacion.objects.filter(tipo__codigo="institucion_educativa", activo=True)],
-               aplicar=lambda qs, v: qs.filter(organizaciones__organizacion_id=v).distinct()),
-        Filtro("desde", "Desde", "", entrada="date", aplicar=_filtro_fecha("gte")),
-        Filtro("hasta", "Hasta", "", entrada="date", aplicar=_filtro_fecha("lte")),
-        Filtro("incompleta", "Incompletas", "", lambda: [("1", "Solo incompletas")], aplicar=lambda qs, v: qs.filter(pk__in=Actividad.objects.incompletas().values("pk")) if v == "1" else qs),
+        Filtro("estado", "Estado", "estado_id", opciones_modelo(EstadoActividad), principal=True),
+        Filtro("comuna", "Comuna", "", lambda: opciones_comunas(_comunas_con_actividades()), aplicar=_filtro_comuna,
+               principal=True, todos="Todas", etiqueta_de=nombre_comuna),
+        Filtro("periodo", "Cuándo", "", lambda: list(PERIODOS), aplicar=_filtro_periodo, principal=True, todos="Cualquier fecha"),
+        Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoActividad), grupo="Qué"),
+        Filtro("proyecto", "Proyecto", "proyecto_id", lambda: [(str(p.pk), p.nombre) for p in Proyecto.objects.all()], grupo="Qué"),
+        Filtro("incompleta", "Incompletas", "", entrada="casilla", texto_casilla="Solo incompletas", grupo="Qué",
+               aplicar=lambda qs, v: qs.filter(pk__in=Actividad.objects.incompletas().values("pk")) if v == "1" else qs),
+        # Organización reúne a las instituciones educativas (agrupadas por tipo); «?institucion=» sigue funcionando
+        Filtro("organizacion", "Organización", "", lambda: opciones_organizaciones(Organizacion.objects.filter(actividades__isnull=False).distinct()),
+               aplicar=lambda qs, v: qs.filter(organizaciones__organizacion_id=v).distinct(), grupo="Con quién", todos="Todas",
+               tope=300, etiqueta_de=nombre_organizacion),
+        Filtro("responsable", "Responsable", "responsable_id", lambda: [(str(p.pk), p.nombre_completo) for p in Persona.objects.filter(actividades_a_cargo__isnull=False).distinct()], grupo="Con quién"),
+        Filtro("institucion", "Institución", "", aplicar=lambda qs, v: qs.filter(organizaciones__organizacion_id=v).distinct(), oculto=True,
+               etiqueta_de=nombre_organizacion),
+        Filtro("desde", "Desde", "", entrada="date", aplicar=_filtro_fecha("gte"), grupo="Fechas exactas"),
+        Filtro("hasta", "Hasta", "", entrada="date", aplicar=_filtro_fecha("lte"), grupo="Fechas exactas"),
     ]
     url_exportar = "/actividades/exportar"
     permiso_exportar = "actividades.exportar_actividad"
@@ -821,7 +862,7 @@ class CalendarioEventos(Permiso403Mixin, View):
             qs = qs.filter(lugar_id=request.GET["lugar"])
         if request.GET.get("zona", "").isdigit():
             z = request.GET["zona"]
-            qs = qs.filter(Q(lugar__direccion__comuna_id=z) | Q(actividad__territorios__vigente=True, actividad__territorios__comuna_id=z)).distinct()
+            qs = qs.filter(Q(lugar__direccion__comuna_id=z) | dirigida_a_comuna(int(z), "actividad__")).distinct()  # también sus sectores
         if request.GET.get("responsable", "").isdigit():
             qs = qs.filter(actividad__responsable_id=request.GET["responsable"])
         if request.GET.get("organizacion", "").isdigit():

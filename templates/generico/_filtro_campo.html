@@ -1,0 +1,29 @@
+{# Qué es: Trozo que dibuja un filtro de listado: lista desplegable (con grupos), casilla, fecha, número o texto. A la vista va compacto; dentro de «Más filtros», con su rótulo visible. #}
+{# Dónde se usa: generico/_filtros.html, con principal=True en la barra y principal=False en el panel · Proceso: P10 #}
+{% with id_campo="filtro-"|add:f.param %}
+<div class="fche-filtros__campo{% if principal %} fche-filtros__campo--principal{% endif %}{% if f.entrada == 'date' %} fche-filtros__campo--fecha{% endif %}">
+  {% if f.entrada == "casilla" %}
+  <div class="form-check fche-filtros__casilla">
+    <input class="form-check-input" type="checkbox" name="{{ f.param }}" value="1" id="{{ id_campo }}"{% if f.valor == "1" %} checked{% endif %}>
+    <label class="form-check-label" for="{{ id_campo }}">{{ f.texto_casilla }}</label>
+  </div>
+  {% elif f.entrada == "select" %}
+  {% if not principal %}<label class="form-label fche-filtros__rotulo" for="{{ id_campo }}">{{ f.etiqueta }}</label>{% endif %}
+  <select class="form-select" name="{{ f.param }}" id="{{ id_campo }}" data-defecto="{{ f.por_defecto }}"{% if principal %} aria-label="{{ f.etiqueta }}" title="{{ f.etiqueta }}"{% endif %}{% if f.aviso %} aria-describedby="{{ id_campo }}-aviso"{% endif %}>
+    {% if not f.por_defecto %}<option value="">{% if principal %}{{ f.etiqueta }}: {{ f.todos|lower }}{% else %}{{ f.todos }}{% endif %}</option>{% endif %}
+    {% regroup f.opciones by 2 as grupos %}{% for g in grupos %}{% if g.grouper %}<optgroup label="{{ g.grouper }}">{% endif %}{% for o in g.list %}<option value="{{ o.0 }}"{% if o.0 == f.valor %} selected{% endif %}>{{ o.1 }}</option>{% endfor %}{% if g.grouper %}</optgroup>{% endif %}{% endfor %}
+  </select>
+  {% if f.aviso %}<div class="form-text" id="{{ id_campo }}-aviso">{{ f.aviso }}</div>{% endif %}
+  {% else %}
+  {% if principal %}
+  <div class="input-group">
+    <label class="input-group-text" for="{{ id_campo }}">{{ f.etiqueta }}</label>
+    <input class="form-control" type="{{ f.entrada }}" name="{{ f.param }}" id="{{ id_campo }}" value="{{ f.valor }}"{% if f.entrada == "number" %} min="0" inputmode="numeric"{% endif %}>
+  </div>
+  {% else %}
+  <label class="form-label fche-filtros__rotulo" for="{{ id_campo }}">{{ f.etiqueta }}</label>
+  <input class="form-control" type="{{ f.entrada }}" name="{{ f.param }}" id="{{ id_campo }}" value="{{ f.valor }}"{% if f.entrada == "number" %} min="0" inputmode="numeric"{% endif %}>
+  {% endif %}
+  {% endif %}
+</div>
+{% endwith %}

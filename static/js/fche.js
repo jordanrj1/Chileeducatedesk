@@ -3,6 +3,7 @@
    - borrador en la pestaña si la sesión vence o el servidor falla (AC-E2, AC-E3, UI-E6), con el nombre elegido en los buscadores;
    - un solo envío por formulario aunque se haga doble clic (UI-E1);
    - Enter en el cuadro de «+ Crear sector» crea el sector en vez de enviar el formulario;
+   - barra de filtros de los listados: dirección sin campos vacíos y «Más filtros» que se cierra con Esc;
    - error de una sección cargada con HTMX, con «Reintentar» (DA-05). */
 (function () {
   "use strict";
@@ -106,6 +107,36 @@
       delete f.dataset.enviando;
       Array.prototype.forEach.call(f.querySelectorAll("[disabled]"), function (b) { if (b.type === "submit" || b.tagName === "BUTTON") b.disabled = false; });
     });
+  });
+
+  // Barra de filtros de los listados (generico/_filtros.html). Sin JavaScript todo funciona igual; con él:
+  // la dirección queda sin los campos vacíos ni los valores predeterminados (así «← Volver» y «Exportar» la llevan limpia),
+  // y «Más filtros» se cierra con Esc o con un clic fuera.
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (e.defaultPrevented || !form.matches("form[data-filtros]")) return;
+    var limpios = new URLSearchParams();
+    new FormData(form).forEach(function (valor, nombre) {
+      if (typeof valor !== "string" || valor.trim() === "") return;
+      var campo = form.elements[nombre];
+      var defecto = campo && campo.getAttribute ? campo.getAttribute("data-defecto") : "";
+      if (defecto && valor === defecto) return;
+      limpios.append(nombre, valor);
+    });
+    e.preventDefault();
+    var consulta = limpios.toString();
+    window.location.assign(window.location.pathname + (consulta ? "?" + consulta : ""));
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    var abierto = document.querySelector("details.fche-filtros__mas[open]");
+    if (!abierto) return;
+    abierto.open = false;
+    abierto.querySelector("summary").focus();
+  });
+  document.addEventListener("click", function (e) {
+    var dentro = e.target.closest("details.fche-filtros__mas");
+    Array.prototype.forEach.call(document.querySelectorAll("details.fche-filtros__mas[open]"), function (d) { if (d !== dentro) d.open = false; });
   });
 
   document.addEventListener("DOMContentLoaded", function () {

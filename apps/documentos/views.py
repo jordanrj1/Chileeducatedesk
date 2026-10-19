@@ -40,13 +40,16 @@ class DocumentoLista(ListaBase):
     ]
     orden_defecto = ("-fecha", "-id")
     filtros = [
+        Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoDocumento), principal=True),
+        Filtro("vencimiento", "Vigencia", "", lambda: [("vencidos", "Vencidos"), ("por_vencer", "Vencen en 30 días")], aplicar=lambda qs, v: _vigencia(qs, v),
+               principal=True, todos="Todas"),
+        Filtro("desde", "Desde", "fecha__gte", entrada="date", grupo="Fecha"),
+        Filtro("hasta", "Hasta", "fecha__lte", entrada="date", grupo="Fecha"),
+        Filtro("persona", "Persona", "persona_id", lambda: [(str(p.pk), p.nombre_completo) for p in __import__("apps.personas.models", fromlist=["Persona"]).Persona.objects.filter(documentos__isnull=False).distinct()],
+               grupo="Asociado a", todos="Todas"),
+        Filtro("actividad", "Actividad", "actividad_id", lambda: [(str(a.pk), a.nombre) for a in __import__("apps.actividades.models", fromlist=["Actividad"]).Actividad.objects.filter(documentos__isnull=False).distinct()[:301]],
+               grupo="Asociado a", todos="Todas", tope=300),
         filtro_activo(),
-        Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoDocumento)),
-        Filtro("desde", "Desde", "fecha__gte", entrada="date"),
-        Filtro("hasta", "Hasta", "fecha__lte", entrada="date"),
-        Filtro("persona", "Persona", "persona_id", lambda: [(str(p.pk), p.nombre_completo) for p in __import__("apps.personas.models", fromlist=["Persona"]).Persona.objects.filter(documentos__isnull=False).distinct()]),
-        Filtro("actividad", "Actividad", "actividad_id", lambda: [(str(a.pk), a.nombre) for a in __import__("apps.actividades.models", fromlist=["Actividad"]).Actividad.objects.filter(documentos__isnull=False).distinct()[:300]]),
-        Filtro("vencimiento", "Vigencia", "", lambda: [("vencidos", "Vencidos"), ("por_vencer", "Vencen en 30 días")], aplicar=lambda qs, v: _vigencia(qs, v)),
     ]
 
     def get_queryset(self):
