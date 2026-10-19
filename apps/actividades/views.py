@@ -15,7 +15,7 @@ from django.views.generic import CreateView, TemplateView, UpdateView
 
 from apps.nucleo.auditoria import registrar
 from apps.nucleo.direccion_mixin import ComunaInicialMixin
-from apps.nucleo.selector import OpcionesVista
+from apps.nucleo.selector import OpcionesVista, pk_seguro
 from apps.nucleo.models import EstadoActividad, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad
 from apps.nucleo.vistas_base import (
     EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, cambios_historial, nombre_comuna, nombre_organizacion,
@@ -26,6 +26,7 @@ from apps.personas.duplicados import candidatos
 from apps.personas.models import Contacto, Persona
 from apps.proyectos.models import Proyecto
 from apps.territorio.consultas import actividad_en_comuna, dirigida_a_comuna
+from apps.territorio.destinos import fila_inicial, texto_destino
 from apps.territorio.models import Comuna
 
 from . import servicios
@@ -176,6 +177,27 @@ class ActividadNueva(ComunaInicialMixin, Permiso403Mixin, CreateView):
         valor = self.request.GET.get("comunidad") or self.request.POST.get("comunidad_destino")
         return Comunidad.objects.filter(pk=valor, activo=True).first() if str(valor or "").isdigit() else None
 
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        kw["destinos_inicial"] = self.destinos_iniciales()
+        return kw
+
+    def destinos_iniciales(self):
+        """«¿Dónde?» parte con la comuna o el sector de la dirección (?comuna=&sector=), el de la comunidad (?comunidad=) o
+        los territorios de la jornada (?padre=). Se puede cambiar antes de guardar."""
+        comuna = self.comuna_inicial()
+        if comuna:
+            return [fila_inicial(comuna=comuna, sector=self.sector_inicial())]
+        comunidad = self.comunidad_inicial()
+        if comunidad:
+            sector = comunidad.sector if comunidad.sector_id and comunidad.sector.activo else None
+            return [fila_inicial(comuna=comunidad.comuna, sector=sector)]
+        padre = pk_seguro(self.request.GET.get("padre"))
+        if padre:
+            territorios = ActividadTerritorio.objects.filter(actividad_id=padre, vigente=True).select_related("sector", "provincia").order_by("pk")
+            return [fila_inicial(t) for t in territorios]
+        return []
+
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ctx.update(titulo="Nueva actividad", volver_url=self.request.META.get("HTTP_REFERER") or "/actividades", breadcrumb=[("Actividades", "/actividades")])
@@ -204,10 +226,12 @@ class ActividadNueva(ComunaInicialMixin, Permiso403Mixin, CreateView):
             comunidad = self.comunidad_inicial()
             if comunidad:
                 ActividadComunidad.objects.create(actividad=obj, comunidad=comunidad)
-            comuna, sector = self.comuna_inicial(), self.sector_inicial()  # creada desde la ficha de una comuna o de un sector: queda como su territorio
-            if sector:
+            # Sin la sección «¿Dónde?» en lo enviado, la comuna o el sector de la dirección queda como su territorio
+            # (con la sección, form.save_m2m() ya guardó lo elegido en sus filas).
+            comuna, sector = self.comuna_inicial(), self.sector_inicial()
+            if not form.destinos_enviados and sector:
                 ActividadTerritorio.objects.create(actividad=obj, sector=sector)
-            elif comuna:
+            elif not form.destinos_enviados and comuna:
                 ActividadTerritorio.objects.create(actividad=obj, comuna=comuna)
             registrar_origen(obj, self.request.user)
         messages.success(self.request, "Actividad creada. Completa el resto de la información cuando puedas.")
@@ -221,11 +245,20 @@ class ActividadEditar(EditarBase):
     titulo = "Editar actividad"
     breadcrumb = [("Actividades", "/actividades")]
 
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        a = self.object
+        partes = [f"Estado: {a.estado.nombre}"] + ([f"Proyecto: {a.proyecto}"] if a.proyecto_id else [])
+        ctx["bajada"] = (" · ".join(partes) + ". El estado, la fecha y el lugar se cambian desde la ficha de la actividad. "
+                         "Los campos marcados con * son obligatorios.")
+        return ctx
+
     def form_valid(self, form):
         if self.object.estado.codigo == "realizada":
             messages.error(self.request, "La actividad ya fue finalizada. Reábrela (con permiso) para corregirla.")
             return self.form_invalid(form)
-        return super().form_valid(form)
+        with transaction.atomic():  # la actividad y sus territorios («¿Dónde?») se guardan juntos o no se guardan
+            return super().form_valid(form)
 
 
 class ActividadFicha(FichaBase):
@@ -350,8 +383,8 @@ class ActividadFicha(FichaBase):
     def ctx_info(self):
         return {
             "territorios": [
-                {"texto": f"{t.nivel.capitalize()}: {t}", "vigente": t.vigente, "url_editar": reverse("actividades:territorios_editar", args=[self.object.pk, t.pk]), "url_alternar": reverse("actividades:territorios_alternar", args=[self.object.pk, t.pk]), "detalle": ""}
-                for t in self.object.territorios.select_related("region", "provincia", "comuna", "sector")
+                {"texto": texto_destino(t), "vigente": t.vigente, "url_editar": reverse("actividades:territorios_editar", args=[self.object.pk, t.pk]), "url_alternar": reverse("actividades:territorios_alternar", args=[self.object.pk, t.pk]), "detalle": ""}
+                for t in self.object.territorios.select_related("region", "provincia", "comuna", "sector__comuna")
             ],
             "hijas": self.object.hijas.select_related("estado"),
         }

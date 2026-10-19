@@ -68,7 +68,9 @@ def _organizaciones(u, f):
 
 
 def _proyectos(u, f):
-    from apps.proyectos.models import Proyecto
+    from django.db.models import Prefetch
+
+    from apps.proyectos.models import Proyecto, ProyectoTerritorio
 
     qs = Proyecto.objects.all()
     if f["q"]:
@@ -77,10 +79,15 @@ def _proyectos(u, f):
         qs = qs.filter(Q(fecha_termino__gte=f["desde"]) | Q(fecha_termino__isnull=True))
     if f["hasta"]:
         qs = qs.filter(Q(fecha_inicio__lte=f["hasta"]) | Q(fecha_inicio__isnull=True))
-    if f["zona_nombre"]:
-        qs = qs.filter(zona__unaccent__icontains=f["zona_nombre"])
-    for p in qs[:LIMITE_POR_TIPO]:
-        yield Resultado("proyecto", p.nombre, p.get_absolute_url(), p.zona, p.get_estado_display(), f"{p.fecha_inicio:%d-%m-%Y}" if p.fecha_inicio else "")
+    if f["comuna"]:  # sus territorios (la comuna o uno de sus sectores) o, como respaldo, la zona escrita antes
+        en_territorio = ProyectoTerritorio.objects.filter(Q(comuna_id=f["comuna"]) | Q(sector__comuna_id=f["comuna"]), vigente=True)
+        cond = Q(pk__in=en_territorio.values("proyecto_id"))
+        if f["zona_nombre"]:
+            cond |= Q(zona__unaccent__icontains=f["zona_nombre"])
+        qs = qs.filter(cond)
+    territorios = ProyectoTerritorio.objects.select_related("region", "provincia", "comuna", "sector__sector_padre").order_by("pk")
+    for p in qs.prefetch_related(Prefetch("territorios", queryset=territorios))[:LIMITE_POR_TIPO]:
+        yield Resultado("proyecto", p.nombre, p.get_absolute_url(), p.zona_resumen, p.get_estado_display(), f"{p.fecha_inicio:%d-%m-%Y}" if p.fecha_inicio else "")
 
 
 def _actividades(u, f):

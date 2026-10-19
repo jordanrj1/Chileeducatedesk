@@ -1,12 +1,22 @@
-{# Qué es: Trozo que dibuja un formulario completo, agrupado por secciones. #}
+{# Qué es: Trozo que dibuja un formulario completo, agrupado por secciones (las plegadas van en un bloque que se abre con un clic). #}
 {# Dónde se usa: se incluye en generico/formulario.html, personas/nueva.html · Proceso: Todos #}
 {% with secciones=form.secciones_ui %}{% if secciones %}
-{% for titulo_seccion, ayuda_seccion, campos in secciones %}
+{% for s in secciones %}
+{% if s.plegada %}
+<details class="fche-bloque fche-bloque--plegable"{% if s.abierta %} open{% endif %}>
+  <summary class="fche-bloque__titulo">{{ s.titulo }}</summary>
+  <div role="group" aria-label="{{ s.titulo }}">
+    {% if s.ayuda %}<p class="fche-bloque__ayuda">{{ s.ayuda }}</p>{% endif %}
+    <div class="fche-form__rejilla">{% for campo in s.campos %}{% if campo.es_bloque %}{% include campo.plantilla with form=campo.form %}{% else %}{% include "generico/_campo.html" %}{% endif %}{% endfor %}</div>
+  </div>
+</details>
+{% else %}
 <fieldset class="fche-bloque">
-  <legend class="fche-bloque__titulo">{{ titulo_seccion }}</legend>
-  {% if ayuda_seccion %}<p class="fche-bloque__ayuda">{{ ayuda_seccion }}</p>{% endif %}
-  <div class="fche-form__rejilla">{% for campo in campos %}{% if campo.es_bloque %}{% include campo.plantilla with form=campo.form %}{% else %}{% include "generico/_campo.html" %}{% endif %}{% endfor %}</div>
+  <legend class="fche-bloque__titulo">{{ s.titulo }}</legend>
+  {% if s.ayuda %}<p class="fche-bloque__ayuda">{{ s.ayuda }}</p>{% endif %}
+  <div class="fche-form__rejilla">{% for campo in s.campos %}{% if campo.es_bloque %}{% include campo.plantilla with form=campo.form %}{% else %}{% include "generico/_campo.html" %}{% endif %}{% endfor %}</div>
 </fieldset>
+{% endif %}
 {% endfor %}
 {% else %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endif %}{% endwith %}
 {% if form.fields.nacionalidad %}<datalist id="nacionalidades"><option value="Chilena"><option value="Venezolana"><option value="Peruana"><option value="Colombiana"><option value="Haitiana"><option value="Boliviana"><option value="Argentina"><option value="Ecuatoriana"></datalist>{% endif %}

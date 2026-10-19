@@ -12,6 +12,7 @@ from simple_history.models import HistoricalRecords
 from apps.nucleo.models import (
     AreaTematica, EstadoActividad, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion, TramoEtario,
 )
+from apps.territorio.models import DestinoTerritorial, un_solo_nivel
 
 
 class ActividadQuerySet(models.QuerySet):
@@ -100,39 +101,15 @@ class Actividad(models.Model):
                 raise ValidationError({"actividad_padre": "Solo se admite un nivel (jornada → charlas y talleres)."})
 
 
-class ActividadTerritorio(models.Model):
-    """A qué territorio se dirige la actividad; exactamente un nivel por fila."""
+class ActividadTerritorio(DestinoTerritorial):
+    """A qué territorio se dirige la actividad; exactamente un nivel por fila (ver DestinoTerritorial)."""
 
     actividad = models.ForeignKey(Actividad, on_delete=models.PROTECT, related_name="territorios")
-    region = models.ForeignKey("territorio.Region", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
-    provincia = models.ForeignKey("territorio.Provincia", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
-    comuna = models.ForeignKey("territorio.Comuna", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
-    sector = models.ForeignKey("territorio.Sector", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
-    vigente = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "territorio de la actividad"
         verbose_name_plural = "territorios de la actividad"
-        constraints = [
-            models.CheckConstraint(
-                condition=(
-                    Q(region__isnull=False, provincia__isnull=True, comuna__isnull=True, sector__isnull=True)
-                    | Q(region__isnull=True, provincia__isnull=False, comuna__isnull=True, sector__isnull=True)
-                    | Q(region__isnull=True, provincia__isnull=True, comuna__isnull=False, sector__isnull=True)
-                    | Q(region__isnull=True, provincia__isnull=True, comuna__isnull=True, sector__isnull=False)
-                ),
-                name="actividad_territorio_un_nivel",
-            )
-        ]
-
-    def __str__(self):
-        return str(self.region or self.provincia or self.comuna or self.sector)
-
-    @property
-    def nivel(self):
-        for n in ("sector", "comuna", "provincia", "region"):
-            if getattr(self, f"{n}_id"):
-                return n
+        constraints = [un_solo_nivel("actividad_territorio_un_nivel")]
 
 
 class Participacion(models.Model):

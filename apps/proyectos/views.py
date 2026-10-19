@@ -1,15 +1,18 @@
 """Pantallas de proyectos: listado, crear, editar y ficha con pestañas (resumen, equipo, organizaciones, comunidades,
 actividades, alcance, documentos, historial; beneficiarios, postulación y presupuesto son de 2.ª fase)."""
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db import transaction
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views.generic import CreateView
 
+from apps.nucleo.direccion_mixin import ComunaInicialMixin
 from apps.nucleo.vistas_base import EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, cambios_historial
+from apps.territorio.destinos import fila_inicial, texto_destino
 
 from .forms import ProyectoForm
-from .models import Proyecto
+from .models import Proyecto, ProyectoTerritorio
 
 
 class ProyectoLista(ListaBase):
@@ -22,7 +25,7 @@ class ProyectoLista(ListaBase):
     etiqueta_crear = "+ Nuevo proyecto"
     campos_busqueda = ("nombre", "descripcion", "zona", "objetivo_general")
     columnas = [
-        ("Proyecto", "nombre"), ("Estado", "get_estado_display"), ("Zona", "zona"), ("Responsable", "responsable"),
+        ("Proyecto", "nombre"), ("Estado", "get_estado_display"), ("Zona", lambda p: p.zona_resumen), ("Responsable", "responsable"),
         ("Actividades", lambda p: p.n_actividades),
         ("Inicio", lambda p: p.fecha_inicio.strftime("%d-%m-%Y") if p.fecha_inicio else "—"),
     ]
@@ -33,7 +36,11 @@ class ProyectoLista(ListaBase):
     permiso_exportar = "proyectos.exportar_proyecto"
 
     def get_queryset(self):
-        return super().get_queryset().select_related("responsable").annotate(n_actividades=Count("actividades", distinct=True))
+        territorios = ProyectoTerritorio.objects.select_related("region", "provincia", "comuna", "sector__sector_padre").order_by("pk")
+        return (
+            super().get_queryset().select_related("responsable").prefetch_related(Prefetch("territorios", queryset=territorios))
+            .annotate(n_actividades=Count("actividades", distinct=True))
+        )
 
 
 class ProyectoExportar(ProyectoLista):
@@ -41,7 +48,7 @@ class ProyectoExportar(ProyectoLista):
     permission_required = "proyectos.exportar_proyecto"
 
 
-class ProyectoNuevo(Permiso403Mixin, CreateView):
+class ProyectoNuevo(ComunaInicialMixin, Permiso403Mixin, CreateView):
     model = Proyecto
     form_class = ProyectoForm
     permission_required = "proyectos.add_proyecto"
@@ -55,18 +62,26 @@ class ProyectoNuevo(Permiso403Mixin, CreateView):
                 ini[k] = self.request.GET[k]
         return ini
 
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        comuna = self.comuna_inicial()  # «¿Dónde?» parte con la comuna (y el sector) de la dirección, si viene
+        kw["destinos_inicial"] = [fila_inicial(comuna=comuna, sector=self.sector_inicial())] if comuna else []
+        return kw
+
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ctx.update(titulo="Nuevo proyecto", volver_url="/proyectos", breadcrumb=[("Proyectos", "/proyectos")])
         return ctx
 
     def form_valid(self, form):
-        obj = form.save(commit=False)
-        obj.creado_por = self.request.user
-        obj.save()
         from apps.documentos.origen import registrar_origen
 
-        registrar_origen(obj, self.request.user)
+        with transaction.atomic():  # el proyecto y sus territorios («¿Dónde?») se guardan juntos o no se guardan
+            obj = form.save(commit=False)
+            obj.creado_por = self.request.user
+            obj.save()
+            form.save_m2m()
+            registrar_origen(obj, self.request.user)
         messages.success(self.request, "Proyecto creado. Puedes agregar actividades, equipo y documentos cuando quieras.")
         return HttpResponseRedirect(obj.get_absolute_url())
 
@@ -77,6 +92,10 @@ class ProyectoEditar(EditarBase):
     permission_required = "proyectos.change_proyecto"
     titulo = "Editar proyecto"
     breadcrumb = [("Proyectos", "/proyectos")]
+
+    def form_valid(self, form):
+        with transaction.atomic():  # el proyecto y sus territorios se guardan juntos o no se guardan
+            return super().form_valid(form)
 
 
 class ProyectoFicha(FichaBase):
@@ -112,7 +131,9 @@ class ProyectoFicha(FichaBase):
         por_estado = {}
         for a in acts:
             por_estado[a.estado.nombre] = por_estado.get(a.estado.nombre, 0) + 1
-        return {"por_estado": por_estado, "total_actividades": len(acts)}
+        territorios = self.object.territorios.filter(vigente=True).select_related("region", "provincia", "comuna", "sector__comuna", "sector__sector_padre").order_by("pk")
+        return {"por_estado": por_estado, "total_actividades": len(acts),
+                "territorios": [{"texto": texto_destino(t), "url": getattr(t.territorio, "get_absolute_url", lambda: "")()} for t in territorios]}
 
     def _hijos(self, qs, slug, texto, detalle, titulo, etiqueta, vacio):
         pk = self.object.pk

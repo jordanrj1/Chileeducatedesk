@@ -154,6 +154,55 @@ class SectorAlias(models.Model):
         return self.nombre
 
 
+def un_solo_nivel(nombre):
+    """Restricción de «a qué territorio va dirigido»: exactamente un nivel (región, provincia, comuna o sector) por fila."""
+    Q = models.Q
+    return models.CheckConstraint(
+        condition=(
+            Q(region__isnull=False, provincia__isnull=True, comuna__isnull=True, sector__isnull=True)
+            | Q(region__isnull=True, provincia__isnull=False, comuna__isnull=True, sector__isnull=True)
+            | Q(region__isnull=True, provincia__isnull=True, comuna__isnull=False, sector__isnull=True)
+            | Q(region__isnull=True, provincia__isnull=True, comuna__isnull=True, sector__isnull=False)
+        ),
+        name=nombre,
+    )
+
+
+class DestinoTerritorial(models.Model):
+    """Base común de «dónde se realiza o a quién va dirigido» (actividad y proyecto): una fila por territorio, con el nivel
+    más preciso que se conozca. Quitar una zona la deja no vigente: no se borra. La sección «¿Dónde?» de los formularios
+    está en apps/territorio/destinos.py."""
+
+    NIVELES = ("sector", "comuna", "provincia", "region")
+    region = models.ForeignKey("territorio.Region", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    provincia = models.ForeignKey("territorio.Provincia", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    comuna = models.ForeignKey("territorio.Comuna", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    sector = models.ForeignKey("territorio.Sector", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    vigente = models.BooleanField(default=True)
+
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return str(self.region or self.provincia or self.comuna or self.sector)
+
+    @property
+    def nivel(self):
+        for n in self.NIVELES:
+            if getattr(self, f"{n}_id"):
+                return n
+
+    @property
+    def territorio(self):
+        """El registro del nivel elegido (el sector, la comuna, la provincia o la región)."""
+        return getattr(self, self.nivel) if self.nivel else None
+
+    @property
+    def clave(self):
+        """(nivel, id): sirve para no repetir el mismo territorio."""
+        return (self.nivel, getattr(self, f"{self.nivel}_id")) if self.nivel else None
+
+
 class Direccion(models.Model):
     """Compartida por personas, organizaciones y lugares. Región y provincia se deducen de la comuna."""
 

@@ -1,8 +1,9 @@
-{# Qué es: Pestaña Resumen del proyecto: estado, zona, área, fechas y responsable. #}
+{# Qué es: Pestaña Resumen del proyecto: estado, zona (sus territorios y el texto anterior, si lo hay), área, fechas y responsable. #}
 {# Dónde se usa: /proyectos/<int:pk> · Proceso: P11 #}
 {% load fche %}<dl class="fche-datos">
   <div><dt>Estado</dt><dd>{% estado object.estado object.get_estado_display %}</dd></div>
-  <div><dt>Zona</dt><dd>{{ object.zona|default:"—" }}</dd></div>
+  <div><dt>Zona</dt><dd>{% for t in territorios %}<span class="d-block">{% if t.url %}<a href="{{ t.url }}">{{ t.texto }}</a>{% else %}{{ t.texto }}{% endif %}</span>{% empty %}{% if not object.zona %}—{% endif %}{% endfor %}
+    {% if object.zona %}<span class="d-block small mt-1">Antes decía: «{{ object.zona }}» {% estado "Por revisar" codigo="en_revision" %}</span>{% endif %}</dd></div>
   <div><dt>Área temática</dt><dd>{{ object.area_tematica|default:"—" }}</dd></div>
   <div><dt>Fechas</dt><dd>{{ object.fecha_inicio|date:"d-m-Y"|default:"?" }} a {{ object.fecha_termino|date:"d-m-Y"|default:"?" }}</dd></div>
   <div><dt>Responsable</dt><dd>{% if object.responsable %}<a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a>{% else %}—{% endif %}</dd></div>

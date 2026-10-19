@@ -8,7 +8,7 @@
   <div class="fche-datos__ancho"><dt>Condiciones</dt><dd>{{ object.condiciones|default:"—"|linebreaksbr }}</dd></div>
 </dl>
 <div class="fche-seccion"><h2 class="h6">Zona de la actividad</h2>
-{% if puede_agregar %}<div class="fche-seccion__acciones"><a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:territorios_nuevo' object.pk %}">+ Territorio</a></div>{% endif %}</div>
+{% if puede_agregar %}<div class="fche-seccion__acciones"><a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:editar' object.pk %}#donde">+ Territorio</a></div>{% endif %}</div>
 {% include "generico/_hijos.html" with hijos=territorios titulo_pestana="" etiqueta_nuevo="Territorio" url_nuevo="" vacio="Sin territorio indicado." %}
 {% if hijas or object.actividad_padre is None %}
 <div class="fche-seccion"><h2 class="h6">Charlas y talleres de esta jornada{% if hijas %} <span class="fche-contador">{{ hijas|length }}</span>{% endif %}</h2>

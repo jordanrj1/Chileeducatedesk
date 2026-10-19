@@ -1,0 +1,34 @@
+{# Qué es: Sección «¿Dónde?»: lo ya indicado (con «Quitar») y filas región → comuna → sector para agregar uno o más territorios. #}
+{# Dónde se usa: crear y editar actividad (/actividades/nueva, /actividades/<id>/editar) y proyecto (/proyectos/nuevo, /proyectos/<id>/editar) · Proceso: P2 · P11 #}
+{% comment %}
+Recibe `form` (un formulario con DestinosMixin, ver apps/territorio/destinos.py). Cada fila es el bloque de ubicación en cascada
+(territorio/_ubicacion.html) con su prefijo («donde-0», «donde-1»…). Con JavaScript, «+ Otro territorio» copia la fila de la
+<template> sin recargar (static/js/fche.js); sin JavaScript, su botón vuelve a dibujar el formulario con una fila más, sin guardar.
+{% endcomment %}{% with d=form.destinos_ui %}
+<div class="fche-destinos" id="donde" data-filas>
+  {% if d.actuales %}
+  <fieldset class="fche-destinos__actuales">
+    <legend class="form-label">Ya indicado</legend>
+    <ul class="fche-destinos__lista">
+      {% for t in d.actuales %}<li>
+        <span>{{ t.texto }}</span>
+        <span class="form-check form-check-inline m-0"><input class="form-check-input" type="checkbox" name="{{ d.prefijo }}-quitar" value="{{ t.pk }}" id="{{ d.prefijo }}-quitar-{{ t.pk }}"{% if t.quitar %} checked{% endif %}>
+        <label class="form-check-label" for="{{ d.prefijo }}-quitar-{{ t.pk }}">Quitar<span class="visually-hidden"> {{ t.texto }}</span></label></span>
+      </li>{% endfor %}
+    </ul>
+    <p class="form-text mb-0">«Quitar» deja de mostrarlo como zona; queda en el historial y se puede volver a elegir.</p>
+  </fieldset>
+  {% endif %}
+  {{ d.formset.management_form }}
+  {% for e in d.formset.non_form_errors %}<div class="fche-campo__error text-danger" role="alert">{{ e }}</div>{% endfor %}
+  <div class="fche-destinos__filas" data-filas-lista>
+    {% for fila in d.formset %}<div class="fche-destinos__fila" role="group" aria-label="{% if d.actuales %}Agregar territorio{% else %}Territorio{% endif %} {{ forloop.counter }}">{% include "territorio/_ubicacion.html" with form=fila %}</div>{% endfor %}
+  </div>
+  <template data-filas-plantilla><div class="fche-destinos__fila" role="group" aria-label="Otro territorio">{% include "territorio/_ubicacion.html" with form=d.formset.empty_form %}</div></template>
+  <div class="fche-destinos__agregar">
+    <button type="button" class="btn btn-sm btn-outline-primary" data-agregar-fila hidden>+ Otro territorio</button>
+    <noscript><button type="submit" class="btn btn-sm btn-outline-primary" name="{{ d.prefijo }}-_otra_fila" value="1" formnovalidate>+ Otro territorio</button></noscript>
+    <span class="form-text">Si llega a más de una comuna o sector. Las filas vacías no se guardan.</span>
+  </div>
+</div>
+{% endwith %}

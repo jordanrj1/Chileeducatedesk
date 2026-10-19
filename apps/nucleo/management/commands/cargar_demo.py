@@ -52,7 +52,8 @@ class Command(BaseCommand):
             Contacto.objects.create(persona=p, tipo=movil, valor=f"9 0000 000{i}")
             vols.append(p)
         lugar = Lugar.objects.create(nombre="Sede Demo", tipo=TipoLugar.objects.get(codigo="sede"), capacidad=25, direccion=Direccion.objects.create(calle="Calle Demo", numero="123", comuna=comuna))
-        proyecto = Proyecto.objects.create(nombre="Proyecto Demo de alfabetización", estado="ejecucion", responsable=coord, zona="Comuna Demo")
+        proyecto = Proyecto.objects.create(nombre="Proyecto Demo de alfabetización", estado="ejecucion", responsable=coord)
+        proyecto.territorios.create(comuna=comuna)  # dónde se desarrolla: se elige en «¿Dónde?», ya no se escribe
         a = Actividad.objects.create(nombre="Taller Demo 1", proyecto=proyecto, tipo=TipoActividad.objects.get(codigo="taller"), estado=EstadoActividad.objects.get(codigo="pendiente"), responsable=coord)
         servicios.programar(a, None, date.today() + timedelta(days=7), time(18), time(20), lugar, None)
         for p in vols[:3]:

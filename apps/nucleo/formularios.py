@@ -1,6 +1,8 @@
 """Piezas comunes de formularios: BootstrapMixin da el estilo y agrupa los campos por secciones;
 SelectorField es un campo con buscador (se abre, se escribe y se elige) para listas largas como personas u organizaciones;
 SelectorMultiple es la selección múltiple desplegable (botón, buscador y etiquetas) en vez de casillas a la vista."""
+from collections import namedtuple
+
 from django import forms
 from django.db.models import Q
 from django.utils.functional import lazy
@@ -57,17 +59,20 @@ class BootstrapMixin:
                 w.input_type = "time"
                 w.format = "%H:%M"
 
-    secciones = ()  # [(título, ayuda, [nombres de campos])]: el formulario se dibuja por bloques
+    # [(título, ayuda, [nombres de campos])]: el formulario se dibuja por bloques. Un 4.º elemento opcional
+    # {"plegada": True} dibuja la sección plegada (<details>); se abre sola si uno de sus campos tiene valor o error.
+    secciones = ()
     bloques_de_seccion = {}  # {nombre: BloqueDeSeccion}: un nombre en `secciones` que dibuja varios campos juntos
 
     def secciones_ui(self):
-        """Secciones con sus campos visibles; lo que no está en ninguna va al final en «Otros datos».
+        """Secciones (`Seccion`) con sus campos visibles; lo que no está en ninguna va al final en «Otros datos».
         Un nombre de `bloques_de_seccion` (p. ej. «ubicacion») dibuja sus campos juntos con la plantilla del bloque."""
         if not self.secciones:
             return None
         bloques = self.bloques_de_seccion or {}
         usados, res = set(), []
-        for titulo, ayuda, nombres in self.secciones:
+        for titulo, ayuda, nombres, *opciones in self.secciones:
+            plegada = bool(opciones and opciones[0].get("plegada"))
             campos = []
             for n in nombres:
                 if n in bloques:
@@ -77,7 +82,7 @@ class BootstrapMixin:
                     campos.append(self[n])
             usados.update(nombres)
             if campos:
-                res.append((titulo, ayuda, campos))
+                res.append(Seccion(titulo, ayuda, campos, plegada, not plegada or any(_con_dato(c) for c in campos)))
         resto = []
         for n in self.fields:
             if n in usados:
@@ -88,8 +93,18 @@ class BootstrapMixin:
             elif bloque not in resto:
                 resto.append(bloque)
         if resto:
-            res.append(("Otros datos", "", resto))
+            res.append(Seccion("Otros datos", "", resto, False, True))
         return res
+
+
+Seccion = namedtuple("Seccion", "titulo ayuda campos plegada abierta")
+
+
+def _con_dato(campo):
+    """Si un campo de una sección plegada tiene valor o error (entonces la sección se dibuja abierta)."""
+    if getattr(campo, "es_bloque", False):
+        return False
+    return bool(campo.errors) or campo.value() not in (None, "", [], (), False)
 
 
 class BloqueDeSeccion:

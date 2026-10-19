@@ -161,6 +161,26 @@ Afecta a los 14 listados que usan `ListaBase`.
   - nueva tabla **`ProyectoTerritorio`** (misma forma que `ActividadTerritorio`, con base común) y la misma sección «¿Dónde?»;
   - el texto `zona` se conserva como «texto anterior»;
   - se vincula solo si coincide exactamente con una sola comuna o sector, y nunca se borra.
+- **Cómo quedó (T7)** [P]:
+  - base común `DestinoTerritorial` (`apps/territorio/models.py`): `ActividadTerritorio` hereda de ella sin migración; `ProyectoTerritorio` es nueva (un nivel por fila y, en la base, el mismo territorio no se repite en un proyecto);
+  - `apps/territorio/destinos.py` (`DestinosMixin`) + `territorio/_destinos.html`:
+    - «Ya indicado», con «Quitar» (lo deja no vigente; no se borra);
+    - filas con la ubicación de T5 en modo «destino» (prefijos `donde-0`, `donde-1`…); cada fila guarda el nivel más fino;
+    - un territorio repetido no se duplica: si estaba quitado, se reactiva; las filas vacías no se guardan;
+    - se guarda junto con el registro (en `save_m2m`), dentro de la transacción de la vista;
+  - «+ Otro territorio» copia una fila con JavaScript; sin JavaScript vuelve a dibujar el formulario con una fila más, sin guardar;
+  - prellenado, en este orden: `?comuna=&sector=`, `?comunidad=` (su comuna y su sector, si está activo), `?padre=` (los territorios vigentes de la jornada). Un envío sin la sección (pantallas o pruebas antiguas) sigue usando `?comuna=&sector=`;
+  - actividad, a la vista: «Qué es» (nombre, tipo, modalidad y responsable), «Para qué y para quién» y «¿Dónde se realiza o a quién va dirigida?»;
+  - actividad, plegada: «Detalles» (tema, proyecto, jornada, descripción y condiciones); se abre sola si tiene datos o errores. Cada campo tiene una ayuda con ejemplo;
+  - el estado no se edita en el formulario, porque tiene sus reglas de cambio: al editar, la bajada dice el estado y el proyecto;
+  - `secciones` admite un 4.º elemento `{"plegada": True}` (T8 lo reutiliza);
+  - en la ficha, Información → «+ Territorio» lleva a «¿Dónde?» del formulario de edición; la pantalla antigua `/actividades/<id>/territorios/nuevo` sigue funcionando igual;
+  - proyecto: sección «¿Dónde se desarrolla o a quién va dirigido?». `zona` sale del formulario salvo que tenga texto («Zona (texto anterior)», para revisarla y borrarla);
+  - la ficha del proyecto, su listado y su Excel muestran los territorios (`zona_resumen`); si queda texto anterior: «Antes decía: «…» · Por revisar»;
+  - el buscador filtra proyectos por comuna (también por sus sectores), con el texto anterior como respaldo;
+  - la migración enlaza la zona escrita solo si coincide exacta (sin tildes, mayúsculas ni espacios de más) con una sola comuna o un solo sector activo (o un nombre alternativo); no toca proyectos que ya tienen territorios;
+  - `vincular_zonas_proyectos [--simular]` repite el enlace, y `iniciar.bat` e `iniciar.sh` lo llaman después de cargar el territorio (la migración corre antes de que estén las comunas oficiales);
+  - quedan para después [P]: la región con que parte la cascada, el filtro por comuna en el listado de Proyectos y la cascada en la pantalla antigua del territorio de la actividad.
 
 ### A7. Tramos de edad catalogados
 - **Catálogo nuevo `TramoEtario`:** nombre, edad mínima y edad máxima, orden y activo. Se edita desde Catálogos.

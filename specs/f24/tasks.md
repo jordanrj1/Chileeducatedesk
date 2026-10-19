@@ -7,7 +7,7 @@
 - [x] T4 Filtros con menos ruido
 - [x] T5 Ubicación en cascada y panel «En la comuna ya hay…» (el filtro por comuna que incluye sectores va con T4)
 - [x] T6 Tramos de edad catalogados
-- [ ] T7 «¿Dónde?» en actividad y proyecto
+- [x] T7 «¿Dónde?» en actividad y proyecto
 - [ ] T8 Formularios claros
 - [ ] Cierre: revisión, pruebas, recorrido, manual, base de desarrollo migrada y territorio cargado
 

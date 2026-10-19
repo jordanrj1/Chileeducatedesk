@@ -1,5 +1,6 @@
-"""Tablas de proyectos: Proyecto (nombre, estado, zona, fechas, responsable) y sus vínculos con personas (equipo y
-beneficiarios), organizaciones y comunidades. Postulacion (fondos) es de 2.ª fase y no lleva montos."""
+"""Tablas de proyectos: Proyecto (nombre, estado, fechas, responsable) y sus vínculos con personas (equipo y
+beneficiarios), organizaciones, comunidades y territorios (ProyectoTerritorio: dónde se desarrolla).
+Postulacion (fondos) es de 2.ª fase y no lleva montos."""
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -7,6 +8,7 @@ from django.urls import reverse
 from simple_history.models import HistoricalRecords
 
 from apps.nucleo.models import RolParticipacion, TipoIntervencion
+from apps.territorio.models import DestinoTerritorial, un_solo_nivel
 
 
 class Proyecto(models.Model):
@@ -19,7 +21,7 @@ class Proyecto(models.Model):
     objetivos_especificos = models.TextField("objetivos específicos", blank=True)
     diagnostico = models.TextField("diagnóstico", blank=True)
     poblacion_objetivo = models.TextField("población objetivo", blank=True)
-    zona = models.CharField(max_length=200, blank=True, help_text="Comuna, sector o territorio donde se desarrolla.")
+    zona = models.CharField(max_length=200, blank=True, help_text="Comuna, sector o territorio donde se desarrolla.")  # texto anterior a ProyectoTerritorio; se conserva para revisarlo
     area_tematica = models.ForeignKey("nucleo.AreaTematica", null=True, blank=True, on_delete=models.PROTECT, related_name="+", verbose_name="área temática")
     fecha_inicio = models.DateField("inicio", null=True, blank=True)
     fecha_termino = models.DateField("término", null=True, blank=True)
@@ -44,6 +46,12 @@ class Proyecto(models.Model):
     def clean(self):
         if self.fecha_inicio and self.fecha_termino and self.fecha_termino < self.fecha_inicio:
             raise ValidationError({"fecha_termino": "El término no puede ser anterior al inicio."})
+
+    @property
+    def zona_resumen(self):
+        """Dónde se desarrolla: los territorios vigentes unidos por « · » o, si no hay ninguno, el texto anterior.
+        Usa `prefetch_related("territorios__…")` cuando se llama en un listado."""
+        return " · ".join(str(t) for t in self.territorios.all() if t.vigente) or self.zona
 
 
 class ProyectoPersona(models.Model):
@@ -117,3 +125,18 @@ class ProyectoComunidad(models.Model):
 
     def __str__(self):
         return f"{self.comunidad} · {self.proyecto}"
+
+
+class ProyectoTerritorio(DestinoTerritorial):
+    """Dónde se desarrolla el proyecto o a quién va dirigido; misma forma que el territorio de la actividad.
+    Un territorio no se repite en el mismo proyecto (quitarlo lo deja no vigente y volver a elegirlo lo reactiva)."""
+
+    proyecto = models.ForeignKey(Proyecto, on_delete=models.PROTECT, related_name="territorios")
+
+    class Meta:
+        verbose_name = "territorio del proyecto"
+        verbose_name_plural = "territorios del proyecto"
+        constraints = [un_solo_nivel("proyecto_territorio_un_nivel")] + [
+            models.UniqueConstraint(fields=["proyecto", n], condition=models.Q(**{f"{n}__isnull": False}), name=f"proyecto_territorio_{n}_unico")
+            for n in DestinoTerritorial.NIVELES
+        ]

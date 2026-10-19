@@ -186,6 +186,31 @@
     if (boton && !boton.disabled) boton.click();
   });
 
+  // «+ Otro territorio» (territorio/_destinos.html): agrega una fila copiando su <template>, sin recargar. Sin JavaScript
+  // el botón de <noscript> vuelve a dibujar el formulario con una fila más.
+  document.addEventListener("DOMContentLoaded", function () {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-agregar-fila]"), function (b) { b.hidden = false; });
+  });
+  document.addEventListener("click", function (e) {
+    var boton = e.target.closest && e.target.closest("[data-agregar-fila]");
+    if (!boton) return;
+    var caja = boton.closest("[data-filas]");
+    var plantilla = caja && caja.querySelector("template[data-filas-plantilla]");
+    var total = caja && caja.querySelector("input[name$='-TOTAL_FORMS']");
+    var maximo = caja && caja.querySelector("input[name$='-MAX_NUM_FORMS']");
+    if (!plantilla || !total) return;
+    var n = parseInt(total.value, 10) || 0;
+    if (maximo && n >= parseInt(maximo.value, 10)) { boton.disabled = true; return; }
+    var envoltorio = document.createElement("div");
+    envoltorio.innerHTML = plantilla.innerHTML.replace(/__prefix__/g, String(n));
+    var fila = envoltorio.firstElementChild;
+    caja.querySelector("[data-filas-lista]").appendChild(fila);
+    total.value = n + 1;
+    if (window.htmx) window.htmx.process(fila);
+    var primera = fila.querySelector("select:not([disabled])");
+    if (primera) primera.focus();
+  });
+
   // Resultados de búsqueda: marca las palabras buscadas (sin distinguir mayúsculas ni tildes).
   function sinTildes(c) { return c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().charAt(0) || c; }
   function resaltar(raiz, termino) {

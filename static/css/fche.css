@@ -731,6 +731,10 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-bloque__titulo { float: none; width: auto; margin: 0 0 .25rem; font-size: 1rem; font-weight: 700; color: var(--fche-texto); }
 .fche-bloque__ayuda { margin: 0 0 1rem; font-size: .82rem; color: var(--fche-texto-suave); }
 .fche-bloque__titulo + .fche-form__rejilla { margin-top: .85rem; }
+/* Sección plegada (secciones con {"plegada": True}): el título se ve como los demás y se abre con un clic */
+.fche-bloque--plegable > summary.fche-bloque__titulo { display: list-item; cursor: pointer; color: var(--fche-texto); font-weight: 700; }
+.fche-bloque--plegable > summary.fche-bloque__titulo:hover { color: var(--fche-primario-oscuro); text-decoration: none; }
+.fche-bloque--plegable[open] > summary.fche-bloque__titulo { margin-bottom: .85rem; }
 .fche-form { max-width: 60rem; }
 /* Opciones múltiples como fichas seleccionables */
 .fche-opciones > div { display: flex; flex-wrap: wrap; gap: .45rem; }
@@ -778,3 +782,11 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-ubicacion__grupo-titulo { margin: 0 0 .25rem; font-size: .82rem; font-weight: 700; color: var(--fche-texto); }
 .fche-ubicacion__total, .fche-ubicacion__detalle { font-weight: 400; color: var(--fche-texto-suave); }
 .fche-ubicacion__grupo ul { margin: 0 0 .25rem; padding-left: 1.1rem; font-size: .85rem; }
+/* «¿Dónde?» (territorio/_destinos.html): lo ya indicado con «Quitar» y una fila de ubicación por territorio nuevo */
+.fche-form__rejilla > .fche-destinos { grid-column: 1 / -1; }
+.fche-destinos__actuales { margin: 0 0 1rem; padding: .75rem .9rem; border: 1px solid var(--fche-borde); border-radius: var(--fche-radio); background: var(--fche-superficie-2); }
+.fche-destinos__actuales > legend { float: none; width: auto; margin: 0 0 .35rem; padding: 0; font-size: .85rem; font-weight: 650; }
+.fche-destinos__lista { display: flex; flex-direction: column; gap: .35rem; margin: 0 0 .5rem; padding: 0; list-style: none; }
+.fche-destinos__lista > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 1rem; font-size: .9rem; }
+.fche-destinos__fila + .fche-destinos__fila { padding-top: 1rem; border-top: 1px dashed var(--fche-borde-fuerte); }
+.fche-destinos__agregar { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; margin: 0 0 .5rem; }

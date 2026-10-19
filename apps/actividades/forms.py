@@ -11,7 +11,8 @@ from apps.organizaciones.selector import ORGANIZACIONES
 from apps.personas.models import Persona
 from apps.personas.selector import AYUDA_RESPONSABLE, PERSONAS
 from apps.proyectos.models import Proyecto
-from apps.territorio.models import Comuna, Provincia, Region, Sector
+from apps.territorio.destinos import DestinosMixin
+from apps.territorio.models import Comuna, Sector
 
 from .selector import ACTIVIDADES
 from .models import Actividad, ActividadComunidad, ActividadOrganizacion, ActividadTerritorio, Participacion, SesionActividad, SesionFacilitador
@@ -21,23 +22,47 @@ def selector_persona(**kw):
     return SelectorField(PERSONAS, **kw)
 
 
-class ActividadForm(BootstrapMixin, forms.ModelForm):
+class ActividadForm(DestinosMixin, BootstrapMixin, forms.ModelForm):
+    """Crear y editar la actividad: qué es, para qué y para quién, y dónde (a la vista); los detalles van plegados.
+    «¿Dónde?» guarda uno o más territorios (apps/territorio/destinos.py) junto con la actividad."""
+
     responsable = SelectorField(PERSONAS, filtros={"equipo_primero": 1}, required=False, help_text=AYUDA_RESPONSABLE)
-    actividad_padre = SelectorField(ACTIVIDADES, filtros={"raiz": 1}, required=False, label="Actividad padre (jornada)")
+    actividad_padre = SelectorField(
+        ACTIVIDADES, filtros={"raiz": 1}, required=False, label="Jornada a la que pertenece",
+        help_text="Solo si esta charla o taller ocurre dentro de una jornada ya registrada. Ej.: una feria con varios talleres.",
+    )
 
     secciones = [
-        ("Qué es", "Solo el nombre es obligatorio; la fecha y el lugar se definen al programar.", ["nombre", "tipo", "area_tematica", "proyecto", "actividad_padre", "modalidad", "responsable"]),
+        ("Qué es", "Solo el nombre es obligatorio; la fecha y el lugar se definen al programar.", ["nombre", "tipo", "modalidad", "responsable"]),
         ("Para qué y para quién", "A quién va dirigida y qué se espera lograr. Las comunidades destinatarias se agregan en la pestaña «Público y comunidades».",
          ["objetivo", "publico_objetivo", "tramos_etarios", "rango_etario", "beneficiarios_estimados"]),
-        ("Detalle", "", ["descripcion", "condiciones"]),
+        ("¿Dónde se realiza o a quién va dirigida?", "La comuna o el sector, aunque aún no haya lugar; la sala o sede se elige al programar. No es obligatorio.",
+         ["donde"]),
+        ("Detalles", "Tema, proyecto, jornada, cómo se hará y requisitos. Todo es opcional.",
+         ["area_tematica", "proyecto", "actividad_padre", "descripcion", "condiciones"], {"plegada": True}),
     ]
 
     class Meta:
         model = Actividad
         fields = ["nombre", "proyecto", "actividad_padre", "tipo", "area_tematica", "objetivo", "publico_objetivo", "tramos_etarios", "rango_etario",
                   "beneficiarios_estimados", "descripcion", "modalidad", "responsable", "condiciones"]
-        labels = {"tramos_etarios": "Tramos de edad"}
-        help_texts = {"tramos_etarios": "A qué edades va dirigida. Marca uno o más. Ej.: Personas adultas y Personas mayores."}
+        labels = {
+            "tramos_etarios": "Tramos de edad", "area_tematica": "Tema", "publico_objetivo": "¿Quiénes?, en palabras",
+            "beneficiarios_estimados": "Personas esperadas", "descripcion": "Cómo se hará", "condiciones": "Requisitos y cuidados",
+        }
+        help_texts = {
+            "nombre": "Cómo la reconocerás en listas y calendario. Ej.: «Taller de huertos · Villa Los Aromos».",
+            "tipo": "Taller, charla, jornada… Si falta uno, se agrega en Catálogos.",
+            "modalidad": "Presencial, virtual o híbrida. Al programar una fecha se puede cambiar solo para esa vez.",
+            "objetivo": "Qué se quiere lograr, en una o dos frases. Ej.: «Que las familias armen su propia huerta».",
+            "publico_objetivo": "Solo si hace falta precisar. Ej.: «apoderados de 1.º básico», «dirigentes de juntas de vecinos».",
+            "tramos_etarios": "A qué edades va dirigida. Marca uno o más. Ej.: Personas adultas y Personas mayores.",
+            "beneficiarios_estimados": "Cuántas personas crees que asistirán en total. Basta un número aproximado. Ej.: 30.",
+            "area_tematica": "El tema principal: sirve para agrupar actividades y encontrar personas interesadas. Ej.: Medio ambiente.",
+            "proyecto": "Si es parte de un proyecto, elígelo; si no, déjalo vacío. Ej.: «Alfabetización digital 2026».",
+            "descripcion": "Contenidos, dinámica y materiales. Ej.: «Tres estaciones: semillas, compost y riego».",
+            "condiciones": "Accesibilidad, materiales que deben traer, autorización de apoderados, etc. Ej.: «Traer ropa cómoda».",
+        }
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)

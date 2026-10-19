@@ -5,6 +5,7 @@ from apps.nucleo.formularios import BootstrapMixin, SelectorField
 from apps.nucleo.models import RolParticipacion, TipoIntervencion
 from apps.organizaciones.selector import ORGANIZACIONES
 from apps.personas.selector import AYUDA_RESPONSABLE, PERSONAS
+from apps.territorio.destinos import DestinosMixin
 
 from .models import Postulacion, Proyecto, ProyectoComunidad, ProyectoOrganizacion, ProyectoPersona
 
@@ -13,12 +14,17 @@ def _persona(**kw):
     return SelectorField(PERSONAS, **kw)
 
 
-class ProyectoForm(BootstrapMixin, forms.ModelForm):
+class ProyectoForm(DestinosMixin, BootstrapMixin, forms.ModelForm):
+    """Crear y editar el proyecto. «¿Dónde?» guarda una o más comunas o sectores (apps/territorio/destinos.py); la zona
+    escrita a mano antes solo aparece si tiene texto, para revisarla y borrarla."""
+
     responsable = _persona(required=False, filtros={"equipo_primero": 1}, help_text=AYUDA_RESPONSABLE)
     secciones = [
         ("Identificación", "", ["nombre", "estado", "area_tematica", "responsable", "fecha_inicio", "fecha_termino"]),
+        ("¿Dónde se desarrolla o a quién va dirigido?", "Las comunas o sectores donde se desarrolla; puedes agregar varios. No es obligatorio.",
+         ["donde", "zona"]),
         ("Propósito", "Qué busca el proyecto y para quién. Las comunidades destinatarias se agregan en su ficha.",
-         ["descripcion", "objetivo_general", "objetivos_especificos", "diagnostico", "poblacion_objetivo", "zona"]),
+         ["descripcion", "objetivo_general", "objetivos_especificos", "diagnostico", "poblacion_objetivo"]),
     ]
 
     class Meta:
@@ -27,12 +33,16 @@ class ProyectoForm(BootstrapMixin, forms.ModelForm):
             "nombre", "estado", "area_tematica", "descripcion", "objetivo_general", "objetivos_especificos", "diagnostico", "poblacion_objetivo",
             "zona", "fecha_inicio", "fecha_termino", "responsable",
         ]
+        labels = {"zona": "Zona (texto anterior)"}
+        help_texts = {"zona": "Se escribió antes de poder elegir comunas y sectores. Elige arriba la comuna o el sector y luego borra este texto."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         from apps.nucleo.models import AreaTematica
 
         self.fields["area_tematica"].queryset = AreaTematica.objects.filter(activo=True)
+        if not self.instance.zona:  # el texto anterior solo se muestra si hay algo que revisar
+            self.fields.pop("zona", None)
 
 
 class ProyectoComunidadForm(BootstrapMixin, forms.ModelForm):
