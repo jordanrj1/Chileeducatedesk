@@ -113,8 +113,8 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
     def secciones_ui(self):
         res = super().secciones_ui()
         if res and self.tipos and not self.perfiles_en_lista:
-            res = [(t, a, [c for c in campos if getattr(c, "name", "") != "perfiles"]) for t, a, campos in res]
-            res = [s for s in res if s[2]]
+            res = [s._replace(campos=[c for c in s.campos if getattr(c, "name", "") != "perfiles"]) for s in res]
+            res = [s for s in res if s.campos]
         return res
 
     def clean_rut(self):
