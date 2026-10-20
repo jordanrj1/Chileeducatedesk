@@ -14,6 +14,8 @@ class ItemForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ItemPresupuesto
         fields = ["categoria", "concepto", "monto_estimado", "vigente"]
+        labels = {"categoria": "Categoría"}
+        help_texts = {"concepto": "Ej.: materiales para el taller de huertos.", "monto_estimado": "En pesos, sin puntos. Ej.: 150000."}
 
 
 class MovimientoForm(BootstrapMixin, forms.ModelForm):
@@ -23,6 +25,7 @@ class MovimientoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Movimiento
         fields = ["proyecto", "tipo", "monto", "fecha", "persona", "organizacion", "concepto", "documento"]
+        help_texts = {"monto": "En pesos, sin puntos. Ej.: 45000.", "concepto": "Ej.: compra de semillas y tierra de hoja."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)

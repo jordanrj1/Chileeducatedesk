@@ -8,8 +8,8 @@
   <div><dt>Comuna (municipalidad)</dt><dd>{{ object.comuna_municipal|default:"—" }}</dd></div>
   <div><dt>Sitio web</dt><dd>{% if object.sitio_web %}<a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a>{% else %}—{% endif %}</dd></div>
   <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
-  {% if object.naturaleza_juridica or object.vigencia_hasta or object.domicilio_legal %}
-  <div><dt>Naturaleza jurídica</dt><dd>{{ object.naturaleza_juridica|default:"—" }}</dd></div>
+  {% if object.naturaleza_id or object.naturaleza_juridica or object.vigencia_hasta or object.domicilio_legal %}
+  <div><dt>Naturaleza jurídica</dt><dd>{{ object.naturaleza|default:"—" }}{% if object.naturaleza_juridica %} <span class="text-muted">(escrito antes: «{{ object.naturaleza_juridica }}»; revisar)</span>{% endif %}</dd></div>
   <div><dt>Domicilio legal</dt><dd>{{ object.domicilio_legal|default:"—" }}</dd></div>
   <div><dt>Vigencia</dt><dd>{{ object.vigencia_desde|date:"d-m-Y"|default:"?" }} a {{ object.vigencia_hasta|date:"d-m-Y"|default:"?" }}</dd></div>
   {% endif %}

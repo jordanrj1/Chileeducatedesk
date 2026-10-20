@@ -13,7 +13,7 @@ from .auditoria import registrar
 COMPLETAR = {
     "Persona": ["apellido_paterno", "apellido_materno", "profesion", "sitio_web", "origen_id", "tipo_documento", "numero_documento",
                 "nombre_social", "fecha_nacimiento", "sexo", "nacionalidad", "nivel_educacional", "situacion_ocupacional", "habilidades", "idiomas", "canal_preferido_id"],
-    "Organizacion": ["otro_identificador", "descripcion", "sitio_web", "direccion_id", "naturaleza_juridica", "domicilio_legal", "vigencia_desde", "vigencia_hasta"],
+    "Organizacion": ["otro_identificador", "descripcion", "sitio_web", "direccion_id", "naturaleza_id", "naturaleza_juridica", "domicilio_legal", "vigencia_desde", "vigencia_hasta"],
 }
 
 

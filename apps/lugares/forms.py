@@ -12,6 +12,14 @@ class LugarForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Lugar
         fields = ["nombre", "tipo", "capacidad", "condiciones", "organizacion_propietaria"]
+        labels = {"nombre": "Nombre del lugar", "tipo": "Tipo de lugar", "capacidad": "Capacidad (personas)",
+                  "organizacion_propietaria": "¿De quién es el lugar?"}
+        help_texts = {
+            "nombre": "Ej.: Sede vecinal Villa Los Aromos.",
+            "capacidad": "Cuántas personas caben como máximo. Ej.: 40.",
+            "condiciones": "Accesibilidad, equipamiento, restricciones u horarios. Ej.: acceso con rampa; tiene proyector; cierra a las 21:00.",
+            "organizacion_propietaria": "Opcional. Ej.: la junta de vecinos dueña de la sede.",
+        }
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)

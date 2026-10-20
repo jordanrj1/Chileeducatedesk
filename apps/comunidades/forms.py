@@ -18,8 +18,9 @@ def selector_persona(**kw):
 class ComunidadForm(UbicacionMixin, BootstrapMixin, forms.ModelForm):
     ubicacion_modo = "comunidad"  # la comuna es obligatoria; el sector, opcional
     organizacion = SelectorField(ORGANIZACIONES, required=False,
-                                 label="Organización que la representa", help_text="Por ejemplo, la junta de vecinos o el establecimiento.")
-    referente = selector_persona(required=False, label="Referente o dirigente principal")
+                                 label="Organización que la representa", help_text="Ej.: la junta de vecinos o el establecimiento.")
+    referente = selector_persona(required=False, label="Referente o dirigente principal",
+                                 help_text="Persona con quien se coordina. Ej.: la presidenta de la junta de vecinos.")
     secciones = [
         ("Identificación", "", ["nombre", "tipo", "descripcion"]),
         ("Territorio", "Dónde vive o se reúne esta comunidad.", ["ubicacion", "organizacion", "referente"]),
@@ -32,8 +33,18 @@ class ComunidadForm(UbicacionMixin, BootstrapMixin, forms.ModelForm):
         fields = ["nombre", "tipo", "descripcion", "comuna", "sector", "organizacion", "referente", "poblacion_estimada", "tramos_etarios", "rango_etario",
                   "areas_interes", "diagnostico"]
         widgets = {"areas_interes": forms.CheckboxSelectMultiple, "descripcion": forms.Textarea(attrs={"rows": 2})}
-        labels = {"tramos_etarios": "Edades principales"}
-        help_texts = {"tramos_etarios": "Las edades que más se ven en esta comunidad. Marca uno o más. Ej.: Personas adultas y Personas mayores."}
+        labels = {"nombre": "Nombre de la comunidad", "tipo": "Tipo de comunidad", "descripcion": "¿Quiénes la forman?",
+                  "poblacion_estimada": "¿Cuántas personas son, aprox.?", "tramos_etarios": "Edades principales",
+                  "areas_interes": "Temas que le interesan", "diagnostico": "Diagnóstico y necesidades"}
+        help_texts = {
+            "nombre": "Ej.: Vecinos de la Villa Los Aromos.",
+            "tipo": "Ej.: Vecinal o barrial, para los vecinos de una villa.",
+            "descripcion": "Ej.: familias de la Etapa 3 que se organizan en torno a la sede vecinal.",
+            "poblacion_estimada": "Personas, no familias. Ej.: 120.",
+            "tramos_etarios": "Las edades que más se ven en esta comunidad. Marca uno o más. Ej.: Personas adultas y Personas mayores.",
+            "areas_interes": "Sirven para proponerle actividades. Ej.: Salud y bienestar.",
+            "diagnostico": "Qué necesita, según lo levantado en terreno. Ej.: no hay plaza; muchas personas mayores viven solas.",
+        }
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -50,6 +61,8 @@ class IntegranteForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ComunidadMiembro
         fields = ["persona", "rol", "desde", "hasta", "observaciones", "vigente"]
+        labels = {"rol": "Rol en la comunidad"}
+        help_texts = {"rol": "Ej.: Dirigente.", "hasta": "Solo si dejó de participar: el registro se conserva."}
 
     def clean_persona(self):
         p = self.cleaned_data["persona"]
@@ -67,6 +80,8 @@ class MembresiaDesdePersonaForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ComunidadMiembro
         fields = ["comunidad", "rol", "desde", "hasta", "observaciones", "vigente"]
+        labels = {"rol": "Rol en la comunidad"}
+        help_texts = {"rol": "Ej.: Dirigente.", "hasta": "Solo si dejó de participar: el registro se conserva."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)

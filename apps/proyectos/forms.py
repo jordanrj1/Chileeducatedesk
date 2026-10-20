@@ -33,8 +33,20 @@ class ProyectoForm(DestinosMixin, BootstrapMixin, forms.ModelForm):
             "nombre", "estado", "area_tematica", "descripcion", "objetivo_general", "objetivos_especificos", "diagnostico", "poblacion_objetivo",
             "zona", "fecha_inicio", "fecha_termino", "responsable",
         ]
-        labels = {"zona": "Zona (texto anterior)"}
-        help_texts = {"zona": "Se escribió antes de poder elegir comunas y sectores. Elige arriba la comuna o el sector y luego borra este texto."}
+        labels = {"nombre": "Nombre del proyecto", "estado": "Etapa del proyecto", "area_tematica": "Tema principal",
+                  "descripcion": "Descripción", "diagnostico": "¿Qué problema atiende?", "poblacion_objetivo": "¿A quién va dirigido?",
+                  "fecha_inicio": "Fecha de inicio", "fecha_termino": "Fecha de término", "zona": "Zona (texto anterior)"}
+        help_texts = {
+            "nombre": "Ej.: Alfabetización digital 2026.",
+            "estado": "Ej.: Postulado, mientras se espera el resultado del fondo.",
+            "area_tematica": "Sirve para buscar e informar por línea de trabajo. Ej.: Educación financiera.",
+            "descripcion": "En pocas líneas, de qué se trata.",
+            "objetivo_general": "El gran propósito, en una frase. Ej.: reducir la brecha digital de las personas mayores de la comuna.",
+            "objetivos_especificos": "Uno por línea. Ej.: realizar 8 talleres; formar 10 monitores.",
+            "diagnostico": "La situación que motivó el proyecto, con datos si los hay.",
+            "poblacion_objetivo": "Ej.: personas mayores socias de las juntas de vecinos de la comuna.",
+            "zona": "Se escribió antes de poder elegir comunas y sectores. Elige arriba la comuna o el sector y luego borra este texto.",
+        }
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -49,6 +61,7 @@ class ProyectoComunidadForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ProyectoComunidad
         fields = ["comunidad", "observaciones", "vigente"]
+        help_texts = {"comunidad": "Si no está, créala antes en Comunidades."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -73,6 +86,8 @@ class _PersonaProyectoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ProyectoPersona
         fields = ["persona", "rol", "es_responsable", "desde", "hasta", "vigente"]
+        labels = {"rol": "Rol en el proyecto", "es_responsable": "Es responsable del proyecto"}
+        help_texts = {"rol": "Ej.: Coordinador.", "hasta": "Solo si dejó el proyecto: el registro se conserva."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -106,12 +121,14 @@ class BeneficiarioForm(_PersonaProyectoForm):
 
 
 class ProyectoOrganizacionForm(BootstrapMixin, forms.ModelForm):
-    organizacion = SelectorField(ORGANIZACIONES)
-    contacto = _persona(required=False, label="Persona de contacto")
+    organizacion = SelectorField(ORGANIZACIONES, label="Organización")
+    contacto = _persona(required=False, label="Persona de contacto", help_text="Con quién se coordina en esa organización, si se sabe.")
 
     class Meta:
         model = ProyectoOrganizacion
         fields = ["organizacion", "tipo_intervencion", "contacto", "observaciones", "vigente"]
+        labels = {"tipo_intervencion": "¿Qué aporta esta organización?"}
+        help_texts = {"tipo_intervencion": "Ej.: Financia; Facilita espacio (presta la sede)."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -134,3 +151,4 @@ class PostulacionForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Postulacion
         fields = ["fondo", "fecha", "estado", "resultado", "observaciones", "vigente"]
+        help_texts = {"fondo": "Ej.: Fondo Social Presidente de la República 2026.", "resultado": "Ej.: adjudicado por $3.000.000."}

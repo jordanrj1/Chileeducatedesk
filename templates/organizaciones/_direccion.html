@@ -1,0 +1,8 @@
+{# Qué es: Dirección de la organización (ubicación en cascada, calle y número) dentro de la sección «Contacto y dirección» del formulario. #}
+{# Dónde se usa: /organizaciones/nueva y /organizaciones/<int:pk>/editar, desde generico/_campos.html (bloque «direccion» de OrganizacionForm) · Proceso: P4 #}
+{% if form_direccion %}<div class="fche-campo--ancho">
+  <p class="form-label mb-2">Dirección <span class="text-muted fw-normal">(opcional)</span></p>
+  {% if form_direccion.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form_direccion.non_field_errors }}</div>{% endif %}
+  {% include "territorio/_ubicacion.html" with form=form_direccion %}
+  <div class="fche-form__rejilla">{% for campo in form_direccion.campos_sin_ubicacion %}{% include "generico/_campo.html" %}{% endfor %}</div>
+</div>{% endif %}

@@ -66,13 +66,36 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
             "perfiles": forms.CheckboxSelectMultiple, "areas_interes": forms.CheckboxSelectMultiple,
             "fecha_nacimiento": forms.DateInput, "habilidades": forms.Textarea(attrs={"rows": 2}),
         }
+        labels = {
+            "tipo_documento": "Documento (si no tiene RUT)", "numero_documento": "N.º del documento", "perfiles": "¿Qué es para la Fundación?",
+            "areas_interes": "Temas que le interesan", "idiomas": "Idiomas que habla", "origen": "¿Cómo llegó a la Fundación?",
+            "estado_registro": "Estado de la ficha", "canal_preferido": "¿Cómo prefiere que la contacten?",
+        }
+        help_texts = {
+            "nombres": "Ej.: María José.",
+            "tipo_documento": "Para quien no tiene RUT, por ejemplo una persona extranjera. Ej.: Pasaporte.",
+            "numero_documento": "Ej.: AB123456.",
+            "nacionalidad": "Ej.: Venezolana.",
+            "perfiles": "Marca uno o más. Ej.: Estudiante y Voluntaria.",
+            "areas_interes": "Sirven para invitarla a actividades. Ej.: Medio ambiente.",
+            "idiomas": "Ej.: Español y creole haitiano.",
+            "profesion": "Ej.: Técnica en enfermería; gásfiter.",
+            "sitio_web": "Ej.: https://www.linkedin.com/in/nombre",
+            "nivel_educacional": "El más alto que alcanzó. Ej.: Media completa.",
+            "situacion_ocupacional": "A qué se dedica hoy. Ej.: Trabaja y estudia.",
+            "origen": "Ej.: Derivación (la envió la municipalidad).",
+            "estado_registro": "Qué tan completa está la ficha. Ej.: Incompleto, si falta el apellido o un contacto.",
+            "canal_preferido": "Ej.: WhatsApp.",
+            "observaciones": "Lo que convenga saber y no tenga otro lugar. Ej.: prefiere que la llamen en la tarde.",
+        }
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         if "origen" in self.fields:
             self.fields["origen"].queryset = OrigenPersona.objects.filter(activo=True)
-        if "estado_registro" in self.fields:
-            self.fields["estado_registro"].queryset = EstadoRegistro.objects.filter(activo=True)
+        if "estado_registro" in self.fields:  # «Fusionada» la pone solo la fusión de fichas (se conserva si ya la tenía)
+            self.fields["estado_registro"].queryset = (EstadoRegistro.objects.filter(activo=True).exclude(codigo="fusionada")
+                                                       | EstadoRegistro.objects.filter(pk=self.instance.estado_registro_id or 0))
         if "perfiles" in self.fields:
             self.fields["perfiles"].queryset = PerfilPersona.objects.filter(activo=True)
         if "areas_interes" in self.fields:
@@ -157,8 +180,8 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
 class PersonaNuevaForm(PersonaForm):
     """Ficha rápida: nombre y un dato de contacto; el resto después."""
 
-    correo = forms.EmailField(required=False)
-    telefono = forms.CharField(label="teléfono", required=False, max_length=40)
+    correo = forms.EmailField(required=False, label="Correo electrónico", help_text="Ej.: nombre@ejemplo.cl")
+    telefono = forms.CharField(label="Teléfono", required=False, max_length=40, help_text="Ej.: +56 9 1234 5678.")
 
     class Meta(PersonaForm.Meta):
         fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", *CAMPOS_PERFIL[:2], "sexo",
@@ -192,7 +215,6 @@ class PersonaCrearRapidaForm(PersonaRapidaForm):
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
-        self.fields["telefono"].label = "Teléfono"
         self.fields["telefono"].widget.attrs.setdefault("placeholder", "Ej.: +56 9 1234 5678")
 
 
@@ -215,6 +237,10 @@ class ContactoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Contacto
         fields = ["tipo", "valor", "proposito", "principal", "vigente"]
+        labels = {"tipo": "Tipo de contacto", "valor": "Número, correo o enlace", "proposito": "¿Para qué se usa?",
+                  "principal": "Usar como contacto principal"}
+        help_texts = {"valor": "Ej.: +56 9 1234 5678 o nombre@ejemplo.cl.", "proposito": "Opcional. Ej.: cartas y oficios; donaciones.",
+                      "principal": "Es el que se muestra primero en la ficha y en las listas."}
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
@@ -236,7 +262,8 @@ class ContactoForm(BootstrapMixin, forms.ModelForm):
 
 
 class PersonaDireccionForm(DireccionForm):
-    tipo = forms.ChoiceField(choices=PersonaDireccion.TIPOS, label="Tipo de dirección")
+    tipo = forms.ChoiceField(choices=PersonaDireccion.TIPOS, label="Tipo de dirección",
+                             help_text="Residencia: donde vive hoy. Procedencia: de donde viene (p. ej. su ciudad de origen).")
 
     def __iter__(self):  # el bloque de dirección no repite «tipo»: se muestra aparte
         return (c for c in super().__iter__() if c.name != "tipo")
@@ -276,6 +303,12 @@ class FormacionForm(BootstrapMixin, forms.ModelForm):
         model = PersonaFormacion
         fields = ["organizacion", "sede_institucion", "carrera", "estado", "sede", "jornada", "nivel_actual", "anio_inicio", "anio_termino", "asignatura", "docente",
                   "horas_comprometidas", "vigente"]
+        labels = {"estado": "Situación", "anio_inicio": "Año de ingreso", "anio_termino": "Año de egreso o término",
+                  "horas_comprometidas": "Horas comprometidas con la Fundación"}
+        help_texts = {"estado": "Estudiante, egresado o titulado.", "jornada": "Ej.: Vespertina.", "nivel_actual": "Ej.: 3.er semestre; 2.º año.",
+                      "anio_inicio": "Ej.: 2024.", "anio_termino": "Si ya terminó o se sabe cuándo termina. Ej.: 2027.",
+                      "asignatura": "La asignatura o práctica por la que viene, si corresponde. Ej.: Práctica profesional I.",
+                      "horas_comprometidas": "Las que pide la institución para certificar. Ej.: 120."}
 
     def __init__(self, *args, usuario=None, **kw):
         super().__init__(*args, **kw)
@@ -421,10 +454,20 @@ class EstudianteForm(FormacionForm):
         fields = ["organizacion", "sede_institucion", "carrera", "estado", "jornada", "nivel_actual", "anio_inicio"]
 
 
+ETIQUETAS_VINCULO = {"organizacion": "Organización", "cargo": "Cargo", "fecha_inicio": "Desde", "fecha_termino": "Hasta (si ya dejó el cargo)"}
+AYUDAS_VINCULO = {
+    "cargo": "Ej.: Presidenta; Encargado de vinculación con el medio.",
+    "tipo_cargo": "Directorio: presidencia, secretaría o tesorería. Funcional: quien trabaja o coordina. Autoridad: alcalde o director de liceo.",
+    "fecha_termino": "Los cargos no se borran: al dejarlo, se indica hasta cuándo y queda en la historia.",
+}
+
+
 class VinculoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = PersonaOrganizacion
         fields = ["organizacion", "cargo", "tipo_cargo", "fecha_inicio", "fecha_termino"]
+        labels = ETIQUETAS_VINCULO
+        help_texts = AYUDAS_VINCULO
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
@@ -439,12 +482,14 @@ class VinculoDesdeOrganizacionForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = PersonaOrganizacion
         fields = ["persona", "cargo", "tipo_cargo", "fecha_inicio", "fecha_termino"]
+        labels = ETIQUETAS_VINCULO
+        help_texts = AYUDAS_VINCULO
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         from apps.nucleo.formularios import fijar_valores_selectores
 
-        self.fields["persona"] = SelectorField(PERSONAS)
+        self.fields["persona"] = SelectorField(PERSONAS, label="Persona")
         self.fields["persona"].widget.attrs["class"] = "form-select"
         fijar_valores_selectores(self)
 
@@ -453,24 +498,31 @@ class ExperienciaForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Experiencia
         fields = ["descripcion", "lugar", "desde", "hasta", "vigente"]
+        labels = {"descripcion": "¿Qué hizo?"}
+        help_texts = {"descripcion": "Ej.: Monitora de taller de lectura.", "lugar": "Ej.: Biblioteca municipal de Hualpén."}
 
 
 class DisponibilidadForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = DisponibilidadPersona
         fields = ["dia", "hora_inicio", "hora_fin", "comentario", "vigente"]
+        help_texts = {"comentario": "Ej.: solo la primera semana del mes."}
 
 
 class EmergenciaForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ContactoEmergencia
         fields = ["nombre", "parentesco", "telefono", "vigente"]
+        labels = {"nombre": "Nombre de la persona a quien avisar"}
+        help_texts = {"parentesco": "Ej.: Madre.", "telefono": "Ej.: +56 9 1234 5678."}
 
 
 class VerificacionForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = VerificacionPersona
         fields = ["tipo", "fecha", "vigente_hasta", "observaciones", "vigente"]
+        labels = {"tipo": "¿Qué se verificó?", "fecha": "Fecha de la verificación"}
+        help_texts = {"tipo": "Ej.: Certificado de antecedentes.", "vigente_hasta": "Si el documento caduca. Ej.: 31-12-2026."}
 
 
 class PerfilSensibleForm(BootstrapMixin, forms.ModelForm):
@@ -513,11 +565,14 @@ class PerfilSensibleForm(BootstrapMixin, forms.ModelForm):
 
 
 class ConsentimientoForm(BootstrapMixin, forms.ModelForm):
-    otorgado_por = selector_persona(required=False, label="Otorgado por (apoderado)")
+    otorgado_por = selector_persona(required=False, label="Otorgado por (apoderado)",
+                                    help_text="Solo si lo dio el apoderado o apoderada, por ejemplo en el caso de un menor de edad.")
 
     class Meta:
         model = Consentimiento
         fields = ["tipo", "otorgado", "fecha", "medio", "otorgado_por", "documento", "revocado_en", "observaciones"]
+        labels = {"tipo": "¿Para qué es el consentimiento?", "medio": "¿Cómo lo dio?", "revocado_en": "Revocado el"}
+        help_texts = {"medio": "Ej.: Papel firmado.", "revocado_en": "Solo si la persona lo retiró. No se borra: queda registrado."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -537,6 +592,7 @@ class ApoderadoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Apoderado
         fields = ["apoderado", "parentesco", "tutor_legal", "vigente"]
+        help_texts = {"parentesco": "Ej.: Madre.", "tutor_legal": "Márcalo si tiene la tutela legal (por ejemplo, por resolución del tribunal)."}
 
     def clean_apoderado(self):
         a = self.cleaned_data["apoderado"]

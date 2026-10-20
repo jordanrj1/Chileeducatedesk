@@ -24,14 +24,14 @@ def test_formularios_dibujan_la_seleccion_multiple_desplegable(cg):
     html = cg.get("/comunidades/nueva").content.decode()
     bloques = dict(_bloques(html))
     assert "class=\"fche-opciones\"" not in html
-    areas = bloques["Áreas de interés"]
+    areas = bloques["Temas que le interesan"]
     assert '<summary class="form-select fche-multi__boton"' in areas and ">Elegir…</span>" in areas
     assert areas.count('type="checkbox" name="areas_interes"') == AreaTematica.objects.filter(activo=True).count()
     # el buscador solo aparece con JavaScript y no se envía (no tiene nombre)
     assert re.search(r'data-multi-filtro hidden>\s*<span[^>]*>.*?</span>\s*<input type="search" class="form-control fche-selector__entrada" placeholder', areas, re.S)
     html = cg.get("/personas/nueva?modo=completa").content.decode()
     # los perfiles con ficha propia (estudiante, vecino…) se marcan aparte, en «Tipo de registro»; aquí quedan los demás
-    assert [e for e, _ in _bloques(html)] == ["Otros perfiles", "Áreas de interés"]
+    assert [e for e, _ in _bloques(html)] == ["Otros perfiles", "Temas que le interesan"]
     assert 'aria-labelledby="id_perfiles_etiqueta id_perfiles_resumen" aria-describedby="id_perfiles_helptext"' in html
 
 
@@ -56,7 +56,7 @@ def test_resumen_de_lo_elegido_sin_javascript(cg, persona):
     nombres = [str(p) for p in PerfilPersona.objects.filter(pk__in=[p.pk for p in perfiles])]  # en el orden del catálogo
     assert f">3 opciones elegidas: {nombres[0]}, {nombres[1]} y 1 más</span>" in bloques["Otros perfiles"]
     assert bloques["Otros perfiles"].count(" checked") == 3
-    assert 'class="fche-multi__resumen is-vacio"' in bloques["Áreas de interés"]
+    assert 'class="fche-multi__resumen is-vacio"' in bloques["Temas que le interesan"]
 
 
 def test_toda_seleccion_multiple_pasa_a_desplegable(persona, crear_persona):

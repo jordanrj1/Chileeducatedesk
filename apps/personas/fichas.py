@@ -250,6 +250,7 @@ class FichaInvitadoForm(BootstrapMixin, forms.ModelForm):
         model = FichaInvitado
         fields = ["tipo", "organizacion", "cargo", "invitado_por", "actividad", "motivo"]
         widgets = {"motivo": forms.Textarea(attrs={"rows": 2})}
+        help_texts = {"tipo": "Ej.: Autoridad.", "motivo": "Para qué se le invitó. Ej.: expositora en la charla de reciclaje."}
 
     def __init__(self, *a, persona=None, **kw):
         super().__init__(*a, **kw)
@@ -264,6 +265,8 @@ class FichaVoluntarioForm(BootstrapMixin, forms.ModelForm):
         model = FichaVoluntario
         fields = ["estado", "fecha_ingreso", "horas_semanales", "motivacion"]
         widgets = {"fecha_ingreso": forms.DateInput, "motivacion": forms.Textarea(attrs={"rows": 2})}
+        help_texts = {"estado": "Ej.: Activo.", "fecha_ingreso": "Cuándo empezó como voluntario o voluntaria. Ej.: 01-03-2026.",
+                      "motivacion": "Ej.: quiere apoyar los talleres con niños los sábados."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)

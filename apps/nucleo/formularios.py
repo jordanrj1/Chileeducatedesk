@@ -37,6 +37,13 @@ class BootstrapMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        instancia = getattr(self, "instance", None)
+        if instancia is not None and instancia._state.adding and "vigente" in self.fields:
+            # Al agregar un registro nunca se crea «no vigente» (el modelo parte en vigente); se da de baja después
+            # con «Marcar no vigente» o al editarlo.
+            del self.fields["vigente"]
+        elif "vigente" in self.fields and not self.fields["vigente"].help_text:
+            self.fields["vigente"].help_text = "Desmárcala para dar de baja este dato sin borrarlo: queda en el historial."
         fijar_valores_selectores(self)
         for campo in self.fields.values():
             a_desplegable(campo)

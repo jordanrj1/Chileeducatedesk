@@ -6,7 +6,7 @@ from django.db import models
 from django.urls import reverse
 from simple_history.models import HistoricalRecords
 
-from apps.nucleo.models import EstadoRegistro, TipoOrganizacion
+from apps.nucleo.models import EstadoRegistro, NaturalezaJuridica, TipoOrganizacion
 from apps.nucleo.utilidades import formatear_rut
 
 
@@ -24,8 +24,11 @@ class Organizacion(models.Model):
         "territorio.Comuna", null=True, blank=True, on_delete=models.PROTECT, related_name="municipalidad", verbose_name="comuna (si es municipalidad)"
     )
     es_propia = models.BooleanField("es la Fundación", default=False)
-    # Datos legales, cuando corresponda (certificados de directorio/vigencia)
-    naturaleza_juridica = models.CharField("naturaleza jurídica", max_length=120, blank=True)
+    # Datos legales, cuando corresponda (certificados de directorio/vigencia). La naturaleza jurídica se elige del catálogo;
+    # el texto escrito antes se conserva como «texto anterior» hasta que se revise.
+    naturaleza = models.ForeignKey(NaturalezaJuridica, null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                                   verbose_name="naturaleza jurídica")
+    naturaleza_juridica = models.CharField("naturaleza jurídica (texto anterior)", max_length=120, blank=True)
     domicilio_legal = models.CharField(max_length=200, blank=True)
     vigencia_desde = models.DateField("vigencia desde", null=True, blank=True)
     vigencia_hasta = models.DateField("vigencia hasta", null=True, blank=True)
@@ -82,4 +85,4 @@ class Carrera(models.Model):
 
     def clean(self):
         if self.organizacion_id and not self.organizacion.es_educativa:
-            raise ValidationError({"organizacion": "Las carreras solo se asocian a instituciones educativas (RF-08)."})
+            raise ValidationError({"organizacion": "Las carreras solo se asocian a instituciones educativas."})

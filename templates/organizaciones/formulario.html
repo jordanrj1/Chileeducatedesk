@@ -1,12 +1,7 @@
-{# Qué es: Crear o editar organización, con aviso de duplicados y dirección en cascada. #}
+{# Qué es: Crear o editar organización por secciones (la dirección en cascada va en «Contacto y dirección»), con aviso de duplicados. #}
 {# Dónde se usa: /organizaciones/<int:pk>/editar, /organizaciones/nueva · Proceso: P4 #}
 {% extends "generico/formulario.html" %}
 {% block extra_form %}
-<fieldset class="mt-2 pt-3 mb-3 border-top"><legend class="h6 mb-3">Dirección <span class="text-muted fw-normal">(opcional)</span></legend>
-  {% if form_direccion.non_field_errors %}<div class="alert alert-danger">{{ form_direccion.non_field_errors }}</div>{% endif %}
-  {% include "territorio/_ubicacion.html" with form=form_direccion %}
-  <div class="fche-form__rejilla">{% for campo in form_direccion.campos_sin_ubicacion %}{% include "generico/_campo.html" %}{% endfor %}</div>
-</fieldset>
 {% if candidatos %}
 <div class="alert alert-warning mt-2 mb-3" role="alert">
   <strong>Esta organización podría ya existir.</strong>

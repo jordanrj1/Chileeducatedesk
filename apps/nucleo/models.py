@@ -140,6 +140,8 @@ AreaTematica = _catalogo("AreaTematica", "área temática", "áreas temáticas")
 Parentesco = _catalogo("Parentesco", "parentesco", "parentescos")
 TipoInvitado = _catalogo("TipoInvitado", "tipo de invitado", "tipos de invitado")
 EstadoVoluntario = _catalogo("EstadoVoluntario", "estado del voluntariado", "estados del voluntariado")
+# Forma legal con que se constituyó una organización (figura en su certificado de vigencia o en sus estatutos)
+NaturalezaJuridica = _catalogo("NaturalezaJuridica", "naturaleza jurídica", "naturalezas jurídicas")
 
 CATALOGOS = {
     "estado-actividad": EstadoActividad,
@@ -162,6 +164,7 @@ CATALOGOS = {
     "parentesco": Parentesco,
     "tipo-invitado": TipoInvitado,
     "estado-voluntario": EstadoVoluntario,
+    "naturaleza-juridica": NaturalezaJuridica,
 }
 
 

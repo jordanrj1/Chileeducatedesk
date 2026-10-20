@@ -26,14 +26,23 @@ def _a(**kw):
 
 
 class InteraccionForm(BootstrapMixin, forms.ModelForm):
-    persona = _p(required=False)
-    organizacion = _o(required=False)
-    fecha = forms.DateTimeField(widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"])
+    persona = _p(required=False, label="Persona", help_text="Con quién se habló. Puede ser una persona, una organización o ambas.")
+    organizacion = _o(required=False, label="Organización")
+    fecha = forms.DateTimeField(label="Fecha y hora", widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"])
 
     class Meta:
         model = Interaccion
         fields = ["fecha", "canal", "persona", "organizacion", "motivo", "resultado", "proxima_accion", "proxima_fecha", "accion_cumplida", "solicitud", "actividad"]
         widgets = {"solicitud": forms.HiddenInput(), "actividad": forms.HiddenInput()}
+        labels = {"canal": "¿Por qué medio?", "motivo": "¿Para qué fue el contacto?", "resultado": "¿Qué se conversó o acordó?",
+                  "proxima_accion": "Próximo paso", "proxima_fecha": "¿Para cuándo?", "accion_cumplida": "El próximo paso ya se hizo"}
+        help_texts = {
+            "canal": "Ej.: Llamada telefónica.",
+            "motivo": "Ej.: confirmar la fecha del taller.",
+            "resultado": "Ej.: confirma la sede para el sábado; pide 30 sillas.",
+            "proxima_accion": "Lo que queda pendiente. Ej.: enviar la carta de invitación.",
+            "proxima_fecha": "Aparece en el Inicio cuando se acerque.",
+        }
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -46,6 +55,9 @@ class ReunionForm(BootstrapMixin, forms.ModelForm):
         model = Reunion
         fields = ["titulo", "fecha", "hora_inicio", "hora_fin", "lugar", "modalidad", "objetivo", "temas", "acuerdos", "actividad", "proyecto"]
         widgets = {"actividad": forms.HiddenInput(), "proyecto": forms.HiddenInput()}
+        labels = {"titulo": "Título", "hora_inicio": "Hora de inicio", "hora_fin": "Hora de término"}
+        help_texts = {"titulo": "Ej.: Coordinación con la junta de vecinos.", "objetivo": "Para qué se reúnen. Ej.: definir la fecha de la feria.",
+                      "acuerdos": "Los compromisos con responsable se agregan después, como tareas de la reunión."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -64,6 +76,7 @@ class AsistenteForm(BootstrapMixin, forms.ModelForm):
         model = ReunionAsistente
         fields = ["persona", "asistio", "observaciones", "vigente"]
         widgets = {"asistio": forms.NullBooleanSelect()}
+        labels = {"asistio": "¿Asistió?"}
 
     def clean(self):
         d = super().clean()
@@ -82,6 +95,8 @@ class TareaForm(BootstrapMixin, forms.ModelForm):
         model = Tarea
         fields = ["titulo", "descripcion", "estado", "fecha_limite", "responsable", "reunion", "actividad", "proyecto"]
         widgets = {"reunion": forms.HiddenInput(), "actividad": forms.HiddenInput(), "proyecto": forms.HiddenInput()}
+        labels = {"titulo": "¿Qué hay que hacer?"}
+        help_texts = {"titulo": "Ej.: reservar la sede para el 15 de noviembre.", "fecha_limite": "El Inicio avisa cuando se acerque."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -121,6 +136,8 @@ class InvitacionForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Invitacion
         fields = ["persona", "actividad", "rol", "fecha", "estado", "respuesta", "fecha_respuesta"]
+        labels = {"fecha": "Fecha de la invitación", "fecha_respuesta": "Fecha de la respuesta"}
+        help_texts = {"rol": "Ej.: Tallerista.", "respuesta": "Lo que respondió, con sus palabras. Ej.: puede solo los sábados."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -140,6 +157,8 @@ class ColaboracionForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Colaboracion
         fields = ["organizacion", "actividad", "tipo_apoyo", "estado", "resultado", "observaciones"]
+        labels = {"tipo_apoyo": "¿Qué apoyo se pide?"}
+        help_texts = {"tipo_apoyo": "Ej.: Facilita espacio.", "resultado": "Ej.: presta la sede y 30 sillas."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)

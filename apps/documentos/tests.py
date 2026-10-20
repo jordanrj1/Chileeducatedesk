@@ -237,7 +237,7 @@ def test_transcribir_organizacion(cg, actividad):
 
     subir(cg, actividad, nombre="Carta")
     d = Documento.objects.get()
-    assert 'name="naturaleza_juridica"' in cg.get(f"/documentos/{d.pk}/transcribir?registro=organizacion").content.decode()
+    assert 'name="naturaleza"' in cg.get(f"/documentos/{d.pk}/transcribir?registro=organizacion").content.decode()
     junta = TipoOrganizacion.objects.get(codigo="junta_de_vecinos_o_comite")
     r = cg.post(f"/documentos/{d.pk}/transcribir", {"registro": "organizacion", "nombre": "Junta Transcrita", "tipo": junta.pk})
     o = Organizacion.objects.get()

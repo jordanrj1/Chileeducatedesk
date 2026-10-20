@@ -10,12 +10,19 @@ from .models import Solicitud
 
 
 class SolicitudForm(BootstrapMixin, forms.ModelForm):
-    persona = SelectorField(PERSONAS, required=False, label="Persona de contacto")
-    organizacion = SelectorField(ORGANIZACIONES, required=False, label="Organización")
+    persona = SelectorField(PERSONAS, required=False, label="Persona de contacto", help_text="Quién la pidió o avisó. Si aún no se sabe, déjalo vacío.")
+    organizacion = SelectorField(ORGANIZACIONES, required=False, label="Organización", help_text="Ej.: el liceo que pide la charla.")
 
     class Meta:
         model = Solicitud
         fields = ["origen", "canal", "fecha", "persona", "organizacion", "motivo", "descripcion", "observaciones"]
+        labels = {"origen": "¿Cómo surgió?", "canal": "¿Por dónde llegó?", "fecha": "Fecha en que llegó", "motivo": "¿Qué se pide?"}
+        help_texts = {
+            "origen": "Solicitud externa: alguien pidió algo. Búsqueda activa: la Fundación detectó la oportunidad.",
+            "canal": "Ej.: Correo electrónico.",
+            "motivo": "Qué se necesita o qué oportunidad apareció, en una frase. Ej.: un liceo pide una charla sobre reciclaje.",
+            "descripcion": "Los detalles que vengan en el mensaje: fechas posibles, cantidad de personas, lugar.",
+        }
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)

@@ -83,14 +83,18 @@ class ActividadForm(DestinosMixin, BootstrapMixin, forms.ModelForm):
 
 
 class ProgramarForm(BootstrapMixin, forms.Form):
-    fecha = forms.DateField(widget=forms.DateInput)
-    hora_inicio = forms.TimeField(label="Hora de inicio", widget=forms.TimeInput)
-    hora_fin = forms.TimeField(label="Hora de término", widget=forms.TimeInput, required=False)
-    duracion = forms.IntegerField(label="o duración (minutos)", required=False, min_value=1, max_value=24 * 60, help_text="Si indicas la duración, se calcula la hora de término.")
-    lugar = LugarChoiceField(required=False)
-    modalidad = forms.ModelChoiceField(Modalidad.objects.filter(activo=True), required=False)
-    enlace = forms.URLField(label="Enlace (si es virtual)", required=False, assume_scheme="https")
-    motivo = forms.CharField(label="Motivo del cambio", max_length=250, required=False, help_text="Obligatorio al reprogramar o reanudar.")
+    fecha = forms.DateField(widget=forms.DateInput, label="Fecha")
+    hora_inicio = forms.TimeField(label="Hora de inicio", widget=forms.TimeInput, help_text="Ej.: 10:00.")
+    hora_fin = forms.TimeField(label="Hora de término", widget=forms.TimeInput, required=False, help_text="O indica la duración, más abajo.")
+    duracion = forms.IntegerField(label="Duración (minutos)", required=False, min_value=1, max_value=24 * 60,
+                                  help_text="En vez de la hora de término: se calcula sola. Ej.: 90.")
+    lugar = LugarChoiceField(required=False, help_text="Sala, sede o espacio. Si es virtual, déjalo vacío.")
+    modalidad = forms.ModelChoiceField(Modalidad.objects.filter(activo=True), required=False, label="Modalidad de esta fecha",
+                                       help_text="Solo si esta vez es distinta de la de la actividad. Ej.: Virtual.")
+    enlace = forms.URLField(label="Enlace (si es virtual)", required=False, assume_scheme="https",
+                            help_text="El enlace de la reunión virtual. Ej.: https://meet.ejemplo.cl/taller")
+    motivo = forms.CharField(label="Motivo del cambio", max_length=250, required=False,
+                             help_text="Obligatorio al reprogramar o reanudar. Ej.: la sede no estaba disponible.")
 
     def clean(self):
         d = super().clean()
@@ -112,15 +116,15 @@ class ProgramarForm(BootstrapMixin, forms.Form):
 
 
 class SerieForm(BootstrapMixin, forms.Form):
-    """Crear una serie de actividades repetidas (AG-07 [P]): cada repetición es una actividad propia dentro de la original."""
+    """Crear una serie de actividades repetidas: cada repetición es una actividad propia dentro de la original."""
 
     FRECUENCIAS = [(7, "Cada semana"), (14, "Cada dos semanas"), (1, "Cada día"), (28, "Cada cuatro semanas")]
-    primera_fecha = forms.DateField(widget=forms.DateInput)
-    frecuencia = forms.TypedChoiceField(choices=FRECUENCIAS, coerce=int, initial=7)
-    repeticiones = forms.IntegerField(min_value=2, max_value=52, initial=4, help_text="Entre 2 y 52.")
-    hora_inicio = forms.TimeField(widget=forms.TimeInput)
-    hora_fin = forms.TimeField(widget=forms.TimeInput, required=False)
-    lugar = LugarChoiceField(required=False)
+    primera_fecha = forms.DateField(widget=forms.DateInput, label="Primera fecha")
+    frecuencia = forms.TypedChoiceField(choices=FRECUENCIAS, coerce=int, initial=7, label="¿Cada cuánto se repite?")
+    repeticiones = forms.IntegerField(min_value=2, max_value=52, initial=4, label="¿Cuántas veces en total?", help_text="Entre 2 y 52. Ej.: 8.")
+    hora_inicio = forms.TimeField(widget=forms.TimeInput, label="Hora de inicio", help_text="Ej.: 18:30.")
+    hora_fin = forms.TimeField(widget=forms.TimeInput, required=False, label="Hora de término")
+    lugar = LugarChoiceField(required=False, help_text="El mismo para todas las fechas; después se puede cambiar en cada una.")
 
     def clean(self):
         d = super().clean()
@@ -130,12 +134,23 @@ class SerieForm(BootstrapMixin, forms.Form):
 
 
 class EstadoForm(BootstrapMixin, forms.Form):
-    estado = forms.ChoiceField(choices=[])
-    motivo = forms.CharField(max_length=250, required=False, help_text="Obligatorio para suspender o cancelar.")
+    estado = forms.ChoiceField(choices=[], label="Nuevo estado")
+    motivo = forms.CharField(max_length=250, required=False, label="Motivo",
+                             help_text="Obligatorio para suspender o cancelar. Ej.: lluvia; se avisó a los participantes.")
 
     def __init__(self, *a, opciones=(), **kw):
         super().__init__(*a, **kw)
         self.fields["estado"].choices = opciones
+
+
+ETIQUETAS_PARTICIPACION = {"rol": "Rol en la actividad", "estado": "Estado de la participación", "horas": "Horas"}
+AYUDAS_PARTICIPACION = {
+    "rol": "Ej.: Tallerista (parte del equipo) o Participante (asiste).",
+    "estado": "Ej.: Invitado → Confirmado → Asistió.",
+    "observaciones": "Ej.: llega 15 minutos tarde por su trabajo.",
+    "comunidad": "La comunidad de la que viene, si corresponde. Ej.: Vecinos de la Etapa 2.",
+    "horas": "Si se deja vacío, se usa la duración de la programación. Ej.: 4.",
+}
 
 
 class ParticipanteNuevoForm(BootstrapMixin, forms.ModelForm):
@@ -144,6 +159,8 @@ class ParticipanteNuevoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Participacion
         fields = ["persona", "rol", "estado", "observaciones"]
+        labels = ETIQUETAS_PARTICIPACION
+        help_texts = AYUDAS_PARTICIPACION
 
     def __init__(self, *a, actividad=None, **kw):
         super().__init__(*a, **kw)
@@ -173,6 +190,8 @@ class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Participacion
         fields = ["rol", "estado", "observaciones", "institucion", "comunidad", "horas"]
+        labels = ETIQUETAS_PARTICIPACION
+        help_texts = AYUDAS_PARTICIPACION
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -194,21 +213,24 @@ class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
 
 
 class PersonaRapidaForm(BootstrapMixin, forms.Form):
-    nombres = forms.CharField(max_length=150)
-    apellido_paterno = forms.CharField(max_length=100, required=False)
-    apellido_materno = forms.CharField(max_length=100, required=False)
-    correo = forms.EmailField(required=False)
-    telefono = forms.CharField(max_length=40, required=False, label="Teléfono")
-    rol = forms.ModelChoiceField(RolParticipacion.objects.filter(activo=True))
+    nombres = forms.CharField(max_length=150, label="Nombres", help_text="Ej.: María José.")
+    apellido_paterno = forms.CharField(max_length=100, required=False, label="Apellido paterno")
+    apellido_materno = forms.CharField(max_length=100, required=False, label="Apellido materno")
+    correo = forms.EmailField(required=False, label="Correo electrónico", help_text="Ej.: nombre@ejemplo.cl")
+    telefono = forms.CharField(max_length=40, required=False, label="Teléfono", help_text="Ej.: +56 9 1234 5678.")
+    rol = forms.ModelChoiceField(RolParticipacion.objects.filter(activo=True), label="Rol en la actividad",
+                                 help_text=AYUDAS_PARTICIPACION["rol"])
 
 
 class ActividadOrganizacionForm(BootstrapMixin, forms.ModelForm):
-    organizacion = SelectorField(ORGANIZACIONES)
-    contacto = selector_persona(required=False, label="Persona de contacto")
+    organizacion = SelectorField(ORGANIZACIONES, label="Organización")
+    contacto = selector_persona(required=False, label="Persona de contacto", help_text="Con quién se coordina en esa organización, si se sabe.")
 
     class Meta:
         model = ActividadOrganizacion
         fields = ["organizacion", "tipo_intervencion", "contacto", "observaciones", "vigente"]
+        labels = {"tipo_intervencion": "¿Qué aporta esta organización?"}
+        help_texts = {"tipo_intervencion": "Ej.: Facilita espacio (presta la sede)."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -230,6 +252,8 @@ class ActividadComunidadForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ActividadComunidad
         fields = ["comunidad", "beneficiarios_estimados", "observaciones", "vigente"]
+        labels = {"beneficiarios_estimados": "Personas esperadas de esta comunidad"}
+        help_texts = {"comunidad": "Si no está, créala antes en Comunidades.", "beneficiarios_estimados": "Un número aproximado. Ej.: 15."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -251,7 +275,7 @@ class ActividadComunidadForm(BootstrapMixin, forms.ModelForm):
 class SesionForm(BootstrapMixin, forms.ModelForm):
     """Bitácora de la sesión (F22): datos, facilitadores, minuta y asistentes sin registro individual."""
 
-    facilitadores = forms.ModelMultipleChoiceField(Persona.objects.none(), required=False, widget=forms.CheckboxSelectMultiple,
+    facilitadores = forms.ModelMultipleChoiceField(Persona.objects.none(), required=False, widget=forms.CheckboxSelectMultiple, label="Quiénes la dirigieron",
                                                    help_text="Equipo de la actividad y responsable. Si falta alguien, agrégalo antes como participante del equipo.")
     secciones = [
         ("Sesión", "", ["numero", "nombre", "fecha", "hora_inicio", "hora_fin", "lugar", "facilitadores"]),
@@ -267,6 +291,14 @@ class SesionForm(BootstrapMixin, forms.ModelForm):
         fields = ["numero", "nombre", "fecha", "hora_inicio", "hora_fin", "lugar", "objetivo", "desarrollo", "avances", "acuerdos", "incidencias", "proximos_pasos",
                   "asistentes_sin_registro", "conteo_menores", "conteo_jovenes", "conteo_adultos", "conteo_mayores", "conteo_mujeres", "conteo_hombres", "conteo_otros",
                   "observaciones", "vigente"]
+        labels = {"numero": "N.º de sesión", "nombre": "Nombre de la sesión", "hora_inicio": "Hora de inicio", "hora_fin": "Hora de término",
+                  "asistentes_sin_registro": "¿Cuántas personas asistieron sin registrarse?"}
+        help_texts = {"numero": "Se propone el siguiente. Ej.: 3.", "nombre": "Opcional. Ej.: Compostaje en casa.",
+                      "objetivo": "Qué se buscaba en esta sesión. Ej.: que cada familia arme su compostera.",
+                      "acuerdos": "Ej.: la próxima sesión cada familia trae un frasco de vidrio.",
+                      "incidencias": "Imprevistos. Ej.: corte de luz; se empezó 30 minutos tarde.",
+                      "proximos_pasos": "Ej.: confirmar la sede para la sesión 4.",
+                      "asistentes_sin_registro": "Total aproximado. Si quieres, desglósalo abajo por edad y por sexo. Ej.: 40."}
 
     def clean_numero(self):
         n = self.cleaned_data["numero"]
@@ -308,7 +340,8 @@ class TerritorioForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = ActividadTerritorio
         fields = ["region", "provincia", "comuna", "sector", "vigente"]
-        help_texts = {"region": "Elige un único nivel: región, provincia, comuna o sector."}
+        labels = {"region": "Región", "provincia": "Provincia", "comuna": "Comuna", "sector": "Sector, villa o población"}
+        help_texts = {"region": "Elige solo una de las cuatro listas: la región, la provincia, la comuna o el sector. Ej.: la comuna Hualpén."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
@@ -328,5 +361,14 @@ class TerritorioForm(BootstrapMixin, forms.ModelForm):
 class ResultadoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Actividad
-        fields = ["observaciones", "incidencias", "resultado", "indicadores", "asistencia_sin_registro"]
+        fields = ["resultado", "indicadores", "incidencias", "observaciones", "asistencia_sin_registro"]
         widgets = {f: forms.Textarea(attrs={"rows": 4}) for f in ["observaciones", "incidencias", "resultado", "indicadores"]}
+        labels = {"resultado": "¿Qué se logró?", "indicadores": "Cifras logradas", "incidencias": "Imprevistos",
+                  "observaciones": "Otras observaciones", "asistencia_sin_registro": "No se tomó asistencia persona por persona"}
+        help_texts = {
+            "resultado": "Resumen para el informe. Ej.: se realizaron las 4 sesiones; 18 de 20 personas terminaron el taller.",
+            "indicadores": "Números que muestran el resultado. Ej.: 18 constancias entregadas.",
+            "incidencias": "Ej.: corte de luz; se empezó 30 minutos tarde.",
+            "observaciones": "Lo que convenga recordar para la próxima vez.",
+            "asistencia_sin_registro": "Márcalo si no hubo lista; así igual se puede finalizar la actividad.",
+        }

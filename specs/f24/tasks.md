@@ -8,7 +8,7 @@
 - [x] T5 Ubicación en cascada y panel «En la comuna ya hay…» (el filtro por comuna que incluye sectores va con T4)
 - [x] T6 Tramos de edad catalogados
 - [x] T7 «¿Dónde?» en actividad y proyecto
-- [ ] T8 Formularios claros
+- [x] T8 Formularios claros
 - [ ] Cierre: revisión, pruebas, recorrido, manual, base de desarrollo migrada y territorio cargado
 
 ## Parte B (decidida por el usuario el 14-10-2026)

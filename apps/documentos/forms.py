@@ -13,15 +13,28 @@ from .models import Documento, OrigenDato
 
 
 class DocumentoForm(BootstrapMixin, forms.ModelForm):
-    actividad = SelectorField(ACTIVIDADES, required=False)
-    persona = SelectorField(PERSONAS, required=False)
+    actividad = SelectorField(ACTIVIDADES, required=False, label="Actividad")
+    persona = SelectorField(PERSONAS, required=False, label="Persona")
     organizacion = SelectorField(ORGANIZACIONES, required=False, label="Organización")
-    proyecto = forms.ModelChoiceField(Proyecto.objects.all(), required=False)
+    proyecto = forms.ModelChoiceField(Proyecto.objects.all(), required=False, label="Proyecto")
 
     class Meta:
         model = Documento
         fields = ["nombre", "archivo", "tipo", "fecha", "descripcion", "actividad", "proyecto", "persona", "organizacion", "solicitud", "sesion", "restringido", "folio", "emisor", "fecha_emision", "fecha_vencimiento"]
         widgets = {"solicitud": forms.HiddenInput(), "sesion": forms.HiddenInput()}
+        labels = {"nombre": "Nombre del documento", "tipo": "Tipo de documento", "fecha": "Fecha del documento",
+                  "restringido": "Documento confidencial", "folio": "N.º o folio", "emisor": "¿Quién lo emitió?"}
+        help_texts = {
+            "nombre": "Para reconocerlo en las listas. Ej.: Certificado de vigencia JJVV Los Aromos 2026.",
+            "archivo": "PDF, Word, Excel o imagen.",
+            "descripcion": "Opcional. Qué contiene o para qué sirve.",
+            "sesion": "",
+            "restringido": "Solo lo ve quien tiene permiso para documentos confidenciales. Ej.: un certificado de antecedentes.",
+            "folio": "Si el documento lo trae. Ej.: 2026-0345.",
+            "emisor": "Ej.: Registro Civil; Municipalidad de Hualpén.",
+            "fecha_emision": "La que figura en el documento.",
+            "fecha_vencimiento": "Para certificados y documentos que caducan. El Inicio avisa antes de que venza.",
+        }
 
     def __init__(self, *a, puede_restringir=True, **kw):
         super().__init__(*a, **kw)
@@ -44,9 +57,10 @@ class DocumentoForm(BootstrapMixin, forms.ModelForm):
 
 
 class AsociarExistenteForm(BootstrapMixin, forms.Form):
-    """DO-03: usar un documento ya subido en otra ficha, sin duplicar el archivo."""
+    """Usar un documento ya subido en otra ficha, sin duplicar el archivo."""
 
-    documento = forms.ModelChoiceField(Documento.objects.none(), label="Documento existente")
+    documento = forms.ModelChoiceField(Documento.objects.none(), label="Documento existente",
+                                       help_text="El mismo archivo queda disponible también en esta ficha, sin copiarlo.")
 
     def __init__(self, *a, usuario=None, **kw):
         super().__init__(*a, **kw)
@@ -61,6 +75,9 @@ class OrigenForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = OrigenDato
         fields = ["fuente", "documento", "detalle", "fecha", "estado_verificacion"]
+        labels = {"fuente": "¿De dónde salió el dato?", "fecha": "Fecha en que se obtuvo"}
+        help_texts = {"fuente": "Ej.: Documento, si se transcribió de un certificado.", "detalle": "Ej.: página 2 del acta.",
+                      "estado_verificacion": "Ej.: Verificado, si se confirmó con la persona."}
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)

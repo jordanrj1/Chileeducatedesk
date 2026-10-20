@@ -6,6 +6,7 @@ CATALOGOS_MODELOS = {
     "estadoactividad", "estadosolicitud", "estadoparticipacion", "rolparticipacion", "tipoorganizacion", "tipoactividad",
     "tipocontacto", "canal", "modalidad", "origenpersona", "estadoregistro", "tipolugar", "tipodocumento", "tipointervencion",
     "perfilpersona", "areatematica", "tramoetario", "parentesco", "tipoinvitado", "estadovoluntario",
+    "naturalezajuridica",
 }
 
 
