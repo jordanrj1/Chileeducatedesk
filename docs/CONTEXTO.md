@@ -40,6 +40,16 @@ Fuentes, de más a menos reciente: **«FCHE — Requerimientos por módulo»** (
   - planillas con columnas nuevas.
   Amplía la sección 7 con autorización expresa del usuario; lo [V] queda listado en la spec.
 - **F23 Contenedor Territorio (13-10-2026; spec en `specs/f23/`):** la comuna y el sector son contenedores (Resumen con indicadores, personas residentes, alcance, índice «Dónde trabajamos»). Exportar el resumen a Excel exige el permiso `territorio.exportar_territorio`; RUT y contactos solo con `exportar_persona`, sin menores por nombre ni pertenencia a comunidades indígenas. Lo [V] queda en la spec.
+- **F24 Cascada, buscadores y fichas por tipo (14 a 19-10-2026; spec en `specs/f24/`):** el usuario pidió tablas relacionales normalizadas, no texto libre ni JSON.
+  - **Buscadores:** despliegan a los registrados al hacer clic, con «+ Crear» en una ventana.
+  - **Selección múltiple y filtros:** la selección múltiple es desplegable; los filtros muestran pocos principales y el resto en «Más filtros».
+  - **Territorio oficial:** `apps/territorio/datos/cut_chile.csv` (346 comunas; se carga con `cargar_territorio`) y ubicación en cascada en todo formulario.
+  - **Catálogos nuevos:** tramos de edad (`TramoEtario`, selección múltiple), naturaleza jurídica, parentesco, tipo de invitado y estado del voluntario.
+  - **Proyecto:** `ProyectoTerritorio`.
+  - **Fichas por tipo de persona:** `PerfilPersona.ficha`. El estudiante usa `PersonaFormacion` con la sede como `Lugar`; además existen `FichaVecino` con `IntegranteHogar` (conteos) y `FamiliarVinculado`, `FichaInvitado` y `FichaVoluntario`.
+  - **Persona:** `Persona.sexo` es un dato general opcional. El hogar es restringido 🔒, sin consentimiento extra; el tramo RSH sigue como dato sensible.
+  - **Rol:** cada rol de participación tiene un perfil asociado.
+  - Lo [V] queda en la spec.
 - **Proyecto** es agrupador opcional con su ficha (equipo, organizaciones, actividades) [V#7]. Ninguna actividad lo exige.
 - **Catálogos:** el Gestor agrega y edita valores; **desactivar** es solo del Administrador.
 - **Cuentas:** desde la pantalla, una cuenta se crea solo para una persona ya registrada. La primera cuenta se crea por consola (`crear_usuario`).

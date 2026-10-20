@@ -9,7 +9,7 @@
 - [x] T6 Tramos de edad catalogados
 - [x] T7 «¿Dónde?» en actividad y proyecto
 - [x] T8 Formularios claros
-- [ ] Cierre: revisión, pruebas, recorrido, manual, base de desarrollo migrada y territorio cargado
+- [x] Cierre: suite completa (632 pruebas), recorrido de páginas, manual y docs/CONTEXTO.md, base de desarrollo respaldada, migrada y con el territorio oficial cargado
 
 ## Parte B (decidida por el usuario el 14-10-2026)
 - [x] T9 Modelo de las fichas por tipo

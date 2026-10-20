@@ -21,6 +21,14 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 - Cada registro tiene una **ficha con pestañas**. Arriba están **Editar**, las acciones de la ficha y **Volver**.
 - Nada se elimina. Lo que ya no se usa se **desactiva** o se **archiva**, y su historial se conserva.
 
+## 2b. Elegir con clics (desde F24)
+- **Campos de búsqueda** (persona, organización, responsable…): al hacer clic se despliegan los registrados; escribe para filtrar. Si no está, usa «+ Crear persona» o «+ Crear organización»: se abre una ventana, avisa si ya existe alguien parecido y lo creado queda elegido.
+- **Responsable:** primero aparece el «Equipo de la Fundación». Para que alguien salga ahí, regístralo en Organizaciones → la Fundación (marcada «es la Fundación») → Personas relacionadas.
+- **Varias opciones** (temas de interés, perfiles, tramos de edad): pulsa «Elegir…», busca y marca. Lo elegido queda como etiquetas con ×.
+- **Ubicación:** región → comuna → sector. Si el sector no existe, escríbelo y pulsa «+ Crear sector» (antes debes elegir la comuna).
+- **Listados:** buscador y tres filtros a la vista; el resto en «Más filtros». Los filtros aplicados se ven como etiquetas; la × quita cada uno.
+- **Persona por tipo:** al registrar a alguien, marca si es estudiante, vecino o vecina, invitado o invitada, o voluntario o voluntaria; aparecen solo sus datos. Sin marcar nada, se registra con los datos básicos.
+
 ## 3. Registrar una persona (una sola vez)
 1. **Personas → + Nueva persona**. Elige **Ficha rápida** (nombre y un contacto) o **Ficha completa**. Solo el nombre es obligatorio. «Guardar y completar después» la deja en la cola de incompletos.
 2. Al guardar, el sistema **busca coincidencias** (mismo RUT, correo, teléfono o nombre parecido). Si aparece un posible duplicado, elige **Usar existente** o **Crear de todos modos**. Nunca se fusiona nada automáticamente.
