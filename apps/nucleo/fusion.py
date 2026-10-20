@@ -26,6 +26,48 @@ def relaciones(obj):
     return res
 
 
+def _vacio(valor):
+    return valor is None or valor == ""
+
+
+def _unir_fichas(origen, destino):
+    """F24: si las dos personas tienen la misma ficha 1 a 1, la de destino se completa con lo que le falta (sin pisar nada)
+    y en el hogar se le pasan los integrantes del origen que no repiten una fila; los que la repiten se quedan en el
+    origen (es el mismo hogar: no se suman). Si solo el origen tiene la ficha, la mueve el bucle genérico."""
+    from apps.personas.models import FichaInvitado, FichaVecino, FichaVoluntario, IntegranteHogar
+
+    movidos = 0
+    # si una invitó a la otra, la que queda no puede quedar invitada por sí misma
+    FichaInvitado.objects.filter(persona=destino, invitado_por=origen).update(invitado_por=None)
+    for modelo in (FichaVecino, FichaInvitado, FichaVoluntario):
+        fichas = {f.persona_id: f for f in modelo.objects.filter(persona__in=[origen.pk, destino.pk])}
+        fo, fd = fichas.get(origen.pk), fichas.get(destino.pk)
+        if not (fo and fd):
+            continue
+        cambios = []
+        for campo in modelo._meta.concrete_fields:
+            if campo.primary_key or campo.name in ("persona", "actualizado_en"):
+                continue
+            valor = getattr(fo, campo.attname)
+            if campo.name == "invitado_por" and valor == destino.pk:  # no queda invitada por sí misma
+                continue
+            if _vacio(getattr(fd, campo.attname)) and not _vacio(valor):
+                setattr(fd, campo.attname, valor)
+                cambios.append(campo.name)
+        if cambios:
+            fd.save()
+        if modelo is FichaVecino:
+            for integrante in IntegranteHogar.objects.filter(ficha=fo):
+                integrante.ficha = fd
+                try:
+                    with transaction.atomic():
+                        integrante.save()
+                    movidos += 1
+                except IntegrityError:
+                    pass  # la misma fila ya está en el hogar que queda: se conserva en el origen
+    return movidos
+
+
 def vista_previa(origen):
     filas = []
     for modelo, campo in relaciones(origen):
@@ -42,6 +84,8 @@ def fusionar(origen, destino, usuario, motivo):
     if not motivo.strip():
         raise ValueError("Indica el motivo de la fusión.")
     movidos, conservados = 0, []
+    if type(origen).__name__ == "Persona":
+        movidos += _unir_fichas(origen, destino)
     for modelo, campo in relaciones(origen):
         for obj in list(modelo._default_manager.filter(**{campo: origen})):
             setattr(obj, campo, destino)

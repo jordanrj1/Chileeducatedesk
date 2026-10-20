@@ -668,6 +668,12 @@ class ActividadDuplicar(_AccionActividad):
         nueva = servicios.duplicar(self.actividad(pk), request.user)
         messages.success(request, "Actividad duplicada (sin participantes ni fechas). Ajusta el nombre y prográmala.")
         return HttpResponseRedirect(reverse("actividades:editar", args=[nueva.pk]))
+def _perfil_del_rol(persona, rol):
+    """F24: si el rol lleva un perfil (Catálogos), se agrega a la persona sin quitarle los que ya tiene."""
+    if rol and rol.perfil_id:
+        persona.perfiles.add(rol.perfil_id)
+
+
 class ParticipanteNuevo(_AccionActividad):
     permission_required = "actividades.add_participacion"
 
@@ -698,6 +704,7 @@ class ParticipanteNuevo(_AccionActividad):
                 p.asistencia = True
                 p.estado = EstadoParticipacion.objects.get(codigo="asistio")
             p.save()
+            _perfil_del_rol(p.persona, p.rol)
             messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}" + (" y marcada como asistente." if llego else "."))
             _avisar_capacidad(request, a)
             if a.estado.codigo == "realizada":
@@ -752,6 +759,7 @@ class ParticipanteRapido(_AccionActividad):
                 actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, asistencia=True if llego else None,
                 estado=EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"),
             )
+            _perfil_del_rol(persona, d["rol"])
         messages.success(request, f"{persona} creada y agregada. Completa su ficha cuando puedas.")
         _avisar_capacidad(request, a)
         return self.volver(a, "asistencia" if llego else "participantes")
@@ -773,6 +781,7 @@ class ParticipanteUsar(_AccionActividad):
             actividad=a, persona=persona, rol=rol,
             defaults={"estado": EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"), "creado_por": request.user, "asistencia": True if llego else None},
         )
+        _perfil_del_rol(persona, rol)
         messages.success(request, f"{persona} agregada." if creada else f"{persona} ya participaba con ese rol.")
         _avisar_capacidad(request, a)
         return self.volver(a, "participantes")

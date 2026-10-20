@@ -70,6 +70,8 @@ class LoteNuevo(Permiso403Mixin, FormView):
             form.add_error(None, str(e))
             return self.form_invalid(form)
         mapeo = lectura.mapeo_sugerido(encabezados)
+        if d["tipo"] in ("personas", "listado_actividad"):  # F24: en una planilla de personas, «tipo» es el perfil
+            mapeo = ["perfil" if c == "tipo" else c for c in mapeo]
         filas, resumen = procesar.analizar(d["tipo"], lectura.aplicar_mapeo(datos, mapeo))
         ignoradas = [str(h) for h, c in zip(encabezados, mapeo) if not c and str(h).strip()]
         if ignoradas:

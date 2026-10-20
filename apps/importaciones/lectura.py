@@ -38,6 +38,8 @@ SINONIMOS = {
     "nivel_actual": {"ano que cursa", "año que cursa", "nivel", "curso", "ano de carrera", "año de carrera", "año", "ano"},
     "asignatura": {"asignatura", "ramo", "catedra", "cátedra", "practica", "práctica"},
     "nivel_educacional": {"nivel educacional", "escolaridad", "nivel de estudios"},
+    # F24: perfil de la persona (en una planilla de personas, la columna «tipo» también se lee como perfil)
+    "perfil": {"perfil", "perfil de persona", "tipo de persona"},
 }
 INVERSO = {}
 for canon, nombres in SINONIMOS.items():
@@ -100,7 +102,7 @@ COLUMNAS_POR_TIPO = {
                  ("carrera", "Carrera"), ("sede", "Sede o campus"), ("jornada", "Jornada"), ("nivel_actual", "Año que cursa"), ("asignatura", "Asignatura o práctica"),
                  ("fecha_nacimiento", "Fecha de nacimiento"), ("nacionalidad", "Nacionalidad"), ("nivel_educacional", "Nivel educacional"),
                  ("comuna", "Comuna de residencia"), ("calle", "Dirección (calle)"), ("numero", "Número"),
-                 ("profesion", "Profesión"), ("observaciones", "Observaciones")],
+                 ("profesion", "Profesión"), ("perfil", "Perfil o tipo de persona"), ("observaciones", "Observaciones")],
     "organizaciones": [("nombres", "Nombre"), ("tipo", "Tipo"), ("rut", "RUT"), ("correo", "Correo"), ("telefono", "Teléfono"), ("comuna", "Comuna"), ("calle", "Dirección"), ("sitio_web", "Sitio web")],
     "lugares": [("nombres", "Nombre"), ("tipo", "Tipo"), ("calle", "Calle"), ("numero", "Número"), ("comuna", "Comuna"), ("capacidad", "Capacidad"), ("condiciones", "Condiciones")],
 }

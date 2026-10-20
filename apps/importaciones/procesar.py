@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.actividades.models import Participacion
 from apps.documentos.origen import registrar_origen
 from apps.nucleo.auditoria import registrar
-from apps.nucleo.models import EstadoParticipacion, EstadoRegistro, TipoContacto, TipoLugar, TipoOrganizacion
+from apps.nucleo.models import EstadoParticipacion, EstadoRegistro, PerfilPersona, TipoContacto, TipoLugar, TipoOrganizacion
 from apps.nucleo.utilidades import normalizar_telefono, separar_nombre, separar_rut, telefono_normalizado_valido
 from apps.organizaciones.models import Carrera, Organizacion
 from apps.personas.duplicados import candidatos
@@ -65,6 +65,9 @@ def _normalizar_persona(d):
         d["nombres"], d["apellido_paterno"], d["apellido_materno"] = separar_nombre(d["nombres"])
     d.pop("nombre_completo", None)
     d.pop("apellidos", None)
+    if d.get("tipo") and not d.get("perfil"):  # en una planilla de personas, «tipo» es el perfil (F24)
+        d["perfil"] = d.pop("tipo")
+    d.pop("tipo", None)
     if d.get("telefono"):
         d["telefono"] = normalizar_telefono(d["telefono"])
     if d.get("correo"):
@@ -231,6 +234,20 @@ def _carrera(org, nombre):
     return next((c for c in org.carreras.all() if _sin_tildes(c.nombre) == clave), None)
 
 
+def _perfiles_activos():
+    """{texto sin tildes: perfil} con el nombre y el código de cada perfil activo. Se arma una vez por carga."""
+    claves = {}
+    for p in PerfilPersona.objects.filter(activo=True):
+        claves.setdefault(_sin_tildes(p.nombre), p)
+        claves.setdefault(_sin_tildes(p.codigo), p)
+        claves.setdefault(_sin_tildes(p.codigo.replace("_", " ")), p)
+    return claves
+
+
+def _perfil(texto, perfiles):
+    return perfiles.get(_sin_tildes(texto)) if texto else None
+
+
 def _avisos_formacion(d, crear_carreras):
     """IG-E9: institución o carrera que no existen (no bloquea)."""
     avisos = []
@@ -282,6 +299,7 @@ def analizar(tipo, filas_crudas, decisiones=None, crear_carreras=False):
     decisiones = decisiones or {}
     vistos, salida = {}, []
     resumen = {"nuevo": 0, "existente": 0, "duplicado": 0, "error": 0}
+    perfiles = _perfiles_activos() if tipo in ("personas", "listado_actividad") else {}
     for i, crudo in enumerate(filas_crudas, start=2):  # 2 = primera fila de datos (la 1 son encabezados)
         vistos["_fila"] = i
         datos, estado, errores, cands, existente = ANALIZADORES[tipo](crudo, vistos)
@@ -291,6 +309,8 @@ def analizar(tipo, filas_crudas, decisiones=None, crear_carreras=False):
             fila["avisos"] = _avisos_formacion(datos, crear_carreras)
             if datos.get("comuna") and not _comuna(datos["comuna"]):
                 fila["avisos"].append(f"La comuna «{datos['comuna']}» no está registrada: no se guardará su dirección.")
+            if datos.get("perfil") and not _perfil(datos["perfil"], perfiles):
+                fila["avisos"].append(f"El perfil «{datos['perfil']}» no existe en Catálogos: la persona se guardará sin ese perfil.")
             if existente:
                 fila["diferencias"] = _diferencias(Persona.objects.get(pk=existente), datos)
                 if not Persona.objects.filter(pk=existente, activo=True).exists():
@@ -441,12 +461,16 @@ def aplicar(lote, usuario):
     n = {"creados": 0, "vinculados": 0, "omitidos": 0, "participaciones": 0}
     estado_part = EstadoParticipacion.objects.get(codigo="interesado")
     documento = _documento_original(lote, usuario)
+    perfiles = _perfiles_activos() if lote.tipo in ("listado_actividad", "personas") else {}
     for f in lote.filas:
         if f["decision"] == "omitir":
             n["omitidos"] += 1
             continue
         if lote.tipo in ("listado_actividad", "personas"):
             obj, creado = _persona(lote, f, usuario)
+            perfil = _perfil(f["datos"].get("perfil"), perfiles)
+            if perfil:  # se suma a los que ya tenga; la reversión no lo quita
+                obj.perfiles.add(perfil)
         elif lote.tipo == "organizaciones":
             obj, creado = _organizacion(lote, f, usuario)
         else:

@@ -52,7 +52,9 @@ class RolParticipacion(Catalogo):
 
     GRUPOS = [("ejecutor", "Equipo ejecutor"), ("asistente", "Asistentes"), ("contacto", "Contacto institucional")]
     grupo = models.CharField(max_length=10, choices=GRUPOS, default="asistente", help_text="Equipo ejecutor (realiza la actividad), asistentes (a quienes va dirigida) o contacto.")
-    campos_extra = ["grupo"]
+    perfil = models.ForeignKey("PerfilPersona", null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                               help_text="Perfil que se agrega a la persona al sumarla con este rol. Ej.: Voluntario → Voluntario o voluntaria.")
+    campos_extra = ["grupo", "perfil"]
 
     class Meta(Catalogo.Meta):
         verbose_name = "rol de participación"

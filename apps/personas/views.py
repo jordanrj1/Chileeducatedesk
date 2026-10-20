@@ -22,7 +22,7 @@ from apps.nucleo.selector import OpcionesVista, campo_seguro, respuesta_elegido
 
 from .duplicados import candidatos
 from .forms import PerfilSensibleForm, PersonaDireccionForm, PersonaForm, PersonaNuevaForm, PersonaRapidaForm
-from .models import Consentimiento, Contacto, PerfilSensible, Persona, PersonaDireccion
+from .models import Consentimiento, Contacto, FichaInvitado, FichaVecino, FichaVoluntario, PerfilSensible, Persona, PersonaDireccion
 from .selector import AYUDA_RESPONSABLE, PERSONAS
 
 
@@ -545,7 +545,9 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
         libro = Workbook()
         hojas = [("Datos", ["Campo", "Valor"], [
             ("Nombres", p.nombres), ("Apellido paterno", p.apellido_paterno), ("Apellido materno", p.apellido_materno), ("RUT", p.rut),
-            ("Nombre social", p.nombre_social), ("Fecha de nacimiento", f"{p.fecha_nacimiento:%d-%m-%Y}" if p.fecha_nacimiento else ""), ("Nacionalidad", p.nacionalidad),
+            ("Nombre social", p.nombre_social), ("Fecha de nacimiento", f"{p.fecha_nacimiento:%d-%m-%Y}" if p.fecha_nacimiento else ""),
+            ("Fecha de nacimiento aproximada", ("Sí" if p.fecha_nacimiento_aproximada else "No") if p.fecha_nacimiento else ""),
+            ("Sexo", p.get_sexo_display()), ("Nacionalidad", p.nacionalidad),
             ("Perfiles", ", ".join(str(x) for x in p.perfiles.all())), ("Nivel educacional", p.get_nivel_educacional_display()),
             ("Situación ocupacional", p.get_situacion_ocupacional_display()), ("Áreas de interés", ", ".join(str(x) for x in p.areas_interes.all())),
             ("Habilidades", p.habilidades), ("Idiomas", p.idiomas), ("Canal preferido", p.canal_preferido or ""),
@@ -555,8 +557,8 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
         hojas.append(("Contactos", ["Tipo", "Valor", "Vigente"], [(c.tipo, c.valor, "Sí" if c.vigente else "No") for c in p.contactos.select_related("tipo")]))
         hojas.append(("Direcciones", ["Tipo", "Dirección", "Vigente"], [(d.get_tipo_display(), d.direccion, "Sí" if d.vigente else "No") for d in p.direcciones.select_related("direccion__comuna")]))
         hojas.append(("Formación", ["Institución", "Carrera", "Estado", "Sede", "Jornada", "Año que cursa", "Asignatura", "Horas comprometidas"], [
-            (f.organizacion, f.carrera or "", f.get_estado_display(), f.sede, f.get_jornada_display(), f.nivel_actual or "", f.asignatura, f.horas_comprometidas or "")
-            for f in p.formaciones.select_related("organizacion", "carrera")]))
+            (f.organizacion, f.carrera or "", f.get_estado_display(), f.sede_institucion or f.sede, f.get_jornada_display(), f.nivel_actual or "", f.asignatura, f.horas_comprometidas or "")
+            for f in p.formaciones.select_related("organizacion", "carrera", "sede_institucion")]))
         hojas.append(("Comunidades", ["Comunidad", "Rol", "Desde", "Hasta", "Vigente"], [
             (m.comunidad, m.get_rol_display(), m.desde or "", m.hasta or "", "Sí" if m.vigente else "No") for m in p.comunidades.select_related("comunidad")]))
         hojas.append(("Consentimientos", ["Tipo", "Otorgado", "Fecha", "Medio", "Revocado el"], [
@@ -565,6 +567,29 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
         hojas.append(("Participaciones", ["Actividad", "Rol", "Estado", "Asistencia"], [
             (x.actividad, x.rol, x.estado, {True: "Asistió", False: "No asistió", None: ""}[x.asistencia]) for x in p.participaciones.select_related("actividad", "rol", "estado")
         ]))
+        si_no = {True: "Sí", False: "No", None: ""}
+        fv = FichaVecino.objects.filter(persona=p).first()
+        if fv:
+            hogar = [("Jefatura de hogar", si_no[fv.jefatura_hogar]), ("Integrantes del hogar", fv.integrantes_hogar or ""), ("", "")]
+            hogar.append(("Cantidad · parentesco · tramo · vive en el hogar", ""))
+            hogar += [("", f"{i.cantidad} · {i.parentesco} · {i.tramo or 'sin tramo'} · {'sí' if i.vive_en_hogar else 'no'}")
+                      for i in fv.integrantes.select_related("parentesco", "tramo")]
+            familiares = [(v.familiar, v.parentesco) for v in p.familiares.select_related("familiar", "parentesco")]
+            if familiares:
+                hogar += [("", ""), ("Familiares vinculados", "Parentesco")] + familiares
+            hojas.append(("Ficha de vecino", ["Campo", "Valor"], hogar))
+        fi = FichaInvitado.objects.filter(persona=p).select_related("tipo", "invitado_por", "organizacion", "actividad").first()
+        if fi:
+            hojas.append(("Ficha de invitado", ["Campo", "Valor"], [
+                ("Tipo de invitado", fi.tipo or ""), ("Invitado o invitada por", fi.invitado_por or ""), ("Organización de procedencia", fi.organizacion or ""),
+                ("Cargo", fi.cargo), ("Motivo de la invitación", fi.motivo), ("Actividad", fi.actividad or ""),
+            ]))
+        fvol = FichaVoluntario.objects.filter(persona=p).select_related("estado").first()
+        if fvol:
+            hojas.append(("Ficha de voluntario", ["Campo", "Valor"], [
+                ("Estado del voluntariado", fvol.estado or ""), ("Fecha de ingreso", f"{fvol.fecha_ingreso:%d-%m-%Y}" if fvol.fecha_ingreso else ""),
+                ("Horas disponibles por semana", fvol.horas_semanales if fvol.horas_semanales is not None else ""), ("Motivación u observaciones", fvol.motivacion),
+            ]))
         if request.user.has_perm("personas.ver_sensibles"):
             hojas.append(("Emergencia", ["Nombre", "Parentesco", "Teléfono"], [(c.nombre, c.parentesco, c.telefono) for c in p.contactos_emergencia.all()]))
             hojas.append(("Verificaciones", ["Tipo", "Fecha", "Vigente hasta"], [(v.tipo, v.fecha, v.vigente_hasta or "") for v in p.verificaciones.all()]))
