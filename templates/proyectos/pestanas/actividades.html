@@ -1,5 +1,5 @@
 {# Qué es: Pestaña Tareas del proyecto: sus tareas con fecha, lugar o comunidad, estado, participantes y asistencia, y «+ Nueva tarea». #}
-{# Dónde se usa: /proyectos/<int:pk>?tab=actividades · Proceso: P11 #}
+{# Dónde se usa: /proyectos/<int:pk>?tab=tareas (también ?tab=actividades, nombre antiguo) · Proceso: P11 #}
 {% load fche %}<div class="fche-seccion"><h2 class="h6">Tareas del proyecto{% if actividades %} <span class="fche-contador">{{ actividades|length }}</span>{% endif %}</h2>
 {% if puede_agregar and perms.actividades.add_actividad %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_tarea }}">+ Nueva tarea</a></div>{% endif %}</div>
 {% if actividades %}<div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Tarea</th><th>Fecha</th><th>Lugar o comunidad</th><th>Estado</th><th class="text-end">Participantes</th><th class="text-end">Asistieron</th></tr></thead>

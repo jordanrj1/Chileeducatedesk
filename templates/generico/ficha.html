@@ -18,7 +18,7 @@
     </div>
     <div class="fche-ficha-cabecera__acciones">
       {% block acciones %}{% endblock %}
-      {% if puede_editar and url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">{% icono "editar" 15 %}Editar</a>{% endif %}
+      {% if puede_editar and url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">{% icono "editar" 15 %}{{ texto_editar|default:"Editar" }}</a>{% endif %}
       {% for etiqueta, url in acciones_extra|slice:":1" %}<a class="btn btn-outline-secondary btn-sm" href="{{ url }}">{{ etiqueta }}</a>{% endfor %}
       {% if acciones_extra|length > 1 %}
       <div class="dropdown">

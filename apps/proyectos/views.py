@@ -111,7 +111,7 @@ class ProyectoFicha(FichaBase):
         ("organizaciones", "Organizaciones", "generico/_hijos.html"),
         ("comunidades", "Comunidades", "generico/_hijos.html", "comunidades.view_comunidad"),
         ("beneficiarios", "Beneficiarios", "proyectos/pestanas/beneficiarios.html"),
-        ("actividades", "Tareas", "proyectos/pestanas/actividades.html", "actividades.view_actividad"),  # F25: la clave se conserva
+        ("tareas", "Tareas", "proyectos/pestanas/actividades.html", "actividades.view_actividad"),  # F25: la clave se conserva
         ("postulacion", "Postulación", "generico/_hijos.html"),
         ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
         ("documentos", "Documentos", "proyectos/pestanas/documentos.html", "documentos.view_documento"),
@@ -188,7 +188,9 @@ class ProyectoFicha(FichaBase):
         ctx["poblacion"] = self.object.poblacion_objetivo
         return ctx
 
-    def ctx_actividades(self):
+    alias_pestanas = {"actividades": "tareas"}  # «?tab=actividades» de enlaces antiguos abre las tareas
+
+    def ctx_tareas(self):
         """Tareas del proyecto (actividades con proyecto) con su fecha y lugar vigentes, comunidades, participantes y asistencia.
         Cuatro consultas, sin importar cuántas tareas haya."""
         from apps.actividades.models import ActividadComunidad, AgendaActividad

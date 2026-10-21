@@ -123,8 +123,9 @@ class ActividadLista(ListaBase):
         Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoActividad), grupo="Qué"),
         Filtro("proyecto", "Proyecto", "proyecto_id", lambda: [(str(p.pk), p.nombre) for p in Proyecto.objects.all()], grupo="Qué"),
         # F25: las tareas de proyectos se gestionan en su proyecto; aquí solo aparecen con esta casilla (o al filtrar por proyecto)
-        Filtro("tareas", "Tareas de proyectos", "", entrada="casilla", texto_casilla="Incluir tareas de proyectos", grupo="Qué",
-               aplicar=lambda qs, v: qs),
+        Filtro("tareas", "Qué ver", "", lambda: [("no", "Solo actividades sueltas"), ("solo", "Solo tareas de proyectos")],
+               aplicar=lambda qs, v: qs.filter(proyecto__isnull=True) if v == "no" else (qs.filter(proyecto__isnull=False) if v == "solo" else qs),
+               principal=True, todos="Actividades y tareas"),
         Filtro("incompleta", "Incompletas", "", entrada="casilla", texto_casilla="Solo incompletas", grupo="Qué",
                aplicar=lambda qs, v: qs.filter(pk__in=Actividad.objects.incompletas().values("pk")) if v == "1" else qs),
         # Organización reúne a las instituciones educativas (agrupadas por tipo); «?institucion=» sigue funcionando
@@ -147,12 +148,6 @@ class ActividadLista(ListaBase):
             .prefetch_related(Prefetch("agendas", queryset=_agenda_vigente_qs(), to_attr="agenda_v"))
             .distinct()
         )
-
-    def filtrar(self, qs):
-        qs = super().filtrar(qs)
-        if self.request.GET.get("tareas") != "1" and not self.request.GET.get("proyecto", "").strip():
-            qs = qs.filter(proyecto__isnull=True)
-        return qs
 
 
 class ActividadExportar(ActividadLista):
@@ -264,7 +259,7 @@ class TareaNueva(Permiso403Mixin, CreateView):
         ctx = super().get_context_data(**kw)
         url = self.proyecto.get_absolute_url()
         ctx.update(titulo="Nueva tarea", volver_url=f"{url}?tab=actividades",
-                   breadcrumb=[("Proyectos", "/proyectos"), (str(self.proyecto), url), ("Tareas", f"{url}?tab=actividades")],
+                   breadcrumb=[("Proyectos", "/proyectos"), (str(self.proyecto), url), ("Tareas", f"{url}?tab=tareas")],
                    bajada=f"Tarea del proyecto «{self.proyecto}». Los campos marcados con * son obligatorios.")
         return ctx
 
@@ -353,8 +348,9 @@ class ActividadFicha(FichaBase):
         p = self.object.proyecto
         if p:  # F25: una actividad con proyecto es una tarea del proyecto
             url = p.get_absolute_url()
-            ctx["breadcrumb"] = [("Proyectos", "/proyectos"), (str(p), url), ("Tareas", f"{url}?tab=actividades")]
+            ctx["breadcrumb"] = [("Proyectos", "/proyectos"), (str(p), url), ("Tareas", f"{url}?tab=tareas")]
             ctx["tipo_ficha"] = "Tarea"
+            ctx["texto_editar"] = "Editar tarea"
         return ctx
 
     def acciones_extra(self):
@@ -512,6 +508,14 @@ class ActividadFicha(FichaBase):
 
 
 # --- Acciones ---------------------------------------------------------------------
+class TareaFicha(ActividadFicha):
+    """La ficha de una tarea vista dentro de su proyecto (/proyectos/<id>/tareas/<id>): la misma ficha de actividad,
+    pero solo si la tarea pertenece a ese proyecto."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(proyecto_id=self.kwargs["proyecto_pk"])
+
+
 class _AccionActividad(Permiso403Mixin, View):
     def actividad(self, pk):
         return get_object_or_404(Actividad.objects.select_related("estado", "modalidad", "responsable"), pk=pk)

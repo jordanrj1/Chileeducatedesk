@@ -381,7 +381,10 @@ class FichaBase(Permiso403Mixin, DetailView):
     def pestana_actual(self):
         claves = [p[0] for p in self.pestanas_visibles()]
         t = self.request.GET.get("tab", claves[0] if claves else "")
+        t = self.alias_pestanas.get(t, t)  # un enlace con el nombre antiguo de la pestaña sigue funcionando
         return t if t in claves else (claves[0] if claves else "")
+
+    alias_pestanas = {}  # nombre antiguo -> clave actual de la pestaña
 
     pestanas_segunda_fase = {}  # pestaña -> módulo de segunda fase que la habilita
 

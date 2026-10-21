@@ -72,6 +72,8 @@ class Actividad(models.Model):
         return self.nombre
 
     def get_absolute_url(self):
+        if self.proyecto_id:  # una tarea se abre dentro de su proyecto: /proyectos/<id>/tareas/<id>
+            return reverse("actividades:tarea_ficha", args=[self.proyecto_id, self.pk])
         return reverse("actividades:ficha", args=[self.pk])
 
     @property

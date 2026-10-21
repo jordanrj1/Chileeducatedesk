@@ -50,7 +50,8 @@ def test_nueva_tarea_en_un_paso_queda_programada_con_comunidad(cg, proyecto, com
     html = cg.get(f"/proyectos/{proyecto.pk}?tab=actividades").content.decode()
     assert "Tareas" in html and "Visita a la villa" in html and "+ Nueva tarea" in html and comunidad.nombre in html
     ficha = cg.get(t.get_absolute_url()).content.decode()
-    assert "Tarea del proyecto" in ficha and f'href="{proyecto.get_absolute_url()}?tab=actividades"' in ficha
+    assert t.get_absolute_url() == f"/proyectos/{proyecto.pk}/tareas/{t.pk}"  # la tarea se abre dentro de su proyecto
+    assert "Tarea del proyecto" in ficha and f'href="{proyecto.get_absolute_url()}?tab=tareas"' in ficha and "Editar tarea" in ficha
 
 
 def test_tarea_sin_hora_no_se_guarda_y_no_queda_a_medias(cg, proyecto):
@@ -58,12 +59,17 @@ def test_tarea_sin_hora_no_se_guarda_y_no_queda_a_medias(cg, proyecto):
     assert r.status_code == 200 and not Actividad.objects.exists()
 
 
-def test_tareas_fuera_de_actividades_salvo_filtro_y_en_calendario(cg, proyecto, crear_actividad):
+def test_actividades_muestra_actividades_y_tareas_con_filtro_y_calendario(cg, proyecto, crear_actividad):
+    """/actividades muestra las actividades sueltas y las tareas de proyectos; «Qué ver» separa unas de otras."""
     _tarea(cg, proyecto)
     crear_actividad("Charla suelta")
     html = cg.get("/actividades").content.decode()
-    assert "Charla suelta" in html and "Visita a la villa" not in html
-    assert "Visita a la villa" in cg.get("/actividades?tareas=1").content.decode()
+    assert "Charla suelta" in html and "Visita a la villa" in html
+    solo_sueltas = cg.get("/actividades?tareas=no").content.decode()
+    assert "Charla suelta" in solo_sueltas and "Visita a la villa" not in solo_sueltas
+    solo_tareas = cg.get("/actividades?tareas=solo").content.decode()
+    assert "Visita a la villa" in solo_tareas and "Charla suelta" not in solo_tareas
+    assert "Visita a la villa" in cg.get(f"/proyectos/{proyecto.pk}?tab=actividades").content.decode()  # enlace antiguo sigue sirviendo
     eventos = cg.get(f"/calendario/eventos?start={FUTURO}&end={FUTURO + timedelta(days=1)}").json()
     assert [e["title"] for e in eventos] == ["Tarea · Huertos Ficticios · Visita a la villa"]
 
