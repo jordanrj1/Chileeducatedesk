@@ -293,5 +293,33 @@
       aplicar();
     });
   }
-  document.addEventListener("DOMContentLoaded", function () { campoCondicional(document); });
+  // Más condiciones: según una casilla marcada o según si otro campo está vacío; y la edad calculada desde la fecha.
+  function camposSegun(raiz) {
+    var r = raiz || document;
+    function enlazar(sel, atributo, regla) {
+      Array.prototype.forEach.call(r.querySelectorAll(sel), function (el) {
+        var form = el.form || document, origen = form.querySelector("[name='" + el.getAttribute(atributo) + "']");
+        var caja = el.closest(".fche-campo") || el.parentNode;
+        if (!origen || !caja) return;
+        function aplicar() { caja.hidden = !regla(origen); }
+        origen.addEventListener("change", aplicar); origen.addEventListener("input", aplicar); aplicar();
+      });
+    }
+    enlazar("[data-mostrar-si-marcado]", "data-mostrar-si-marcado", function (o) { return o.checked; });
+    enlazar("[data-ocultar-si-marcado]", "data-ocultar-si-marcado", function (o) { return !o.checked; });
+    enlazar("[data-mostrar-si-vacio]", "data-mostrar-si-vacio", function (o) { return !o.value; });
+    Array.prototype.forEach.call(r.querySelectorAll("input[data-edad]"), function (el) {
+      var aviso = document.createElement("div"); aviso.className = "form-text"; aviso.setAttribute("aria-live", "polite");
+      el.insertAdjacentElement("afterend", aviso);
+      function calcular() {
+        var f = el.value ? new Date(el.value + "T00:00:00") : null, hoy = new Date();
+        if (!f || isNaN(f)) { aviso.textContent = ""; return; }
+        var edad = hoy.getFullYear() - f.getFullYear(), m = hoy.getMonth() - f.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < f.getDate())) edad--;
+        aviso.textContent = edad >= 0 ? "Tiene " + edad + (edad === 1 ? " año." : " años.") : "La fecha está en el futuro.";
+      }
+      el.addEventListener("change", calcular); el.addEventListener("input", calcular); calcular();
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () { campoCondicional(document); camposSegun(document); });
 })();

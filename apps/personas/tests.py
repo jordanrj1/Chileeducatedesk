@@ -329,3 +329,14 @@ def test_cargos_y_vinculos_reune_comunidad_proyecto_y_estudios(cg, universidad):
     assert f'href="{proy.get_absolute_url()}"' in html and "responsable" in html
     org = cg.get(f"/organizaciones/{universidad.pk}?tab=personas").content.decode()
     assert "Carrera Inventada" in org and f'href="{p.get_absolute_url()}"' in org
+
+
+def test_formulario_documento_y_edad_cambian_segun_lo_escrito(cg):
+    """La ficha completa ofrece «No tiene RUT chileno» (muestra el documento extranjero y oculta el RUT) y oculta la edad
+    aproximada cuando hay fecha de nacimiento; una persona extranjera se guarda con su pasaporte."""
+    html = cg.get("/personas/nueva?modo=completa").content.decode()
+    assert 'name="sin_rut"' in html and 'data-mostrar-si-marcado="sin_rut"' in html and 'data-mostrar-si-vacio="fecha_nacimiento"' in html
+    r = cg.post("/personas/nueva?modo=completa", {"nombres": "Ana", "apellido_paterno": "Extranjera", "sin_rut": "on",
+                                                  "tipo_documento": "pasaporte", "numero_documento": "ab123456"})
+    p = Persona.objects.get(nombres="Ana")
+    assert r.status_code == 302 and p.numero_documento == "AB123456" and p.rut_numero is None

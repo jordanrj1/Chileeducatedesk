@@ -32,7 +32,7 @@ CAMPOS_PERFIL = ["nombre_social", "fecha_nacimiento", "nacionalidad", "perfiles"
 
 SECCIONES_PERSONA = [
     ("Identificación", "Solo el nombre es obligatorio; el resto se puede completar después.",
-     ["nombres", "apellido_paterno", "apellido_materno", "nombre_social", "rut", "tipo_documento", "numero_documento", "fecha_nacimiento", "edad",
+     ["nombres", "apellido_paterno", "apellido_materno", "nombre_social", "rut", "sin_rut", "tipo_documento", "numero_documento", "fecha_nacimiento", "edad",
       "sexo", "nacionalidad"]),
     ("Contacto", "Un dato basta para registrarla.", ["correo", "telefono", "canal_preferido"]),
     ("Perfil y ocupación", "Qué es esta persona para la Fundación y a qué se dedica. Sirve para filtrar el banco de personas.",
@@ -55,6 +55,8 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
     Los perfiles con ficha propia (estudiante, vecino…) se pueden mostrar aparte como «Tipo de registro» (ver `separar_tipos`)."""
 
     rut = CampoRut(label="RUT")
+    sin_rut = forms.BooleanField(required=False, label="No tiene RUT chileno (por ejemplo, una persona extranjera)",
+                                 help_text="Al marcarlo se pide el tipo y el número de su documento.")
     edad = edad_aproximada()
     secciones = SECCIONES_PERSONA
 
@@ -110,6 +112,19 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
             self.fields["fecha_nacimiento"].help_text = "Fecha aproximada: se calculó desde la edad. Si sabes la fecha exacta, escríbela."
         if "sexo" in self.fields:
             self.fields["sexo"].help_text = "Opcional. La identidad de género se registra aparte, en los datos sensibles 🔒."
+        # Campos que cambian según lo escrito: el RUT o el documento extranjero; la edad solo si falta la fecha
+        if "sin_rut" in self.fields:
+            if self.instance.pk and self.instance.numero_documento and not self.instance.rut_numero:
+                self.initial["sin_rut"] = True
+            marca = self.add_prefix("sin_rut")
+            if "rut" in self.fields:
+                self.fields["rut"].widget.attrs["data-ocultar-si-marcado"] = marca
+            for c in ("tipo_documento", "numero_documento"):
+                if c in self.fields:
+                    self.fields[c].widget.attrs["data-mostrar-si-marcado"] = marca
+        if "edad" in self.fields and "fecha_nacimiento" in self.fields:
+            self.fields["edad"].widget.attrs["data-mostrar-si-vacio"] = self.add_prefix("fecha_nacimiento")
+            self.fields["fecha_nacimiento"].widget.attrs["data-edad"] = "1"
         self.tipos = []  # perfiles con ficha propia, cuando se muestran aparte (separar_tipos)
 
     def separar_tipos(self):
