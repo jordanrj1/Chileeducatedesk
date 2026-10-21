@@ -463,7 +463,7 @@ def test_AT_E8_aviso_al_agregar_quien_excede(cg, crear_actividad, gestor, lugar,
     a = crear_actividad("Chica", estado="planificada")
     servicios.programar(a, gestor, FUT, time(10), time(11), lugar, None)
     Participacion.objects.create(actividad=a, persona=crear_persona(), rol=rol("participante"), estado=estado_part("confirmado"))
-    r = cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": crear_persona().pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk}, follow=True)
+    r = cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": crear_persona().pk, "rol": rol("participante").pk, "estado": estado_part("confirmado").pk}, follow=True)
     assert "Ahora hay 2 personas para una capacidad de 1" in r.content.decode()
 
 
@@ -557,9 +557,9 @@ def test_RE_E3_asistencia_tardia_despues_de_finalizar(cg, crear_actividad, gesto
     assert p.asistencia is True and Auditoria.objects.filter(accion="asistencia_tardia").exists()
     # en una realizada solo entra la «persona que llegó»
     nueva = crear_persona("Tarde")
-    cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": nueva.pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk})
+    cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": nueva.pk, "rol": rol("participante").pk, "estado": estado_part("confirmado").pk})
     assert not a.participaciones.filter(persona=nueva).exists()
-    cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": nueva.pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk, "llego": "1"})
+    cg.post(f"/actividades/{a.pk}/participantes/nuevo", {"persona": nueva.pk, "rol": rol("participante").pk, "estado": estado_part("confirmado").pk, "llego": "1"})
     assert a.participaciones.get(persona=nueva).asistencia is True and Auditoria.objects.filter(accion="registro_tardio").exists()
 
 

@@ -112,7 +112,7 @@ def test_crear_persona_rapida_avisa_parecida_y_deja_elegida(cg, persona):
     elegido = json.loads(r["HX-Trigger"])["fche:elegido"]
     nueva = Persona.objects.get(pk=elegido["valor"])
     assert elegido["campo"] == "id_responsable" and elegido["texto"] == "Ana María Pérez"
-    assert "es la sobrina" in nueva.observaciones and nueva.estado_registro.codigo == "activo" and nueva.contactos.count() == 1
+    assert "es la sobrina" in nueva.observaciones and nueva.estado_registro.codigo == "incompleto" and nueva.contactos.count() == 1
     from apps.documentos.origen import origenes_de
 
     assert origenes_de(nueva).count() == 1

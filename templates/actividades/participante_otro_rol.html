@@ -1,0 +1,24 @@
+{# Qué es: Confirmar que se agrega a una persona que ya participa en la actividad con otro rol (F25 E3). #}
+{# Dónde se usa: /actividades/<int:pk>/participantes/usar/<int:persona_pk> · Proceso: P3 #}
+{% extends "base.html" %}
+{% load fche %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">{{ titulo }}</li>{% endblock %}
+{% block contenido %}
+<header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">{{ titulo }}</h1></div></header>
+<form method="post" class="fche-form fche-tarjeta" novalidate>
+  {% csrf_token %}
+  {% for nombre, valor in campos.items %}{% if valor %}<input type="hidden" name="{{ nombre }}" value="{{ valor }}">{% endif %}{% endfor %}
+  <div class="fche-form__cuerpo">
+    <div class="alert alert-warning d-flex gap-2" role="alert">{% icono "error" 18 %}<div>{{ aviso }}</div></div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="otro_rol" value="1" id="otro_rol" required>
+      <label class="form-check-label" for="otro_rol">Sí, agregarla también con este rol</label>
+    </div>
+  </div>
+  <div class="fche-form__acciones">
+    <button type="submit" class="btn btn-primary">Agregar</button>
+    <a href="{{ volver_url }}" class="btn btn-outline-secondary volver">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

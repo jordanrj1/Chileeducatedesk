@@ -143,7 +143,7 @@ def test_confirmar_crea_personas_contactos_participacion_y_origen(cg, actividad,
     carla = Persona.objects.get(nombres="Carla")
     assert carla.estado_registro.codigo == "incompleto" and not carla.contactos.exists()
     p = actividad.participaciones.get(persona=ana)
-    assert p.rol.codigo == "estudiante" and p.estado.codigo == "interesado"
+    assert p.rol.codigo == "estudiante" and p.estado.codigo == "confirmado"
     # origen y evidencia
     from apps.documentos.origen import origenes_de
 

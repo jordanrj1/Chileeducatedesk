@@ -329,4 +329,6 @@
     });
   }
   document.addEventListener("DOMContentLoaded", function () { campoCondicional(document); camposSegun(document); });
+  // La ventana «+ Crear…» llega por HTMX: sus campos condicionales (RUT o documento extranjero) se enlazan al llegar
+  document.addEventListener("htmx:afterSwap", function (e) { if (e.target.id === "modal-rapido-contenido") camposSegun(e.target); });
 })();

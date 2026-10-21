@@ -20,9 +20,9 @@ from apps.nucleo.vistas_base import (
 
 from apps.nucleo.selector import OpcionesVista, campo_seguro, respuesta_elegido
 
-from .duplicados import candidatos
+from .duplicados import candidatos_ficha_rapida
 from .forms import PerfilSensibleForm, PersonaDireccionForm, PersonaForm, PersonaNuevaForm, PersonaRapidaForm
-from .models import Consentimiento, Contacto, FichaInvitado, FichaVecino, FichaVoluntario, PerfilSensible, Persona, PersonaDireccion
+from .models import Consentimiento, FichaInvitado, FichaVecino, FichaVoluntario, PerfilSensible, Persona, PersonaDireccion
 from .selector import AYUDA_RESPONSABLE, PERSONAS
 
 
@@ -181,13 +181,9 @@ class PersonaNueva(Permiso403Mixin, CreateView):
 
     def form_valid(self, form):
         d = form.cleaned_data
-        rut = d.get("rut")
         cands = None
         if not self.request.POST.get("confirmar_duplicado") or not self.request.POST.get("nota_distincion", "").strip():
-            cands = candidatos(
-                d["nombres"], d.get("apellido_paterno", ""), d.get("apellido_materno", ""), rut[0] if rut else None, d.get("correo", ""), d.get("telefono", ""),
-                documento=(d.get("tipo_documento"), d.get("numero_documento")),
-            )
+            cands = candidatos_ficha_rapida(d)
             if cands:
                 falta_nota = bool(self.request.POST.get("confirmar_duplicado"))
                 return self.render_to_response(self.get_context_data(form=form, candidatos=cands, falta_nota=falta_nota))
@@ -198,18 +194,17 @@ class PersonaNueva(Permiso403Mixin, CreateView):
             if nota:  # PE-E2: qué la distingue de la otra persona con el mismo nombre
                 persona.observaciones = (f"Se distingue de otra ficha parecida: {nota}\n" + persona.observaciones).strip()
             tiene_contacto = bool(d.get("correo") or d.get("telefono"))
-            if not persona.estado_registro_id:
+            if self.modo() == "rapida":  # F25 E1: la ficha rápida queda «incompleto», para completarla después
+                persona.estado_registro = EstadoRegistro.objects.filter(codigo="incompleto").first()
+            elif not persona.estado_registro_id:
                 codigo = "activo" if (persona.apellido_paterno and tiene_contacto) else "incompleto"
                 persona.estado_registro = EstadoRegistro.objects.filter(codigo=codigo).first()
             persona.save()
             form.save_m2m()  # perfiles (también los «Tipo de registro») y áreas de interés (F22)
-            from apps.nucleo.models import TipoContacto
-
-            if d.get("correo"):
-                Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=d["correo"], principal=True)
-            if d.get("telefono"):
-                Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"], principal=not d.get("correo"))
             self.fichas.guardar(persona)  # las secciones de los tipos marcados
+            from .servicios import completar_ficha_rapida
+
+            completar_ficha_rapida(persona, d)  # contactos y, en la ficha rápida, la comuna donde vive (si la ficha de vecino no dio la dirección)
             from .relaciones import guardar_relaciones
 
             guardar_relaciones(self.relaciones, persona, self.request.user)
@@ -762,7 +757,7 @@ class PersonaCrearRapida(Permiso403Mixin, View):
         return {
             "form": form, "campo_id": campo_seguro(datos.get("campo")), "filtros": PERSONAS.limpiar_filtros(datos), "accion": reverse("personas:crear_rapida"),
             "titulo": "Crear persona", "aviso_parecido": "Esta persona podría ya existir.", "texto_usar": "Usar esta persona",
-            "texto_crear_igual": "Es otra persona: crear", "pide_nota": True, **extra,
+            "texto_crear_igual": "Es otra persona: crear", "pide_nota": True, "por_secciones": True, **extra,
         }
 
     def get(self, request):
@@ -784,7 +779,7 @@ class PersonaCrearRapida(Permiso403Mixin, View):
         nota = request.POST.get("nota_distincion", "").strip()[:200]
         confirmar = bool(request.POST.get("confirmar_duplicado"))
         if not (confirmar and nota):
-            cands = candidatos(d["nombres"], d.get("apellido_paterno", ""), d.get("apellido_materno", ""), None, d.get("correo", ""), d.get("telefono", ""))
+            cands = candidatos_ficha_rapida(d)
             if cands:
                 personas = [p for p, _ in cands]
                 prefetch_related_objects(personas, "contactos")
@@ -792,7 +787,7 @@ class PersonaCrearRapida(Permiso403Mixin, View):
                 elegibles = set(PERSONAS.base(**filtros).filter(pk__in=[p.pk for p in personas]).values_list("pk", flat=True))
                 lista = [(p, razones, p.pk in elegibles) for p, razones in cands]
                 return render(request, self.plantilla, self._ctx(request.POST, form, candidatos=lista, falta_nota=confirmar, nota=nota))
-        persona = crear_persona_rapida(d, request.user, nota)
+        persona = crear_persona_rapida(form, request.user, nota)
         return respuesta_elegido(request.POST.get("campo"), persona.pk, PERSONAS.texto(persona), "Persona creada y elegida. Completa su ficha cuando puedas.")
 
 

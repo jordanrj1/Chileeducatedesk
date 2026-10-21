@@ -295,11 +295,12 @@ def test_agregar_participante_y_no_repetir(cg, actividad, crear_persona, rol):
     datos = {"persona": p.pk, "rol": rol("voluntario").pk, "estado": 1}
     from apps.nucleo.models import EstadoParticipacion
 
-    datos["estado"] = EstadoParticipacion.objects.get(codigo="invitado").pk
+    datos["estado"] = EstadoParticipacion.objects.get(codigo="confirmado").pk
     assert cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", datos).status_code == 302
     assert cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", datos).status_code == 400
     otro_rol = {**datos, "rol": rol("tallerista").pk}
-    assert cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", otro_rol).status_code == 302  # misma persona, otro rol
+    assert cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", otro_rol).status_code == 400  # misma persona, otro rol: pide confirmar
+    assert cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {**otro_rol, "otro_rol": "on"}).status_code == 302
     assert actividad.participaciones.count() == 2
 
 
@@ -566,7 +567,7 @@ def test_agregar_persona_que_llego(cg, crear_actividad, crear_persona, rol, esta
     actividad = crear_actividad("En curso", estado="confirmada")
     assert "+ Agregar persona que llegó" in cg.get(f"/actividades/{actividad.pk}?tab=asistencia").content.decode()
     p = crear_persona("Llegó")
-    r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("participante").pk, "estado": estado_part("invitado").pk, "llego": "1"})
+    r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("participante").pk, "estado": estado_part("confirmado").pk, "llego": "1"})
     part = actividad.participaciones.get(persona=p)
     assert r.status_code == 302 and "tab=asistencia" in r["Location"] and part.asistencia is True and part.estado.codigo == "asistio"
     cg.post(f"/actividades/{actividad.pk}/participantes/rapido", {"nombres": "Nueva", "apellido_paterno": "Llegada", "rol": rol("participante").pk, "llego": "1"})

@@ -121,7 +121,7 @@ def test_persona_existente_con_grupo_sin_duplicar_vinculos(cg, crear_actividad, 
     ComunidadMiembro.objects.create(persona=persona, comunidad=comunidad, rol="dirigente")
     t = crear_actividad("Tarea")
     r = cg.post(f"/actividades/{t.pk}/participantes/nuevo", {
-        "persona": persona.pk, "rol": rol("voluntario").pk, "estado": estado_part("invitado").pk,
+        "persona": persona.pk, "rol": rol("voluntario").pk, "estado": estado_part("confirmado").pk,
         "organizacion": junta.pk, "cargo": "dirigente", "comunidad": comunidad.pk, "llego": "1"})
     assert r.status_code == 302
     part = Participacion.objects.get(persona=persona, actividad=t)

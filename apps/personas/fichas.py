@@ -112,6 +112,18 @@ class DatosVecinoForm(BootstrapMixin, forms.Form):
         persona.save()
 
 
+def _datos_vecino(datos, persona, base):
+    """Edad y sexo del vecino: solo los que el formulario de la persona no pide (la ficha rápida ya trae el sexo)."""
+    faltan = [c for c in ("edad", "sexo") if base is None or c not in base.fields]
+    if not faltan:
+        return None
+    form = DatosVecinoForm(datos, prefix="vec-per", persona=persona)
+    for c in ("edad", "sexo"):
+        if c not in faltan:
+            form.fields.pop(c)
+    return form
+
+
 class FichaVecinoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = FichaVecino
@@ -377,7 +389,7 @@ class SeccionVecino(Seccion):
         ficha = _uno_a_uno(persona, "ficha_vecino")
         return {
             "residencia": None if self.residencia else ResidenciaForm(datos, prefix="vec", usuario=usuario),
-            "datos": DatosVecinoForm(datos, prefix="vec-per", persona=persona) if base is None or "sexo" not in base.fields else None,
+            "datos": _datos_vecino(datos, persona, base),
             "hogar": FichaVecinoForm(datos, prefix="vec-hog", instance=ficha),
             "integrantes": IntegrantesFormSet(datos, prefix="vec-int", instance=ficha or FichaVecino()),
             "familiares": FamiliaresFormSet(datos, prefix="vec-fam", instance=persona if persona is not None and persona.pk else Persona(),

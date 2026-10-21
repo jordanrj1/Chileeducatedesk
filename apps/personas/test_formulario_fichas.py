@@ -65,7 +65,7 @@ def test_vecino_con_direccion_comunidad_hogar_y_familiar(cg, comuna, crear_perso
     datos = {
         "modo": "rapida", "nombres": "Rosa", "apellido_paterno": "Vecina", "perfiles": [_perfil("vecino")],
         "vec-comuna": comuna.pk, "vec-calle": "Pasaje Inventado", "vec-numero": "123", "vec-rol_comunidad": "integrante",
-        "vec-nueva_comunidad": "Vecinos del Pasaje Inventado", "vec-per-edad": 67, "vec-per-sexo": "mujer",
+        "vec-nueva_comunidad": "Vecinos del Pasaje Inventado", "vec-per-edad": 67, "sexo": "mujer",
         "vec-hog-jefatura_hogar": "True", "vec-hog-integrantes_hogar": 3,
         # como el navegador: las filas sin tocar llegan con «vive en el hogar» marcado y la cantidad vacía
         **_filas("vec-int", [{"cantidad": 2, "parentesco": hijo.pk, "tramo": ninez.pk, "vive_en_hogar": "on"}] + [{"cantidad": "", "vive_en_hogar": "on"}] * 2),

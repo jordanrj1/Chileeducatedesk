@@ -1,4 +1,4 @@
-{# Qué es: Formulario para agregar un participante; si no existe, ofrece crearlo ahí mismo. #}
+{# Qué es: Formulario para agregar un participante (si no existe, se crea con «+ Crear persona» del buscador). #}
 {# Dónde se usa: /actividades/<int:pk>/participantes/nuevo · Proceso: P3 #}
 {% extends "generico/formulario.html" %}
-{% block extra_form %}{% if llego %}<input type="hidden" name="llego" value="1"><p class="small text-muted mt-2">Quedará marcada como asistente.</p>{% endif %}{% if rapida_url and perms.personas.add_persona %}<p class="small mt-3 mb-3 p-3 rounded-3 border bg-light-subtle">¿No encuentras a la persona? <a href="{{ rapida_url }}">Créala aquí mismo</a> y quedará agregada.</p>{% endif %}{% endblock %}
+{% block extra_form %}{% if llego %}<input type="hidden" name="llego" value="1"><p class="small text-muted mt-2">Quedará marcada como asistente.</p>{% endif %}{% endblock %}

@@ -7,9 +7,9 @@ from apps.comunidades.selector import COMUNIDADES
 from apps.lugares.campos import LugarChoiceField
 from apps.lugares.models import Lugar
 from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores, preparar_tramos
-from apps.nucleo.rut import CampoRut
 from apps.nucleo.models import AreaTematica, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion
 from apps.organizaciones.selector import ORGANIZACIONES
+from apps.personas.forms import CAMPOS_FICHA_RAPIDA, SECCIONES_FICHA_RAPIDA, FichaRapidaForm
 from apps.personas.models import Persona
 from apps.personas.selector import AYUDA_RESPONSABLE, PERSONAS
 from apps.proyectos.models import Proyecto
@@ -194,11 +194,41 @@ class EstadoForm(BootstrapMixin, forms.Form):
 ETIQUETAS_PARTICIPACION = {"rol": "Rol en la actividad", "estado": "Estado de la participación", "horas": "Horas"}
 AYUDAS_PARTICIPACION = {
     "rol": "Ej.: Tallerista (parte del equipo) o Participante (asiste).",
-    "estado": "Ej.: Invitado → Confirmado → Asistió.",
+    "estado": "Inscrito al agregarla; después, Asistió o No asistió. Si no puede venir: Canceló. Si no hay cupo: En lista de espera.",
     "observaciones": "Ej.: llega 15 minutos tarde por su trabajo.",
     "comunidad": "La comunidad de la que viene, si corresponde. Ej.: Vecinos de la Etapa 2.",
     "horas": "Si se deja vacío, se usa la duración de la programación. Ej.: 4.",
 }
+
+
+# F25 E2: al agregar o editar una participación se elige entre estos cinco. Invitado, interesado, disponible y rechazó
+# los ponen las invitaciones; «Registro erróneo», «Quitar». Un registro antiguo conserva el suyo.
+ESTADOS_PARA_ELEGIR = ("confirmado", "asistio", "no_asistio", "cancelo", "lista_espera")
+
+
+def estados_para_elegir(actual_id=None):
+    """Los cinco estados que se eligen a mano (activos) y, si un registro antiguo tiene otro, también ese."""
+    from django.db.models import Q
+
+    return EstadoParticipacion.objects.filter(Q(activo=True, codigo__in=ESTADOS_PARA_ELEGIR) | Q(pk=actual_id or 0))
+
+
+def estado_inicial(llego=False):
+    """Estado de toda participación nueva: «Inscrito» (código confirmado), o «Asistió» si se marca que llegó."""
+    return EstadoParticipacion.objects.get(codigo="asistio" if llego else "confirmado")
+
+
+def roles_en_actividad(actividad, persona, sin_rol=None):
+    """Nombres de los roles con que la persona ya participa en la actividad (sin contar los registros erróneos ni `sin_rol`)."""
+    qs = Participacion.objects.filter(actividad=actividad, persona=persona).exclude(estado__codigo="registro_erroneo")
+    if sin_rol is not None:
+        qs = qs.exclude(rol=sin_rol)
+    return [n.lower() for n in qs.order_by("rol__orden", "rol__nombre").values_list("rol__nombre", flat=True).distinct()]
+
+
+def aviso_otro_rol(persona, roles, rol):
+    lista = roles[0] if len(roles) == 1 else ", ".join(roles[:-1]) + " y " + roles[-1]
+    return f"{persona} ya participa como {lista}. Marca la casilla para agregarla también como {rol.nombre.lower()}."
 
 
 class GrupoMixin(forms.Form):
@@ -223,7 +253,8 @@ class GrupoMixin(forms.Form):
 
 class ParticipanteNuevoForm(GrupoMixin, BootstrapMixin, forms.ModelForm):
     persona = selector_persona()
-    secciones = [("Participante", "", ["persona", "rol", "estado", "observaciones"]), GrupoMixin.SECCION_GRUPO]
+    otro_rol = forms.BooleanField(required=False, label="Sí, agregarla también con este rol")
+    secciones = [("Participante", "", ["persona", "rol", "otro_rol", "estado", "observaciones"]), GrupoMixin.SECCION_GRUPO]
 
     class Meta:
         model = Participacion
@@ -235,17 +266,42 @@ class ParticipanteNuevoForm(GrupoMixin, BootstrapMixin, forms.ModelForm):
         super().__init__(*a, **kw)
         self.actividad = actividad
         self.fields["rol"].queryset = RolParticipacion.objects.filter(activo=True)
-        self.fields["estado"].queryset = EstadoParticipacion.objects.filter(activo=True)
-        self.fields["estado"].initial = EstadoParticipacion.objects.filter(codigo="invitado").first()
+        self.fields["estado"].queryset = estados_para_elegir()
+        self.fields["estado"].initial = EstadoParticipacion.objects.filter(codigo="confirmado").first()
+        if not self.is_bound:
+            del self.fields["otro_rol"]  # la casilla aparece solo si la persona ya participa con otro rol (F25 E3)
 
     def clean(self):
         d = super().clean()
-        if d.get("persona") and d.get("rol") and Participacion.objects.filter(actividad=self.actividad, persona=d["persona"], rol=d["rol"]).exists():
+        persona, rol = d.get("persona"), d.get("rol")
+        if persona and rol and Participacion.objects.filter(actividad=self.actividad, persona=persona, rol=rol).exists():
             raise forms.ValidationError("Esa persona ya participa en la actividad con ese rol.")
+        roles = roles_en_actividad(self.actividad, persona, rol) if persona and rol else []
+        if roles and not d.get("otro_rol"):
+            self.add_error("otro_rol", aviso_otro_rol(persona, roles, rol))
+        elif not roles:
+            self.fields.pop("otro_rol", None)
         return d
 
     def validate_unique(self):
         pass
+
+
+def _hora(h):
+    return f"{h:%H:%M}"
+
+
+def ayuda_horas(agenda):
+    """F25 E6: la ayuda de «Horas» dice qué valor se usa si se deja vacío (el mismo cálculo que alcance.horas_de)."""
+    if agenda is None:
+        return "Aún no hay programación: se usará su duración cuando se programe."
+    if not agenda.duracion_minutos:
+        return "La programación aún no tiene hora de término: se usará su duración cuando la tenga."
+    from .alcance import horas_de
+
+    horas = horas_de(Participacion(horas=None), agenda)
+    texto = f"{horas:f}".rstrip("0").rstrip(".").replace(".", ",")
+    return f"Si lo dejas vacío se usan {texto} h, la duración programada ({_hora(agenda.hora_inicio)} a {_hora(agenda.hora_fin)})."
 
 
 class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
@@ -267,6 +323,8 @@ class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
         from apps.comunidades.models import Comunidad
 
         self.fields["comunidad"].queryset = Comunidad.objects.filter(activo=True).select_related("comuna")
+        self.fields["estado"].queryset = estados_para_elegir(self.instance.estado_id)
+        self.fields["horas"].help_text = ayuda_horas(self.instance.actividad.agenda_vigente if self.instance.actividad_id else None)
         from apps.nucleo.formularios import fijar_valores_selectores
 
         fijar_valores_selectores(self)
@@ -281,41 +339,14 @@ class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
         pass
 
 
-class PersonaRapidaForm(GrupoMixin, BootstrapMixin, forms.Form):
-    """Ficha rápida de terreno (F25): solo el nombre es obligatorio; lo demás se completa si se sabe."""
+class PersonaRapidaForm(GrupoMixin, FichaRapidaForm):
+    """«Crear persona nueva» al agregar participantes (F25): la ficha rápida única (personas.forms.FichaRapidaForm),
+    el rol en la actividad y «¿De qué grupo viene?»."""
 
-    nombres = forms.CharField(max_length=150, label="Nombres", help_text="Ej.: María José.")
-    apellido_paterno = forms.CharField(max_length=100, required=False, label="Apellido paterno")
-    apellido_materno = forms.CharField(max_length=100, required=False, label="Apellido materno")
-    rut = CampoRut(label="RUT")
-    documento = forms.CharField(max_length=40, required=False, label="Documento extranjero",
-                                help_text="Solo si no tiene RUT chileno: el número de su pasaporte o documento. Ej.: AB123456.")
-    nacionalidad = forms.CharField(max_length=60, required=False, label="Nacionalidad", help_text="Ej.: Chilena, Venezolana.")
-    sexo = forms.ChoiceField(choices=[("", "—")] + Persona.SEXOS, required=False, label="Sexo")
-    correo = forms.EmailField(required=False, label="Correo electrónico", help_text="Ej.: nombre@ejemplo.cl")
-    telefono = forms.CharField(max_length=40, required=False, label="Teléfono", help_text="Ej.: +56 9 1234 5678.")
-    comuna = forms.ModelChoiceField(Comuna.objects.select_related("provincia__region").order_by("nombre"), required=False, label="Comuna donde vive",
-                                    help_text="Así aparece en el territorio. Ej.: Hualpén.")
     rol = forms.ModelChoiceField(RolParticipacion.objects.filter(activo=True), label="Rol en la actividad",
                                  help_text=AYUDAS_PARTICIPACION["rol"])
-    secciones = [
-        ("Persona", "Solo el nombre es obligatorio.", ["nombres", "apellido_paterno", "apellido_materno", "rut", "documento", "nacionalidad", "sexo"]),
-        ("Contacto y comuna", "", ["telefono", "correo", "comuna"]),
-        ("En esta actividad", "", ["rol"]),
-        GrupoMixin.SECCION_GRUPO,
-    ]
-
-    def clean_rut(self):
-        rut = self.cleaned_data.get("rut")
-        if rut and Persona.objects.filter(rut_numero=rut[0]).exists():
-            raise forms.ValidationError("Ya hay una persona registrada con ese RUT. Búscala en «Agregar participante».")
-        return rut
-
-    def clean_documento(self):
-        doc = self.cleaned_data.get("documento", "").strip().upper()
-        if doc and Persona.objects.filter(tipo_documento="extranjero", numero_documento__iexact=doc).exists():
-            raise forms.ValidationError("Ya hay una persona registrada con ese documento. Búscala en «Agregar participante».")
-        return doc
+    secciones = [*SECCIONES_FICHA_RAPIDA, ("En esta actividad", "", ["rol"]), GrupoMixin.SECCION_GRUPO]
+    field_order = [*CAMPOS_FICHA_RAPIDA, "rol"]
 
 
 class ActividadOrganizacionForm(BootstrapMixin, forms.ModelForm):

@@ -51,3 +51,10 @@ def candidatos(nombres="", apellido_paterno="", apellido_materno="", rut_numero=
     if excluir:
         resultado = [(p, r) for p, r in resultado if p.pk != excluir]
     return resultado
+
+
+def candidatos_ficha_rapida(d):
+    """Coincidencias para los datos limpios de una ficha de persona (rápida o completa): RUT, documento, correo, teléfono y nombre."""
+    rut = d.get("rut")
+    return candidatos(d.get("nombres", ""), d.get("apellido_paterno", ""), d.get("apellido_materno", ""), rut[0] if rut else None,
+                      d.get("correo", ""), d.get("telefono", ""), documento=(d.get("tipo_documento"), d.get("numero_documento")))

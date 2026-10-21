@@ -22,8 +22,8 @@ from apps.nucleo.vistas_base import (
     opciones_comunas, opciones_modelo, opciones_organizaciones,
 )
 from apps.organizaciones.models import Organizacion
-from apps.personas.duplicados import candidatos
-from apps.personas.models import Contacto, Persona
+from apps.personas.duplicados import candidatos_ficha_rapida
+from apps.personas.models import Persona
 from apps.proyectos.models import Proyecto
 from apps.territorio.consultas import actividad_en_comuna, dirigida_a_comuna
 from apps.territorio.destinos import fila_inicial, texto_destino
@@ -32,6 +32,7 @@ from apps.territorio.models import Comuna
 from . import servicios
 from .forms import (
     SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm, TareaForm,
+    aviso_otro_rol, estado_inicial, roles_en_actividad,
 )
 from .models import Actividad, ActividadComunidad, ActividadTerritorio, AgendaActividad, Participacion, SesionActividad, SesionAsistencia
 from .selector import ACTIVIDADES
@@ -777,7 +778,6 @@ class ParticipanteNuevo(_AccionActividad):
         return {
             "form": form, "titulo": "Agregar persona que llegó" if llego else "Agregar participante", "llego": llego,
             "volver_url": f"{a.get_absolute_url()}?tab={'asistencia' if llego else 'participantes'}", "breadcrumb": [(a.nombre, a.get_absolute_url())],
-            "rapida_url": reverse("actividades:participante_rapido", args=[a.pk]) + ("?llego=1" if llego else ""),
         }
 
     def get(self, request, pk):
@@ -798,7 +798,7 @@ class ParticipanteNuevo(_AccionActividad):
             p.creado_por = request.user
             if llego:  # RE-02: llegó sin estar previsto
                 p.asistencia = True
-                p.estado = EstadoParticipacion.objects.get(codigo="asistio")
+                p.estado = estado_inicial(llego=True)
             with transaction.atomic():
                 p.save()
                 _aplicar_grupo(p, form.cleaned_data.get("organizacion"), form.cleaned_data.get("cargo"), form.cleaned_data.get("comunidad"))
@@ -838,33 +838,16 @@ class ParticipanteRapido(_AccionActividad):
             return render(request, "actividades/participante_rapido.html", self._ctx(a, form), status=400)
         d = form.cleaned_data
         if not request.POST.get("confirmar_duplicado"):
-            cands = candidatos(d["nombres"], d["apellido_paterno"], d["apellido_materno"], None, d["correo"], d["telefono"], documento=("extranjero", d["documento"]) if d.get("documento") else None)
+            cands = candidatos_ficha_rapida(d)
             if cands:
                 return render(request, "actividades/participante_rapido.html", self._ctx(a, form, cands))
-        from apps.nucleo.models import EstadoRegistro, TipoContacto
+        from apps.personas.servicios import crear_persona_rapida
 
+        llego = request.POST.get("llego") == "1"
         with transaction.atomic():
-            rut = d.get("rut")
-            persona = Persona.objects.create(
-                nombres=d["nombres"], apellido_paterno=d["apellido_paterno"], apellido_materno=d["apellido_materno"], creado_por=request.user,
-                estado_registro=EstadoRegistro.objects.filter(codigo="incompleto").first(),
-                rut_numero=rut[0] if rut else None, rut_dv=rut[1] if rut else None,
-                tipo_documento="extranjero" if d.get("documento") and not rut else "", numero_documento=d.get("documento", "") if not rut else "",
-                nacionalidad=d.get("nacionalidad", ""), sexo=d.get("sexo", ""),
-            )
-            if d["correo"]:
-                Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=d["correo"], principal=True)
-            if d["telefono"]:
-                Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"])
-            if d.get("comuna"):  # solo la comuna: basta para que la persona aparezca en su territorio
-                from apps.personas.models import PersonaDireccion
-                from apps.territorio.models import Direccion
-
-                PersonaDireccion.objects.create(persona=persona, direccion=Direccion.objects.create(comuna=d["comuna"]), tipo="residencia")
-            llego = request.POST.get("llego") == "1"
+            persona = crear_persona_rapida(form, request.user)  # la ficha rápida única: queda «incompleto», con contactos y comuna
             p = Participacion.objects.create(
-                actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, asistencia=True if llego else None,
-                estado=EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"),
+                actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, asistencia=True if llego else None, estado=estado_inicial(llego),
             )
             _aplicar_grupo(p, d.get("organizacion"), d.get("cargo"), d.get("comunidad"))
             _perfil_del_rol(persona, d["rol"])
@@ -887,10 +870,18 @@ class ParticipanteUsar(_AccionActividad):
             return self.volver(a, "participantes")
         from apps.comunidades.models import Comunidad
 
+        roles = roles_en_actividad(a, persona, rol)
+        ya_con_ese_rol = Participacion.objects.filter(actividad=a, persona=persona, rol=rol).exists()
+        if roles and not ya_con_ese_rol and not request.POST.get("otro_rol"):  # F25 E3: ya participa con otro rol: se pide confirmar
+            campos = {c: request.POST.get(c, "") for c in ("rol", "llego", "organizacion", "cargo", "comunidad")}
+            return render(request, "actividades/participante_otro_rol.html", {
+                "titulo": f"Agregar a {persona}", "aviso": aviso_otro_rol(persona, roles, rol), "campos": campos, "actividad": a,
+                "volver_url": f"{a.get_absolute_url()}?tab=participantes", "breadcrumb": [(a.nombre, a.get_absolute_url())],
+            }, status=400)
         with transaction.atomic():
             obj, creada = Participacion.objects.get_or_create(
                 actividad=a, persona=persona, rol=rol,
-                defaults={"estado": EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"), "creado_por": request.user, "asistencia": True if llego else None},
+                defaults={"estado": estado_inicial(llego), "creado_por": request.user, "asistencia": True if llego else None},
             )
             if creada:  # lo que se alcanzó a escribir en «¿De qué grupo viene?» también vale para la persona existente
                 org = Organizacion.objects.filter(pk=pk_seguro(request.POST.get("organizacion")) or 0).first()

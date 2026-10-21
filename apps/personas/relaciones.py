@@ -10,7 +10,7 @@ from apps.actividades.selector import ACTIVIDADES
 from apps.comunidades.models import ComunidadMiembro
 from apps.comunidades.selector import COMUNIDADES
 from apps.nucleo.formularios import BootstrapMixin, SelectorField
-from apps.nucleo.models import RolParticipacion
+from apps.nucleo.models import EstadoParticipacion, RolParticipacion
 from apps.organizaciones.selector import ORGANIZACIONES
 
 PREFIJO = "relaciones"
@@ -24,7 +24,7 @@ SEGUN_TIPO = {
     "organizacion": "organizacion", "rol_organizacion": "organizacion", "cargo": "organizacion",
     "comunidad": "comunidad", "rol_comunidad": "comunidad",
     "proyecto": "proyecto", "tarea": "proyecto", "como": "proyecto", "es_responsable": "proyecto",
-    "actividad": "actividad", "rol": "proyecto actividad", "desde": "organizacion comunidad proyecto", "hasta": "organizacion proyecto",
+    "actividad": "actividad", "estado": "actividad", "rol": "proyecto actividad", "desde": "organizacion comunidad proyecto", "hasta": "organizacion proyecto",
 }
 
 
@@ -52,6 +52,8 @@ class RelacionForm(BootstrapMixin, forms.Form):
     actividad = SelectorField(ACTIVIDADES, required=False, crear=False, label="Actividad")
     rol = forms.ModelChoiceField(RolParticipacion.objects.filter(activo=True), required=False, label="Rol",
                                  help_text="Ej.: Voluntario, Tallerista.")
+    estado = forms.ModelChoiceField(EstadoParticipacion.objects.none(), required=False, label="Estado en la actividad",
+                                    help_text="Si no eliges, queda «Inscrito».")
     es_responsable = forms.BooleanField(required=False, label="Es responsable")
     desde = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False, label="Desde")
     hasta = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False, label="Hasta",
@@ -59,7 +61,10 @@ class RelacionForm(BootstrapMixin, forms.Form):
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
+        from apps.actividades.forms import estados_para_elegir
+
         self.fields["viene_proyecto"].queryset = self.fields["proyecto"].queryset = _proyectos()
+        self.fields["estado"].queryset = estados_para_elegir()  # F25 E2: los cinco estados que se eligen a mano
         tipo = self.add_prefix("tipo")
         for nombre, valores in SEGUN_TIPO.items():
             self.fields[nombre].widget.attrs.update({"data-mostrar-si-campo": tipo, "data-mostrar-si-valor": valores})
@@ -126,14 +131,16 @@ def _rol(codigo):
     return RolParticipacion.objects.filter(codigo=codigo).first()
 
 
-def _participar(persona, actividad, rol, usuario):
-    """Suma a la persona como participante (confirmada) y le agrega el perfil del rol. Nunca duplica."""
+def _participar(persona, actividad, rol, usuario, estado=None):
+    """Suma a la persona como participante («Inscrito», o el estado elegido en la fila) y le agrega el perfil del rol. Nunca duplica."""
+    from apps.actividades.forms import estado_inicial
     from apps.actividades.models import Participacion
     from apps.actividades.views import _perfil_del_rol
-    from apps.nucleo.models import EstadoParticipacion
 
-    estado = EstadoParticipacion.objects.filter(codigo="confirmado").first() or EstadoParticipacion.objects.filter(codigo="invitado").first()
-    Participacion.objects.get_or_create(actividad=actividad, persona=persona, rol=rol, defaults={"estado": estado, "creado_por": usuario})
+    estado = estado or estado_inicial()
+    asistencia = {"asistio": True, "no_asistio": False}.get(estado.codigo)
+    Participacion.objects.get_or_create(actividad=actividad, persona=persona, rol=rol,
+                                        defaults={"estado": estado, "creado_por": usuario, "asistencia": asistencia})
     _perfil_del_rol(persona, rol)
 
 
@@ -182,5 +189,5 @@ def guardar_relaciones(formset, persona, usuario):
                 rol_tarea = rol or _rol("beneficiario" if como == "beneficiario" else "participante") or RolParticipacion.objects.filter(activo=True).first()
                 _participar(persona, d["tarea"], rol_tarea, usuario)
         elif tipo == "actividad":
-            _participar(persona, d["actividad"], d["rol"], usuario)
+            _participar(persona, d["actividad"], d["rol"], usuario, d.get("estado"))
     return len(filas)

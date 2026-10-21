@@ -140,7 +140,7 @@ def test_sumar_a_la_actividad_agrega_el_perfil_del_rol(cg, actividad, rol, estad
     assert _perfiles(Persona.objects.get(nombres="Lucía")) == {"voluntario_o_voluntaria"}
     p = crear_persona()
     p.perfiles.add(PerfilPersona.objects.get(codigo="estudiante"))
-    r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("tallerista").pk, "estado": estado_part("invitado").pk})
+    r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("tallerista").pk, "estado": estado_part("confirmado").pk})
     assert r.status_code == 302 and Participacion.objects.filter(persona=p).exists()
     assert _perfiles(p) == {"estudiante", "tallerista_o_profesional"}
 

@@ -15,6 +15,7 @@ from apps.nucleo.utilidades import normalizar_telefono, telefono_normalizado_val
 from apps.organizaciones.models import Carrera, Organizacion
 from apps.organizaciones.selector import ORGANIZACIONES
 from apps.territorio.forms import DireccionForm
+from apps.territorio.models import Comuna
 
 from .selector import PERSONAS
 from .models import (
@@ -210,28 +211,45 @@ class PersonaNuevaForm(PersonaForm):
         return t
 
 
-class PersonaRapidaForm(PersonaNuevaForm):
-    """Ficha rápida (IG-01): nombre y un dato de contacto, para registrar mientras se habla por teléfono."""
+# F25 E1: la ficha rápida es una sola. La usan la ventana «+ Crear persona» de los buscadores, «Crear persona nueva» al
+# agregar participantes y el modo rápido de Personas → Nueva: mismos campos, mismas etiquetas y la misma validación.
+CAMPOS_FICHA_RAPIDA = ["nombres", "apellido_paterno", "apellido_materno", "rut", "sin_rut", "tipo_documento", "numero_documento",
+                       "nacionalidad", "sexo", "fecha_nacimiento", "telefono", "correo", "comuna"]
+SECCIONES_FICHA_RAPIDA = [
+    ("Persona", "Solo el nombre es obligatorio; el resto se completa si se sabe.", CAMPOS_FICHA_RAPIDA[:10]),
+    ("Contacto y comuna", "", CAMPOS_FICHA_RAPIDA[10:]),
+]
 
-    rut = edad = None  # campos de la ficha completa que aquí no se piden
-    perfiles_en_lista = False
+
+class FichaRapidaForm(PersonaNuevaForm):
+    """Ficha rápida única (F25 E1). Valida igual que la ficha completa: RUT o documento únicos, con aviso."""
+
+    comuna = forms.ModelChoiceField(Comuna.objects.order_by("nombre"), required=False, label="Comuna donde vive",
+                                    help_text="Así aparece en el territorio. Ej.: Hualpén.")
+    edad = None  # en la ficha rápida basta la fecha de nacimiento, si se sabe
+    secciones = SECCIONES_FICHA_RAPIDA
+    field_order = CAMPOS_FICHA_RAPIDA
 
     class Meta(PersonaNuevaForm.Meta):
-        fields = ["nombres", "apellido_paterno", "correo", "telefono", "perfiles"]  # perfiles: solo los «Tipo de registro»
-
-    def clean(self):
-        return super(PersonaForm, self).clean()  # sin documento en la ficha rápida
-
-
-class PersonaCrearRapidaForm(PersonaRapidaForm):
-    """Ventana «+ Crear persona» de los buscadores: nombres, apellidos y un contacto opcional."""
-
-    class Meta(PersonaRapidaForm.Meta):
-        fields = ["nombres", "apellido_paterno", "apellido_materno", "correo", "telefono"]
+        fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", "nacionalidad", "sexo",
+                  "fecha_nacimiento"]
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.fields["telefono"].widget.attrs.setdefault("placeholder", "Ej.: +56 9 1234 5678")
+
+
+class PersonaRapidaForm(FichaRapidaForm):
+    """Modo rápido de Personas → Nueva (IG-01): la ficha rápida y el «Tipo de registro»."""
+
+    perfiles_en_lista = False
+
+    class Meta(FichaRapidaForm.Meta):
+        fields = [*FichaRapidaForm.Meta.fields, "perfiles"]  # perfiles: solo los «Tipo de registro»
+
+
+class PersonaCrearRapidaForm(FichaRapidaForm):
+    """Ventana «+ Crear persona» de los buscadores: la ficha rápida, sin salir del formulario de origen."""
 
 
 def inicial_desde_texto(texto):

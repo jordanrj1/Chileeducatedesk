@@ -11,7 +11,7 @@
   <div class="modal-body">
     <p class="small text-muted">Solo lo mínimo para elegirla ahora. El resto de la ficha lo completas después.</p>
     {% if form.non_field_errors %}<div class="alert alert-danger d-flex gap-2" role="alert">{% icono "error" 18 %}<div>{{ form.non_field_errors }}</div></div>{% endif %}
-    {% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}
+    {% if por_secciones %}{% include "generico/_campos.html" %}{% else %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endif %}
     {% if candidatos %}
     <div class="alert alert-warning mb-0" role="alert">
       <p class="mb-2"><strong>{{ aviso_parecido }}</strong> Revisa antes de crear una ficha repetida:</p>

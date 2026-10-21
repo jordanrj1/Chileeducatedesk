@@ -236,7 +236,8 @@ def test_persona_en_varios_estados_de_registro(persona):
 # --- Requerimientos por módulo (PE) -----------------------------------------------------------------
 def test_ficha_rapida_y_ficha_completa(cg):
     rapida = cg.get("/personas/nueva").content.decode()
-    assert "Ficha rápida" in rapida and 'name="rut"' not in rapida and 'name="telefono"' in rapida
+    assert "Ficha rápida" in rapida and 'name="rut"' in rapida and 'name="comuna"' in rapida and 'name="telefono"' in rapida
+    assert 'name="origen"' not in rapida  # lo propio de la ficha completa no se pide en la rápida
     completa = cg.get("/personas/nueva?modo=completa").content.decode()
     assert 'name="rut"' in completa and 'name="origen"' in completa
     r = cg.post("/personas/nueva", {"modo": "rapida", "nombres": "Rápida", "telefono": "9 1234 5678"})

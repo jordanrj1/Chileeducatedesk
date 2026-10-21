@@ -459,7 +459,7 @@ def aplicar(lote, usuario):
     if any(f["decision"] == "pendiente" for f in lote.filas):
         raise ValueError("Hay filas con errores o posibles duplicados sin resolver: corrígelas, elige qué hacer u omítelas.")
     n = {"creados": 0, "vinculados": 0, "omitidos": 0, "participaciones": 0}
-    estado_part = EstadoParticipacion.objects.get(codigo="interesado")
+    estado_part = EstadoParticipacion.objects.get(codigo="confirmado")  # F25 E2: toda alta queda «Inscrito»
     documento = _documento_original(lote, usuario)
     perfiles = _perfiles_activos() if lote.tipo in ("listado_actividad", "personas") else {}
     for f in lote.filas:
