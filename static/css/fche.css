@@ -767,6 +767,9 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-form__rejilla > .fche-ubicacion { grid-column: 1 / -1; }
 .fche-ubicacion__listas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); column-gap: 1.25rem; }
 .fche-ubicacion__provincia, .fche-ubicacion__crear, .fche-ubicacion__sinjs { margin: -.4rem 0 1rem; font-size: .85rem; }
+.fche-ubicacion__sector { margin: -.2rem 0 1rem; }
+.fche-ubicacion__sector > summary { font-size: .9rem; color: var(--fche-texto-suave); cursor: pointer; }
+.fche-ubicacion__sector .fche-campo { max-width: 26rem; }
 .fche-ubicacion__provincia .fche-campo { max-width: 22rem; margin: .6rem 0 0; }
 .fche-ubicacion__sinjs { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .fche-ubicacion__crear { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .6rem; }

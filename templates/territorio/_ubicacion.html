@@ -9,7 +9,6 @@ formulario sin guardar y lo vuelve a dibujar con las listas al día.
   <div class="fche-ubicacion__listas">
     {% include "generico/_campo.html" with campo=u.region %}
     {% include "generico/_campo.html" with campo=u.campo_comuna %}
-    {% include "generico/_campo.html" with campo=u.sector %}
     {% if u.comunidad %}{% include "generico/_campo.html" with campo=u.comunidad %}{% endif %}
   </div>
   <details class="fche-ubicacion__provincia"{% if u.provincia_abierta %} open{% endif %}>
@@ -20,6 +19,10 @@ formulario sin guardar y lo vuelve a dibujar con las listas al día.
     <button type="submit" class="btn btn-sm btn-outline-secondary" name="{{ u.nombre_actualizar }}" value="1" formnovalidate>Actualizar listas</button>
     <span class="form-text">Después de elegir la región o la comuna, pulsa aquí para ver sus comunas y sectores. No se guarda nada.</span>
   </div></noscript>
+  <details class="fche-ubicacion__sector"{% if u.sector.value or u.abierto or u.mensaje %} open{% endif %}>
+  <summary>Villa, población o sector (opcional)</summary>
+  <p class="form-text mt-1 mb-2">No es obligatorio. Úsalo cuando la comuna es grande y conviene saber el barrio, por ejemplo una villa o una etapa.</p>
+  {% include "generico/_campo.html" with campo=u.sector %}
   {% if u.crear and perms.territorio.add_sector %}
   <div class="fche-ubicacion__crear">
     {% if u.comuna %}
@@ -49,6 +52,7 @@ formulario sin guardar y lo vuelve a dibujar con las listas al día.
     <div class="fche-ubicacion__aviso small text-{{ u.nivel }}-emphasis" id="{{ u.id }}-aviso" role="status">{% if u.mensaje %}{{ u.mensaje }}{% if u.confirmar %} <button type="button" class="btn btn-sm btn-outline-warning" hx-post="{% url 'territorio:sector_crear_rapido' %}" hx-vals="{{ u.vals_confirmar }}">Crear igual</button>{% endif %}{% endif %}</div>
   </div>
   {% endif %}
+  </details>
   {% if u.panel %}{% include "territorio/_contexto_lugar.html" with panel=u.panel comuna=u.comuna %}{% endif %}
 </div>
 {% endwith %}

@@ -190,3 +190,10 @@ def test_formularios_de_direccion_muestran_crear_sector(cg, persona):
     for ruta in ("/lugares/nuevo", "/organizaciones/nueva", f"/personas/{persona.pk}/direcciones/nuevo"):
         html = cg.get(ruta).content.decode()
         assert "+ Crear sector" in html and "Región" in html and "Provincia" in html, ruta
+
+
+def test_sector_es_opcional_y_va_plegado(cg):
+    """En la dirección el sector no es obligatorio y va plegado bajo «Villa, población o sector (opcional)»."""
+    html = cg.get("/lugares/nuevo").content.decode()
+    assert '<summary>Villa, población o sector (opcional)</summary>' in html
+    assert 'class="fche-ubicacion__sector"' in html and 'class="fche-ubicacion__sector" open' not in html
