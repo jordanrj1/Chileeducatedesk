@@ -33,6 +33,7 @@ urlpatterns = [
                get_form_kwargs=views.formulario_con_usuario, **P),
     *urls_hijo("personas", "experiencia", "Experiencia", modelo=models.Experiencia, form_class=forms.ExperienciaForm, tab="experiencia", etiqueta="experiencia", **P),
     *urls_hijo("personas", "disponibilidad", "Disponibilidad", modelo=models.DisponibilidadPersona, form_class=forms.DisponibilidadForm, tab="disponibilidad", etiqueta="horario", **P),
+    *urls_hijo("personas", "lugares", "PersonaLugar", modelo=models.PersonaLugar, form_class=forms.PersonaLugarForm, tab="vinculos", etiqueta="vínculo con un lugar", **P),
     *urls_hijo("personas", "vinculos", "Vinculo", modelo=models.PersonaOrganizacion, form_class=forms.VinculoForm, tab="vinculos", etiqueta="vínculo", **P),
     *urls_hijo("personas", "emergencia", "Emergencia", modelo=models.ContactoEmergencia, form_class=forms.EmergenciaForm, tab="emergencia", etiqueta="contacto de emergencia", permiso_extra="personas.ver_sensibles", **P),
     *urls_hijo("personas", "apoderados", "Apoderado", modelo=models.Apoderado, form_class=forms.ApoderadoForm, tab="apoderados", etiqueta="apoderado", permiso_extra="personas.ver_sensibles", **P),

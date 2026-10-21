@@ -1,0 +1,11 @@
+{# Qué es: Pestaña Personas del lugar: quienes estudian, trabajan o participan ahí, y los estudiantes de esta sede. #}
+{# Dónde se usa: /lugares/<int:pk>?tab=personas · Proceso: P9 #}
+{% load fche %}<div class="fche-seccion"><h2 class="h6 mb-0">Personas vinculadas{% if vinculadas %} <span class="fche-contador">{{ vinculadas|length }}</span>{% endif %}</h2></div>
+<p class="small text-muted">Se agregan desde la ficha de cada persona: pestaña «Cargos y vínculos» → «+ Vincular a un lugar».</p>
+{% if vinculadas %}<ul class="fche-items">{% for v in vinculadas %}<li class="{% if not v.vigente %}text-muted{% endif %}"><div class="fche-items__texto">
+  <div class="fche-items__titulo"><a href="{{ v.persona.get_absolute_url }}">{{ v.persona }}</a> · {{ v.get_relacion_display }}{% if not v.vigente %} {% estado "inactivo" "Terminado" %}{% endif %}</div>
+  {% if v.observaciones %}<div class="fche-items__detalle">{{ v.observaciones }}</div>{% endif %}</div></li>{% endfor %}</ul>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "personas" 18 %}</span><p class="fche-vacio__texto mb-0">Aún no hay personas vinculadas a este lugar.</p></div>{% endif %}
+{% if estudiantes_sede %}<h2 class="h6 mt-4 mb-2">Estudiantes de esta sede <span class="fche-contador">{{ estudiantes_sede|length }}</span></h2>
+<ul class="fche-items">{% for f in estudiantes_sede %}<li><div class="fche-items__texto"><div class="fche-items__titulo"><a href="{{ f.persona.get_absolute_url }}">{{ f.persona }}</a> · {{ f.get_estado_display }}</div>
+  <div class="fche-items__detalle">{{ f.organizacion }}{% if f.carrera %} · {{ f.carrera.nombre }}{% endif %}</div></div></li>{% endfor %}</ul>{% endif %}

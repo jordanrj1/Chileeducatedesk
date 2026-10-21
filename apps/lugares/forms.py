@@ -11,7 +11,7 @@ from .models import Lugar
 class LugarForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Lugar
-        fields = ["nombre", "tipo", "capacidad", "condiciones", "organizacion_propietaria"]
+        fields = ["nombre", "tipo", "capacidad", "condiciones"]
         labels = {"nombre": "Nombre del lugar", "tipo": "Tipo de lugar", "capacidad": "Capacidad (personas)",
                   "organizacion_propietaria": "¿De quién es el lugar?"}
         help_texts = {
@@ -24,7 +24,6 @@ class LugarForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.fields["tipo"].queryset = TipoLugar.objects.filter(activo=True)
-        self.fields["organizacion_propietaria"].queryset = Organizacion.objects.filter(activo=True)
 
     def clean_capacidad(self):
         c = self.cleaned_data.get("capacidad")

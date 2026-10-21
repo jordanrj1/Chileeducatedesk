@@ -323,6 +323,29 @@ class PersonaOrganizacion(models.Model):
             raise ValidationError({"fecha_termino": "El término no puede ser anterior al inicio."})
 
 
+class PersonaLugar(models.Model):
+    """Una persona vinculada a un lugar registrado: estudia, trabaja o participa ahí (un colegio, una sede, un centro).
+    Así la ficha del lugar muestra a sus personas, y el lugar y su comuna se van nutriendo de lo que se registra."""
+
+    RELACIONES = [("estudia", "Estudia ahí"), ("trabaja", "Trabaja ahí"), ("participa", "Participa o asiste ahí"), ("vive", "Vive ahí o al lado"), ("otra", "Otra")]
+    persona = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name="lugares_vinculados")
+    lugar = models.ForeignKey("lugares.Lugar", on_delete=models.PROTECT, related_name="personas_vinculadas")
+    relacion = models.CharField("qué hace ahí", max_length=12, choices=RELACIONES, default="participa")
+    desde = models.DateField(null=True, blank=True)
+    hasta = models.DateField(null=True, blank=True)
+    observaciones = models.CharField(max_length=250, blank=True)
+    vigente = models.BooleanField(default=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = "vínculo con un lugar"
+        verbose_name_plural = "vínculos con lugares"
+        constraints = [models.UniqueConstraint(fields=["persona", "lugar", "relacion"], name="persona_lugar_unico")]
+
+    def __str__(self):
+        return f"{self.persona} · {self.get_relacion_display()} · {self.lugar}"
+
+
 class Experiencia(models.Model):
     persona = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name="experiencias")
     descripcion = models.CharField("experiencia", max_length=250)

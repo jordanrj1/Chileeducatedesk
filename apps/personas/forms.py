@@ -18,6 +18,7 @@ from apps.territorio.forms import DireccionForm
 
 from .selector import PERSONAS
 from .models import (
+    PersonaLugar,
     Apoderado, Consentimiento, Contacto, ContactoEmergencia, DisponibilidadPersona, Experiencia, PerfilSensible, Persona, PersonaDireccion,
     PersonaFormacion, PersonaOrganizacion, VerificacionPersona,
 )
@@ -619,3 +620,24 @@ class ApoderadoForm(BootstrapMixin, forms.ModelForm):
 
     def validate_unique(self):
         pass
+
+
+class PersonaLugarForm(BootstrapMixin, forms.ModelForm):
+    """Vincula a la persona con un lugar ya registrado (un colegio, una sede, un centro comunitario)."""
+
+    class Meta:
+        model = PersonaLugar
+        fields = ["lugar", "relacion", "desde", "hasta", "observaciones"]
+        widgets = {"desde": forms.DateInput, "hasta": forms.DateInput}
+        labels = {"lugar": "Lugar", "relacion": "¿Qué hace ahí?"}
+        help_texts = {
+            "lugar": "Un lugar ya registrado. Si no está, regístralo primero en Lugares. Ej.: Colegio Santa María, Hualpén.",
+            "hasta": "Solo si ya no tiene ese vínculo: el registro se conserva.",
+            "observaciones": "Ej.: apoderado del curso 3.º B.",
+        }
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        from apps.lugares.campos import LugarChoiceField
+
+        self.fields["lugar"] = LugarChoiceField(label="Lugar", help_text=self.fields["lugar"].help_text)

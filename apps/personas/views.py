@@ -481,7 +481,8 @@ class PersonaFicha(FichaBase):
     def ctx_vinculos(self):
         from .vinculos import cargos_y_vinculos
 
-        return {"grupos": cargos_y_vinculos(self.object), "url_nuevo": reverse("personas:vinculos_nuevo", args=[self.object.pk])}
+        return {"grupos": cargos_y_vinculos(self.object), "url_nuevo": reverse("personas:vinculos_nuevo", args=[self.object.pk]),
+                "url_nuevo_lugar": reverse("personas:lugares_nuevo", args=[self.object.pk])}
 
     def ctx_emergencia(self):
         return self._hijo_ctx("Contacto de emergencia", "emergencia", "Contacto", self.object.contactos_emergencia.all(),

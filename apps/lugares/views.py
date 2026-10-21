@@ -155,6 +155,7 @@ class LugarFicha(FichaBase):
     permiso_editar = "lugares.change_lugar"
     pestanas = [
         ("info", "Información", "lugares/pestanas/info.html"),
+        ("personas", "Personas", "lugares/pestanas/personas.html", "personas.view_persona"),
         ("uso", "Uso histórico", "lugares/pestanas/uso.html"),
         ("disponibilidad", "Disponibilidad", "lugares/pestanas/disponibilidad.html"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
@@ -171,6 +172,12 @@ class LugarFicha(FichaBase):
             "puede_agregar": self.request.user.has_perm("lugares.change_lugar"),
             "comuna_ficha": self.object.direccion.comuna,
         }
+
+    def ctx_personas(self):
+        """Personas vinculadas a este lugar (estudian, trabajan o participan ahí) y estudiantes de esta sede."""
+        vinculadas = self.object.personas_vinculadas.select_related("persona").order_by("-vigente", "persona__apellido_paterno")
+        estudiantes = self.object.estudiantes.select_related("persona", "carrera", "organizacion").order_by("carrera__nombre", "persona__apellido_paterno")
+        return {"vinculadas": vinculadas, "estudiantes_sede": estudiantes}
 
     def ctx_uso(self):
         return {"usos": self.object.agendas.select_related("actividad", "estado").order_by("-fecha", "-hora_inicio")[:100]}

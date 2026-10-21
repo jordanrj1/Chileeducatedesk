@@ -31,6 +31,11 @@ def cargos_y_vinculos(persona):
               "periodo": " a ".join(str(a) for a in [f.anio_inicio, f.anio_termino] if a), "vigente": f.vigente}
              for f in persona.formaciones.select_related("organizacion", "carrera", "sede_institucion")]
     grupos.append(("Estudios", filas))
+    filas = [{"nombre": str(l.lugar), "url": l.lugar.get_absolute_url(), "rol": l.get_relacion_display(), "detalle": l.observaciones,
+              "periodo": _periodo(l.desde, l.hasta), "vigente": _vigente(l.vigente, l.hasta),
+              "url_editar": reverse("personas:lugares_editar", args=[persona.pk, l.pk])}
+             for l in persona.lugares_vinculados.select_related("lugar")]
+    grupos.append(("Lugares", filas))
     filas = [{"nombre": str(m.comunidad), "url": m.comunidad.get_absolute_url(), "rol": m.get_rol_display(), "detalle": str(m.comunidad.territorio),
               "periodo": _periodo(m.desde, m.hasta), "vigente": _vigente(m.vigente, m.hasta)}
              for m in persona.comunidades.select_related("comunidad__comuna", "comunidad__sector")]

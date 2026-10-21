@@ -340,3 +340,13 @@ def test_formulario_documento_y_edad_cambian_segun_lo_escrito(cg):
                                                   "tipo_documento": "pasaporte", "numero_documento": "ab123456"})
     p = Persona.objects.get(nombres="Ana")
     assert r.status_code == 302 and p.numero_documento == "AB123456" and p.rut_numero is None
+
+
+def test_persona_se_vincula_a_un_lugar_y_el_lugar_la_muestra(cg, lugar):
+    """«+ Vincular a un lugar» deja a la persona en la pestaña Personas del lugar; el formulario de lugar ya no pide dueño."""
+    p = Persona.objects.create(nombres="Elena", apellido_paterno="Inventada")
+    r = cg.post(f"/personas/{p.pk}/lugares/nuevo", {"lugar": lugar.pk, "relacion": "estudia"})
+    assert r.status_code == 302
+    assert f'href="{p.get_absolute_url()}"' in cg.get(f"/lugares/{lugar.pk}?tab=personas").content.decode()
+    assert "Estudia ahí" in cg.get(f"/personas/{p.pk}?tab=vinculos").content.decode()
+    assert 'name="organizacion_propietaria"' not in cg.get("/lugares/nuevo").content.decode()
