@@ -1,0 +1,15 @@
+{# Qué es: Pestaña Cargos y vínculos de la persona: organizaciones con cargo, estudios, comunidades, proyectos y actividades, vigentes y terminados, con enlaces. #}
+{# Dónde se usa: /personas/<int:pk>?tab=vinculos · Proceso: P9 #}
+{% load fche %}<div class="fche-seccion"><h2 class="h6 mb-0">Cargos y vínculos</h2>
+{% if puede_agregar and perms.personas.add_personaorganizacion %}<a class="btn btn-primary btn-sm" href="{{ url_nuevo }}">+ Cargo en una organización</a>{% endif %}</div>
+<p class="small text-muted">Todo lo que une a esta persona con organizaciones, estudios, comunidades, proyectos y actividades. Se arma solo desde cada registro: un rol en una comunidad o en un proyecto se agrega desde esa comunidad o ese proyecto.</p>
+{% for titulo, filas in grupos %}
+<h3 class="h6 mt-4 mb-2">{{ titulo }}{% if filas %} <span class="fche-contador">{{ filas|length }}</span>{% endif %}</h3>
+{% if filas %}<ul class="fche-items">{% for f in filas %}
+  <li class="{% if not f.vigente %}text-muted{% endif %}"><div class="fche-items__texto">
+    <div class="fche-items__titulo"><a href="{{ f.url }}">{{ f.nombre }}</a>{% if f.rol %} · {{ f.rol }}{% endif %} {% if f.vigente %}{% estado "activo" "Vigente" %}{% else %}{% estado "inactivo" "Terminado" %}{% endif %}</div>
+    {% if f.detalle or f.periodo %}<div class="fche-items__detalle">{{ f.detalle }}{% if f.detalle and f.periodo %} · {% endif %}{{ f.periodo }}</div>{% endif %}</div>
+    {% if puede_agregar and f.url_editar %}<div class="fche-items__acciones"><a class="btn btn-outline-secondary btn-sm" href="{{ f.url_editar }}">{% icono "editar" 14 %}Editar</a></div>{% endif %}
+  </li>{% endfor %}</ul>
+{% else %}<p class="small text-muted mb-0">Sin registros.</p>{% endif %}
+{% endfor %}

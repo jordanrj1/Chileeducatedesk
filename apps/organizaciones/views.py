@@ -215,7 +215,14 @@ class OrganizacionFicha(FichaBase):
             "titulo_pestana": "Personas relacionadas", "hijos": hijos, "etiqueta_nuevo": "Agregar persona con cargo",
             "url_nuevo": reverse("organizaciones:personas_nuevo", args=[pk]), "vacio": "Aún no hay personas vinculadas.",
             "hay_autoridades": self.object.vinculos.filter(tipo_cargo="autoridad", fecha_termino__isnull=True).exists(),
+            **self._estudiantes(),
         }
+
+    def _estudiantes(self):
+        from apps.personas.vinculos import estudiantes_por_carrera
+
+        carreras, docentes = estudiantes_por_carrera(self.object)
+        return {"estudiantes_por_carrera": carreras, "docentes": docentes}
 
 
 class CerrarCargosAutoridad(Permiso403Mixin, __import__("django.views", fromlist=["View"]).View):

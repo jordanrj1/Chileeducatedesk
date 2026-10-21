@@ -1,6 +1,13 @@
 {# Qué es: Pestaña Personas relacionadas: cargos con fechas (quién era presidente en cada período). #}
 {# Dónde se usa: /organizaciones/<int:pk> · Proceso: P4 #}
 {% include "generico/_hijos.html" %}
+{% if estudiantes_por_carrera %}<h2 class="h6 mt-4 mb-1">Estudiantes y egresados, por carrera</h2>
+<p class="small text-muted">Salen de la formación registrada en la ficha de cada persona (pestaña Formación).</p>
+{% for carrera, filas in estudiantes_por_carrera %}<h3 class="h6 mt-3 mb-2">{{ carrera }} <span class="fche-contador">{{ filas|length }}</span></h3>
+<ul class="fche-items">{% for f in filas %}<li class="{% if not f.vigente %}text-muted{% endif %}"><div class="fche-items__texto"><div class="fche-items__titulo"><a href="{{ f.url }}">{{ f.nombre }}</a> · {{ f.estado }}</div>{% if f.detalle %}<div class="fche-items__detalle">{{ f.detalle }}</div>{% endif %}</div></li>{% endfor %}</ul>
+{% endfor %}{% endif %}
+{% if docentes %}<h2 class="h6 mt-4 mb-2">Docentes o tutores a cargo de sus estudiantes</h2>
+<ul class="fche-items">{% for d in docentes %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ d.get_absolute_url }}">{{ d }}</a></div></li>{% endfor %}</ul>{% endif %}
 {% if hay_autoridades and perms.personas.change_personaorganizacion %}
 <form method="post" action="{% url 'organizaciones:cerrar_autoridades' object.pk %}" class="d-flex flex-wrap gap-2 align-items-end mt-4 p-3 rounded-3 border bg-light-subtle">{% csrf_token %}
   <div><label class="form-label small mb-1" for="hasta">Cambio de administración: cerrar los cargos de autoridad vigentes al</label>

@@ -356,7 +356,7 @@ class PersonaFicha(FichaBase):
         ("formacion", "Formación", "generico/_hijos.html"),
         ("experiencia", "Experiencia", "generico/_hijos.html"),
         ("disponibilidad", "Disponibilidad", "generico/_hijos.html"),
-        ("vinculos", "Organizaciones y cargos", "generico/_hijos.html"),
+        ("vinculos", "Cargos y vínculos", "personas/pestanas/vinculos.html"),
         ("trayectoria", "Participaciones", "personas/pestanas/trayectoria.html", "actividades.view_participacion"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
         ("interacciones", "Interacciones", "coordinacion/_interacciones.html", "coordinacion.view_interaccion"),
@@ -479,9 +479,9 @@ class PersonaFicha(FichaBase):
                               texto=lambda d: str(d), detalle=lambda d: d.comentario)
 
     def ctx_vinculos(self):
-        return self._hijo_ctx("Organizaciones y cargos", "vinculos", "Vínculo", self.object.vinculos.select_related("organizacion"),
-                              texto=lambda v: f"{v.cargo or 'Vínculo'} · {v.organizacion}", detalle=lambda v: f"{v.get_tipo_cargo_display()} · {v.fecha_inicio or '?'} a {v.fecha_termino or 'actualidad'}", vigente=None,
-                              url=lambda v: v.organizacion.get_absolute_url())
+        from .vinculos import cargos_y_vinculos
+
+        return {"grupos": cargos_y_vinculos(self.object), "url_nuevo": reverse("personas:vinculos_nuevo", args=[self.object.pk])}
 
     def ctx_emergencia(self):
         return self._hijo_ctx("Contacto de emergencia", "emergencia", "Contacto", self.object.contactos_emergencia.all(),

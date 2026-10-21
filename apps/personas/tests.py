@@ -304,3 +304,28 @@ def test_pestana_direcciones_abre_y_la_direccion_se_edita_y_se_da_de_baja(cg):
     cg.post(f"/personas/{p.pk}/direcciones/{d.pk}/alternar")
     d.refresh_from_db()
     assert d.vigente is False and PersonaDireccion.objects.filter(pk=d.pk).exists()
+
+
+def test_cargos_y_vinculos_reune_comunidad_proyecto_y_estudios(cg, universidad):
+    """La pestaña muestra el rol de dirigente en una comunidad, el rol en un proyecto y los estudios, con enlaces;
+    y la institución muestra a sus estudiantes agrupados por carrera."""
+    from apps.comunidades.models import Comunidad, ComunidadMiembro
+    from apps.organizaciones.models import Carrera
+    from apps.personas.models import PersonaFormacion
+    from apps.proyectos.models import Proyecto, ProyectoPersona
+    from apps.territorio.models import Comuna, Provincia, Region
+
+    comuna = Comuna.objects.create(codigo="97001", nombre="Comuna Inventada", provincia=Provincia.objects.create(
+        codigo="970", nombre="Provincia Inventada", region=Region.objects.create(codigo="97", nombre="Región Inventada")))
+    p = Persona.objects.create(nombres="Lucía", apellido_paterno="Ficticia")
+    com = Comunidad.objects.create(nombre="Villa Inventada", tipo="vecinal", comuna=comuna)
+    ComunidadMiembro.objects.create(comunidad=com, persona=p, rol="dirigente")
+    proy = Proyecto.objects.create(nombre="Proyecto inventado", estado="ejecucion")
+    ProyectoPersona.objects.create(proyecto=proy, persona=p, tipo="equipo", es_responsable=True)
+    carrera = Carrera.objects.create(organizacion=universidad, nombre="Carrera Inventada")
+    PersonaFormacion.objects.create(persona=p, organizacion=universidad, carrera=carrera)
+    html = cg.get(f"/personas/{p.pk}?tab=vinculos").content.decode()
+    assert "Cargos y vínculos" in html and "Dirigente/a" in html and f'href="{com.get_absolute_url()}"' in html
+    assert f'href="{proy.get_absolute_url()}"' in html and "responsable" in html
+    org = cg.get(f"/organizaciones/{universidad.pk}?tab=personas").content.decode()
+    assert "Carrera Inventada" in org and f'href="{p.get_absolute_url()}"' in org
