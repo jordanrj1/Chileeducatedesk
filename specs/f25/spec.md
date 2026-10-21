@@ -93,7 +93,7 @@ Cada fila crea el vínculo que corresponde (`PersonaOrganizacion`, `ComunidadMie
 5. **Experiencia:** muestra los cargos terminados sin cargarlos a mano.
 6. **Pruebas:** las existentes siguen pasando y hay pruebas esenciales para cada punto.
 
-## E. Participantes de actividades y tareas (revisión del usuario del 21-10-2026)
+## E. Participantes de actividades y tareas (revisión del usuario del 21-10-2026) (hecho)
 Decisiones del usuario: ficha rápida única · cinco estados · la organización del participante se agrega sola · panel lateral sin salir de la tarea.
 
 **E1 · Una ficha rápida igual en todas partes**
@@ -130,3 +130,10 @@ Decisiones del usuario: ficha rápida única · cinco estados · la organizació
 **E9 · Grupos:** bajo «Equipo ejecutor» y «Asistentes», una frase explica que se separan por el rol.
 
 **E10 · Cupos:** «Cupos ocupados: 3 de 10 (5 participaciones de 3 personas: quien tiene varios roles ocupa un solo cupo)».
+
+**Cómo quedó (21-10-2026):**
+- E4: `servicios.asegurar_organizacion` (una sola función) se llama al agregar (nuevo, rápido, usar), al editar y desde «Relaciones» de la persona; si la organización ya estaba en la actividad (aunque dada de baja) no se toca. La importación de listados no la llama: la reversión del lote no podría borrar la organización creada por el lote. «Trajo N personas» cuenta personas distintas (no erróneas).
+- E5: `/personas/<id>/resumen` (fragmento, permiso `personas.view_persona`) en un panel lateral (offcanvas de Bootstrap con HTMX); sin JavaScript el nombre abre la ficha.
+- E7: la pestaña Asistencia se quitó (`?tab=asistencia` abre Participantes); la plantilla `actividades/pestanas/asistencia.html` queda sin uso.
+- E8: pestañas en varias líneas; tablas con barra de desplazamiento visible.
+- Extra: en «Buscar candidatos», «Invitar» pasa a «Agregar a la actividad».

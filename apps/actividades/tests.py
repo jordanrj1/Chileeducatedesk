@@ -448,8 +448,11 @@ def test_organizaciones_y_sesiones_de_la_actividad(cg, actividad, universidad):
 
 
 def test_todas_las_pestanas_responden(cg, actividad):
-    for tab in ["info", "participantes", "beneficiarios", "organizaciones", "sesiones", "agenda", "coordinacion", "asistencia", "documentos", "resultados", "origen", "historial"]:
+    for tab in ["info", "participantes", "beneficiarios", "organizaciones", "sesiones", "agenda", "coordinacion", "documentos", "resultados", "origen", "historial"]:
         assert cg.get(f"/actividades/{actividad.pk}?tab={tab}").status_code == 200, tab
+    # F25 E7: la pestaña Asistencia ya no existe; su dirección antigua abre Participantes
+    r = cg.get(f"/actividades/{actividad.pk}?tab=asistencia")
+    assert r.status_code == 200 and r.context["pestana"] == "participantes"
 
 
 def test_calendario_muestra_la_programacion_vigente(cg, actividad, lugar, gestor):
@@ -531,7 +534,7 @@ def test_matching_por_pantalla(cg, actividad, crear_persona, universidad):
     p = crear_persona("Marta", profesion="Profesora de lenguaje")
     PersonaFormacion.objects.create(persona=p, organizacion=universidad)
     html = cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=personas&buscar=1&area=lenguaje").content.decode()
-    assert "Marta" in html and "Invitar" in html
+    assert "Marta" in html and "Agregar a la actividad" in html  # F25: el botón agrega como inscrito, no invita
     assert "Marta" not in cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=personas&buscar=1&area=astronomía").content.decode()
     assert cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=lugares&buscar=1").status_code == 200
     assert cg.get(f"/actividades/{actividad.pk}/candidatos?tipo=organizaciones&buscar=1").status_code == 200
@@ -565,11 +568,11 @@ def test_cargar_listado_desde_la_actividad(cg, actividad):
 
 def test_agregar_persona_que_llego(cg, crear_actividad, crear_persona, rol, estado_part):
     actividad = crear_actividad("En curso", estado="confirmada")
-    assert "+ Agregar persona que llegó" in cg.get(f"/actividades/{actividad.pk}?tab=asistencia").content.decode()
+    assert "+ Agregar persona que llegó" in cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()  # F25 E7
     p = crear_persona("Llegó")
     r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("participante").pk, "estado": estado_part("confirmado").pk, "llego": "1"})
     part = actividad.participaciones.get(persona=p)
-    assert r.status_code == 302 and "tab=asistencia" in r["Location"] and part.asistencia is True and part.estado.codigo == "asistio"
+    assert r.status_code == 302 and "tab=participantes" in r["Location"] and part.asistencia is True and part.estado.codigo == "asistio"
     cg.post(f"/actividades/{actividad.pk}/participantes/rapido", {"nombres": "Nueva", "apellido_paterno": "Llegada", "rol": rol("participante").pk, "llego": "1"})
     nueva = actividad.participaciones.get(persona__nombres="Nueva")
     assert nueva.asistencia is True

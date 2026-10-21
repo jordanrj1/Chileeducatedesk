@@ -1,0 +1,24 @@
+{# Qué es: Resumen corto de una persona (contacto, comuna, organizaciones, formación, comunidades y últimas actividades) para el panel lateral. #}
+{# Dónde se usa: /personas/<int:pk>/resumen, cargado en el panel lateral de la pestaña Participantes · Proceso: P3/P8 #}
+{% load fche %}<div class="fche-resumen-persona">
+<p class="h5 mb-1"><a href="{{ persona.get_absolute_url }}">{{ persona }}</a></p>
+<p class="mb-3">{% if persona.estado_registro %}{% estado persona.estado_registro %}{% else %}<span class="text-muted small">Sin estado de ficha</span>{% endif %}</p>
+<dl class="mb-3">
+  <dt class="small text-muted">Contacto</dt>
+  <dd>{% for c in contactos %}<div>{{ c.tipo }}: {{ c.valor }}</div>{% empty %}<span class="text-muted">Sin contacto registrado</span>{% endfor %}</dd>
+  <dt class="small text-muted">Comuna de residencia</dt>
+  <dd>{% if comuna_residencia %}<a href="{{ comuna_residencia.get_absolute_url }}">{{ comuna_residencia }}</a>{% else %}<span class="text-muted">Sin dato</span>{% endif %}</dd>
+  <dt class="small text-muted">Organizaciones</dt>
+  <dd>{% for v in persona.vinculos_vigentes %}<div><a href="{{ v.organizacion.get_absolute_url }}">{{ v.organizacion }}</a>{% if v.cargo %} · {{ v.cargo }}{% endif %}</div>{% empty %}<span class="text-muted">Sin vínculos vigentes</span>{% endfor %}</dd>
+  <dt class="small text-muted">Formación</dt>
+  <dd>{% for f in persona.formaciones_vigentes %}<div><a href="{{ f.organizacion.get_absolute_url }}">{{ f.organizacion }}</a>{% if f.sede_institucion %} · <a href="{{ f.sede_institucion.get_absolute_url }}">{{ f.sede_institucion }}</a>{% endif %}{% if f.carrera %} · {{ f.carrera.nombre }}{% endif %}</div>{% empty %}<span class="text-muted">Sin formación vigente</span>{% endfor %}</dd>
+  {% if perms.comunidades.view_comunidadmiembro %}<dt class="small text-muted">Comunidades</dt>
+  <dd>{% for m in comunidades %}<div><a href="{{ m.comunidad.get_absolute_url }}">{{ m.comunidad }}</a> · {{ m.get_rol_display }}</div>{% empty %}<span class="text-muted">No integra comunidades</span>{% endfor %}</dd>{% endif %}
+  {% if perms.actividades.view_participacion %}<dt class="small text-muted">Últimas actividades y tareas</dt>
+  <dd>{% for x in participaciones %}<div><a href="{{ x.actividad.get_absolute_url }}">{{ x.actividad.nombre }}</a> · {{ x.rol }}</div>{% empty %}<span class="text-muted">Sin participaciones</span>{% endfor %}</dd>{% endif %}
+</dl>
+<div class="d-flex flex-wrap gap-2">
+  {% if puede_editar %}<a class="btn btn-primary btn-sm" href="{% url 'personas:editar' persona.pk %}">Completar ficha</a>{% endif %}
+  <a class="btn btn-outline-secondary btn-sm" href="{{ persona.get_absolute_url }}">Abrir ficha completa</a>
+</div>
+</div>

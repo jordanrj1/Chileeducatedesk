@@ -139,8 +139,12 @@ def _participar(persona, actividad, rol, usuario, estado=None):
 
     estado = estado or estado_inicial()
     asistencia = {"asistio": True, "no_asistio": False}.get(estado.codigo)
-    Participacion.objects.get_or_create(actividad=actividad, persona=persona, rol=rol,
-                                        defaults={"estado": estado, "creado_por": usuario, "asistencia": asistencia})
+    from apps.actividades.servicios import asegurar_organizacion
+
+    part, creada = Participacion.objects.get_or_create(actividad=actividad, persona=persona, rol=rol,
+                                                       defaults={"estado": estado, "creado_por": usuario, "asistencia": asistencia})
+    if creada:
+        asegurar_organizacion(part)  # F25 E4: su institución queda en la actividad como «Aporta personas»
     _perfil_del_rol(persona, rol)
 
 

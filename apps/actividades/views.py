@@ -333,13 +333,13 @@ class ActividadFicha(FichaBase):
         ("sesiones", "Sesiones y minutas", "actividades/pestanas/sesiones.html"),
         ("agenda", "Agenda", "actividades/pestanas/agenda.html"),
         ("coordinacion", "Coordinación", "actividades/pestanas/coordinacion.html", "coordinacion.view_interaccion"),
-        ("asistencia", "Asistencia", "actividades/pestanas/asistencia.html"),
         ("documentos", "Documentos", "actividades/pestanas/documentos.html", "documentos.view_documento"),
         ("resultados", "Resultados", "actividades/pestanas/resultados.html"),
         ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
         ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "actividades/pestanas/historial.html", "actividades.view_historicalactividad"),
     ]
+    alias_pestanas = {"asistencia": "participantes"}  # F25 E7: la asistencia se marca en la tabla de Participantes
 
     def get_queryset(self):
         return super().get_queryset().select_related("proyecto", "tipo", "estado", "modalidad", "responsable", "actividad_padre")
@@ -398,18 +398,40 @@ class ActividadFicha(FichaBase):
 
     def _participantes(self, beneficiarios):
         from apps.nucleo.fases import modulo_activo
+        from apps.personas.models import PersonaFormacion, PersonaOrganizacion
 
-        qs = self.object.participaciones.select_related("persona", "rol", "estado", "institucion", "comunidad")
+        hoy = timezone.localdate()
+        qs = self.object.participaciones.select_related("persona", "rol", "estado", "institucion", "comunidad").prefetch_related(
+            Prefetch("persona__formaciones", queryset=PersonaFormacion.objects.filter(vigente=True).select_related("sede_institucion", "carrera"),
+                     to_attr="formaciones_vigentes"),
+            Prefetch("persona__vinculos", queryset=PersonaOrganizacion.objects.filter(Q(fecha_termino__isnull=True) | Q(fecha_termino__gte=hoy)).exclude(cargo=""),
+                     to_attr="cargos_vigentes"),
+        )
+        partes = list(qs)
+        for p in partes:
+            p.procedencia = self._procedencia(p)
         if not modulo_activo("beneficiarios"):
-            return list(qs) if not beneficiarios else []  # sin pestaña aparte: todos van en Participantes
-        return [p for p in qs if p.es_beneficiario == beneficiarios]
+            return partes if not beneficiarios else []  # sin pestaña aparte: todos van en Participantes
+        return [p for p in partes if p.es_beneficiario == beneficiarios]
+
+    @staticmethod
+    def _procedencia(p):
+        """F25 E4: organización (con su sede y carrera si estudia ahí, o su cargo si trabaja ahí) y comunidad, para la tabla.
+        Usa lo ya precargado: sin consultas."""
+        if not p.institucion_id:
+            return {"formacion": None, "cargo": ""}
+        formacion = next((f for f in p.persona.formaciones_vigentes if f.organizacion_id == p.institucion_id), None)
+        cargo = next((v.cargo for v in p.persona.cargos_vigentes if v.organizacion_id == p.institucion_id), "")
+        return {"formacion": formacion, "cargo": cargo}
 
     def ctx_participantes(self):
         partes = self._participantes(False)
         from apps.nucleo.models import RolParticipacion
 
-        grupos = [(etiqueta, [p for p in partes if p.rol.grupo == clave]) for clave, etiqueta in RolParticipacion.GRUPOS]
-        return {"participaciones": partes, "grupos_participacion": [(e, ps) for e, ps in grupos if ps], "grupo": "participantes",
+        ayudas = {"ejecutor": "Quienes realizan la actividad (tallerista, voluntario, estudiante, practicante, tutor…). Se separan por el rol.",
+                  "asistente": "A quienes va dirigida (participantes, beneficiarios)."}  # F25 E9
+        grupos = [(etiqueta, [p for p in partes if p.rol.grupo == clave], ayudas.get(clave, "")) for clave, etiqueta in RolParticipacion.GRUPOS]
+        return {"participaciones": partes, "grupos_participacion": [g for g in grupos if g[1]], "grupo": "participantes",
                 "titulo_pestana": "Participantes", "capacidad_alerta": self._capacidad()}
 
     def ctx_publico(self):
@@ -432,7 +454,7 @@ class ActividadFicha(FichaBase):
 
     def ctx_beneficiarios(self):
         partes = self._participantes(True)
-        return {"participaciones": partes, "grupos_participacion": [("Beneficiarios", partes)] if partes else [], "grupo": "beneficiarios",
+        return {"participaciones": partes, "grupos_participacion": [("Beneficiarios", partes, "")] if partes else [], "grupo": "beneficiarios",
                 "titulo_pestana": "Beneficiarios", "capacidad_alerta": None}
 
     def _capacidad(self):
@@ -440,10 +462,16 @@ class ActividadFicha(FichaBase):
         if ag and ag.lugar and ag.lugar.capacidad is not None:
             from .reglas import personas_que_ocupan
 
+            from django.conf import settings
+
             partes = list(self.object.participaciones.select_related("estado", "rol"))
-            n = len(personas_que_ocupan(self.object, [p for p in partes if p.activa]))
+            activas = [p for p in partes if p.activa]
+            n = len(personas_que_ocupan(self.object, activas))
+            fuera = set(getattr(settings, "ROLES_FUERA_DE_CAPACIDAD", []))
+            participaciones = sum(1 for p in activas if p.rol.codigo not in fuera)  # F25 E10: quien tiene varios roles ocupa un cupo
             espera = sum(1 for p in partes if p.en_espera)
-            return {"n": n, "capacidad": ag.lugar.capacidad, "excede": n > ag.lugar.capacidad, "lleno": n >= ag.lugar.capacidad, "espera": espera}
+            return {"n": n, "capacidad": ag.lugar.capacidad, "excede": n > ag.lugar.capacidad, "lleno": n >= ag.lugar.capacidad, "espera": espera,
+                    "participaciones": participaciones}
         return None
 
     def ctx_info(self):
@@ -456,10 +484,21 @@ class ActividadFicha(FichaBase):
         }
 
     def ctx_organizaciones(self):
+        from django.db.models import Count
+
         pk = self.object.pk
+        trajo = dict(  # F25 E4: personas distintas que vienen de cada organización, en una consulta
+            self.object.participaciones.exclude(estado__codigo="registro_erroneo").filter(institucion__isnull=False)
+            .values("institucion_id").annotate(n=Count("persona_id", distinct=True)).values_list("institucion_id", "n")
+        )
+
+        def texto_trajo(org_id):
+            n = trajo.get(org_id, 0)
+            return f"trajo {n} persona" + ("" if n == 1 else "s") if n else ""
+
         hijos = [{
             "texto": f"{o.organizacion}" + (f" · {o.tipo_intervencion}" if o.tipo_intervencion else ""), "url": o.organizacion.get_absolute_url(),
-            "detalle": " · ".join(x for x in [f"Contacto: {o.contacto}" if o.contacto else "", o.observaciones] if x), "vigente": o.vigente,
+            "detalle": " · ".join(x for x in [texto_trajo(o.organizacion_id), f"Contacto: {o.contacto}" if o.contacto else "", o.observaciones] if x), "vigente": o.vigente,
             "url_editar": reverse("actividades:organizaciones_editar", args=[pk, o.pk]), "url_alternar": reverse("actividades:organizaciones_alternar", args=[pk, o.pk]),
         } for o in self.object.organizaciones.select_related("organizacion", "tipo_intervencion", "contacto")]
         return {"titulo_pestana": "Organizaciones", "etiqueta_nuevo": "Organización", "url_nuevo": reverse("actividades:organizaciones_nuevo", args=[pk]), "hijos": hijos, "vacio": "Sin organizaciones relacionadas."}
@@ -669,7 +708,7 @@ class FinalizarVista(_AccionActividad):
             return self.volver(a, "resultados")
         messages.success(request, "Actividad finalizada: quedó como realizada y disponible en el historial.")
         if sin and not a.asistencia_sin_registro:  # RE-E5
-            messages.warning(request, f"{len(sin)} participante(s) quedaron sin registro de asistencia. Puedes completarlo en la pestaña Asistencia.")
+            messages.warning(request, f"{len(sin)} participante(s) quedaron sin registro de asistencia. Puedes completarlo en la pestaña Participantes.")
         return self.volver(a, "resultados")
 
 
@@ -769,6 +808,7 @@ def _aplicar_grupo(participacion, organizacion=None, cargo="", comunidad=None):
         ComunidadMiembro.objects.get_or_create(comunidad=comunidad, persona=persona, defaults={"rol": "integrante", "desde": timezone.localdate()})
     if organizacion or comunidad:
         participacion.save(update_fields=["institucion", "comunidad"])
+    servicios.asegurar_organizacion(participacion)  # F25 E4: también si la institución se completó sola con la formación
 
 
 class ParticipanteNuevo(_AccionActividad):
@@ -777,7 +817,7 @@ class ParticipanteNuevo(_AccionActividad):
     def _ctx(self, a, form, llego=False):
         return {
             "form": form, "titulo": "Agregar persona que llegó" if llego else "Agregar participante", "llego": llego,
-            "volver_url": f"{a.get_absolute_url()}?tab={'asistencia' if llego else 'participantes'}", "breadcrumb": [(a.nombre, a.get_absolute_url())],
+            "volver_url": f"{a.get_absolute_url()}?tab=participantes", "breadcrumb": [(a.nombre, a.get_absolute_url())],
         }
 
     def get(self, request, pk):
@@ -809,7 +849,7 @@ class ParticipanteNuevo(_AccionActividad):
                 registrar(request.user, "registro_tardio", p, "persona que llegó, agregada después de finalizar")
             from apps.nucleo.fases import modulo_activo
 
-            return self.volver(a, "asistencia" if llego else ("beneficiarios" if p.es_beneficiario and modulo_activo("beneficiarios") else "participantes"))
+            return self.volver(a, "beneficiarios" if p.es_beneficiario and modulo_activo("beneficiarios") and not llego else "participantes")
         return render(request, "actividades/participante_form.html", self._ctx(a, form, llego), status=400)
 
 
@@ -820,7 +860,7 @@ class ParticipanteRapido(_AccionActividad):
 
     def _ctx(self, a, form, cands=None):
         llego = (self.request.GET.get("llego") or self.request.POST.get("llego")) == "1"
-        return {"form": form, "titulo": "Crear persona que llegó" if llego else "Crear persona y agregarla", "volver_url": f"{a.get_absolute_url()}?tab={'asistencia' if llego else 'participantes'}", "breadcrumb": [(a.nombre, a.get_absolute_url())], "candidatos": cands, "actividad": a, "llego": llego}
+        return {"form": form, "titulo": "Crear persona que llegó" if llego else "Crear persona y agregarla", "volver_url": f"{a.get_absolute_url()}?tab=participantes", "breadcrumb": [(a.nombre, a.get_absolute_url())], "candidatos": cands, "actividad": a, "llego": llego}
 
     def get(self, request, pk):
         return render(request, "actividades/participante_rapido.html", self._ctx(self.actividad(pk), PersonaRapidaForm()))
@@ -853,7 +893,7 @@ class ParticipanteRapido(_AccionActividad):
             _perfil_del_rol(persona, d["rol"])
         messages.success(request, f"{persona} creada y agregada. Completa su ficha cuando puedas.")
         _avisar_capacidad(request, a)
-        return self.volver(a, "asistencia" if llego else "participantes")
+        return self.volver(a, "participantes")
 
 
 class ParticipanteUsar(_AccionActividad):
@@ -913,7 +953,8 @@ class ParticipacionEditar(Permiso403Mixin, UpdateView):
         if self.object.actividad.estado.codigo == "realizada":
             messages.error(self.request, "La actividad ya fue finalizada.")
             return self.form_invalid(form)
-        form.save()
+        with transaction.atomic():
+            servicios.asegurar_organizacion(form.save())  # F25 E4
         messages.success(self.request, "Participación actualizada.")
         return HttpResponseRedirect(f"{self.object.actividad.get_absolute_url()}?tab=participantes")
 
@@ -925,10 +966,10 @@ class AsistenciaVista(_AccionActividad):
         a = self.actividad(pk)
         if a.estado.codigo in ("cancelada", "pendiente", "suspendida"):
             messages.error(request, "No se puede registrar asistencia en esta actividad.")
-            return self.volver(a, "asistencia")
+            return self.volver(a, "participantes")
         if antes_de_la_fecha(a):
             messages.error(request, f"La asistencia se registra desde el día de la actividad ({a.agenda_vigente.fecha:%d-%m-%Y}).")
-            return self.volver(a, "asistencia")
+            return self.volver(a, "participantes")
         estados = {e.codigo: e for e in EstadoParticipacion.objects.filter(codigo__in=["asistio", "no_asistio"])}
         n = 0
         with transaction.atomic():
@@ -951,7 +992,7 @@ class AsistenciaVista(_AccionActividad):
         if a.estado.codigo == "realizada" and n:
             registrar(request.user, "asistencia_tardia", a, f"{n} cambios después de finalizar")  # RE-E3
         messages.success(request, f"Asistencia guardada ({n} cambios).")
-        return self.volver(a, "asistencia")
+        return self.volver(a, "participantes")
 
 
 class Constancia(Permiso403Mixin, TemplateView):

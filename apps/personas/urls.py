@@ -18,6 +18,7 @@ urlpatterns = [
     path("personas/nueva", views.PersonaNueva.as_view(), name="nueva"),
     path("personas/<int:pk>", views.PersonaFicha.as_view(), name="ficha"),
     path("personas/<int:pk>/editar", views.PersonaEditar.as_view(), name="editar"),
+    path("personas/<int:pk>/resumen", views.PersonaResumen.as_view(), name="resumen"),
     path("personas/<int:pk>/alternar", views.PersonaAlternar.as_view(), name="alternar"),
     path("personas/<int:pk>/fusionar", views.PersonaFusionar.as_view(), name="fusionar"),
     path("personas/<int:pk>/reasignar", views.PersonaReasignar.as_view(), name="reasignar"),

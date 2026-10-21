@@ -332,3 +332,17 @@
   // La ventana «+ Crear…» llega por HTMX: sus campos condicionales (RUT o documento extranjero) se enlazan al llegar
   document.addEventListener("htmx:afterSwap", function (e) { if (e.target.id === "modal-rapido-contenido") camposSegun(e.target); });
 })();
+
+// F25 E5: panel lateral de un participante. Mientras llega el resumen se avisa «Cargando…» (no queda el de otra persona);
+// al llegar, el foco pasa al nombre para que el lector de pantalla lo anuncie.
+(function () {
+  document.addEventListener("htmx:beforeRequest", function (e) {
+    var t = e.detail && e.detail.target;
+    if (t && t.id === "panel-persona-cuerpo") t.innerHTML = '<p class="text-muted small">Cargando…</p>';
+  });
+  document.addEventListener("htmx:afterSwap", function (e) {
+    if (e.target.id !== "panel-persona-cuerpo") return;
+    var nombre = e.target.querySelector("a");
+    if (nombre) nombre.focus();
+  });
+})();

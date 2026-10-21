@@ -208,3 +208,20 @@ def reabrir(actividad, usuario, motivo):
     _sincronizar_estado_agenda(actividad)
     registrar(usuario, "reabierta", actividad, motivo)
     return actividad
+
+
+def asegurar_organizacion(participacion):
+    """F25 E4: la organización de procedencia del participante queda en la actividad como «Aporta personas», si la
+    actividad aún no tenía ningún registro de esa organización (vigente o dado de baja: lo dado de baja no se reactiva).
+    Un solo lugar para todas las vistas que guardan participaciones. A lo más tres consultas."""
+    from apps.nucleo.models import TipoIntervencion
+
+    from .models import ActividadOrganizacion
+
+    org_id = participacion.institucion_id
+    if not org_id or participacion.estado.codigo == "registro_erroneo":
+        return None
+    if ActividadOrganizacion.objects.filter(actividad_id=participacion.actividad_id, organizacion_id=org_id).exists():
+        return None
+    tipo = TipoIntervencion.objects.filter(codigo="aporta_personas").first()
+    return ActividadOrganizacion.objects.create(actividad_id=participacion.actividad_id, organizacion_id=org_id, tipo_intervencion=tipo, vigente=True)

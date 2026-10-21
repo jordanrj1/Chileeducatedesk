@@ -257,6 +257,10 @@ textarea.form-control { min-height: 6rem; }
 .list-group-item.text-muted a { font-weight: 500; }
 
 /* Tablas: dentro de una tarjeta, cabecera discreta, filas cómodas */
+/* F25 E8: una tabla ancha se desplaza hacia el lado con la barra siempre visible */
+.table-responsive { scrollbar-width: thin; scrollbar-color: var(--fche-borde-fuerte) transparent; }
+.table-responsive::-webkit-scrollbar { height: .6rem; }
+.table-responsive::-webkit-scrollbar-thumb { background: var(--fche-borde-fuerte); border-radius: .3rem; }
 .table-responsive { background: var(--fche-superficie); border: 1px solid var(--fche-borde); border-radius: var(--fche-radio-lg); box-shadow: var(--fche-sombra); }
 .table { --bs-table-bg: transparent; --bs-table-hover-bg: #f6f8fd; --bs-table-border-color: var(--fche-borde); margin-bottom: 0; font-size: .875rem; }
 .table > thead th {
@@ -276,10 +280,9 @@ textarea.form-control { min-height: 6rem; }
 .nav-tabs {
   --bs-nav-tabs-border-width: 0; --bs-nav-link-padding-x: .15rem; --bs-nav-link-padding-y: .7rem;
   --bs-nav-link-color: var(--fche-texto-suave); --bs-nav-link-hover-color: var(--fche-texto); --bs-nav-link-font-weight: 550;
-  gap: 1.5rem; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+  gap: 0 1.5rem; flex-wrap: wrap;  /* F25 E8: todas las pestañas a la vista; si no caben, pasan a otra línea */
   border-bottom: 1px solid var(--fche-borde);
 }
-.nav-tabs::-webkit-scrollbar { display: none; }
 .nav-tabs .nav-link { position: relative; white-space: nowrap; border: 0; font-size: .9rem; }
 .nav-tabs .nav-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px 2px 0 0; background: transparent; transition: background-color var(--fche-transicion); }
 .nav-tabs .nav-link:hover::after { background: var(--fche-borde-fuerte); }
@@ -423,13 +426,13 @@ dl.row > dd { margin-bottom: .75rem; }
 .fche-ficha-cabecera__meta { margin-top: .45rem; color: var(--fche-texto-suave); font-size: .85rem; }
 .fche-ficha-cabecera__meta .badge { font-size: .74rem; }
 .fche-ficha-cabecera__acciones { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
-.fche-ficha-cabecera .nav-tabs { flex: 1 0 100%; margin: .35rem -1.5rem 0; padding: 0 1.5rem; border-bottom: 0; --fche-desvanecido: 1.25rem; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fche-desvanecido)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--fche-desvanecido)), transparent); }  /* si hay más pestañas que ancho, la última se desvanece y se nota que se desplaza */
+.fche-ficha-cabecera .nav-tabs { flex: 1 0 100%; margin: .35rem -1.5rem 0; padding: 0 1.5rem; border-bottom: 0; }  /* F25 E8: las pestañas que no caben bajan a otra línea */
 .fche-ficha-cuerpo { padding: 1.5rem; background: var(--fche-superficie); border: 1px solid var(--fche-borde); border-top: 1px solid var(--fche-borde); border-radius: 0 0 var(--fche-radio-lg) var(--fche-radio-lg); box-shadow: var(--fche-sombra); min-height: 12rem; }
 .fche-ficha-cuerpo > .table-responsive, .fche-ficha-cuerpo .table-responsive { box-shadow: none; }
 .fche-ficha-cuerpo .list-group { box-shadow: none; }
 @media (max-width: 575.98px) {
   .fche-ficha-cabecera { padding: 1rem 1rem 0; }
-  .fche-ficha-cabecera .nav-tabs { margin: .25rem -1rem 0; padding: 0 1rem; --fche-desvanecido: .9rem; }
+  .fche-ficha-cabecera .nav-tabs { margin: .25rem -1rem 0; padding: 0 1rem; gap: 0 1rem; }
   .fche-ficha-cuerpo { padding: 1rem; }
   .fche-ficha-cabecera__titulo { font-size: 1.25rem; }
 }

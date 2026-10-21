@@ -42,7 +42,7 @@
         {% if tipo == "personas" and puede_agregar %}
         <form method="post" action="{% url 'actividades:participante_usar' actividad.pk c.objeto.pk %}" class="d-flex gap-1">{% csrf_token %}
           <select class="form-select form-select-sm" name="rol" aria-label="Rol">{% for r in roles %}<option value="{{ r.pk }}">{{ r.nombre }}</option>{% endfor %}</select>
-          <button class="btn btn-outline-primary btn-sm">Invitar</button></form>
+          <button class="btn btn-outline-primary btn-sm">Agregar a la actividad</button></form>
         {% elif tipo == "lugares" %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:programar' actividad.pk %}?lugar={{ c.objeto.pk }}">Usar este lugar</a>
         {% elif tipo == "organizaciones" and puede_agregar %}<form method="post" action="{% url 'actividades:organizacion_usar' actividad.pk c.objeto.pk %}">{% csrf_token %}<button class="btn btn-outline-primary btn-sm">Agregar</button></form>{% endif %}
       </div></li>{% endfor %}</ul>

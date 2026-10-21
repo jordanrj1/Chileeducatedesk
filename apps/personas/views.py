@@ -840,3 +840,45 @@ class PerfilSensibleEditar(Permiso403Mixin, View):
         registrar(request.user, "datos_sensibles_editados", persona, "")
         messages.success(request, "Datos sensibles guardados.")
         return HttpResponseRedirect(f"{persona.get_absolute_url()}?tab=sensibles")
+
+
+class PersonaResumen(Permiso403Mixin, View):
+    """F25 E5: resumen corto de una persona para el panel lateral de Participantes (fragmento HTML que se carga con HTMX).
+    Sin JavaScript, el enlace del nombre lleva a la ficha completa. Número fijo de consultas."""
+
+    permission_required = "personas.view_persona"
+
+    def get(self, request, pk):
+        from django.db.models import Prefetch
+        from django.utils import timezone
+
+        from .models import Contacto, PersonaFormacion, PersonaOrganizacion
+
+        hoy = timezone.localdate()
+        p = get_object_or_404(
+            Persona.objects.select_related("estado_registro").prefetch_related(
+                Prefetch("contactos", queryset=Contacto.objects.filter(vigente=True).select_related("tipo")),
+                Prefetch("vinculos", queryset=PersonaOrganizacion.objects.filter(Q(fecha_termino__isnull=True) | Q(fecha_termino__gte=hoy))
+                         .select_related("organizacion"), to_attr="vinculos_vigentes"),
+                Prefetch("formaciones", queryset=PersonaFormacion.objects.filter(vigente=True).select_related("organizacion", "sede_institucion", "carrera"),
+                         to_attr="formaciones_vigentes"),
+            ),
+            pk=pk,
+        )
+        u = request.user
+        residencia = p.direcciones.filter(tipo="residencia", vigente=True).select_related("direccion__comuna").order_by("pk").first()
+        comunidades = []
+        if u.has_perm("comunidades.view_comunidadmiembro"):
+            comunidades = list(p.comunidades.filter(vigente=True).select_related("comunidad"))
+        participaciones = []
+        if u.has_perm("actividades.view_participacion"):
+            participaciones = list(p.participaciones.exclude(estado__codigo="registro_erroneo")
+                                   .select_related("actividad__proyecto", "rol").order_by("-fecha", "-pk")[:5])
+        return render(request, "personas/_resumen.html", {
+            "persona": p,
+            "contactos": [c for c in p.contactos.all() if c.principal] or list(p.contactos.all())[:2],
+            "comuna_residencia": residencia.direccion.comuna if residencia else None,
+            "comunidades": comunidades,
+            "participaciones": participaciones,
+            "puede_editar": u.has_perm("personas.change_persona"),
+        })
