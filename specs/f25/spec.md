@@ -92,3 +92,41 @@ Cada fila crea el vínculo que corresponde (`PersonaOrganizacion`, `ComunidadMie
 4. **Relaciones al registrar:** en «Nueva persona», varias filas de relaciones (dos organizaciones con distinto rol, una comunidad y un proyecto) quedan guardadas y visibles en ambos lados.
 5. **Experiencia:** muestra los cargos terminados sin cargarlos a mano.
 6. **Pruebas:** las existentes siguen pasando y hay pruebas esenciales para cada punto.
+
+## E. Participantes de actividades y tareas (revisión del usuario del 21-10-2026)
+Decisiones del usuario: ficha rápida única · cinco estados · la organización del participante se agrega sola · panel lateral sin salir de la tarea.
+
+**E1 · Una ficha rápida igual en todas partes**
+- **Campos:** nombres*, apellidos, RUT o documento extranjero, nacionalidad, sexo, fecha de nacimiento, teléfono, correo y comuna de residencia.
+- **Dónde se usa:** en «+ Crear persona» del buscador, al agregar participantes y en Personas (modo rápido).
+- La ficha completa queda en Personas.
+- **Se quita el enlace «Créala aquí mismo»** porque duplica; la ruta se conserva.
+- Una ficha incompleta muestra «Completar ficha».
+
+**E2 · Cinco estados para elegir**
+- **Estados:** Inscrito (antes «Confirmado»; por defecto en todo alta), Asistió, No asistió, Canceló y En lista de espera.
+- «Registro erróneo» queda solo para «Quitar».
+- Invitado, interesado, disponible y rechazó siguen solo para las invitaciones.
+- Un registro antiguo conserva su estado.
+
+**E3 · Misma persona dos veces:** si ya participa en la actividad con otro rol, se avisa con los roles que tiene y se pide confirmar.
+
+**E4 · Organización del participante:**
+- al guardar una participación con institución, la organización queda en la actividad como «Aporta personas» si no estaba;
+- la pestaña Organizaciones muestra cuántas personas trajo cada una;
+- en Participantes, la procedencia muestra la organización, la sede, la carrera, el cargo y la comunidad, con enlaces.
+
+**E5 · Panel lateral:** al hacer clic en un participante se abre un panel, sin salir de la tarea. Muestra contacto, comuna, organizaciones con cargo, formación (institución, sede, carrera), comunidades, otras actividades, «Completar ficha» y «Abrir ficha completa».
+
+**E6 · Horas:** la ayuda dice el valor por defecto («X h según la programación, HH:MM a HH:MM»).
+
+**E7 · Asistencia en la tabla de Participantes:**
+- desde el día de la actividad hay una columna para marcar «Asistió» o «No asistió» y un botón «Guardar asistencia»;
+- «Sin registro de asistencia» y «+ Agregar persona que llegó» están en la misma pestaña;
+- la pestaña Asistencia deja de mostrarse; `?tab=asistencia` abre Participantes.
+
+**E8 · Pantalla:** las pestañas se muestran todas, en varias líneas si hace falta, y las tablas anchas se desplazan hacia el lado.
+
+**E9 · Grupos:** bajo «Equipo ejecutor» y «Asistentes», una frase explica que se separan por el rol.
+
+**E10 · Cupos:** «Cupos ocupados: 3 de 10 (5 participaciones de 3 personas: quien tiene varios roles ocupa un solo cupo)».
