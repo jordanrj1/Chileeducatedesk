@@ -89,3 +89,8 @@ def test_sin_recursos_externos():
     c.force_login(crear_usuario("Gestor"))
     html = c.get("/dashboard").content.decode()
     assert "http://" not in html and "https://" not in html
+
+
+def test_paginas_con_sesion_no_se_guardan_en_el_navegador(cg):
+    """Con sesión iniciada, el navegador no guarda las páginas: «Atrás» y una pestaña reabierta muestran lo actual."""
+    assert "no-store" in cg.get("/dashboard")["Cache-Control"]
