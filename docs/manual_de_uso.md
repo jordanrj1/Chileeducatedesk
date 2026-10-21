@@ -29,6 +29,26 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 - **Listados:** buscador y tres filtros a la vista; el resto en «Más filtros». Los filtros aplicados se ven como etiquetas; la × quita cada uno.
 - **Persona por tipo:** al registrar a alguien, marca si es estudiante, vecino o vecina, invitado o invitada, o voluntario o voluntaria; aparecen solo sus datos. Sin marcar nada, se registra con los datos básicos.
 
+## 2c. Personas: relaciones, cargos y experiencia (desde F25)
+- **Al registrar** (Nueva persona → «Relaciones»): agrega con «+ Agregar relación» una fila por cada vínculo. Las filas pueden ser de cuatro tipos:
+  - organización con rol (estudiante, docente, funcionaria, dirigente, socia, practicante y de dónde viene);
+  - comunidad con su rol;
+  - proyecto o tarea;
+  - actividad.
+  
+  Nada es obligatorio.
+- **Cargos y vínculos** (pestaña de la persona): reúne todo lo que la une a organizaciones, estudios, lugares, comunidades, proyectos y actividades o tareas, marcado «Vigente» o «Terminado», con enlaces.
+- **Experiencia**: se arma sola con los cargos y roles que ya terminaron. A mano se agrega solo la «Experiencia fuera de la Fundación».
+- **Lugares**: «+ Vincular a un lugar» (estudia, trabaja o participa ahí); el lugar muestra a sus personas.
+
+## 5b. Tareas de un proyecto (desde F25)
+- **Dónde están:** en el proyecto, pestaña «Tareas» → «+ Nueva tarea», con nombre, propósito, fecha y horas, lugar o comunidad, grupo objetivo y responsable.
+- **Cómo funcionan:** una tarea es como una actividad, con participantes, asistencia y sesiones, pero vive dentro del proyecto.
+  - En el calendario aparece como «Tarea · proyecto».
+  - En /actividades aparece solo con «Incluir tareas de proyectos».
+- **Participantes en terreno:** «+ Agregar participante» busca a la persona; si no está, «Créala aquí mismo» pide los datos básicos (RUT, nacionalidad, sexo, comuna), su rol y de qué grupo viene (organización con cargo, o comunidad). Todo queda vinculado a su ficha, a la organización, a la comunidad y a la comuna.
+- **Si sigue otro día:** se agrega una sesión en «Sesiones y minutas», con su propia lista de asistencia.
+
 ## 3. Registrar una persona (una sola vez)
 1. **Personas → + Nueva persona**. Elige **Ficha rápida** (nombre y un contacto) o **Ficha completa**. Solo el nombre es obligatorio. «Guardar y completar después» la deja en la cola de incompletos.
 2. Al guardar, el sistema **busca coincidencias** (mismo RUT, correo, teléfono o nombre parecido). Si aparece un posible duplicado, elige **Usar existente** o **Crear de todos modos**. Nunca se fusiona nada automáticamente.
