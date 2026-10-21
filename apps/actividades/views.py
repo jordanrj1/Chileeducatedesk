@@ -496,10 +496,28 @@ class ActividadFicha(FichaBase):
             n = trajo.get(org_id, 0)
             return f"trajo {n} persona" + ("" if n == 1 else "s") if n else ""
 
+        # Detalle de las personas que trajo cada organización: rol, carrera, sede, estado y asistencia (consultas fijas)
+        from django.db.models import Prefetch
+
+        from apps.personas.models import PersonaFormacion
+
+        personas_de = {}
+        parts = (self.object.participaciones.exclude(estado__codigo="registro_erroneo").filter(institucion__isnull=False)
+                 .select_related("persona", "rol", "estado")
+                 .prefetch_related(Prefetch("persona__formaciones", queryset=PersonaFormacion.objects.filter(vigente=True)
+                                            .select_related("carrera", "sede_institucion"), to_attr="formaciones_v")))
+        for p in parts:
+            f = next((x for x in p.persona.formaciones_v if x.organizacion_id == p.institucion_id), None)
+            asistio = {True: "asistió", False: "no asistió"}.get(p.asistencia, "")
+            datos = " · ".join(x for x in [str(p.rol), f.carrera.nombre if f and f.carrera_id else "", str(f.sede_institucion) if f and f.sede_institucion_id else "",
+                                            str(p.estado), asistio] if x)
+            personas_de.setdefault(p.institucion_id, []).append((str(p.persona), datos, p.persona.get_absolute_url()))
+
         hijos = [{
             "texto": f"{o.organizacion}" + (f" · {o.tipo_intervencion}" if o.tipo_intervencion else ""), "url": o.organizacion.get_absolute_url(),
             "detalle": " · ".join(x for x in [texto_trajo(o.organizacion_id), f"Contacto: {o.contacto}" if o.contacto else "", o.observaciones] if x), "vigente": o.vigente,
             "url_editar": reverse("actividades:organizaciones_editar", args=[pk, o.pk]), "url_alternar": reverse("actividades:organizaciones_alternar", args=[pk, o.pk]),
+            "ficha": personas_de.get(o.organizacion_id) or None,
         } for o in self.object.organizaciones.select_related("organizacion", "tipo_intervencion", "contacto")]
         return {"titulo_pestana": "Organizaciones", "etiqueta_nuevo": "Organización", "url_nuevo": reverse("actividades:organizaciones_nuevo", args=[pk]), "hijos": hijos, "vacio": "Sin organizaciones relacionadas."}
 

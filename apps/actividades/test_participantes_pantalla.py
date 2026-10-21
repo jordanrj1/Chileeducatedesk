@@ -144,3 +144,20 @@ def test_participantes_sin_consultas_en_bucle(cg, crear_actividad, gestor, lugar
     assert medidas[1] == medidas[0], medidas
     with django_assert_max_num_queries(medidas[0]):
         cg.get(url)
+
+
+def test_organizacion_muestra_el_detalle_de_las_personas_que_trajo(cg, crear_actividad, universidad):
+    """En la pestaña Organizaciones, «Ver detalle» lista a cada persona que trajo la organización, con su rol."""
+    from apps.actividades.models import Participacion
+    from apps.nucleo.models import EstadoParticipacion
+    from apps.personas.models import Persona
+
+    a = crear_actividad("Taller inventado")
+    p = Persona.objects.create(nombres="Bruno", apellido_paterno="Ficticio")
+    from apps.nucleo.models import RolParticipacion
+    Participacion.objects.create(actividad=a, persona=p, rol=RolParticipacion.objects.get(codigo="voluntario"), estado=EstadoParticipacion.objects.get(codigo="confirmado"), institucion=universidad)
+    from apps.actividades.servicios import asegurar_organizacion
+
+    asegurar_organizacion(Participacion.objects.get(persona=p))
+    html = cg.get(f"{a.get_absolute_url()}?tab=organizaciones").content.decode()
+    assert "Ver detalle" in html and "Bruno Ficticio" in html and f'href="{p.get_absolute_url()}"' in html
