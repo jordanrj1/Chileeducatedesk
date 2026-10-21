@@ -1,0 +1,20 @@
+{# Qué es: Sección «Relaciones» al registrar una persona: filas para unirla a organizaciones, comunidades, proyectos o tareas y actividades, cada una con su rol. #}
+{# Dónde se usa: personas/nueva.html (/personas/nueva) · Proceso: P3 #}
+{% comment %}
+Recibe `relaciones` (apps/personas/relaciones.py). Cada fila muestra solo los campos de su tipo (data-mostrar-si-campo, static/js/fche.js).
+Con JavaScript, «+ Agregar relación» copia la fila de la <template>; sin JavaScript se muestran dos filas vacías.
+{% endcomment %}
+<{% if modo == 'rapida' %}details class="fche-bloque fche-bloque--plegable"{% if relaciones.total_error_count %} open{% endif %}{% else %}fieldset class="fche-bloque"{% endif %} id="relaciones" data-filas>
+  {% if modo == 'rapida' %}<summary class="fche-bloque__titulo">Relaciones (opcional)</summary>{% else %}<legend class="fche-bloque__titulo">Relaciones</legend>{% endif %}
+  <p class="fche-bloque__ayuda">Opcional. Organizaciones, comunidades, proyectos o tareas y actividades con las que ya tiene relación, con su rol. Cada una queda en su «Cargos y vínculos» y en la ficha del otro lado. Las filas vacías no se guardan.</p>
+  {{ relaciones.management_form }}
+  {% for e in relaciones.non_form_errors %}<div class="fche-campo__error text-danger" role="alert">{{ e }}</div>{% endfor %}
+  <div data-filas-lista>
+    {% for fila in relaciones %}<div class="fche-destinos__fila" role="group" aria-label="Relación {{ forloop.counter }}">
+      {% for e in fila.non_field_errors %}<div class="fche-campo__error text-danger" role="alert">{{ e }}</div>{% endfor %}
+      <div class="fche-form__rejilla">{% for campo in fila %}{% include "generico/_campo.html" %}{% endfor %}</div>
+    </div>{% endfor %}
+  </div>
+  <template data-filas-plantilla><div class="fche-destinos__fila" role="group" aria-label="Otra relación"><div class="fche-form__rejilla">{% for campo in relaciones.empty_form %}{% include "generico/_campo.html" %}{% endfor %}</div></div></template>
+  <div class="fche-destinos__agregar"><button type="button" class="btn btn-sm btn-outline-primary" data-agregar-fila hidden>+ Agregar relación</button></div>
+</{% if modo == 'rapida' %}details{% else %}fieldset{% endif %}>

@@ -13,10 +13,12 @@ class Actividades(Fuente):
     url_opciones = "actividades:opciones"
     placeholder = "Escribe el nombre de la actividad…"
     texto_vacio = "Aún no hay actividades registradas."
-    filtros_permitidos = ("raiz", "abiertas", "excluir")
+    filtros_permitidos = ("raiz", "abiertas", "excluir", "tareas")
 
-    def base(self, raiz="", abiertas="", excluir="", **_):
+    def base(self, raiz="", abiertas="", excluir="", tareas="", **_):
         qs = Actividad.objects.all()
+        if tareas == "1":  # solo las tareas de proyectos (actividades con proyecto)
+            qs = qs.filter(proyecto__isnull=False)
         if raiz == "1":
             qs = qs.filter(actividad_padre__isnull=True)
         if abiertas == "1":

@@ -64,7 +64,7 @@ Por dentro, una tarea es una `Actividad` con `proyecto`. Así reutiliza los part
 
 **Cómo quedó (A y B):** «+ Nueva tarea» en `/proyectos/<id>/tareas/nueva`; `/actividades` excluye las tareas salvo con «Incluir tareas de proyectos» o al filtrar por proyecto; la ficha rápida bloquea un RUT o documento ya registrado (hay que buscar a la persona). La lista de una sesión muestra a todos los participantes de la tarea; las personas se agregan en la tarea, no dentro de la sesión.
 
-### C. Sección «Relaciones» en el formulario de persona
+### C. Sección «Relaciones» en el formulario de persona (hecho)
 **Decisión:** todo en el mismo formulario.
 
 Son filas que se agregan con «+». Hay cuatro tipos:
@@ -75,10 +75,12 @@ Son filas que se agregan con «+». Hay cuatro tipos:
 
 Cada fila crea el vínculo que corresponde (`PersonaOrganizacion`, `ComunidadMiembro`, `ProyectoPersona` o `Participacion`). Se ve en «Cargos y vínculos» y en la ficha del otro lado.
 
-### D. Experiencia
+### D. Experiencia (hecho)
 **Decisión:** se arma sola, más experiencia externa opcional.
 - La pestaña muestra automáticamente los cargos y roles ya terminados, con fechas: voluntario, tallerista, dirigente, practicante, equipo de proyecto, participaciones en actividades realizadas.
 - La carga a mano queda solo para la «Experiencia fuera de la Fundación».
+
+**Cómo quedó (C y D):** «Relaciones» va en «Nueva persona» (plegada en la ficha rápida). Sin JavaScript se ven dos filas; con «+ Agregar relación» se suman más. Cada fila valida por separado y se guarda en la misma transacción que la persona, después del aviso de duplicados (`apps/personas/relaciones.py`). Organización: estudiante crea su formación (solo en instituciones educativas), dirigente queda como directorio y el resto como cargo funcional («Docente · detalle»); el practicante puede indicar la actividad o tarea, o el proyecto, por el que viene. Proyecto o tarea: en el proyecto como equipo (rol y responsable) o beneficiario; en una tarea, como participante. La pestaña Experiencia muestra los cargos y roles terminados, y aparte la «Experiencia fuera de la Fundación».
 
 ## Criterios de aceptación
 1. **Tarea completa:** en un proyecto, «+ Nueva tarea» con fecha, lugar o comunidad crea la tarea en un paso. Se ve en la pestaña Tareas y en el calendario como «Tarea · proyecto», y no en `/actividades` sin el filtro.

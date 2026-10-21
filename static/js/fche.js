@@ -208,6 +208,8 @@
     caja.querySelector("[data-filas-lista]").appendChild(fila);
     total.value = n + 1;
     if (window.htmx) window.htmx.process(fila);
+    campoCondicional(fila); camposSegun(fila); // la fila nueva muestra solo los campos que corresponden
+    fila.dispatchEvent(new CustomEvent("htmx:load", { bubbles: true })); // selector.js arma los buscadores de la fila
     var primera = fila.querySelector("select:not([disabled])");
     if (primera) primera.focus();
   });
@@ -280,16 +282,21 @@
   });
 
   // Campos que solo aplican según otro campo (p. ej. «Comuna que administra» solo si el tipo es Municipalidad).
+  // data-mostrar-si-valor admite varios valores separados por espacio. Si el campo del que depende está oculto, este también
+  // se oculta (p. ej. «Viene por» depende del rol, que depende del tipo de relación).
   function campoCondicional(raiz) {
     Array.prototype.forEach.call((raiz || document).querySelectorAll("[data-mostrar-si-campo]"), function (el) {
       var form = el.form || document, origen = form.querySelector("[name='" + el.dataset.mostrarSiCampo + "']");
       var caja = el.closest(".fche-campo") || el.parentNode;
       if (!origen || !caja) return;
+      var valores = (el.dataset.mostrarSiValor || "").split(" ");
       function aplicar() {
-        var ver = origen.value === el.dataset.mostrarSiValor || !!el.value && origen.value === "";
-        caja.hidden = !ver;
+        var cajaOrigen = origen.closest(".fche-campo");
+        var conDato = el.type === "checkbox" ? el.checked : !!el.value;
+        var ver = valores.indexOf(origen.value) !== -1 || conDato && origen.value === "";
+        caja.hidden = !ver || !!(cajaOrigen && cajaOrigen.hidden);
       }
-      origen.addEventListener("change", aplicar);
+      (el.form || origen).addEventListener("change", aplicar);
       aplicar();
     });
   }

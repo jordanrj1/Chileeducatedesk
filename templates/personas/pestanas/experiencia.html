@@ -1,0 +1,15 @@
+{# Qué es: Pestaña Experiencia de la persona: los cargos y roles ya terminados (se arman solos desde sus vínculos) y, aparte, la experiencia fuera de la Fundación cargada a mano. #}
+{# Dónde se usa: /personas/<int:pk>?tab=experiencia · Proceso: P9 #}
+{% load fche %}<div class="fche-seccion"><h2 class="h6 mb-0">Experiencia en la Fundación</h2></div>
+<p class="small text-muted">Se arma sola con los cargos y roles que ya terminaron: organizaciones, estudios, comunidades, proyectos y actividades realizadas. Los vigentes están en «Cargos y vínculos».</p>
+{% for titulo, filas in terminados %}
+<h3 class="h6 mt-3 mb-2">{{ titulo }} <span class="fche-contador">{{ filas|length }}</span></h3>
+<ul class="fche-items">{% for f in filas %}
+  <li><div class="fche-items__texto">
+    <div class="fche-items__titulo"><a href="{{ f.url }}">{{ f.nombre }}</a>{% if f.rol %} · {{ f.rol }}{% endif %}</div>
+    {% if f.detalle or f.periodo %}<div class="fche-items__detalle">{{ f.detalle }}{% if f.detalle and f.periodo %} · {% endif %}{{ f.periodo }}</div>{% endif %}
+  </div></li>{% endfor %}</ul>
+{% empty %}
+<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "dato_vacio" 18 %}</span><p class="fche-vacio__texto mb-0">Aún no tiene cargos ni roles terminados.</p></div>
+{% endfor %}
+<div class="mt-4">{% include "generico/_hijos.html" %}</div>

@@ -154,11 +154,15 @@ class PersonaNueva(Permiso403Mixin, CreateView):
         form.separar_tipos()
         datos = self.request.POST if self.request.method == "POST" else None
         self.fichas = RegistroFichas(datos, self.request.user, base=form)
+        from .relaciones import relaciones_formset
+
+        self.relaciones = relaciones_formset(datos)  # F25: organizaciones, comunidades, proyectos y actividades de la persona
         return form
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo="Nueva persona", volver_url="/personas", breadcrumb=[("Personas", "/personas")], modo=self.modo(), fichas=self.fichas)
+        ctx.update(titulo="Nueva persona", volver_url="/personas", breadcrumb=[("Personas", "/personas")], modo=self.modo(), fichas=self.fichas,
+                   relaciones=self.relaciones)
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -169,7 +173,9 @@ class PersonaNueva(Permiso403Mixin, CreateView):
 
             sin_errores(form)
             return self.render_to_response(self.get_context_data(form=form))
-        if all([form.is_valid(), self.fichas.is_valid()]):
+        from .relaciones import relaciones_validas
+
+        if all([form.is_valid(), self.fichas.is_valid(), relaciones_validas(self.relaciones)]):
             return self.form_valid(form)
         return self.form_invalid(form)
 
@@ -204,6 +210,9 @@ class PersonaNueva(Permiso403Mixin, CreateView):
             if d.get("telefono"):
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"], principal=not d.get("correo"))
             self.fichas.guardar(persona)  # las secciones de los tipos marcados
+            from .relaciones import guardar_relaciones
+
+            guardar_relaciones(self.relaciones, persona, self.request.user)
             from apps.documentos.origen import registrar_origen
 
             registrar_origen(persona, self.request.user)
@@ -354,7 +363,7 @@ class PersonaFicha(FichaBase):
         ("contactos", "Contactos", "generico/_hijos.html"),
         ("direcciones", "Direcciones 🔒", "generico/_hijos.html"),
         ("formacion", "Formación", "generico/_hijos.html"),
-        ("experiencia", "Experiencia", "generico/_hijos.html"),
+        ("experiencia", "Experiencia", "personas/pestanas/experiencia.html"),
         ("disponibilidad", "Disponibilidad", "generico/_hijos.html"),
         ("vinculos", "Cargos y vínculos", "personas/pestanas/vinculos.html"),
         ("trayectoria", "Participaciones", "personas/pestanas/trayectoria.html", "actividades.view_participacion"),
@@ -471,8 +480,16 @@ class PersonaFicha(FichaBase):
                               texto=lambda f: str(f), detalle=detalle, url=lambda f: f.organizacion.get_absolute_url())
 
     def ctx_experiencia(self):
-        return self._hijo_ctx("Experiencia", "experiencia", "Experiencia", self.object.experiencias.all(),
-                              texto=lambda e: e.descripcion, detalle=lambda e: e.lugar)
+        """F25: arriba, los cargos y roles ya terminados (se arman solos desde «Cargos y vínculos»); abajo, la experiencia
+        fuera de la Fundación, que se carga a mano."""
+        from .vinculos import cargos_y_vinculos
+
+        terminados = [(titulo, [f for f in filas if not f["vigente"]]) for titulo, filas in cargos_y_vinculos(self.object)]
+        ctx = self._hijo_ctx("Experiencia fuera de la Fundación", "experiencia", "Experiencia fuera de la Fundación", self.object.experiencias.all(),
+                             texto=lambda e: e.descripcion, detalle=lambda e: e.lugar)
+        ctx.update(terminados=[(t, filas) for t, filas in terminados if filas],
+                   vacio="Sin experiencia fuera de la Fundación registrada.")
+        return ctx
 
     def ctx_disponibilidad(self):
         return self._hijo_ctx("Disponibilidad", "disponibilidad", "Horario", self.object.disponibilidades.all(),
