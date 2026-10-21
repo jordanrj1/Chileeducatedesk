@@ -329,10 +329,11 @@ class EstudiosDependientes(Permiso403Mixin, View):
         return render(request, "personas/fichas/_estudios_dependientes.html", {"form": form})
 
 
-def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente="vigente"):
+def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente="vigente", url=None):
     res = []
     for o in objs:
-        h = {"texto": texto(o), "detalle": detalle(o) if detalle else "", "vigente": getattr(o, vigente, True) if vigente else True}
+        h = {"texto": texto(o), "detalle": detalle(o) if detalle else "", "vigente": getattr(o, vigente, True) if vigente else True,
+             "url": url(o) if url else ""}
         if slug:
             h["url_editar"] = reverse(f"personas:{slug}_editar", args=[pk, o.pk])
             if vigente:
@@ -467,7 +468,7 @@ class PersonaFicha(FichaBase):
             return " · ".join(x for x in partes if x)
 
         return self._hijo_ctx("Formación", "formacion", "Formación", self.object.formaciones.select_related("organizacion", "carrera", "docente"),
-                              texto=lambda f: str(f), detalle=detalle)
+                              texto=lambda f: str(f), detalle=detalle, url=lambda f: f.organizacion.get_absolute_url())
 
     def ctx_experiencia(self):
         return self._hijo_ctx("Experiencia", "experiencia", "Experiencia", self.object.experiencias.all(),
@@ -479,7 +480,8 @@ class PersonaFicha(FichaBase):
 
     def ctx_vinculos(self):
         return self._hijo_ctx("Organizaciones y cargos", "vinculos", "Vínculo", self.object.vinculos.select_related("organizacion"),
-                              texto=lambda v: f"{v.cargo or 'Vínculo'} · {v.organizacion}", detalle=lambda v: f"{v.get_tipo_cargo_display()} · {v.fecha_inicio or '?'} a {v.fecha_termino or 'actualidad'}", vigente=None)
+                              texto=lambda v: f"{v.cargo or 'Vínculo'} · {v.organizacion}", detalle=lambda v: f"{v.get_tipo_cargo_display()} · {v.fecha_inicio or '?'} a {v.fecha_termino or 'actualidad'}", vigente=None,
+                              url=lambda v: v.organizacion.get_absolute_url())
 
     def ctx_emergencia(self):
         return self._hijo_ctx("Contacto de emergencia", "emergencia", "Contacto", self.object.contactos_emergencia.all(),
@@ -512,7 +514,7 @@ class PersonaFicha(FichaBase):
 
     def ctx_comunidades(self):
         ctx = self._hijo_ctx("Comunidades", "comunidades", "Comunidad", self.object.comunidades.select_related("comunidad__comuna"),
-                             texto=lambda m: str(m.comunidad), detalle=lambda m: " · ".join(x for x in [m.get_rol_display(), m.comunidad.territorio,
+                             url=lambda m: m.comunidad.get_absolute_url(), texto=lambda m: str(m.comunidad), detalle=lambda m: " · ".join(x for x in [m.get_rol_display(), m.comunidad.territorio,
                                                                                                          f"desde {m.desde:%d-%m-%Y}" if m.desde else ""] if x))
         ctx["puede_agregar"] = self.request.user.has_perm("comunidades.add_comunidadmiembro")
         return ctx

@@ -1,8 +1,8 @@
 {# Qué es: Pestaña Público y comunidades: a qué comunidades y territorios va dirigida la actividad. #}
 {# Dónde se usa: /actividades/<int:pk> · Proceso: P2 #}
-{% load fche %}<dl class="fche-datos mb-4">
+{% load fche %}{% if perms.actividades.change_actividad %}{% url "texto_revisado" "actividad-rango" object.pk as url_revisado %}{% endif %}<dl class="fche-datos mb-4">
   <div><dt>Línea o área temática</dt><dd>{{ object.area_tematica|default:"—" }}</dd></div>
-  <div><dt>Tramos de edad</dt><dd>{% include "generico/_tramos.html" with tramos=object.tramos_etarios.all texto_anterior=object.rango_etario %}</dd></div>
+  <div><dt>Tramos de edad</dt><dd>{% include "generico/_tramos.html" with tramos=object.tramos_etarios.all texto_anterior=object.rango_etario url_revisado=url_revisado %}</dd></div>
   <div><dt>Beneficiarios estimados</dt><dd>{{ object.beneficiarios_estimados|default:"—" }}</dd></div>
   <div class="fche-datos__ancho"><dt>Público objetivo</dt><dd>{{ object.publico_objetivo|default:"—"|linebreaksbr }}</dd></div>
 </dl>

@@ -1,4 +1,4 @@
 {# Qué es: Tramos de edad de un registro como etiquetas, con el texto anterior escrito a mano (si lo hay) marcado «por revisar». #}
 {# Dónde se usa: pestaña Público de la actividad e Información de la comunidad · Proceso: P2 #}
 {% load fche %}{% for t in tramos %}<span class="badge text-bg-primary me-1">{{ t.etiqueta }}</span>{% empty %}{% if not texto_anterior %}—{% endif %}{% endfor %}
-{% if texto_anterior %}<span class="d-block small mt-1">Antes decía: «{{ texto_anterior }}» {% estado "Por revisar" codigo="en_revision" %}</span>{% endif %}
+{% if texto_anterior %}<span class="d-block small mt-1">Antes decía: «{{ texto_anterior }}» {% estado "Por revisar" codigo="en_revision" %}{% if url_revisado %} <form class="d-inline" method="post" action="{{ url_revisado }}">{% csrf_token %}<button class="btn btn-link btn-sm p-0 align-baseline">Ya lo revisé</button></form>{% endif %}</span>{% endif %}

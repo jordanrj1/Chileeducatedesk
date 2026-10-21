@@ -14,7 +14,10 @@ handler403 = "apps.nucleo.views.error_403"
 handler404 = "apps.nucleo.views.error_404"
 handler500 = "apps.nucleo.views.error_500"
 
+from apps.nucleo.vistas_revision import TextoAnteriorRevisado
+
 urlpatterns = [
+    path("texto-anterior/<slug:clave>/<int:pk>/revisado", TextoAnteriorRevisado.as_view(), name="texto_revisado"),
     path("", views.inicio, name="inicio"),
     path(
         "login",

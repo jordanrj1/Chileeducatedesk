@@ -116,7 +116,7 @@ class ComunidadFicha(FichaBase):
     def ctx_integrantes(self):
         pk = self.object.pk
         hijos = [{
-            "texto": str(m.persona), "badge": m.get_rol_display() if m.rol != "integrante" else "",
+            "texto": str(m.persona), "url": m.persona.get_absolute_url(), "badge": m.get_rol_display() if m.rol != "integrante" else "",
             "detalle": " · ".join(x for x in [f"desde {m.desde:%d-%m-%Y}" if m.desde else "", f"hasta {m.hasta:%d-%m-%Y}" if m.hasta else "", m.observaciones] if x),
             "vigente": m.vigente, "url_editar": reverse("comunidades:integrantes_editar", args=[pk, m.pk]), "url_alternar": reverse("comunidades:integrantes_alternar", args=[pk, m.pk]),
         } for m in self.object.miembros.select_related("persona")]

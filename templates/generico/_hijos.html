@@ -11,13 +11,16 @@
   {% for h in hijos %}
   <li class="{% if not h.vigente %}is-inactivo text-muted{% endif %}">
     <div class="fche-items__texto">
-      <div class="fche-items__titulo">{{ h.texto }}{% if h.badge %} <span class="badge text-bg-primary">{{ h.badge }}</span>{% endif %}{% if not h.vigente %} <span class="badge text-bg-secondary">No vigente</span>{% endif %}</div>
+      <div class="fche-items__titulo">{% if h.url %}<a href="{{ h.url }}">{{ h.texto }}</a>{% else %}{{ h.texto }}{% endif %}{% if h.badge %} <span class="badge text-bg-primary">{{ h.badge }}</span>{% endif %}{% if not h.vigente %} <span class="badge text-bg-secondary">No vigente</span>{% endif %}</div>
       {% if h.detalle %}<div class="fche-items__detalle">{{ h.detalle }}</div>{% endif %}
+      {% if h.ficha %}<details class="fche-items__ficha"><summary>Ver detalle</summary>
+        <dl class="fche-datos">{% for etiqueta, valor, url in h.ficha %}<div><dt>{{ etiqueta }}</dt><dd>{% if url %}<a href="{{ url }}">{{ valor }}</a>{% else %}{{ valor|default:"—" }}{% endif %}</dd></div>{% endfor %}</dl>
+      </details>{% endif %}
     </div>
     {% if puede_agregar and h.url_editar %}
     <div class="fche-items__acciones">
       <a class="btn btn-outline-secondary btn-sm" href="{{ h.url_editar }}">{% icono "editar" 14 %}Editar</a>
-      {% if h.url_alternar %}<form method="post" action="{{ h.url_alternar }}">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm">{% if h.vigente %}Marcar no vigente{% else %}Marcar vigente{% endif %}</button></form>{% endif %}
+      {% if h.url_alternar %}<form method="post" action="{{ h.url_alternar }}">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm">{% if h.vigente %}Dar de baja{% else %}Reactivar{% endif %}</button></form>{% endif %}
     </div>{% endif %}
   </li>
   {% endfor %}

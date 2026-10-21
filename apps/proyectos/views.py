@@ -135,26 +135,38 @@ class ProyectoFicha(FichaBase):
         return {"por_estado": por_estado, "total_actividades": len(acts),
                 "territorios": [{"texto": texto_destino(t), "url": getattr(t.territorio, "get_absolute_url", lambda: "")()} for t in territorios]}
 
-    def _hijos(self, qs, slug, texto, detalle, titulo, etiqueta, vacio):
+    def _hijos(self, qs, slug, texto, detalle, titulo, etiqueta, vacio, url=None, ficha=None):
         pk = self.object.pk
         hijos = [{
-            "texto": texto(o), "detalle": detalle(o), "vigente": o.vigente,
+            "texto": texto(o), "detalle": detalle(o), "vigente": o.vigente, "url": url(o) if url else "", "ficha": ficha(o) if ficha else None,
             "url_editar": reverse(f"proyectos:{slug}_editar", args=[pk, o.pk]), "url_alternar": reverse(f"proyectos:{slug}_alternar", args=[pk, o.pk]),
         } for o in qs]
         return {"titulo_pestana": titulo, "etiqueta_nuevo": etiqueta, "url_nuevo": reverse(f"proyectos:{slug}_nuevo", args=[pk]), "hijos": hijos, "vacio": vacio}
 
     def ctx_equipo(self):
         qs = self.object.personas.filter(tipo="equipo").select_related("persona", "rol")
-        return self._hijos(qs, "equipo", lambda e: f"{e.persona}" + (" (responsable)" if e.es_responsable else ""), lambda e: str(e.rol or ""), "Equipo", "Persona", "Aún no hay personas en el equipo.")
+        return self._hijos(qs, "equipo", lambda e: f"{e.persona}" + (" (responsable)" if e.es_responsable else ""), lambda e: str(e.rol or ""), "Equipo", "Persona", "Aún no hay personas en el equipo.",
+                           url=lambda e: e.persona.get_absolute_url(),
+                           ficha=lambda e: [("Persona", e.persona, e.persona.get_absolute_url()), ("Rol en el proyecto", e.rol, None),
+                                            ("Responsable del proyecto", "Sí" if e.es_responsable else "No", None),
+                                            ("Desde", f"{e.desde:%d-%m-%Y}" if e.desde else "", None), ("Hasta", f"{e.hasta:%d-%m-%Y}" if e.hasta else "Sigue en el proyecto", None),
+                                            ("Estado", "Vigente" if e.vigente else "Dado de baja", None)])
 
     def ctx_organizaciones(self):
         qs = self.object.organizaciones.select_related("organizacion", "tipo_intervencion", "contacto")
-        return self._hijos(qs, "organizaciones", lambda o: f"{o.organizacion}" + (f" · {o.tipo_intervencion}" if o.tipo_intervencion else ""), lambda o: o.observaciones, "Organizaciones", "Organización", "Sin organizaciones relacionadas.")
+        return self._hijos(qs, "organizaciones", lambda o: f"{o.organizacion}" + (f" · {o.tipo_intervencion}" if o.tipo_intervencion else ""), lambda o: o.observaciones, "Organizaciones", "Organización", "Sin organizaciones relacionadas.",
+                           url=lambda o: o.organizacion.get_absolute_url(),
+                           ficha=lambda o: [("Organización", o.organizacion, o.organizacion.get_absolute_url()), ("Cómo participa", o.tipo_intervencion, None),
+                                            ("Persona de contacto", o.contacto or "", o.contacto.get_absolute_url() if o.contacto_id else None),
+                                            ("Observaciones", o.observaciones, None), ("Estado", "Vigente" if o.vigente else "Dada de baja", None)])
 
     def ctx_comunidades(self):
         qs = self.object.comunidades_destino.select_related("comunidad__comuna", "comunidad__sector")
         return self._hijos(qs, "comunidades", lambda c: str(c.comunidad), lambda c: " · ".join(x for x in [c.comunidad.territorio, c.observaciones] if x),
-                           "Comunidades destinatarias", "Comunidad", "Aún no se indica a qué comunidades va dirigido el proyecto.")
+                           "Comunidades destinatarias", "Comunidad", "Aún no se indica a qué comunidades va dirigido el proyecto.",
+                           url=lambda c: c.comunidad.get_absolute_url(),
+                           ficha=lambda c: [("Comunidad", c.comunidad, c.comunidad.get_absolute_url()), ("Dónde", c.comunidad.territorio, c.comunidad.comuna.get_absolute_url() if c.comunidad.comuna_id else None),
+                                            ("Observaciones", c.observaciones, None), ("Estado", "Vigente" if c.vigente else "Dada de baja", None)])
 
     def ctx_alcance(self):
         from apps.actividades.alcance import alcance
@@ -166,7 +178,8 @@ class ProyectoFicha(FichaBase):
         return self._hijos(qs, "postulaciones", lambda p: str(p), lambda p: " · ".join(x for x in [f"{p.fecha:%d-%m-%Y}" if p.fecha else "", p.resultado] if x), "Postulaciones", "Postulación", "Sin postulaciones registradas.")
 
     def ctx_beneficiarios(self):
-        ctx = self._hijos(self.object.personas.filter(tipo="beneficiario").select_related("persona"), "beneficiarios", lambda b: str(b.persona), lambda b: "", "Beneficiarios registrados en el proyecto", "Beneficiario", "Sin beneficiarios registrados directamente.")
+        ctx = self._hijos(self.object.personas.filter(tipo="beneficiario").select_related("persona"), "beneficiarios", lambda b: str(b.persona), lambda b: "", "Beneficiarios registrados en el proyecto", "Beneficiario", "Sin beneficiarios registrados directamente.",
+                          url=lambda b: b.persona.get_absolute_url())
         from apps.actividades.models import Participacion
 
         ctx["desde_actividades"] = (

@@ -352,7 +352,7 @@ class ActividadFicha(FichaBase):
         destinos = a.comunidades_destino.select_related("comunidad__comuna", "comunidad__sector")
         return {
             "destinos": [{
-                "texto": str(d.comunidad), "detalle": " · ".join(x for x in [d.comunidad.territorio, f"{d.beneficiarios_estimados} beneficiarios estimados" if d.beneficiarios_estimados else "", d.observaciones] if x),
+                "texto": str(d.comunidad), "url": d.comunidad.get_absolute_url(), "detalle": " · ".join(x for x in [d.comunidad.territorio, f"{d.beneficiarios_estimados} beneficiarios estimados" if d.beneficiarios_estimados else "", d.observaciones] if x),
                 "vigente": d.vigente, "url_editar": reverse("actividades:comunidades_editar", args=[pk, d.pk]), "url_alternar": reverse("actividades:comunidades_alternar", args=[pk, d.pk]),
             } for d in destinos],
             "url_nueva_comunidad": reverse("actividades:comunidades_nuevo", args=[pk]),
@@ -392,7 +392,7 @@ class ActividadFicha(FichaBase):
     def ctx_organizaciones(self):
         pk = self.object.pk
         hijos = [{
-            "texto": f"{o.organizacion}" + (f" · {o.tipo_intervencion}" if o.tipo_intervencion else ""),
+            "texto": f"{o.organizacion}" + (f" · {o.tipo_intervencion}" if o.tipo_intervencion else ""), "url": o.organizacion.get_absolute_url(),
             "detalle": " · ".join(x for x in [f"Contacto: {o.contacto}" if o.contacto else "", o.observaciones] if x), "vigente": o.vigente,
             "url_editar": reverse("actividades:organizaciones_editar", args=[pk, o.pk]), "url_alternar": reverse("actividades:organizaciones_alternar", args=[pk, o.pk]),
         } for o in self.object.organizaciones.select_related("organizacion", "tipo_intervencion", "contacto")]

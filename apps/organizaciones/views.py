@@ -207,7 +207,7 @@ class OrganizacionFicha(FichaBase):
     def ctx_personas(self):
         pk = self.object.pk
         hijos = [{
-            "texto": f"{v.persona} · {v.cargo or 'Vínculo'}", "vigente": v.vigente,
+            "texto": f"{v.persona} · {v.cargo or 'Vínculo'}", "url": v.persona.get_absolute_url(), "vigente": v.vigente,
             "detalle": f"{v.get_tipo_cargo_display()} · {v.fecha_inicio or '?'} a {v.fecha_termino or 'actualidad'}",
             "url_editar": reverse("organizaciones:personas_editar", args=[pk, v.pk]),
         } for v in self.object.vinculos.select_related("persona")]

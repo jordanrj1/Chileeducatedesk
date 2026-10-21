@@ -1,13 +1,13 @@
 {# Qué es: Pestaña Información de la comunidad. #}
 {# Dónde se usa: /comunidades/<int:pk> · Proceso: Grupo #}
-{% load fche %}<dl class="fche-datos mb-4">
+{% load fche %}{% if perms.comunidades.change_comunidad %}{% url "texto_revisado" "comunidad-rango" object.pk as url_revisado %}{% endif %}<dl class="fche-datos mb-4">
   <div><dt>Tipo</dt><dd>{{ object.get_tipo_display }}</dd></div>
   <div><dt>Comuna</dt><dd><a href="{{ object.comuna.get_absolute_url }}">{{ object.comuna }}</a> <span class="small text-muted">· {{ object.comuna.provincia.region }}</span></dd></div>
   <div><dt>Sector</dt><dd>{% if object.sector %}<a href="{{ object.sector.get_absolute_url }}">{{ object.sector }}</a>{% else %}—{% endif %}</dd></div>
   <div><dt>Organización que la representa</dt><dd>{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd></div>
   <div><dt>Referente o dirigente</dt><dd>{% if object.referente %}<a href="{{ object.referente.get_absolute_url }}">{{ object.referente }}</a>{% else %}—{% endif %}</dd></div>
   <div><dt>Población estimada</dt><dd>{{ object.poblacion_estimada|default:"—" }}</dd></div>
-  <div><dt>Edades principales</dt><dd>{% include "generico/_tramos.html" with tramos=object.tramos_etarios.all texto_anterior=object.rango_etario %}</dd></div>
+  <div><dt>Edades principales</dt><dd>{% include "generico/_tramos.html" with tramos=object.tramos_etarios.all texto_anterior=object.rango_etario url_revisado=url_revisado %}</dd></div>
   <div class="fche-datos__ancho"><dt>Áreas de interés</dt><dd>{% for a in object.areas_interes.all %}<span class="badge text-bg-primary me-1">{{ a }}</span>{% empty %}—{% endfor %}</dd></div>
   <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
   <div class="fche-datos__ancho"><dt>Diagnóstico y necesidades</dt><dd>{{ object.diagnostico|default:"—"|linebreaksbr }}</dd></div>

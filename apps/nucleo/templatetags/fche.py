@@ -128,6 +128,11 @@ def celda(valor, encabezado=""):
         return badge_estado(valor.codigo, valor.nombre)
     if encabezado in COLUMNAS_ESTADO:
         return badge_estado(_codigo(valor), str(valor))
+    url = getattr(valor, "get_absolute_url", None)
+    if callable(url):  # persona, proyecto, lugar, organización…: se puede ir a su ficha con un clic
+        from django.utils.html import format_html
+
+        return format_html('<a href="{}">{}</a>', url(), valor)
     return valor
 
 

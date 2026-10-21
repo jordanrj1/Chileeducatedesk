@@ -94,3 +94,20 @@ def test_presupuesto_solo_con_permiso_de_finanzas(cg, ca):
     p = Proyecto.objects.get()
     assert "Presupuesto" in cg.get(f"/proyectos/{p.pk}").content.decode()
     assert "Presupuesto" not in ca.get(f"/proyectos/{p.pk}").content.decode()  # el Administrador no ve finanzas por defecto
+
+
+def test_equipo_con_enlace_y_detalle_y_texto_anterior_revisado(cg):
+    """Los nombres del equipo llevan a la ficha de la persona y tienen «Ver detalle»; «Ya lo revisé» quita la zona escrita
+    antes (queda en el historial)."""
+    from apps.personas.models import Persona
+    from apps.proyectos.models import Proyecto, ProyectoPersona
+
+    p = Persona.objects.create(nombres="Tamara", apellido_paterno="Inventada")
+    proy = Proyecto.objects.create(nombre="Proyecto ficticio", estado="ejecucion", zona="Villa Inventada")
+    ProyectoPersona.objects.create(proyecto=proy, persona=p, tipo="equipo")
+    html = cg.get(f"/proyectos/{proy.pk}?tab=equipo").content.decode()
+    assert f'href="{p.get_absolute_url()}"' in html and "Ver detalle" in html
+    assert "Ya lo revisé" in cg.get(f"/proyectos/{proy.pk}?tab=resumen").content.decode()
+    cg.post(f"/texto-anterior/proyecto-zona/{proy.pk}/revisado")
+    proy.refresh_from_db()
+    assert proy.zona == "" and proy.history.filter(zona="Villa Inventada").exists()
