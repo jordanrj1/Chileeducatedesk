@@ -1,5 +1,5 @@
 {# Qué es: Pestaña Público y comunidades: a qué comunidades y territorios va dirigida la actividad. #}
-{# Dónde se usa: /actividades/<int:pk> · Proceso: P2 #}
+{# Dónde se usa: /actividades/<int:pk>; en una tarea va dentro de Información (sin repetir el territorio) · Proceso: P2 #}
 {% load fche %}{% if perms.actividades.change_actividad %}{% url "texto_revisado" "actividad-rango" object.pk as url_revisado %}{% endif %}<dl class="fche-datos mb-4">
   <div><dt>Línea o área temática</dt><dd>{{ object.area_tematica|default:"—" }}</dd></div>
   <div><dt>Tramos de edad</dt><dd>{% include "generico/_tramos.html" with tramos=object.tramos_etarios.all texto_anterior=object.rango_etario url_revisado=url_revisado %}</dd></div>
@@ -10,6 +10,6 @@
 <p class="small text-muted mb-0">Grupos de personas a quienes va dirigida. Sus integrantes quedan marcados con su comunidad al participar.</p></div>
 {% if puede_agregar %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_comunidad }}">+ Comunidad</a>{% if perms.comunidades.add_comunidad %}<a class="btn btn-outline-secondary btn-sm" href="/comunidades/nueva">Registrar comunidad nueva</a>{% endif %}</div>{% endif %}</div>
 {% include "generico/_hijos.html" with hijos=destinos titulo_pestana="" url_nuevo="" vacio="Aún no se indica a qué comunidad va dirigida." %}
-<h2 class="h6 mt-4 mb-2">Territorio</h2>
-<ul class="fche-items">{% for t in territorios_publico %}<li><span>{{ t.nivel|capfirst }}: <strong>{{ t }}</strong></span></li>{% empty %}<li class="text-muted">Sin territorio indicado (se agrega en «Información»).</li>{% endfor %}</ul>
+{% if not es_tarea %}<h2 class="h6 mt-4 mb-2">Territorio</h2>
+<ul class="fche-items">{% for t in territorios_publico %}<li><span>{{ t.nivel|capfirst }}: <strong>{{ t }}</strong></span></li>{% empty %}<li class="text-muted">Sin territorio indicado (se agrega en «Información»).</li>{% endfor %}</ul>{% endif %}
 {% if puede_agregar %}<p class="small mt-3"><a href="{% url 'actividades:editar' object.pk %}">Editar público objetivo, tramos de edad y beneficiarios estimados</a></p>{% endif %}

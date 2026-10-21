@@ -1,4 +1,4 @@
-{# Qué es: Pestaña Participantes: personas por grupo con rol, estado, procedencia y asistencia (desde el día de la actividad), panel lateral con el resumen de cada persona, y botones agregar, crear, cargar listado y buscar candidatos. #}
+{# Qué es: Pestaña Participantes (en una tarea, «Equipo y asistencia»: equipo ejecutor e invitados y contactos): personas por grupo con rol, estado, procedencia y asistencia (desde el día de la actividad), panel lateral con el resumen de cada persona, y botones agregar, crear, cargar listado y buscar candidatos. #}
 {# Dónde se usa: /actividades/<int:pk> y /proyectos/<int:proyecto_pk>/tareas/<int:pk> · Proceso: P3/P8 #}
 {% load fche %}<div class="fche-seccion">
   <h2 class="h6">{{ titulo_pestana }} <span class="fche-contador">{{ participaciones|length }}</span></h2>
@@ -25,11 +25,11 @@
 <h3 class="h6 mt-3 mb-1">{{ etiqueta_grupo }} <span class="fche-contador">{{ partes|length }}</span></h3>
 {% if ayuda_grupo %}<p class="small text-muted mb-2">{{ ayuda_grupo }}</p>{% endif %}
 <div class="table-responsive mb-3"><table class="table table-sm align-middle">
-<thead><tr><th>Persona</th><th>Rol</th><th>Estado</th><th>Asistencia</th><th>Procedencia</th><th>Observaciones</th><th><span class="visually-hidden">Acciones</span></th></tr></thead>
+<thead><tr><th>Persona</th><th>Rol · cargo</th><th>Estado</th><th>Asistencia</th><th>Procedencia</th><th>Observaciones</th><th><span class="visually-hidden">Acciones</span></th></tr></thead>
 <tbody>{% for p in partes %}<tr class="{% if not p.activa %}text-muted{% endif %}{% if p.estado.codigo == 'registro_erroneo' %} text-decoration-line-through{% endif %}">
 <td><a href="{{ p.persona.get_absolute_url }}" hx-get="{% url 'personas:resumen' p.persona.pk %}" hx-target="#panel-persona-cuerpo" hx-swap="innerHTML"
   data-bs-toggle="offcanvas" data-bs-target="#panel-persona" aria-controls="panel-persona" title="Ver resumen de {{ p.persona }}">{{ p.persona }}</a></td>
-<td>{{ p.rol }}</td><td>{% estado p.estado %}</td>
+<td>{{ p.rol_y_cargo }}</td><td>{% estado p.estado %}</td>
 <td>{% if puede_asistencia and p.estado.codigo != "registro_erroneo" %}<select class="form-select form-select-sm" name="asistencia_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }} ({{ p.rol }})" style="min-width:8.5rem;">
 <option value="" {% if p.asistencia is None %}selected{% endif %}>Sin dato</option><option value="si" {% if p.asistencia is True %}selected{% endif %}>Asistió</option><option value="no" {% if p.asistencia is False %}selected{% endif %}>No asistió</option></select>
 {% elif antes_de_fecha %}<span class="small text-muted">Se marca desde el día de la actividad</span>
@@ -48,10 +48,4 @@
 </form>{% endif %}
 {% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "personas" 18 %}</span><p class="fche-vacio__texto">Aún no hay {{ grupo }} registrados.</p>
 {% if puede_agregar and perms.actividades.add_participacion %}<a class="btn btn-primary btn-sm" href="{% url 'actividades:participante_nuevo' object.pk %}">+ Agregar</a>{% endif %}</div>{% endif %}
-<div class="offcanvas offcanvas-end" tabindex="-1" id="panel-persona" aria-labelledby="panel-persona-titulo">
-  <div class="offcanvas-header border-bottom">
-    <h2 class="offcanvas-title h6" id="panel-persona-titulo">Resumen de la persona</h2>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar panel"></button>
-  </div>
-  <div class="offcanvas-body" id="panel-persona-cuerpo" aria-live="polite"><p class="text-muted small">Cargando…</p></div>
-</div>
+{% include "actividades/_panel_persona.html" %}

@@ -381,10 +381,17 @@ class FichaBase(Permiso403Mixin, DetailView):
     def pestana_actual(self):
         claves = [p[0] for p in self.pestanas_visibles()]
         t = self.request.GET.get("tab", claves[0] if claves else "")
-        t = self.alias_pestanas.get(t, t)  # un enlace con el nombre antiguo de la pestaña sigue funcionando
+        t = self.alias_de_pestanas().get(t, t)  # un enlace con el nombre antiguo de la pestaña sigue funcionando
         return t if t in claves else (claves[0] if claves else "")
 
     alias_pestanas = {}  # nombre antiguo -> clave actual de la pestaña
+
+    def lista_pestanas(self):
+        """Todas las pestañas posibles de este registro. Una ficha puede cambiarlas según el registro (p. ej. la tarea de un proyecto)."""
+        return self.pestanas
+
+    def alias_de_pestanas(self):
+        return self.alias_pestanas
 
     pestanas_segunda_fase = {}  # pestaña -> módulo de segunda fase que la habilita
 
@@ -392,7 +399,7 @@ class FichaBase(Permiso403Mixin, DetailView):
         from .fases import modulo_activo
 
         res = []
-        for p in self.pestanas:
+        for p in self.lista_pestanas():
             modulo = self.pestanas_segunda_fase.get(p[0])
             if modulo and not modulo_activo(modulo):
                 continue
@@ -407,7 +414,7 @@ class FichaBase(Permiso403Mixin, DetailView):
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         actual = self.pestana_actual()
-        plantilla = next((p[2] for p in self.pestanas if p[0] == actual), None)
+        plantilla = next((p[2] for p in self.lista_pestanas() if p[0] == actual), None)
         ctx.update(
             pestanas=[(p[0], p[1]) for p in self.pestanas_visibles()],
             pestana=actual,

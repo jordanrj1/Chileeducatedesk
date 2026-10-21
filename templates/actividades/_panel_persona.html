@@ -1,0 +1,9 @@
+{# Qué es: Panel lateral con el resumen de una persona (se llena al hacer clic en su nombre; sin JavaScript el nombre abre la ficha). #}
+{# Dónde se usa: pestañas Participantes («Equipo y asistencia») y Beneficiarios de /actividades/<int:pk> y /proyectos/<int:proyecto_pk>/tareas/<int:pk> · Proceso: P3 #}
+<div class="offcanvas offcanvas-end" tabindex="-1" id="panel-persona" aria-labelledby="panel-persona-titulo">
+  <div class="offcanvas-header border-bottom">
+    <h2 class="offcanvas-title h6" id="panel-persona-titulo">Resumen de la persona</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar panel"></button>
+  </div>
+  <div class="offcanvas-body" id="panel-persona-cuerpo" aria-live="polite"><p class="text-muted small">Cargando…</p></div>
+</div>

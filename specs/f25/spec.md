@@ -138,7 +138,7 @@ Decisiones del usuario: ficha rápida única · cinco estados · la organizació
 - E8: pestañas en varias líneas; tablas con barra de desplazamiento visible.
 - Extra: en «Buscar candidatos», «Invitar» pasa a «Agregar a la actividad».
 
-## F. La tarea en un solo lugar (decisiones del usuario del 21-10-2026)
+## F. La tarea en un solo lugar (decisiones del usuario del 21-10-2026) (hecho)
 Decisiones: 8 pestañas · lista propia de Beneficiarios · rol corto más cargo o función libre · sin Coordinación en tareas.
 
 **F1 · Pestañas de una tarea** (actividad con proyecto; las actividades sueltas no cambian):
@@ -164,3 +164,10 @@ Agenda, Público, Coordinación, Alcance y Origen no se muestran como pestañas 
 - **Catálogo:** se agregan, si no existen, los roles «Invitado o invitada» y «Autoridad» en el grupo de invitados y contactos.
 
 **F4 · Proyecto:** el Resumen muestra «Resultados de las tareas»: cada tarea con fecha, estado y su resultado, con enlace. El alcance se ve en el proyecto.
+
+**Cómo quedó (21-10-2026):**
+- F1: «es tarea» = la actividad tiene proyecto (vale también por `/actividades/<id>`). `FichaBase` ganó `lista_pestanas()` y `alias_de_pestanas()`; `ActividadFicha` devuelve las ocho pestañas de la tarea y los alias `agenda`, `publico`, `coordinacion`, `alcance` → Información, `origen` → Historial, `asistencia` → Equipo y asistencia. Información incluye «Público y comunidades» (sin repetir el territorio) y «Fecha y reprogramaciones» (versiones con motivo, quién y cuándo). Historial termina con el origen de los datos (permiso `documentos.view_origendato`). En las tareas, Beneficiarios se ve siempre; en las actividades sueltas sigue como estaba (segunda fase).
+- F2: «Equipo y asistencia» muestra los grupos ejecutor («Equipo ejecutor») y contacto («Invitados y contactos»); Beneficiarios, el grupo de asistentes con rol · cargo, procedencia, comunidad, edad, asistencia (se marca desde el día) y, solo con `personas.ver_sensibles`, el apoderado 🔒. «+ Registrar beneficiario» (`/actividades/<id>/beneficiarios/registrar`) busca duplicados («Usar esta persona» no duplica y pide confirmar si ya tiene otro rol), y en una transacción crea la persona, la participación, su grupo y, si es menor (fecha de nacimiento o casilla), su contacto de emergencia (nombre y teléfono obligatorios para el menor). Queda «Asistió» si la tarea tiene fecha y ya llegó (misma regla que la asistencia); sin fecha o antes, «Inscrito». El bloque del menor solo existe para quien tiene `ver_sensibles`.
+- F3: `Participacion.cargo` («cargo o función»). En los formularios con «¿De qué grupo viene?» el campo «Cargo o función» es uno solo: queda en la participación y, si se elige la organización, también como cargo de la persona en ella (ya no exige organización). Roles «Invitado o invitada» (`invitado`) y «Autoridad» (`autoridad`), grupo contacto, creados solo si no existen (nucleo 0017).
+- F4: el Resumen del proyecto lista «Resultados de las tareas» (fecha vigente, estado, resultado truncado y enlace al cierre) en consultas fijas.
+- Quedan sin uso en las tareas (no se borran; siguen en las actividades sueltas): `actividades/pestanas/coordinacion.html` y `alcance.html`.

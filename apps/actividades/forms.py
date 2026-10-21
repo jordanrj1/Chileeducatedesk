@@ -191,8 +191,10 @@ class EstadoForm(BootstrapMixin, forms.Form):
         self.fields["estado"].choices = opciones
 
 
-ETIQUETAS_PARTICIPACION = {"rol": "Rol en la actividad", "estado": "Estado de la participación", "horas": "Horas"}
+ETIQUETAS_PARTICIPACION = {"rol": "Rol en la actividad", "estado": "Estado de la participación", "horas": "Horas", "cargo": "Cargo o función"}
+AYUDA_CARGO = "Ej.: Alcalde de Hualpén, Prevencionista de obras públicas."
 AYUDAS_PARTICIPACION = {
+    "cargo": AYUDA_CARGO,
     "rol": "Ej.: Tallerista (parte del equipo) o Participante (asiste).",
     "estado": "Inscrito al agregarla; después, Asistió o No asistió. Si no puede venir: Canceló. Si no hay cupo: En lista de espera.",
     "observaciones": "Ej.: llega 15 minutos tarde por su trabajo.",
@@ -237,28 +239,24 @@ class GrupoMixin(forms.Form):
 
     organizacion = SelectorField(ORGANIZACIONES, required=False, label="Organización de la que viene",
                                  help_text="Junta de vecinos, colegio, municipalidad, negocio… Si no está, créala desde aquí.")
-    cargo = forms.CharField(max_length=120, required=False, label="Cargo o relación con esa organización",
-                            help_text="Ej.: Dirigente, Dueña de la panadería, Profesor.")
+    # F25 F3: el cargo o función queda en la participación («Rol · cargo»); si además se elige la organización,
+    # también queda como el cargo de la persona en ella.
+    cargo = forms.CharField(max_length=120, required=False, label="Cargo o función",
+                            help_text=AYUDA_CARGO + " Si eliges la organización, también queda como su cargo en ella.")
     comunidad = SelectorField(COMUNIDADES, required=False, label="Comunidad de la que viene", help_text="Ej.: Vecinos de la Etapa 2.")
 
     SECCION_GRUPO = ("¿De qué grupo viene?", "Opcional. Queda en la ficha de la persona y en la de la organización o comunidad.",
-                     ["organizacion", "cargo", "comunidad"])
-
-    def clean(self):
-        d = super().clean()
-        if d.get("cargo") and not d.get("organizacion"):
-            self.add_error("organizacion", "Elige la organización a la que corresponde el cargo.")
-        return d
+                     ["organizacion", "comunidad"])
 
 
 class ParticipanteNuevoForm(GrupoMixin, BootstrapMixin, forms.ModelForm):
     persona = selector_persona()
     otro_rol = forms.BooleanField(required=False, label="Sí, agregarla también con este rol")
-    secciones = [("Participante", "", ["persona", "rol", "otro_rol", "estado", "observaciones"]), GrupoMixin.SECCION_GRUPO]
+    secciones = [("Participante", "", ["persona", "rol", "cargo", "otro_rol", "estado", "observaciones"]), GrupoMixin.SECCION_GRUPO]
 
     class Meta:
         model = Participacion
-        fields = ["persona", "rol", "estado", "observaciones"]
+        fields = ["persona", "rol", "cargo", "estado", "observaciones"]
         labels = ETIQUETAS_PARTICIPACION
         help_texts = AYUDAS_PARTICIPACION
 
@@ -308,13 +306,13 @@ class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
     institucion = SelectorField(ORGANIZACIONES, filtros={"tipo": "institucion_educativa"}, required=False, label="Institución de procedencia",
                                 help_text="Universidad, instituto o liceo del que viene (estudiantes). Se completa sola con la formación vigente.")
     secciones = [
-        ("Participación", "", ["rol", "estado", "observaciones"]),
+        ("Participación", "", ["rol", "cargo", "estado", "observaciones"]),
         ("Procedencia y horas", "Para los informes: de qué institución y comunidad viene, y cuántas horas aportó o recibió.", ["institucion", "comunidad", "horas"]),
     ]
 
     class Meta:
         model = Participacion
-        fields = ["rol", "estado", "observaciones", "institucion", "comunidad", "horas"]
+        fields = ["rol", "cargo", "estado", "observaciones", "institucion", "comunidad", "horas"]
         labels = ETIQUETAS_PARTICIPACION
         help_texts = AYUDAS_PARTICIPACION
 
@@ -345,8 +343,61 @@ class PersonaRapidaForm(GrupoMixin, FichaRapidaForm):
 
     rol = forms.ModelChoiceField(RolParticipacion.objects.filter(activo=True), label="Rol en la actividad",
                                  help_text=AYUDAS_PARTICIPACION["rol"])
-    secciones = [*SECCIONES_FICHA_RAPIDA, ("En esta actividad", "", ["rol"]), GrupoMixin.SECCION_GRUPO]
-    field_order = [*CAMPOS_FICHA_RAPIDA, "rol"]
+    secciones = [*SECCIONES_FICHA_RAPIDA, ("En esta actividad", "", ["rol", "cargo"]), GrupoMixin.SECCION_GRUPO]
+    field_order = [*CAMPOS_FICHA_RAPIDA, "rol", "cargo"]
+
+
+class BeneficiarioForm(GrupoMixin, FichaRapidaForm):
+    """F25 F2: «+ Registrar beneficiario» de una tarea. La ficha rápida única, el rol (Beneficiario o Participante, los del
+    grupo de asistentes), su grupo (organización con cargo, comunidad) y, si es menor de edad, su apoderado o contacto de
+    emergencia (dato restringido: el bloque solo existe para quien puede ver datos sensibles)."""
+
+    rol = forms.ModelChoiceField(RolParticipacion.objects.none(), label="Rol en la tarea", help_text="Beneficiario, o Participante si solo asiste.")
+    es_menor = forms.BooleanField(required=False, label="Es menor de edad",
+                                  help_text="Márcalo si no sabes la fecha de nacimiento. Con la fecha, se deduce solo.")
+    apoderado_nombre = forms.CharField(max_length=150, required=False, label="Nombre del apoderado o contacto de emergencia", help_text="Ej.: María Pérez.")
+    apoderado_parentesco = forms.CharField(max_length=60, required=False, label="Parentesco", help_text="Ej.: madre, abuelo, tía.")
+    apoderado_telefono = forms.CharField(max_length=40, required=False, label="Teléfono del apoderado o contacto de emergencia",
+                                         help_text="Ej.: +56 9 1234 5678.")
+    CAMPOS_MENOR = ["es_menor", "apoderado_nombre", "apoderado_parentesco", "apoderado_telefono"]
+    field_order = [*CAMPOS_FICHA_RAPIDA, "rol", "cargo", "organizacion", "comunidad", *CAMPOS_MENOR]
+
+    def __init__(self, *a, puede_sensibles=False, **kw):
+        super().__init__(*a, **kw)
+        self.fields["rol"].queryset = RolParticipacion.objects.filter(activo=True, grupo="asistente")
+        self.fields["rol"].initial = RolParticipacion.objects.filter(codigo="beneficiario").values_list("pk", flat=True).first()
+        self.puede_sensibles = puede_sensibles
+        self.secciones = [*SECCIONES_FICHA_RAPIDA, ("En esta tarea", "", ["rol", "cargo"]), GrupoMixin.SECCION_GRUPO]
+        if puede_sensibles:
+            self.secciones.append(("Si es menor de edad", "Dato restringido 🔒: solo lo ve quien tiene permiso de datos sensibles. "
+                                   "Si es menor, se pide su apoderado o un contacto de emergencia.", self.CAMPOS_MENOR))
+        else:
+            for c in self.CAMPOS_MENOR:
+                del self.fields[c]
+
+    def es_menor_de_edad(self):
+        d = self.cleaned_data
+        nacimiento = d.get("fecha_nacimiento")
+        if nacimiento:
+            return Persona(fecha_nacimiento=nacimiento).es_menor
+        return bool(d.get("es_menor"))
+
+    def clean_apoderado_telefono(self):
+        from apps.nucleo.utilidades import normalizar_telefono, telefono_normalizado_valido
+
+        t = (self.cleaned_data.get("apoderado_telefono") or "").strip()
+        if t and not telefono_normalizado_valido(normalizar_telefono(t)):
+            raise forms.ValidationError("No se pudo interpretar el teléfono. Usa el formato +56 9 1234 5678.")
+        return t
+
+    def clean(self):
+        d = super().clean()
+        if self.puede_sensibles and self.es_menor_de_edad():
+            if not (d.get("apoderado_nombre") or "").strip():
+                self.add_error("apoderado_nombre", "Es menor de edad: indica el nombre de su apoderado o contacto de emergencia.")
+            if not d.get("apoderado_telefono") and "apoderado_telefono" not in self.errors:
+                self.add_error("apoderado_telefono", "Es menor de edad: indica un teléfono de su apoderado o contacto de emergencia.")
+        return d
 
 
 class ActividadOrganizacionForm(BootstrapMixin, forms.ModelForm):

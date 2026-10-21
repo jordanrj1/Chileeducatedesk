@@ -28,6 +28,7 @@ urlpatterns = [
     path("actividades/<int:pk>/participantes/nuevo", views.ParticipanteNuevo.as_view(), name="participante_nuevo"),
     path("actividades/<int:pk>/participantes/rapido", views.ParticipanteRapido.as_view(), name="participante_rapido"),
     path("actividades/<int:pk>/participantes/usar/<int:persona_pk>", views.ParticipanteUsar.as_view(), name="participante_usar"),
+    path("actividades/<int:pk>/beneficiarios/registrar", views.BeneficiarioRegistrar.as_view(), name="beneficiario_registrar"),
     path("actividades/<int:pk>/participantes/<int:part_pk>/constancia", views.Constancia.as_view(), name="constancia"),
     path("actividades/<int:pk>/participantes/<int:part_pk>/quitar", views.ParticipanteQuitar.as_view(), name="participante_quitar"),
     path("actividades/<int:pk>/duplicar", views.ActividadDuplicar.as_view(), name="duplicar"),

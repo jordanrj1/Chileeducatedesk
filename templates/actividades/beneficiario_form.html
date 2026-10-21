@@ -1,0 +1,23 @@
+{# Qué es: Registrar un beneficiario en una tarea: ficha rápida, rol, de qué grupo viene y, si es menor de edad, su apoderado o contacto de emergencia (restringido). Avisa si la persona ya existe. #}
+{# Dónde se usa: /actividades/<int:pk>/beneficiarios/registrar · Proceso: P3/P8 #}
+{% extends "generico/formulario.html" %}
+{% load fche %}
+{% block texto_guardar %}Registrar beneficiario{% endblock %}
+{% block extra_form %}
+{% if usar %}<input type="hidden" name="usar_persona" value="{{ usar.pk }}">
+<p class="small mt-3 mb-0">Se agregará a <a href="{{ usar.get_absolute_url }}" target="_blank" rel="noopener">{{ usar.nombre_completo }}</a> (ya registrada); no se crea otra ficha.</p>{% endif %}
+{% if aviso_otro_rol %}
+<div class="alert alert-warning mt-3" role="alert">
+  <p class="mb-2">{{ aviso_otro_rol }}</p>
+  <div class="form-check"><input class="form-check-input" type="checkbox" name="otro_rol" value="1" id="otro_rol" required>
+  <label class="form-check-label" for="otro_rol">Sí, agregarla también con este rol</label></div>
+</div>{% endif %}
+{% if candidatos %}
+<div class="alert alert-warning mt-3" role="alert">
+  <strong>Esta persona podría ya existir.</strong> Elige una o confirma que es otra:
+  <ul class="mt-2">{% for p, razones in candidatos %}<li class="mb-2"><a href="{{ p.get_absolute_url }}" target="_blank" rel="noopener">{{ p.nombre_completo }}</a> — {{ razones|join:", " }}
+    <button class="btn btn-outline-primary btn-sm ms-2" type="submit" name="usar_persona" value="{{ p.pk }}">Usar esta persona</button></li>{% endfor %}</ul>
+  <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Es otra persona: crear</button>
+</div>{% endif %}
+{% if not form.puede_sensibles %}<p class="small text-muted mt-3 mb-0">El apoderado o contacto de emergencia de un menor lo registra quien tiene permiso de datos sensibles, en la ficha de la persona.</p>{% endif %}
+{% endblock %}

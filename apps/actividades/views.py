@@ -31,7 +31,7 @@ from apps.territorio.models import Comuna
 
 from . import servicios
 from .forms import (
-    SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm, TareaForm,
+    SerieForm, ActividadForm, BeneficiarioForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm, TareaForm,
     aviso_otro_rol, estado_inicial, roles_en_actividad,
 )
 from .models import Actividad, ActividadComunidad, ActividadTerritorio, AgendaActividad, Participacion, SesionActividad, SesionAsistencia
@@ -317,6 +317,26 @@ class ActividadEditar(EditarBase):
             return super().form_valid(form)
 
 
+# F25 F1: una tarea (actividad con proyecto) se gestiona en un solo lugar, con ocho pestañas. Agenda, Público,
+# Coordinación, Alcance y Origen no son pestañas de la tarea: su contenido está en Información o en Historial, y sus
+# direcciones antiguas (?tab=agenda…) abren la pestaña equivalente. Las actividades sueltas conservan sus pestañas.
+PESTANAS_TAREA = [
+    ("info", "Información", "actividades/pestanas/info.html"),
+    ("participantes", "Equipo y asistencia", "actividades/pestanas/participantes.html"),
+    ("beneficiarios", "Beneficiarios", "actividades/pestanas/beneficiarios.html"),
+    ("organizaciones", "Organizaciones", "generico/_hijos.html"),
+    ("sesiones", "Sesiones", "actividades/pestanas/sesiones.html"),
+    ("resultados", "Cierre", "actividades/pestanas/resultados.html"),
+    ("documentos", "Documentos", "actividades/pestanas/documentos.html", "documentos.view_documento"),
+    ("historial", "Historial", "actividades/pestanas/historial.html", "actividades.view_historicalactividad"),
+]
+ALIAS_TAREA = {"agenda": "info", "publico": "info", "coordinacion": "info", "alcance": "info", "origen": "historial", "asistencia": "participantes"}
+GRUPOS_EQUIPO_TAREA = [
+    ("ejecutor", "Equipo ejecutor", "Quienes realizan la tarea (tallerista, voluntario, estudiante, coordinador…). Se separan por el rol."),
+    ("contacto", "Invitados y contactos", "Autoridades, invitados y contactos de las organizaciones."),
+]
+
+
 class ActividadFicha(FichaBase):
     model = Actividad
     permission_required = "actividades.view_actividad"
@@ -343,6 +363,23 @@ class ActividadFicha(FichaBase):
 
     def get_queryset(self):
         return super().get_queryset().select_related("proyecto", "tipo", "estado", "modalidad", "responsable", "actividad_padre")
+
+    @property
+    def es_tarea(self):
+        """Una actividad con proyecto es una tarea, se abra por /actividades/<id> o dentro de su proyecto."""
+        return bool(self.object.proyecto_id)
+
+    def lista_pestanas(self):
+        return PESTANAS_TAREA if self.es_tarea else self.pestanas
+
+    def alias_de_pestanas(self):
+        return ALIAS_TAREA if self.es_tarea else self.alias_pestanas
+
+    def pestanas_visibles(self):
+        if not self.es_tarea:
+            return super().pestanas_visibles()
+        u = self.request.user  # en una tarea, Beneficiarios se ve siempre (no depende de la segunda fase)
+        return [p for p in PESTANAS_TAREA if len(p) < 4 or u.has_perm(p[3])]
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
@@ -384,6 +421,7 @@ class ActividadFicha(FichaBase):
             "agenda": agenda,
             "faltantes": a.faltantes(),
             "comuna_ficha": self.comuna_de_la_actividad(agenda),
+            "es_tarea": self.es_tarea,
         }
 
     def comuna_de_la_actividad(self, agenda):
@@ -396,8 +434,8 @@ class ActividadFicha(FichaBase):
         )
         return (territorio.comuna or territorio.sector.comuna) if territorio else None
 
-    def _participantes(self, beneficiarios):
-        from apps.nucleo.fases import modulo_activo
+    def _participaciones_con_procedencia(self, *prefetch_extra):
+        """Participaciones con persona, rol, estado y procedencia precargados: consultas fijas, sin importar cuántas sean."""
         from apps.personas.models import PersonaFormacion, PersonaOrganizacion
 
         hoy = timezone.localdate()
@@ -406,10 +444,17 @@ class ActividadFicha(FichaBase):
                      to_attr="formaciones_vigentes"),
             Prefetch("persona__vinculos", queryset=PersonaOrganizacion.objects.filter(Q(fecha_termino__isnull=True) | Q(fecha_termino__gte=hoy)).exclude(cargo=""),
                      to_attr="cargos_vigentes"),
+            *prefetch_extra,
         )
         partes = list(qs)
         for p in partes:
             p.procedencia = self._procedencia(p)
+        return partes
+
+    def _participantes(self, beneficiarios):
+        from apps.nucleo.fases import modulo_activo
+
+        partes = self._participaciones_con_procedencia()
         if not modulo_activo("beneficiarios"):
             return partes if not beneficiarios else []  # sin pestaña aparte: todos van en Participantes
         return [p for p in partes if p.es_beneficiario == beneficiarios]
@@ -425,6 +470,11 @@ class ActividadFicha(FichaBase):
         return {"formacion": formacion, "cargo": cargo}
 
     def ctx_participantes(self):
+        if self.es_tarea:  # F25 F2: «Equipo y asistencia»; los asistentes van en Beneficiarios
+            partes = [p for p in self._participaciones_con_procedencia() if p.rol.grupo != "asistente"]
+            grupos = [(etiqueta, [p for p in partes if p.rol.grupo == clave], ayuda) for clave, etiqueta, ayuda in GRUPOS_EQUIPO_TAREA]
+            return {"participaciones": partes, "grupos_participacion": [g for g in grupos if g[1]], "grupo": "integrantes del equipo ni invitados",
+                    "titulo_pestana": "Equipo y asistencia", "capacidad_alerta": None}
         partes = self._participantes(False)
         from apps.nucleo.models import RolParticipacion
 
@@ -453,9 +503,24 @@ class ActividadFicha(FichaBase):
         return {"alcance": alcance([self.object]), "contexto_alcance": "esta actividad"}
 
     def ctx_beneficiarios(self):
+        if self.es_tarea:
+            return self._beneficiarios_tarea()
         partes = self._participantes(True)
         return {"participaciones": partes, "grupos_participacion": [("Beneficiarios", partes, "")] if partes else [], "grupo": "beneficiarios",
                 "titulo_pestana": "Beneficiarios", "capacidad_alerta": None}
+
+    def _beneficiarios_tarea(self):
+        """F25 F2: los asistentes de la tarea (rol del grupo «Asistentes»), con su edad y, para quien puede ver datos
+        sensibles, el apoderado o contacto de emergencia de los menores. Consultas fijas."""
+        from apps.personas.models import ContactoEmergencia
+
+        sensibles = self.request.user.has_perm("personas.ver_sensibles")
+        extra = [Prefetch("persona__contactos_emergencia", queryset=ContactoEmergencia.objects.filter(vigente=True).order_by("pk"),
+                          to_attr="emergencias")] if sensibles else []
+        partes = [p for p in self._participaciones_con_procedencia(*extra) if p.rol.grupo == "asistente"]
+        return {"beneficiarios": partes, "ver_sensibles": sensibles, "capacidad_alerta": self._capacidad(),
+                "puede_registrar_beneficiario": (self.request.user.has_perm("actividades.add_participacion") and self.request.user.has_perm("personas.add_persona")
+                                                 and self.object.estado.codigo not in ("cancelada", "realizada"))}
 
     def _capacidad(self):
         ag = self.object.agenda_vigente
@@ -475,6 +540,11 @@ class ActividadFicha(FichaBase):
         return None
 
     def ctx_info(self):
+        if self.es_tarea:  # F25 F1: en la tarea, Información reúne además el público, las comunidades y la fecha con sus cambios
+            return {**self._ctx_info(), **self.ctx_publico(), **self.ctx_agenda()}
+        return self._ctx_info()
+
+    def _ctx_info(self):
         return {
             "territorios": [
                 {"texto": texto_destino(t), "vigente": t.vigente, "url_editar": reverse("actividades:territorios_editar", args=[self.object.pk, t.pk]), "url_alternar": reverse("actividades:territorios_alternar", args=[self.object.pk, t.pk]), "detalle": ""}
@@ -509,7 +579,7 @@ class ActividadFicha(FichaBase):
         for p in parts:
             f = next((x for x in p.persona.formaciones_v if x.organizacion_id == p.institucion_id), None)
             asistio = {True: "asistió", False: "no asistió"}.get(p.asistencia, "")
-            datos = " · ".join(x for x in [str(p.rol), f.carrera.nombre if f and f.carrera_id else "", str(f.sede_institucion) if f and f.sede_institucion_id else "",
+            datos = " · ".join(x for x in [p.rol_y_cargo, f.carrera.nombre if f and f.carrera_id else "", str(f.sede_institucion) if f and f.sede_institucion_id else "",
                                             str(p.estado), asistio] if x)
             personas_de.setdefault(p.institucion_id, []).append((str(p.persona), datos, p.persona.get_absolute_url()))
 
@@ -562,7 +632,10 @@ class ActividadFicha(FichaBase):
         from apps.actividades.models import Participacion as P
 
         hist = P.history.filter(actividad_id=self.object.pk).select_related("history_user", "persona").order_by("-history_date")[:40]
-        return {"cambios": cambios_historial(self.object), "cambios_participacion": hist, "agendas": self.object.agendas.select_related("lugar", "creado_por")}
+        ctx = {"cambios": cambios_historial(self.object), "cambios_participacion": hist, "agendas": self.object.agendas.select_related("lugar", "creado_por")}
+        if self.es_tarea and self.request.user.has_perm("documentos.view_origendato"):
+            ctx.update(self.ctx_origen(), mostrar_origen=True)  # F25 F1: en la tarea, el origen de los datos va al final del historial
+        return ctx
 
 
 # --- Acciones ---------------------------------------------------------------------
@@ -753,6 +826,13 @@ def _puede_sumar_participante(request, a, llego):
     return True
 
 
+def _pestana_de(a, p, defecto="participantes"):
+    """F25 F2: en una tarea, quien asiste (rol del grupo «Asistentes») está en Beneficiarios; el resto, en «Equipo y asistencia»."""
+    if a.proyecto_id:
+        return "beneficiarios" if p.rol.grupo == "asistente" else "participantes"
+    return defecto
+
+
 def _avisar_capacidad(request, a):
     """AT-E8: aviso al agregar a quien excede la capacidad del lugar."""
     ag = a.agenda_vigente
@@ -785,7 +865,7 @@ class ParticipanteQuitar(_AccionActividad):
         p.save()
         registrar(request.user, "participacion_quitada", p, motivo)
         messages.success(request, f"{p.persona} quitada de la actividad. Queda en el historial como registro erróneo.")
-        return self.volver(p.actividad, "participantes")
+        return self.volver(p.actividad, _pestana_de(p.actividad, p))
 
 
 class ActividadDuplicar(_AccionActividad):
@@ -867,7 +947,7 @@ class ParticipanteNuevo(_AccionActividad):
                 registrar(request.user, "registro_tardio", p, "persona que llegó, agregada después de finalizar")
             from apps.nucleo.fases import modulo_activo
 
-            return self.volver(a, "beneficiarios" if p.es_beneficiario and modulo_activo("beneficiarios") and not llego else "participantes")
+            return self.volver(a, _pestana_de(a, p, "beneficiarios" if p.es_beneficiario and modulo_activo("beneficiarios") and not llego else "participantes"))
         return render(request, "actividades/participante_form.html", self._ctx(a, form, llego), status=400)
 
 
@@ -906,12 +986,13 @@ class ParticipanteRapido(_AccionActividad):
             persona = crear_persona_rapida(form, request.user)  # la ficha rápida única: queda «incompleto», con contactos y comuna
             p = Participacion.objects.create(
                 actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, asistencia=True if llego else None, estado=estado_inicial(llego),
+                cargo=(d.get("cargo") or "").strip(),
             )
             _aplicar_grupo(p, d.get("organizacion"), d.get("cargo"), d.get("comunidad"))
             _perfil_del_rol(persona, d["rol"])
         messages.success(request, f"{persona} creada y agregada. Completa su ficha cuando puedas.")
         _avisar_capacidad(request, a)
-        return self.volver(a, "participantes")
+        return self.volver(a, _pestana_de(a, p))
 
 
 class ParticipanteUsar(_AccionActividad):
@@ -939,7 +1020,8 @@ class ParticipanteUsar(_AccionActividad):
         with transaction.atomic():
             obj, creada = Participacion.objects.get_or_create(
                 actividad=a, persona=persona, rol=rol,
-                defaults={"estado": estado_inicial(llego), "creado_por": request.user, "asistencia": True if llego else None},
+                defaults={"estado": estado_inicial(llego), "creado_por": request.user, "asistencia": True if llego else None,
+                          "cargo": request.POST.get("cargo", "").strip()[:120]},
             )
             if creada:  # lo que se alcanzó a escribir en «¿De qué grupo viene?» también vale para la persona existente
                 org = Organizacion.objects.filter(pk=pk_seguro(request.POST.get("organizacion")) or 0).first()
@@ -948,7 +1030,89 @@ class ParticipanteUsar(_AccionActividad):
             _perfil_del_rol(persona, rol)
         messages.success(request, f"{persona} agregada." if creada else f"{persona} ya participaba con ese rol.")
         _avisar_capacidad(request, a)
-        return self.volver(a, "participantes")
+        return self.volver(a, _pestana_de(a, obj))
+
+
+class BeneficiarioRegistrar(_AccionActividad):
+    """F25 F2: «+ Registrar beneficiario» de una tarea. La ficha rápida única, el rol (Beneficiario o Participante), su grupo
+    (organización con cargo, comunidad) y, si es menor de edad, su apoderado o contacto de emergencia (dato restringido:
+    solo para quien tiene personas.ver_sensibles). Primero busca si la persona ya existe: «Usar esta persona» la agrega sin
+    duplicarla. Desde el día de la tarea queda «Asistió»; antes, «Inscrito». Todo se guarda junto o no se guarda."""
+
+    permission_required = ("actividades.add_participacion", "personas.add_persona")
+    CAMPOS_PARTICIPACION = {"rol", "cargo", "organizacion", "comunidad", *BeneficiarioForm.CAMPOS_MENOR}
+
+    def _form(self, data=None):
+        return BeneficiarioForm(data, puede_sensibles=self.request.user.has_perm("personas.ver_sensibles"))
+
+    def _ctx(self, a, form, cands=None, aviso_otro_rol=None, usar=None):
+        url = a.get_absolute_url()
+        llega = self._llego(a)
+        return {
+            "form": form, "titulo": "Registrar beneficiario", "actividad": a, "candidatos": cands, "aviso_otro_rol": aviso_otro_rol, "usar": usar,
+            "volver_url": f"{url}?tab=beneficiarios", "breadcrumb": [(a.nombre, url), ("Beneficiarios", f"{url}?tab=beneficiarios")],
+            "bajada": ("Quedará como «Asistió», porque la tarea ya ocurrió o es hoy." if llega else "Quedará «Inscrito»; la asistencia se marca desde el día de la tarea.")
+                      + " Solo el nombre es obligatorio.",
+        }
+
+    @staticmethod
+    def _llego(a):
+        """La regla que habilita marcar la asistencia (puede_asistencia), y además la tarea debe tener fecha: sin fecha
+        no hay «día de la tarea», así que queda «Inscrito»."""
+        return (a.estado.codigo not in ("cancelada", "pendiente", "suspendida") and a.agenda_vigente is not None
+                and not antes_de_la_fecha(a))
+
+    def get(self, request, pk):
+        return render(request, "actividades/beneficiario_form.html", self._ctx(self.actividad(pk), self._form()))
+
+    def post(self, request, pk):
+        from apps.personas.models import ContactoEmergencia
+        from apps.personas.servicios import crear_persona_rapida
+
+        a = self.actividad(pk)
+        llego = self._llego(a)
+        if not _puede_sumar_participante(request, a, llego):
+            return self.volver(a, "beneficiarios")
+        form = self._form(request.POST)
+        valido = form.is_valid()
+        persona = None
+        usar = pk_seguro(request.POST.get("usar_persona"))
+        if usar:  # «Usar esta persona»: los datos de la ficha rápida no se vuelven a crear; valen el rol, el grupo y el apoderado
+            persona = get_object_or_404(Persona, pk=usar)
+            if any(c in form.errors for c in self.CAMPOS_PARTICIPACION):
+                return render(request, "actividades/beneficiario_form.html", self._ctx(a, form, usar=persona), status=400)
+            rol = form.cleaned_data["rol"]
+            if Participacion.objects.filter(actividad=a, persona=persona, rol=rol).exists():
+                messages.info(request, f"{persona} ya estaba registrada como {rol.nombre.lower()}.")
+                return self.volver(a, "beneficiarios")
+            roles = roles_en_actividad(a, persona, rol)
+            if roles and not request.POST.get("otro_rol"):  # F25 E3: ya participa con otro rol: se pide confirmar
+                return render(request, "actividades/beneficiario_form.html",
+                              self._ctx(a, form, aviso_otro_rol=aviso_otro_rol(persona, roles, rol), usar=persona), status=400)
+        elif not valido:
+            return render(request, "actividades/beneficiario_form.html", self._ctx(a, form), status=400)
+        elif not request.POST.get("confirmar_duplicado"):
+            cands = candidatos_ficha_rapida(form.cleaned_data)
+            if cands:
+                return render(request, "actividades/beneficiario_form.html", self._ctx(a, form, cands))
+        d = form.cleaned_data
+        with transaction.atomic():
+            if persona is None:
+                persona = crear_persona_rapida(form, request.user)
+            p = Participacion.objects.create(
+                actividad=a, persona=persona, rol=d["rol"], cargo=(d.get("cargo") or "").strip(), creado_por=request.user,
+                estado=estado_inicial(llego), asistencia=True if llego else None,
+            )
+            _aplicar_grupo(p, d.get("organizacion"), d.get("cargo"), d.get("comunidad"))
+            _perfil_del_rol(persona, d["rol"])
+            nombre = (d.get("apoderado_nombre") or "").strip()
+            if form.puede_sensibles and nombre and d.get("apoderado_telefono") and (form.es_menor_de_edad() or persona.es_menor):
+                ContactoEmergencia.objects.get_or_create(persona=persona, nombre=nombre, telefono=d["apoderado_telefono"],
+                                                         defaults={"parentesco": (d.get("apoderado_parentesco") or "").strip()})
+                registrar(request.user, "contacto_emergencia_registrado", persona, "apoderado o contacto de emergencia de un menor, al registrarlo como beneficiario")
+        messages.success(request, f"{persona} registrada como {d['rol'].nombre.lower()}" + (" y marcada como asistente." if llego else "."))
+        _avisar_capacidad(request, a)
+        return self.volver(a, "beneficiarios")
 
 
 class ParticipacionEditar(Permiso403Mixin, UpdateView):
@@ -964,7 +1128,7 @@ class ParticipacionEditar(Permiso403Mixin, UpdateView):
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         a = self.object.actividad
-        ctx.update(titulo=f"Participación de {self.object.persona}", volver_url=f"{a.get_absolute_url()}?tab=participantes", breadcrumb=[(a.nombre, a.get_absolute_url())])
+        ctx.update(titulo=f"Participación de {self.object.persona}", volver_url=f"{a.get_absolute_url()}?tab={_pestana_de(a, self.object)}", breadcrumb=[(a.nombre, a.get_absolute_url())])
         return ctx
 
     def form_valid(self, form):
@@ -974,7 +1138,7 @@ class ParticipacionEditar(Permiso403Mixin, UpdateView):
         with transaction.atomic():
             servicios.asegurar_organizacion(form.save())  # F25 E4
         messages.success(self.request, "Participación actualizada.")
-        return HttpResponseRedirect(f"{self.object.actividad.get_absolute_url()}?tab=participantes")
+        return HttpResponseRedirect(f"{self.object.actividad.get_absolute_url()}?tab={_pestana_de(self.object.actividad, self.object)}")
 
 
 class AsistenciaVista(_AccionActividad):
@@ -1010,7 +1174,7 @@ class AsistenciaVista(_AccionActividad):
         if a.estado.codigo == "realizada" and n:
             registrar(request.user, "asistencia_tardia", a, f"{n} cambios después de finalizar")  # RE-E3
         messages.success(request, f"Asistencia guardada ({n} cambios).")
-        return self.volver(a, "participantes")
+        return self.volver(a, "beneficiarios" if request.POST.get("volver") == "beneficiarios" else "participantes")
 
 
 class Constancia(Permiso403Mixin, TemplateView):

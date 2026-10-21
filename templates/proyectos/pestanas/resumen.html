@@ -1,4 +1,4 @@
-{# Qué es: Pestaña Resumen del proyecto: estado, zona (sus territorios y el texto anterior, si lo hay), área, fechas y responsable. #}
+{# Qué es: Pestaña Resumen del proyecto: estado, zona (sus territorios y el texto anterior, si lo hay), área, fechas, responsable y los resultados de sus tareas. #}
 {# Dónde se usa: /proyectos/<int:pk> · Proceso: P11 #}
 {% load fche %}<dl class="fche-datos">
   <div><dt>Estado</dt><dd>{% estado object.estado object.get_estado_display %}</dd></div>
@@ -14,3 +14,12 @@
   <div class="fche-datos__ancho"><dt>Diagnóstico</dt><dd>{{ object.diagnostico|default:"—"|linebreaksbr }}</dd></div>
   <div class="fche-datos__ancho"><dt>Población objetivo</dt><dd>{{ object.poblacion_objetivo|default:"—"|linebreaksbr }}</dd></div>
 </dl>
+<section class="mt-4" aria-labelledby="titulo-resultados-tareas">
+<h2 class="h6 mb-2" id="titulo-resultados-tareas">Resultados de las tareas{% if tareas_resultado %} <span class="fche-contador">{{ tareas_resultado|length }}</span>{% endif %}</h2>
+{% if tareas_resultado %}<div class="table-responsive"><table class="table table-sm align-middle">
+<thead><tr><th>Tarea</th><th>Fecha</th><th>Estado</th><th>Resultado</th></tr></thead>
+<tbody>{% for t in tareas_resultado %}<tr><td><a href="{{ t.tarea.get_absolute_url }}">{{ t.tarea.nombre }}</a></td>
+<td class="text-nowrap">{{ t.fecha|date:"d-m-Y"|default:"Sin programar" }}</td><td>{% estado t.tarea.estado %}</td>
+<td class="small">{% if t.tarea.resultado %}{{ t.tarea.resultado|truncatechars:160 }} <a href="{{ t.tarea.get_absolute_url }}?tab=resultados" aria-label="Ver el cierre de {{ t.tarea.nombre }}">Ver cierre</a>{% else %}<span class="text-muted">Sin resultado registrado</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<p class="text-muted small">El proyecto aún no tiene tareas.</p>{% endif %}
+</section>

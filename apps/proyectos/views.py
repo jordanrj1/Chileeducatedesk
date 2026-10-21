@@ -1,5 +1,7 @@
 """Pantallas de proyectos: listado, crear, editar y ficha con pestañas (resumen, equipo, organizaciones, comunidades,
 actividades, alcance, documentos, historial; beneficiarios, postulación y presupuesto son de 2.ª fase)."""
+from datetime import date
+
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
@@ -127,12 +129,18 @@ class ProyectoFicha(FichaBase):
         }
 
     def ctx_resumen(self):
-        acts = self.object.actividades.select_related("estado")
+        from apps.actividades.models import AgendaActividad
+
+        # F25 F4: cada tarea con su fecha vigente, estado y resultado (dos consultas, sin importar cuántas tareas sean)
+        acts = list(self.object.actividades.select_related("estado").prefetch_related(
+            Prefetch("agendas", queryset=AgendaActividad.objects.filter(vigente=True), to_attr="agenda_v")))
         por_estado = {}
         for a in acts:
             por_estado[a.estado.nombre] = por_estado.get(a.estado.nombre, 0) + 1
         territorios = self.object.territorios.filter(vigente=True).select_related("region", "provincia", "comuna", "sector__comuna", "sector__sector_padre").order_by("pk")
-        return {"por_estado": por_estado, "total_actividades": len(acts),
+        tareas = sorted(({"tarea": a, "fecha": a.agenda_v[0].fecha if a.agenda_v else None} for a in acts),
+                        key=lambda t: (t["fecha"] is None, t["fecha"] or date.min, t["tarea"].nombre))
+        return {"por_estado": por_estado, "total_actividades": len(acts), "tareas_resultado": tareas,
                 "territorios": [{"texto": texto_destino(t), "url": getattr(t.territorio, "get_absolute_url", lambda: "")()} for t in territorios]}
 
     def _hijos(self, qs, slug, texto, detalle, titulo, etiqueta, vacio, url=None, ficha=None):

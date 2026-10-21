@@ -1,5 +1,5 @@
 {# Qué es: Pestaña Historial de la actividad: cambios de la ficha y de sus participantes. #}
-{# Dónde se usa: /actividades/<int:pk> · Proceso: P9 #}
+{# Dónde se usa: /actividades/<int:pk>; en una tarea incluye al final el origen de los datos · Proceso: P9 #}
 {% load fche %}<div class="row g-4">
 <div class="col-12 col-xl-7">
 <h2 class="h6 mb-3">Cambios de la actividad</h2>
@@ -12,3 +12,4 @@
 <ul class="fche-items">{% for v in agendas %}<li class="small {% if not v.vigente %}text-muted{% endif %}"><span><strong>v{{ v.version }}</strong> · {{ v.fecha|date:"d-m-Y" }} {{ v.hora_inicio|time:"H:i" }} · {{ v.lugar|default:"sin lugar" }} · {{ v.motivo_cambio|default:"programación inicial" }}</span><span class="text-nowrap">{{ v.creado_en|date:"d-m-Y H:i" }}</span></li>{% empty %}<li class="text-muted">Sin programaciones.</li>{% endfor %}</ul>
 </div>
 </div>
+{% if mostrar_origen %}<section class="mt-4">{% include "documentos/pestanas/origen.html" %}</section>{% endif %}

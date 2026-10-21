@@ -127,6 +127,8 @@ class Participacion(models.Model):
     comunidad = models.ForeignKey("comunidades.Comunidad", null=True, blank=True, on_delete=models.PROTECT, related_name="participaciones",
                                   verbose_name="comunidad de procedencia", help_text="Se completa sola si la persona integra una comunidad a la que va dirigida la actividad.")
     horas = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, help_text="Horas de participación. Si se deja vacío se usa la duración de la programación.")
+    # F25 F3: el rol es corto (Autoridad, Invitado o invitada…); el detalle va aquí, libre
+    cargo = models.CharField("cargo o función", max_length=120, blank=True, help_text="Ej.: Alcalde de Hualpén, Prevencionista de obras públicas.")
     fecha = models.DateField(auto_now_add=True)
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     history = HistoricalRecords()
@@ -156,6 +158,11 @@ class Participacion(models.Model):
     @property
     def grupo(self):
         return self.rol.grupo
+
+    @property
+    def rol_y_cargo(self):
+        """«Rol · cargo» para las tablas (F25 F3)."""
+        return f"{self.rol} · {self.cargo}" if self.cargo else str(self.rol)
 
     def completar_procedencia(self):
         """Institución desde la formación vigente y comunidad desde el padrón, si no se indicaron (F22)."""
