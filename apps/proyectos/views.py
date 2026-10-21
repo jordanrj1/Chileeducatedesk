@@ -111,7 +111,7 @@ class ProyectoFicha(FichaBase):
         ("organizaciones", "Organizaciones", "generico/_hijos.html"),
         ("comunidades", "Comunidades", "generico/_hijos.html", "comunidades.view_comunidad"),
         ("beneficiarios", "Beneficiarios", "proyectos/pestanas/beneficiarios.html"),
-        ("actividades", "Actividades", "proyectos/pestanas/actividades.html", "actividades.view_actividad"),
+        ("actividades", "Tareas", "proyectos/pestanas/actividades.html", "actividades.view_actividad"),  # F25: la clave se conserva
         ("postulacion", "Postulación", "generico/_hijos.html"),
         ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
         ("documentos", "Documentos", "proyectos/pestanas/documentos.html", "documentos.view_documento"),
@@ -189,7 +189,22 @@ class ProyectoFicha(FichaBase):
         return ctx
 
     def ctx_actividades(self):
-        return {"actividades": self.object.actividades.select_related("estado", "tipo", "responsable").order_by("-creado_en")}
+        """Tareas del proyecto (actividades con proyecto) con su fecha y lugar vigentes, comunidades, participantes y asistencia.
+        Cuatro consultas, sin importar cuántas tareas haya."""
+        from apps.actividades.models import ActividadComunidad, AgendaActividad
+
+        activas = ~Q(participaciones__estado__codigo="registro_erroneo")
+        tareas = (
+            self.object.actividades.select_related("estado", "responsable")
+            .annotate(n_participantes=Count("participaciones", filter=activas, distinct=True),
+                      n_asistieron=Count("participaciones", filter=activas & Q(participaciones__asistencia=True), distinct=True))
+            .prefetch_related(
+                Prefetch("agendas", queryset=AgendaActividad.objects.filter(vigente=True).select_related("lugar"), to_attr="agenda_v"),
+                Prefetch("comunidades_destino", queryset=ActividadComunidad.objects.filter(vigente=True).select_related("comunidad"), to_attr="comunidades_v"),
+            )
+            .order_by("-creado_en")
+        )
+        return {"actividades": tareas, "url_nueva_tarea": reverse("actividades:tarea_nueva", args=[self.object.pk])}
 
     def ctx_documentos(self):
         docs = self.object.documentos.select_related("tipo")

@@ -23,7 +23,7 @@
 
 ## Por hacer
 
-### A. Tareas del proyecto
+### A. Tareas del proyecto (hecho)
 **Decisión:** se renombran y se gestionan dentro del proyecto, y aparecen en el calendario marcadas como tarea.
 
 Por dentro, una tarea es una `Actividad` con `proyecto`. Así reutiliza los participantes con rol, la asistencia, las sesiones con su lista y su minuta, el alcance y el historial de cada persona.
@@ -42,7 +42,7 @@ Por dentro, una tarea es una `Actividad` con `proyecto`. Así reutiliza los part
    - mismas pestañas que una actividad.
 5. **Varias sesiones:** una tarea puede continuar otro día («volvemos en 2 días»). Se usan las sesiones que ya existen; en cada sesión se agregan, editan o quitan participantes y se pasa lista.
 
-### B. Ficha rápida de terreno para participantes (actividades y tareas)
+### B. Ficha rápida de terreno para participantes (actividades y tareas) (hecho)
 **Decisión:** quien no está registrado se crea en la misma tarea o actividad, con pocos datos.
 
 1. **Al agregar un participante:** se busca a la persona; si no está, una ficha rápida pide:
@@ -61,6 +61,8 @@ Por dentro, una tarea es una `Actividad` con `proyecto`. Así reutiliza los part
    - si se indica, se crea el vínculo `PersonaOrganizacion` (con cargo) o `ComunidadMiembro`, que alimenta esas fichas.
 4. **Comuna:** si se indica, se crea la dirección de residencia con solo la comuna. Así la persona aparece en el territorio.
 5. Lo mismo vale para «+ Agregar persona que llegó» en la asistencia y en la lista de una sesión.
+
+**Cómo quedó (A y B):** «+ Nueva tarea» en `/proyectos/<id>/tareas/nueva`; `/actividades` excluye las tareas salvo con «Incluir tareas de proyectos» o al filtrar por proyecto; la ficha rápida bloquea un RUT o documento ya registrado (hay que buscar a la persona). La lista de una sesión muestra a todos los participantes de la tarea; las personas se agregan en la tarea, no dentro de la sesión.
 
 ### C. Sección «Relaciones» en el formulario de persona
 **Decisión:** todo en el mismo formulario.

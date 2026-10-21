@@ -13,6 +13,7 @@ urlpatterns = [
     path("actividades/exportar", views.ActividadExportar.as_view(), name="exportar"),
     path("actividades/opciones", views.ActividadOpciones.as_view(), name="opciones"),
     path("actividades/nueva", views.ActividadNueva.as_view(), name="nueva"),
+    path("proyectos/<int:proyecto_pk>/tareas/nueva", views.TareaNueva.as_view(), name="tarea_nueva"),
     path("actividades/<int:pk>", views.ActividadFicha.as_view(), name="ficha"),
     path("actividades/<int:pk>/editar", views.ActividadEditar.as_view(), name="editar"),
     path("actividades/<int:pk>/programar", views.ProgramarVista.as_view(), name="programar"),

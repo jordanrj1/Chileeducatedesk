@@ -31,7 +31,7 @@ from apps.territorio.models import Comuna
 
 from . import servicios
 from .forms import (
-    SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm,
+    SerieForm, ActividadForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm, TareaForm,
 )
 from .models import Actividad, ActividadComunidad, ActividadTerritorio, AgendaActividad, Participacion, SesionActividad, SesionAsistencia
 from .selector import ACTIVIDADES
@@ -122,6 +122,9 @@ class ActividadLista(ListaBase):
         Filtro("periodo", "Cuándo", "", lambda: list(PERIODOS), aplicar=_filtro_periodo, principal=True, todos="Cualquier fecha"),
         Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoActividad), grupo="Qué"),
         Filtro("proyecto", "Proyecto", "proyecto_id", lambda: [(str(p.pk), p.nombre) for p in Proyecto.objects.all()], grupo="Qué"),
+        # F25: las tareas de proyectos se gestionan en su proyecto; aquí solo aparecen con esta casilla (o al filtrar por proyecto)
+        Filtro("tareas", "Tareas de proyectos", "", entrada="casilla", texto_casilla="Incluir tareas de proyectos", grupo="Qué",
+               aplicar=lambda qs, v: qs),
         Filtro("incompleta", "Incompletas", "", entrada="casilla", texto_casilla="Solo incompletas", grupo="Qué",
                aplicar=lambda qs, v: qs.filter(pk__in=Actividad.objects.incompletas().values("pk")) if v == "1" else qs),
         # Organización reúne a las instituciones educativas (agrupadas por tipo); «?institucion=» sigue funcionando
@@ -144,6 +147,12 @@ class ActividadLista(ListaBase):
             .prefetch_related(Prefetch("agendas", queryset=_agenda_vigente_qs(), to_attr="agenda_v"))
             .distinct()
         )
+
+    def filtrar(self, qs):
+        qs = super().filtrar(qs)
+        if self.request.GET.get("tareas") != "1" and not self.request.GET.get("proyecto", "").strip():
+            qs = qs.filter(proyecto__isnull=True)
+        return qs
 
 
 class ActividadExportar(ActividadLista):
@@ -238,6 +247,57 @@ class ActividadNueva(ComunaInicialMixin, Permiso403Mixin, CreateView):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
+class TareaNueva(Permiso403Mixin, CreateView):
+    """F25: «+ Nueva tarea» desde el proyecto. Crea en una transacción la actividad con proyecto, su programación
+    (si hay fecha y hora) y su destino (comunidad y su territorio). Si una regla impide programar, no se guarda nada."""
+
+    model = Actividad
+    form_class = TareaForm
+    permission_required = "actividades.add_actividad"
+    template_name = "generico/formulario.html"
+
+    def dispatch(self, request, *a, **kw):
+        self.proyecto = get_object_or_404(Proyecto, pk=kw["proyecto_pk"])
+        return super().dispatch(request, *a, **kw)
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        url = self.proyecto.get_absolute_url()
+        ctx.update(titulo="Nueva tarea", volver_url=f"{url}?tab=actividades",
+                   breadcrumb=[("Proyectos", "/proyectos"), (str(self.proyecto), url), ("Tareas", f"{url}?tab=actividades")],
+                   bajada=f"Tarea del proyecto «{self.proyecto}». Los campos marcados con * son obligatorios.")
+        return ctx
+
+    def form_valid(self, form):
+        from apps.documentos.origen import registrar_origen
+
+        d = form.cleaned_data
+        try:
+            with transaction.atomic():
+                obj = form.save(commit=False)
+                obj.proyecto = self.proyecto
+                obj.creado_por = self.request.user
+                obj.estado = EstadoActividad.objects.get(codigo="pendiente")
+                obj.save()
+                form.save_m2m()
+                comunidad = d.get("comunidad")
+                if comunidad:
+                    ActividadComunidad.objects.create(actividad=obj, comunidad=comunidad)
+                    if comunidad.sector_id:
+                        ActividadTerritorio.objects.create(actividad=obj, sector=comunidad.sector)
+                    elif comunidad.comuna_id:
+                        ActividadTerritorio.objects.create(actividad=obj, comuna=comunidad.comuna)
+                if d.get("fecha") and d.get("hora_inicio"):
+                    servicios.programar(obj, self.request.user, d["fecha"], d["hora_inicio"], d.get("hora_fin"), d.get("lugar"))
+                registrar_origen(obj, self.request.user)
+        except ReglaNegocio as e:
+            for m in e.mensajes:
+                form.add_error(None, m)
+            return self.form_invalid(form)
+        messages.success(self.request, "Tarea creada. Agrega a sus participantes desde su ficha.")
+        return HttpResponseRedirect(obj.get_absolute_url())
+
+
 class ActividadEditar(EditarBase):
     model = Actividad
     form_class = ActividadForm
@@ -287,6 +347,15 @@ class ActividadFicha(FichaBase):
 
     def get_queryset(self):
         return super().get_queryset().select_related("proyecto", "tipo", "estado", "modalidad", "responsable", "actividad_padre")
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        p = self.object.proyecto
+        if p:  # F25: una actividad con proyecto es una tarea del proyecto
+            url = p.get_absolute_url()
+            ctx["breadcrumb"] = [("Proyectos", "/proyectos"), (str(p), url), ("Tareas", f"{url}?tab=actividades")]
+            ctx["tipo_ficha"] = "Tarea"
+        return ctx
 
     def acciones_extra(self):
         res = []
@@ -674,6 +743,29 @@ def _perfil_del_rol(persona, rol):
         persona.perfiles.add(rol.perfil_id)
 
 
+def _aplicar_grupo(participacion, organizacion=None, cargo="", comunidad=None):
+    """F25: «¿De qué grupo viene?». La organización y la comunidad quedan como procedencia de la participación, y además
+    se crea el vínculo de la persona con la organización (con su cargo) y su lugar en el padrón de la comunidad, si no
+    existían. Se llama dentro de la transacción que crea la participación; nunca duplica."""
+    from apps.comunidades.models import ComunidadMiembro
+    from apps.personas.models import PersonaOrganizacion
+
+    persona = participacion.persona
+    cargo = (cargo or "").strip()
+    if organizacion:
+        participacion.institucion = organizacion
+        vigentes = PersonaOrganizacion.objects.filter(persona=persona, organizacion=organizacion).filter(
+            Q(fecha_termino__isnull=True) | Q(fecha_termino__gte=timezone.localdate()))
+        if not vigentes.filter(cargo__iexact=cargo).exists():
+            PersonaOrganizacion.objects.create(persona=persona, organizacion=organizacion, cargo=cargo, tipo_cargo="funcional",
+                                               fecha_inicio=timezone.localdate())
+    if comunidad:
+        participacion.comunidad = comunidad
+        ComunidadMiembro.objects.get_or_create(comunidad=comunidad, persona=persona, defaults={"rol": "integrante", "desde": timezone.localdate()})
+    if organizacion or comunidad:
+        participacion.save(update_fields=["institucion", "comunidad"])
+
+
 class ParticipanteNuevo(_AccionActividad):
     permission_required = "actividades.add_participacion"
 
@@ -703,8 +795,10 @@ class ParticipanteNuevo(_AccionActividad):
             if llego:  # RE-02: llegó sin estar previsto
                 p.asistencia = True
                 p.estado = EstadoParticipacion.objects.get(codigo="asistio")
-            p.save()
-            _perfil_del_rol(p.persona, p.rol)
+            with transaction.atomic():
+                p.save()
+                _aplicar_grupo(p, form.cleaned_data.get("organizacion"), form.cleaned_data.get("cargo"), form.cleaned_data.get("comunidad"))
+                _perfil_del_rol(p.persona, p.rol)
             messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}" + (" y marcada como asistente." if llego else "."))
             _avisar_capacidad(request, a)
             if a.estado.codigo == "realizada":
@@ -740,25 +834,35 @@ class ParticipanteRapido(_AccionActividad):
             return render(request, "actividades/participante_rapido.html", self._ctx(a, form), status=400)
         d = form.cleaned_data
         if not request.POST.get("confirmar_duplicado"):
-            cands = candidatos(d["nombres"], d["apellido_paterno"], d["apellido_materno"], None, d["correo"], d["telefono"])
+            cands = candidatos(d["nombres"], d["apellido_paterno"], d["apellido_materno"], None, d["correo"], d["telefono"], documento=("extranjero", d["documento"]) if d.get("documento") else None)
             if cands:
                 return render(request, "actividades/participante_rapido.html", self._ctx(a, form, cands))
         from apps.nucleo.models import EstadoRegistro, TipoContacto
 
         with transaction.atomic():
+            rut = d.get("rut")
             persona = Persona.objects.create(
                 nombres=d["nombres"], apellido_paterno=d["apellido_paterno"], apellido_materno=d["apellido_materno"], creado_por=request.user,
                 estado_registro=EstadoRegistro.objects.filter(codigo="incompleto").first(),
+                rut_numero=rut[0] if rut else None, rut_dv=rut[1] if rut else None,
+                tipo_documento="extranjero" if d.get("documento") and not rut else "", numero_documento=d.get("documento", "") if not rut else "",
+                nacionalidad=d.get("nacionalidad", ""), sexo=d.get("sexo", ""),
             )
             if d["correo"]:
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=d["correo"], principal=True)
             if d["telefono"]:
                 Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=d["telefono"])
+            if d.get("comuna"):  # solo la comuna: basta para que la persona aparezca en su territorio
+                from apps.personas.models import PersonaDireccion
+                from apps.territorio.models import Direccion
+
+                PersonaDireccion.objects.create(persona=persona, direccion=Direccion.objects.create(comuna=d["comuna"]), tipo="residencia")
             llego = request.POST.get("llego") == "1"
-            Participacion.objects.create(
+            p = Participacion.objects.create(
                 actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, asistencia=True if llego else None,
                 estado=EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"),
             )
+            _aplicar_grupo(p, d.get("organizacion"), d.get("cargo"), d.get("comunidad"))
             _perfil_del_rol(persona, d["rol"])
         messages.success(request, f"{persona} creada y agregada. Completa su ficha cuando puedas.")
         _avisar_capacidad(request, a)
@@ -777,11 +881,18 @@ class ParticipanteUsar(_AccionActividad):
         llego = request.POST.get("llego") == "1"
         if not _puede_sumar_participante(request, a, llego):
             return self.volver(a, "participantes")
-        obj, creada = Participacion.objects.get_or_create(
-            actividad=a, persona=persona, rol=rol,
-            defaults={"estado": EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"), "creado_por": request.user, "asistencia": True if llego else None},
-        )
-        _perfil_del_rol(persona, rol)
+        from apps.comunidades.models import Comunidad
+
+        with transaction.atomic():
+            obj, creada = Participacion.objects.get_or_create(
+                actividad=a, persona=persona, rol=rol,
+                defaults={"estado": EstadoParticipacion.objects.get(codigo="asistio" if llego else "invitado"), "creado_por": request.user, "asistencia": True if llego else None},
+            )
+            if creada:  # lo que se alcanzó a escribir en «¿De qué grupo viene?» también vale para la persona existente
+                org = Organizacion.objects.filter(pk=pk_seguro(request.POST.get("organizacion")) or 0).first()
+                comunidad = Comunidad.objects.filter(pk=pk_seguro(request.POST.get("comunidad")) or 0, activo=True).first()
+                _aplicar_grupo(obj, org, request.POST.get("cargo", "")[:120], comunidad)
+            _perfil_del_rol(persona, rol)
         messages.success(request, f"{persona} agregada." if creada else f"{persona} ya participaba con ese rol.")
         _avisar_capacidad(request, a)
         return self.volver(a, "participantes")
@@ -895,7 +1006,7 @@ class CalendarioEventos(Permiso403Mixin, View):
             fin = date.fromisoformat(request.GET.get("end", "")[:10])
         except ValueError:
             ini, fin = date.today() - timedelta(days=31), date.today() + timedelta(days=62)
-        qs = AgendaActividad.objects.filter(fecha__gte=ini, fecha__lte=fin).select_related("actividad__estado", "lugar", "estado")
+        qs = AgendaActividad.objects.filter(fecha__gte=ini, fecha__lte=fin).select_related("actividad__estado", "actividad__proyecto", "lugar", "estado")
         if request.GET.get("historicas") != "1":
             qs = qs.filter(vigente=True)
         if request.GET.get("estado"):
@@ -914,10 +1025,12 @@ class CalendarioEventos(Permiso403Mixin, View):
             codigo = ag.actividad.estado.codigo
             inicio = f"{ag.fecha.isoformat()}T{ag.hora_inicio:%H:%M:%S}" if ag.hora_inicio else ag.fecha.isoformat()
             fin_ev = f"{ag.fecha.isoformat()}T{ag.hora_fin:%H:%M:%S}" if ag.hora_inicio and ag.hora_fin else None
+            act = ag.actividad
+            nombre = f"Tarea · {act.proyecto} · {act.nombre}" if act.proyecto_id else act.nombre  # F25: las tareas se distinguen
             ev = {
-                "id": ag.pk, "title": ag.actividad.nombre + ("" if ag.vigente else f" (v{ag.version}, anterior)"), "start": inicio, "allDay": not ag.hora_inicio,
+                "id": ag.pk, "title": nombre + ("" if ag.vigente else f" (v{ag.version}, anterior)"), "start": inicio, "allDay": not ag.hora_inicio,
                 "url": ag.actividad.get_absolute_url(), "color": COLORES.get(codigo, "#6c757d") if ag.vigente else "#ced4da", "textColor": "#fff" if ag.vigente else "#495057",
-                "extendedProps": {"estado": ag.actividad.estado.nombre, "lugar": str(ag.lugar) if ag.lugar else "", "vigente": ag.vigente},
+                "extendedProps": {"estado": ag.actividad.estado.nombre, "lugar": str(ag.lugar) if ag.lugar else "", "vigente": ag.vigente, "tarea": bool(act.proyecto_id)},
             }
             if fin_ev:
                 ev["end"] = fin_ev

@@ -3,9 +3,11 @@ agregar participantes (o crearlos en el momento), organizaciones, comunidades, t
 Cada formulario valida en el servidor lo mismo que se ve en pantalla."""
 from django import forms
 
+from apps.comunidades.selector import COMUNIDADES
 from apps.lugares.campos import LugarChoiceField
 from apps.lugares.models import Lugar
 from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores, preparar_tramos
+from apps.nucleo.rut import CampoRut
 from apps.nucleo.models import AreaTematica, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion
 from apps.organizaciones.selector import ORGANIZACIONES
 from apps.personas.models import Persona
@@ -82,6 +84,52 @@ class ActividadForm(DestinosMixin, BootstrapMixin, forms.ModelForm):
         return p
 
 
+class TareaForm(BootstrapMixin, forms.ModelForm):
+    """F25: «Nueva tarea» del proyecto en un solo paso. Una tarea es una actividad con proyecto: aquí se piden sus datos,
+    su fecha (que la deja programada) y su destino (lugar o comunidad); la vista guarda todo junto."""
+
+    responsable = SelectorField(PERSONAS, filtros={"equipo_primero": 1}, required=False, help_text=AYUDA_RESPONSABLE)
+    fecha = forms.DateField(widget=forms.DateInput, required=False, label="Fecha", help_text="Si aún no se sabe, déjala vacía y prográmala después.")
+    hora_inicio = forms.TimeField(widget=forms.TimeInput, required=False, label="Hora de inicio", help_text="Ej.: 10:00.")
+    hora_fin = forms.TimeField(widget=forms.TimeInput, required=False, label="Hora de término", help_text="Ej.: 12:00.")
+    lugar = LugarChoiceField(required=False, help_text="Sala, sede o espacio, si ya se sabe.")
+    comunidad = SelectorField(COMUNIDADES, required=False, label="Comunidad", crear=False,
+                              help_text="Si la tarea va a una comunidad (con o sin lugar). Ej.: Vecinos de la Etapa 2.")
+    secciones = [
+        ("Qué es", "Solo el nombre es obligatorio.", ["nombre", "objetivo", "descripcion", "responsable"]),
+        ("Cuándo", "Con fecha y hora de inicio la tarea queda programada y aparece en el calendario.", ["fecha", "hora_inicio", "hora_fin"]),
+        ("Dónde o con quién", "Un lugar, una comunidad o ambos. No es obligatorio.", ["lugar", "comunidad"]),
+        ("Para quién", "", ["tramos_etarios", "publico_objetivo"]),
+    ]
+
+    class Meta:
+        model = Actividad
+        fields = ["nombre", "objetivo", "descripcion", "responsable", "tramos_etarios", "publico_objetivo", "rango_etario"]
+        labels = {"objetivo": "Propósito", "descripcion": "Descripción", "tramos_etarios": "Tramos de edad", "publico_objetivo": "Público objetivo, en palabras"}
+        help_texts = {
+            "nombre": "Ej.: «Visita a la Etapa 2».",
+            "objetivo": "Para qué se hace, en una o dos frases. Ej.: «Conocer a las familias interesadas en el taller».",
+            "descripcion": "Qué se hará. Ej.: «Puerta a puerta con la dirigenta».",
+            "tramos_etarios": "A qué edades va dirigida. Marca uno o más.",
+            "publico_objetivo": "Ej.: «dirigentes de juntas de vecinos».",
+        }
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        preparar_tramos(self)
+
+    def clean(self):
+        d = super().clean()
+        fecha, ini, fin = d.get("fecha"), d.get("hora_inicio"), d.get("hora_fin")
+        if fecha and not ini:
+            self.add_error("hora_inicio", "Indica la hora de inicio (o deja la fecha vacía).")
+        if (ini or fin) and not fecha:
+            self.add_error("fecha", "Indica la fecha de la tarea.")
+        if ini and fin and fin <= ini:
+            self.add_error("hora_fin", "La hora de término debe ser posterior a la de inicio.")
+        return d
+
+
 class ProgramarForm(BootstrapMixin, forms.Form):
     fecha = forms.DateField(widget=forms.DateInput, label="Fecha")
     hora_inicio = forms.TimeField(label="Hora de inicio", widget=forms.TimeInput, help_text="Ej.: 10:00.")
@@ -153,8 +201,29 @@ AYUDAS_PARTICIPACION = {
 }
 
 
-class ParticipanteNuevoForm(BootstrapMixin, forms.ModelForm):
+class GrupoMixin(forms.Form):
+    """F25: «¿De qué grupo viene?» (opcional). La organización con su cargo crea el vínculo de la persona con ella;
+    la comunidad la suma a su padrón. Ambas quedan como procedencia en la participación."""
+
+    organizacion = SelectorField(ORGANIZACIONES, required=False, label="Organización de la que viene",
+                                 help_text="Junta de vecinos, colegio, municipalidad, negocio… Si no está, créala desde aquí.")
+    cargo = forms.CharField(max_length=120, required=False, label="Cargo o relación con esa organización",
+                            help_text="Ej.: Dirigente, Dueña de la panadería, Profesor.")
+    comunidad = SelectorField(COMUNIDADES, required=False, label="Comunidad de la que viene", help_text="Ej.: Vecinos de la Etapa 2.")
+
+    SECCION_GRUPO = ("¿De qué grupo viene?", "Opcional. Queda en la ficha de la persona y en la de la organización o comunidad.",
+                     ["organizacion", "cargo", "comunidad"])
+
+    def clean(self):
+        d = super().clean()
+        if d.get("cargo") and not d.get("organizacion"):
+            self.add_error("organizacion", "Elige la organización a la que corresponde el cargo.")
+        return d
+
+
+class ParticipanteNuevoForm(GrupoMixin, BootstrapMixin, forms.ModelForm):
     persona = selector_persona()
+    secciones = [("Participante", "", ["persona", "rol", "estado", "observaciones"]), GrupoMixin.SECCION_GRUPO]
 
     class Meta:
         model = Participacion
@@ -212,14 +281,41 @@ class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
         pass
 
 
-class PersonaRapidaForm(BootstrapMixin, forms.Form):
+class PersonaRapidaForm(GrupoMixin, BootstrapMixin, forms.Form):
+    """Ficha rápida de terreno (F25): solo el nombre es obligatorio; lo demás se completa si se sabe."""
+
     nombres = forms.CharField(max_length=150, label="Nombres", help_text="Ej.: María José.")
     apellido_paterno = forms.CharField(max_length=100, required=False, label="Apellido paterno")
     apellido_materno = forms.CharField(max_length=100, required=False, label="Apellido materno")
+    rut = CampoRut(label="RUT")
+    documento = forms.CharField(max_length=40, required=False, label="Documento extranjero",
+                                help_text="Solo si no tiene RUT chileno: el número de su pasaporte o documento. Ej.: AB123456.")
+    nacionalidad = forms.CharField(max_length=60, required=False, label="Nacionalidad", help_text="Ej.: Chilena, Venezolana.")
+    sexo = forms.ChoiceField(choices=[("", "—")] + Persona.SEXOS, required=False, label="Sexo")
     correo = forms.EmailField(required=False, label="Correo electrónico", help_text="Ej.: nombre@ejemplo.cl")
     telefono = forms.CharField(max_length=40, required=False, label="Teléfono", help_text="Ej.: +56 9 1234 5678.")
+    comuna = forms.ModelChoiceField(Comuna.objects.select_related("provincia__region").order_by("nombre"), required=False, label="Comuna donde vive",
+                                    help_text="Así aparece en el territorio. Ej.: Hualpén.")
     rol = forms.ModelChoiceField(RolParticipacion.objects.filter(activo=True), label="Rol en la actividad",
                                  help_text=AYUDAS_PARTICIPACION["rol"])
+    secciones = [
+        ("Persona", "Solo el nombre es obligatorio.", ["nombres", "apellido_paterno", "apellido_materno", "rut", "documento", "nacionalidad", "sexo"]),
+        ("Contacto y comuna", "", ["telefono", "correo", "comuna"]),
+        ("En esta actividad", "", ["rol"]),
+        GrupoMixin.SECCION_GRUPO,
+    ]
+
+    def clean_rut(self):
+        rut = self.cleaned_data.get("rut")
+        if rut and Persona.objects.filter(rut_numero=rut[0]).exists():
+            raise forms.ValidationError("Ya hay una persona registrada con ese RUT. Búscala en «Agregar participante».")
+        return rut
+
+    def clean_documento(self):
+        doc = self.cleaned_data.get("documento", "").strip().upper()
+        if doc and Persona.objects.filter(tipo_documento="extranjero", numero_documento__iexact=doc).exists():
+            raise forms.ValidationError("Ya hay una persona registrada con ese documento. Búscala en «Agregar participante».")
+        return doc
 
 
 class ActividadOrganizacionForm(BootstrapMixin, forms.ModelForm):

@@ -14,7 +14,7 @@
   {% if comuna_ficha and not agenda.lugar %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></span>{% endif %}
 </div>
 {% if object.proyecto or object.actividad_padre %}<div class="d-flex flex-wrap gap-3 mt-2">
-  {% if object.proyecto %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.proyecto.get_absolute_url }}">{% icono "proyectos" 15 %}Proyecto: {{ object.proyecto }}</a>{% endif %}
+  {% if object.proyecto %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.proyecto.get_absolute_url }}">{% icono "proyectos" 15 %}Tarea del proyecto {{ object.proyecto }}</a>{% endif %}
   {% if object.actividad_padre %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.actividad_padre.get_absolute_url }}">{% icono "actividades" 15 %}Parte de: {{ object.actividad_padre }}</a>{% endif %}
 </div>{% endif %}
 {% if faltantes and object.estado.codigo != "cancelada" and object.estado.codigo != "realizada" %}<div class="d-inline-flex align-items-center gap-1 mt-2 px-2 py-1 rounded-2 small text-warning-emphasis" style="background:#fff7e0;">{% icono "alerta" 14 %}Falta: {{ faltantes|join:", " }}</div>{% endif %}
