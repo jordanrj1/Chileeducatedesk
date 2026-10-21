@@ -458,8 +458,6 @@ class PersonaFicha(FichaBase):
     def ctx_direcciones(self):
         ctx = self._hijo_ctx("Direcciones", "direcciones", "Dirección", self.object.direcciones.select_related("direccion__comuna", "direccion__sector"),
                              texto=lambda d: str(d.direccion), detalle=lambda d: d.get_tipo_display())
-        for h in ctx["hijos"]:
-            h.pop("url_editar", None)  # una dirección se reemplaza agregando otra y marcando la anterior como no vigente
         return ctx
 
     def ctx_formacion(self):
@@ -702,6 +700,33 @@ class DireccionPersonaNueva(Permiso403Mixin, CreateView):
     def form_valid(self, form):
         form.save_para(self.persona)
         messages.success(self.request, "Dirección guardada.")
+        return HttpResponseRedirect(f"{self.persona.get_absolute_url()}?tab=direcciones")
+
+
+class DireccionPersonaEditar(DireccionPersonaNueva):
+    """Corrige una dirección ya registrada (calle, número, comuna, sector o tipo). Si la persona se cambió de casa,
+    lo correcto es agregar la nueva y dar de baja la anterior, para que quede la historia."""
+
+    def dispatch(self, request, *a, **kw):
+        self.registro = get_object_or_404(PersonaDireccion.objects.select_related("direccion"), pk=kw["hijo_pk"], persona_id=kw["pk"])
+        return super().dispatch(request, *a, **kw)
+
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        kw["instance"] = self.registro.direccion
+        kw.setdefault("initial", {})["tipo"] = self.registro.tipo
+        return kw
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        ctx["titulo"] = "Editar dirección"
+        return ctx
+
+    def form_valid(self, form):
+        form.save()
+        self.registro.tipo = form.cleaned_data["tipo"]
+        self.registro.save(update_fields=["tipo"])
+        messages.success(self.request, "Dirección actualizada.")
         return HttpResponseRedirect(f"{self.persona.get_absolute_url()}?tab=direcciones")
 
 

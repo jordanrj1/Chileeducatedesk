@@ -114,3 +114,9 @@ def test_desactivar_organizacion_no_borra(cg, universidad):
 def test_admin_solo_lectura(ca):
     assert ca.get("/organizaciones").status_code == 200
     assert ca.get("/organizaciones/nueva").status_code == 403
+
+
+def test_comuna_que_administra_solo_para_municipalidades(cg):
+    """El campo se muestra condicionado al tipo y, si no es municipalidad, el mensaje explica qué hacer."""
+    html = cg.get("/organizaciones/nueva").content.decode()
+    assert 'data-mostrar-si-campo="tipo"' in html

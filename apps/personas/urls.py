@@ -4,7 +4,7 @@ from django.urls import path
 
 from apps.comunidades.forms import MembresiaDesdePersonaForm
 from apps.comunidades.models import ComunidadMiembro
-from apps.nucleo.hijos import urls_hijo
+from apps.nucleo.hijos import HijoAlternar, urls_hijo
 
 from . import forms, models, views
 
@@ -23,6 +23,8 @@ urlpatterns = [
     path("personas/<int:pk>/reasignar", views.PersonaReasignar.as_view(), name="reasignar"),
     path("personas/<int:pk>/datos-personales", views.PersonaDatosPersonales.as_view(), name="datos_personales"),
     path("personas/<int:pk>/direcciones/nuevo", views.DireccionPersonaNueva.as_view(), name="direcciones_nuevo"),
+    path("personas/<int:pk>/direcciones/<int:hijo_pk>/editar", views.DireccionPersonaEditar.as_view(), name="direcciones_editar"),
+    path("personas/<int:pk>/direcciones/<int:hijo_pk>/alternar", type("AlternarDireccion", (HijoAlternar,), dict(modelo=models.PersonaDireccion, tab="direcciones", etiqueta="dirección", **P)).as_view(), name="direcciones_alternar"),
     path("personas/<int:pk>/sensibles/editar", views.PerfilSensibleEditar.as_view(), name="sensibles_editar"),
     path("personas/<int:pk>/fichas/<slug:codigo>", views.PersonaFichaTipo.as_view(), name="ficha_tipo"),
     path("personas/estudios/dependientes", views.EstudiosDependientes.as_view(), name="estudios_dependientes"),

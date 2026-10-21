@@ -278,4 +278,20 @@
     if (ultima && window.htmx) window.htmx.trigger(ultima, ultima.getAttribute("hx-trigger") ? ultima.getAttribute("hx-trigger").split(" ")[0] : "click");
     else window.location.reload();
   });
+
+  // Campos que solo aplican según otro campo (p. ej. «Comuna que administra» solo si el tipo es Municipalidad).
+  function campoCondicional(raiz) {
+    Array.prototype.forEach.call((raiz || document).querySelectorAll("[data-mostrar-si-campo]"), function (el) {
+      var form = el.form || document, origen = form.querySelector("[name='" + el.dataset.mostrarSiCampo + "']");
+      var caja = el.closest(".fche-campo") || el.parentNode;
+      if (!origen || !caja) return;
+      function aplicar() {
+        var ver = origen.value === el.dataset.mostrarSiValor || !!el.value && origen.value === "";
+        caja.hidden = !ver;
+      }
+      origen.addEventListener("change", aplicar);
+      aplicar();
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () { campoCondicional(document); });
 })();

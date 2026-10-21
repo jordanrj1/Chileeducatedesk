@@ -78,6 +78,10 @@ class OrganizacionForm(BootstrapMixin, forms.ModelForm):
                                                             "que corresponda y luego borra este texto.")
         else:
             self.fields.pop("naturaleza_juridica")
+        # «Comuna que administra» solo tiene sentido en una municipalidad: se muestra solo si ese es el tipo elegido.
+        muni = TipoOrganizacion.objects.filter(codigo="municipalidad").values_list("pk", flat=True).first()
+        if muni and "comuna_municipal" in self.fields:
+            self.fields["comuna_municipal"].widget.attrs.update({"data-mostrar-si-campo": self.add_prefix("tipo"), "data-mostrar-si-valor": str(muni)})
         if self.instance.pk and self.instance.rut_numero:
             self.initial["rut"] = self.instance.rut
 

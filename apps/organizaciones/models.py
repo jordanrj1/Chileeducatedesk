@@ -66,7 +66,7 @@ class Organizacion(models.Model):
 
     def clean(self):
         if self.comuna_municipal_id and self.tipo_id and self.tipo.codigo != "municipalidad":
-            raise ValidationError({"comuna_municipal": "Solo una municipalidad se relaciona con una comuna."})
+            raise ValidationError({"comuna_municipal": f"Este dato es solo para municipalidades, y esta organización es «{self.tipo}». Deja este campo vacío."})
 
 
 class Carrera(models.Model):

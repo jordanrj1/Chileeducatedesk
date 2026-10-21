@@ -288,3 +288,19 @@ def test_historial_muestra_la_fuente_del_dato(cg):
     p = Persona.objects.get()
     html = cg.get(f"/personas/{p.pk}?tab=historial").content.decode()
     assert "Fuente de la información" in html and "Ingreso en el sistema" in html
+
+
+def test_pestana_direcciones_abre_y_la_direccion_se_edita_y_se_da_de_baja(cg):
+    """La pestaña Direcciones fallaba (ruta de edición inexistente). Ahora se ve, se edita y se da de baja sin borrar."""
+    from apps.personas.models import PersonaDireccion
+    from apps.territorio.models import Comuna, Direccion, Provincia, Region
+
+    region = Region.objects.create(codigo="98", nombre="Región Ficticia")
+    comuna = Comuna.objects.create(codigo="98001", nombre="Comuna Ficticia", provincia=Provincia.objects.create(codigo="980", nombre="Provincia Ficticia", region=region))
+    p = Persona.objects.create(nombres="Rosa", apellido_paterno="Inventada")
+    d = PersonaDireccion.objects.create(persona=p, tipo="residencia", direccion=Direccion.objects.create(calle="Calle Falsa", numero="1", comuna=comuna))
+    assert cg.get(f"/personas/{p.pk}?tab=direcciones").status_code == 200
+    assert cg.get(f"/personas/{p.pk}/direcciones/{d.pk}/editar").status_code == 200
+    cg.post(f"/personas/{p.pk}/direcciones/{d.pk}/alternar")
+    d.refresh_from_db()
+    assert d.vigente is False and PersonaDireccion.objects.filter(pk=d.pk).exists()
