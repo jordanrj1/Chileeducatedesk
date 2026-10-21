@@ -137,3 +137,30 @@ Decisiones del usuario: ficha rápida única · cinco estados · la organizació
 - E7: la pestaña Asistencia se quitó (`?tab=asistencia` abre Participantes); la plantilla `actividades/pestanas/asistencia.html` queda sin uso.
 - E8: pestañas en varias líneas; tablas con barra de desplazamiento visible.
 - Extra: en «Buscar candidatos», «Invitar» pasa a «Agregar a la actividad».
+
+## F. La tarea en un solo lugar (decisiones del usuario del 21-10-2026)
+Decisiones: 8 pestañas · lista propia de Beneficiarios · rol corto más cargo o función libre · sin Coordinación en tareas.
+
+**F1 · Pestañas de una tarea** (actividad con proyecto; las actividades sueltas no cambian):
+1. **Información:** datos de la tarea; público y comunidades; territorio; fecha vigente; historial de reprogramaciones (motivo, quién y cuándo).
+2. **Equipo y asistencia:** equipo ejecutor, e invitados y autoridades, cada grupo con su lista y su asistencia.
+3. **Beneficiarios.**
+4. **Organizaciones.**
+5. **Sesiones:** otros días.
+6. **Cierre:** resultado del día y Finalizar.
+7. **Documentos.**
+8. **Historial:** incluye el origen de los datos.
+
+Agenda, Público, Coordinación, Alcance y Origen no se muestran como pestañas en una tarea. Sus direcciones antiguas abren la pestaña equivalente.
+
+**F2 · Beneficiarios:**
+- **Registro:** «+ Registrar beneficiario» usa la ficha rápida, su grupo (organización, colegio o junta, con cargo; comunidad) y la comuna.
+- **Menores de edad:** si es menor (por la fecha de nacimiento o una casilla), se pide apoderado o contacto de emergencia (nombre, teléfono, parentesco). Se guarda como contacto de emergencia, restringido 🔒.
+- **Asistencia:** registrado desde el día de la tarea, queda «Asistió»; antes, «Inscrito».
+- **Rol:** «Beneficiario» por defecto, o «Participante».
+
+**F3 · Rol corto + cargo o función libre:**
+- **Campo nuevo:** `Participacion.cargo` (texto opcional, «Cargo o función», por ejemplo «Alcalde de Hualpén»), en todos los formularios de participación. Se ve como «Rol · cargo».
+- **Catálogo:** se agregan, si no existen, los roles «Invitado o invitada» y «Autoridad» en el grupo de invitados y contactos.
+
+**F4 · Proyecto:** el Resumen muestra «Resultados de las tareas»: cada tarea con fecha, estado y su resultado, con enlace. El alcance se ve en el proyecto.
