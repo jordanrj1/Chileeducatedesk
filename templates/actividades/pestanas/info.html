@@ -7,10 +7,10 @@
   <div><dt>Responsable</dt><dd>{% if object.responsable %}<a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a>{% else %}—{% endif %}</dd></div>
   <div class="fche-datos__ancho"><dt>Condiciones</dt><dd>{{ object.condiciones|default:"—"|linebreaksbr }}</dd></div>
 </dl>
-<div class="fche-seccion"><h2 class="h6">Zona de la actividad</h2>
+<div class="fche-seccion"><h2 class="h6">Zona de la {% if object.proyecto_id %}tarea{% else %}actividad{% endif %}</h2>
 {% if puede_agregar %}<div class="fche-seccion__acciones"><a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:editar' object.pk %}#donde">+ Territorio</a></div>{% endif %}</div>
 {% if not territorios and comuna_ficha %}<p class="small mb-0">Según el lugar programado: <a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a>. Agrega un territorio solo si va dirigida a otra zona.</p>{% else %}{% include "generico/_hijos.html" with hijos=territorios titulo_pestana="" etiqueta_nuevo="Territorio" url_nuevo="" vacio="Sin territorio indicado." %}{% endif %}
-{% if hijas or object.actividad_padre is None %}
+{% if hijas or object.actividad_padre is None and not object.proyecto_id %}
 <div class="fche-seccion"><h2 class="h6">Charlas y talleres de esta jornada{% if hijas %} <span class="fche-contador">{{ hijas|length }}</span>{% endif %}</h2>
 <div class="fche-seccion__acciones">
 {% if puede_programar and object.actividad_padre is None %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:serie' object.pk %}">Crear serie (repetir)</a>{% endif %}
@@ -19,7 +19,7 @@
 <ul class="fche-items">{% for h in hijas %}<li><a class="fche-items__titulo" href="{{ h.get_absolute_url }}">{{ h.nombre }}</a> {% estado h.estado %}</li>{% empty %}<li class="text-muted">Ninguna.</li>{% endfor %}</ul>
 {% endif %}
 {% if es_tarea %}
-<section class="mt-4" aria-labelledby="titulo-publico"><h2 class="h5 mb-3" id="titulo-publico">Público y comunidades</h2>
+<section class="mt-4" aria-labelledby="titulo-publico"><h2 class="h6 mb-3" id="titulo-publico">Público y comunidades</h2>
 {% include "actividades/pestanas/publico.html" %}</section>
 <section class="mt-4">
 {% include "actividades/pestanas/agenda.html" with titulo_agenda="Fecha y reprogramaciones" %}</section>
