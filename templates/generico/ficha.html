@@ -1,4 +1,5 @@
-{# Qué es: Ficha común con cabecera, botones y pestañas. Las fichas de cada módulo la extienden y solo agregan su cabecera. #}
+{# Qué es: Ficha común con cabecera y pestañas. Arriba el título y su estado, una línea de datos clave separados por «·», UNA acción principal (Editar) y el resto en «Más acciones»; los avisos van juntos en una caja suave. #}
+{# Las fichas de cada módulo la extienden y llenan los bloques: contexto (sobre el título), estado, subtitulo (cada dato en un <li>), avisos (cada aviso en un <li>), menu (acciones secundarias con la clase fche-menu__item). #}
 {# Dónde se usa: 5 rutas, p. ej. /documentos/<int:pk> · Proceso: P9 #}
 {% extends "base.html" %}
 {% load fche %}
@@ -7,29 +8,32 @@
 {% block contenido %}
 <div id="ficha-completa">
   <section class="fche-ficha-cabecera" aria-labelledby="ficha-titulo">
-    <div class="fche-ficha-cabecera__identidad">
-      {% if icono_ficha %}<span class="fche-avatar fche-avatar--lg tono-0" aria-hidden="true">{% icono icono_ficha 26 %}</span>
-      {% else %}<span class="fche-avatar fche-avatar--lg {{ titulo|tono_avatar }}" aria-hidden="true">{{ titulo|iniciales }}</span>{% endif %}
-      <div class="min-w-0">
-        {% if tipo_ficha %}<p class="fche-pagina__antetitulo">{{ tipo_ficha }}</p>{% endif %}
-        <h1 class="fche-ficha-cabecera__titulo" id="ficha-titulo">{{ titulo }}</h1>
-        <div class="fche-ficha-cabecera__meta">{% block subtitulo %}{% endblock %}</div>
+    <div class="fche-ficha-cabecera__fila">
+      <div class="fche-ficha-cabecera__identidad">
+        {% if icono_ficha %}<span class="fche-avatar fche-avatar--lg tono-0" aria-hidden="true">{% icono icono_ficha 24 %}</span>
+        {% else %}<span class="fche-avatar fche-avatar--lg {{ titulo|tono_avatar }}" aria-hidden="true">{{ titulo|iniciales }}</span>{% endif %}
+        <div class="min-w-0">
+          {% block contexto %}{% if tipo_ficha %}<p class="fche-pagina__antetitulo">{{ tipo_ficha }}</p>{% endif %}{% endblock %}
+          <div class="fche-ficha-cabecera__linea-titulo">
+            <h1 class="fche-ficha-cabecera__titulo" id="ficha-titulo">{{ titulo }}</h1>
+            {% block estado %}{% endblock %}
+          </div>
+          <div class="fche-meta-marco"><ul class="fche-meta" aria-label="Datos clave">{% block subtitulo %}{% endblock %}</ul></div>
+        </div>
+      </div>
+      <div class="fche-ficha-cabecera__acciones">
+        {% block accion_principal %}{% if puede_editar and url_editar %}<a class="btn btn-primary btn-sm" href="{{ url_editar }}">{% icono "editar" 15 %}{{ texto_editar|default:"Editar" }}</a>{% endif %}{% endblock %}
+        <details class="fche-menu">
+          <summary class="btn btn-outline-secondary btn-sm">Más acciones {% icono "abajo" 14 %}</summary>
+          <div class="fche-menu__panel">
+            {% block menu %}{% endblock %}
+            {% for etiqueta, url in acciones_extra %}<a class="fche-menu__item" href="{{ url }}">{{ etiqueta }}</a>{% endfor %}
+          </div>
+        </details>
+        <a href="{{ url_volver|default:'javascript:history.back()' }}" class="btn btn-link btn-sm volver">{% icono "volver" 15 %}Volver</a>
       </div>
     </div>
-    <div class="fche-ficha-cabecera__acciones">
-      {% block acciones %}{% endblock %}
-      {% if puede_editar and url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">{% icono "editar" 15 %}{{ texto_editar|default:"Editar" }}</a>{% endif %}
-      {% for etiqueta, url in acciones_extra|slice:":1" %}<a class="btn btn-outline-secondary btn-sm" href="{{ url }}">{{ etiqueta }}</a>{% endfor %}
-      {% if acciones_extra|length > 1 %}
-      <div class="dropdown">
-        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Más acciones</button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          {% for etiqueta, url in acciones_extra|slice:"1:" %}<li><a class="dropdown-item" href="{{ url }}">{{ etiqueta }}</a></li>{% endfor %}
-        </ul>
-      </div>
-      {% endif %}
-      <a href="{{ url_volver|default:'javascript:history.back()' }}" class="btn btn-outline-secondary btn-sm volver">{% icono "volver" 15 %}Volver</a>
-    </div>
+    <ul class="fche-ficha-avisos" aria-label="Avisos">{% block avisos %}{% endblock %}</ul>
     <ul class="nav nav-tabs" hx-boost="false" aria-label="Secciones de la ficha">
       {% for clave, etiqueta in pestanas %}
       <li class="nav-item"><a class="nav-link {% if clave == pestana %}active{% endif %}" href="?tab={{ clave }}"{% if clave == pestana %} aria-current="page"{% endif %}

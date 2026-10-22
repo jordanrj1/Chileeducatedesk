@@ -346,3 +346,19 @@
     if (nombre) nombre.focus();
   });
 })();
+
+// «Más acciones» de la cabecera de las fichas (un <details>, funciona sin JavaScript): con JavaScript se cierra
+// al hacer clic fuera o con Esc, y el foco vuelve al botón.
+(function () {
+  document.addEventListener("click", function (e) {
+    var dentro = e.target.closest("details.fche-menu");
+    Array.prototype.forEach.call(document.querySelectorAll("details.fche-menu[open]"), function (d) { if (d !== dentro) d.open = false; });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    var abierto = document.querySelector("details.fche-menu[open]");
+    if (!abierto) return;
+    abierto.open = false;
+    abierto.querySelector("summary").focus();
+  });
+})();

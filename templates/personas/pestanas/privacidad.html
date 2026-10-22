@@ -1,0 +1,6 @@
+{# Qué es: Pestaña Privacidad 🔒 de la persona: datos sensibles, apoderados, consentimientos y verificaciones (con la segunda fase activa). Cada sección se ve solo con su permiso; sin ninguno, la pestaña no aparece. #}
+{# Dónde se usa: /personas/<int:pk>?tab=privacidad (también ?tab=sensibles, apoderados, consentimientos o verificaciones) · Proceso: P9 #}
+{% if "consentimientos" in secciones %}<section class="fche-apartado">{% include "personas/pestanas/consentimientos.html" %}</section>{% endif %}
+{% if "sensibles" in secciones %}<section class="fche-apartado">{% include "personas/pestanas/sensibles.html" %}</section>{% endif %}
+{% if "apoderados" in secciones %}{% include "personas/pestanas/_seccion_hijos.html" with x=apoderados titulo_seccion="Apoderados 🔒" %}{% endif %}
+{% if "verificaciones" in secciones %}{% include "personas/pestanas/_seccion_hijos.html" with x=verificaciones titulo_seccion="Verificaciones 🔒" %}{% endif %}

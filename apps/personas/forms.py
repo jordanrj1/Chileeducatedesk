@@ -570,7 +570,7 @@ class PerfilSensibleForm(BootstrapMixin, forms.ModelForm):
         ("Salud y accesibilidad", "Para preparar el lugar y la actividad, y actuar en una emergencia.",
          ["discapacidad", "necesidades_apoyo", "condiciones_salud", "alergias", "prevision_salud"]),
         ("Hogar", "Para focalizar beneficios e informar a fondos. La jefatura y los integrantes del hogar van en la ficha de vecino o vecina "
-                  "(pestaña Datos).", ["tramo_rsh"]),
+                  "(pestaña Resumen).", ["tramo_rsh"]),
         ("Consentimiento", "", ["consentimiento", "consentimiento_fecha", "consentimiento_medio"]),
     ]
 

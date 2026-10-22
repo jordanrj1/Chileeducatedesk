@@ -1,11 +1,12 @@
-{# Qué es: Pestaña Cargos y vínculos de la persona: organizaciones con cargo, estudios, comunidades, proyectos y actividades, vigentes y terminados, con enlaces. #}
-{# Dónde se usa: /personas/<int:pk>?tab=vinculos · Proceso: P9 #}
-{% load fche %}<div class="fche-seccion"><h2 class="h6 mb-0">Cargos y vínculos</h2>
+{# Qué es: Pestaña Cargos y vínculos de la persona: organizaciones con cargo, estudios, lugares, comunidades (con «+ Comunidad»), proyectos y actividades, vigentes y terminados, con enlaces. #}
+{# Dónde se usa: /personas/<int:pk>?tab=vinculos (también ?tab=comunidades) · Proceso: P9 #}
+{% load fche %}<section class="fche-apartado"><div class="fche-seccion"><h2 class="h6 mb-0">Cargos y vínculos</h2>
 {% if puede_agregar %}<div class="fche-seccion__acciones">
   {% if perms.personas.add_personaorganizacion %}<a class="btn btn-primary btn-sm" href="{{ url_nuevo }}">+ Cargo en una organización</a>{% endif %}
   {% if perms.personas.add_personalugar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_nuevo_lugar }}">+ Vincular a un lugar</a>{% endif %}
+  {% if perms.comunidades.add_comunidadmiembro %}<a class="btn btn-outline-primary btn-sm" href="{{ url_nueva_comunidad }}">+ Comunidad</a>{% endif %}
 </div>{% endif %}</div>
-<p class="small text-muted">Todo lo que une a esta persona con organizaciones, estudios, comunidades, proyectos y actividades. Se arma solo desde cada registro: un rol en una comunidad o en un proyecto se agrega desde esa comunidad o ese proyecto.</p>
+<p class="fche-apartado__ayuda">Todo lo que une a esta persona con organizaciones, estudios, comunidades, proyectos y actividades. Se arma solo desde cada registro: un rol en un proyecto se agrega desde ese proyecto.</p>
 {% for titulo, filas in grupos %}
 <h3 class="h6 mt-4 mb-2">{{ titulo }}{% if filas %} <span class="fche-contador">{{ filas|length }}</span>{% endif %}</h3>
 {% if filas %}<ul class="fche-items">{% for f in filas %}
@@ -16,3 +17,4 @@
   </li>{% endfor %}</ul>
 {% else %}<p class="small text-muted mb-0">Sin registros.</p>{% endif %}
 {% endfor %}
+</section>

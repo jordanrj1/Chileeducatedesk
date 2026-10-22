@@ -2,12 +2,9 @@
 {# Dónde se usa: /organizaciones/<int:pk> · Proceso: P4 #}
 {% extends "generico/ficha.html" %}
 {% load fche %}
+{% block estado %}{% if object.estado_registro %}{% estado object.estado_registro %}{% endif %}{% if not object.activo %}{% estado "inactivo" "Inactiva" %}{% endif %}{% endblock %}
 {% block subtitulo %}
-<div class="d-flex flex-wrap gap-2 align-items-center">
-  {% if object.estado_registro %}{% estado object.estado_registro %}{% endif %}
-  {% if not object.activo %}{% estado "inactivo" "Inactiva" %}{% endif %}
-  {% if object.tipo %}<span class="badge text-bg-light border">{{ object.tipo }}</span>{% endif %}
-  {% if comuna_ficha %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></span>{% endif %}
-  {% if object.sitio_web %}<a class="d-inline-flex align-items-center gap-1" href="{{ object.sitio_web }}" target="_blank" rel="noopener">{% icono "enlace" 15 %}Sitio web</a>{% endif %}
-</div>
+  {% if object.tipo %}<li>{{ object.tipo }}</li>{% endif %}
+  {% if comuna_ficha %}<li><a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></li>{% endif %}
+  {% if object.sitio_web %}<li><a href="{{ object.sitio_web }}" target="_blank" rel="noopener">Sitio web</a></li>{% endif %}
 {% endblock %}

@@ -1,5 +1,5 @@
-{# Qué es: Pestaña Participaciones: todas las actividades de la persona, con rol y asistencia. #}
-{# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
+{# Qué es: Sección de participaciones de la persona: actividades con rol y asistencia, horas, invitaciones, reuniones y tareas (los cargos y proyectos están en «Cargos y vínculos»). #}
+{# Dónde se usa: personas/pestanas/participaciones.html (/personas/<int:pk>) · Proceso: P9 #}
 {% load fche %}<div class="fche-kpis">
   <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "actividades" 16 %}</span>Participaciones</span><span class="fche-kpi__valor">{{ participaciones|length }}</span></div>
   <div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "reloj" 16 %}</span>Horas acumuladas</span><span class="fche-kpi__valor">{{ horas_acumuladas|floatformat:"-1" }}</span><span class="fche-kpi__nota">en actividades a las que asistió</span></div>
@@ -9,14 +9,6 @@
 <div class="fche-items__detalle">{{ p.rol }}{% if p.actividad.proyecto %} · Proyecto: {{ p.actividad.proyecto }}{% endif %} · actividad {{ p.actividad.estado|lower }}</div></div>
 <div class="fche-items__acciones">{% estado p.estado %}{% if p.asistencia is True %} {% estado "asistio" "Asistió" %}{% elif p.asistencia is False %} {% estado "no_asistio" "No asistió" %}{% endif %}</div></li>{% empty %}<li class="text-muted">Aún no participa en ninguna actividad.</li>{% endfor %}</ul>
 <div class="row g-4">
-<div class="col-12 col-xl-6">
-<h2 class="h6 mb-2">Cargos y organizaciones</h2>
-<ul class="fche-items">{% for v in vinculos %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ v.organizacion.get_absolute_url }}">{{ v.organizacion }}</a><div class="fche-items__detalle">{{ v.cargo|default:"vínculo" }} · {{ v.fecha_inicio|date:"d-m-Y" }} a {{ v.fecha_termino|date:"d-m-Y"|default:"actualidad" }}</div></div></li>{% empty %}<li class="text-muted">Sin cargos registrados.</li>{% endfor %}</ul>
-</div>
-<div class="col-12 col-xl-6">
-<h2 class="h6 mb-2">Proyectos</h2>
-<ul class="fche-items">{% for pr in proyectos %}<li><a class="fche-items__titulo" href="{{ pr.proyecto.get_absolute_url }}">{{ pr.proyecto }}</a> <span class="badge text-bg-secondary">{{ pr.get_tipo_display }}</span></li>{% empty %}<li class="text-muted">Sin proyectos.</li>{% endfor %}</ul>
-</div>
 <div class="col-12 col-xl-6">
 <h2 class="h6 mb-2">Invitaciones</h2>
 <ul class="fche-items">{% for i in invitaciones %}<li><a class="fche-items__titulo" href="{{ i.get_absolute_url }}">{{ i.actividad }}</a> {% estado i.estado i.get_estado_display %}</li>{% empty %}<li class="text-muted">Sin invitaciones.</li>{% endfor %}</ul>

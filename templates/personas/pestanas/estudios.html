@@ -1,0 +1,21 @@
+{# Qué es: Pestaña Estudios y trayectoria de la persona: formación, experiencia (la que se arma sola con los cargos y roles terminados y la de fuera de la Fundación) y disponibilidad. #}
+{# Dónde se usa: /personas/<int:pk>?tab=estudios (también ?tab=formacion, experiencia o disponibilidad) · Proceso: P9 #}
+{% load fche %}{% if "formacion" in secciones %}{% include "personas/pestanas/_seccion_hijos.html" with x=formacion %}{% endif %}
+{% if "experiencia" in secciones %}
+<section class="fche-apartado" aria-labelledby="experiencia-titulo">
+  <div class="fche-seccion"><h2 class="h6" id="experiencia-titulo">Experiencia en la Fundación</h2></div>
+  <p class="fche-apartado__ayuda">Se arma sola con los cargos y roles que ya terminaron. Los vigentes están en «Cargos y vínculos».</p>
+  {% for titulo, filas in experiencia.terminados %}
+  <h3 class="h6 mt-3 mb-2">{{ titulo }} <span class="fche-contador">{{ filas|length }}</span></h3>
+  <ul class="fche-items">{% for f in filas %}
+    <li><div class="fche-items__texto">
+      <div class="fche-items__titulo"><a href="{{ f.url }}">{{ f.nombre }}</a>{% if f.rol %} · {{ f.rol }}{% endif %}</div>
+      {% if f.detalle or f.periodo %}<div class="fche-items__detalle">{{ f.detalle }}{% if f.detalle and f.periodo %} · {% endif %}{{ f.periodo }}</div>{% endif %}
+    </div></li>{% endfor %}</ul>
+  {% empty %}
+  <p class="small text-muted mb-0">Aún no tiene cargos ni roles terminados.</p>
+  {% endfor %}
+</section>
+{% include "personas/pestanas/_seccion_hijos.html" with x=experiencia %}
+{% endif %}
+{% if "disponibilidad" in secciones %}{% include "personas/pestanas/_seccion_hijos.html" with x=disponibilidad %}{% endif %}

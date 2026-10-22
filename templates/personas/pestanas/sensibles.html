@@ -1,4 +1,4 @@
-{# Qué es: Pestaña Datos sensibles 🔒 (género, pueblo originario, salud, discapacidad, tramo del Registro Social de Hogares), solo con permiso y consentimiento. #}
+{# Qué es: Sección Datos sensibles 🔒 de la pestaña Privacidad (género, pueblo originario, salud, discapacidad, tramo del Registro Social de Hogares), solo con permiso y consentimiento. #}
 {# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
 {% load fche %}<div class="alert alert-info d-flex gap-2 small">{% icono "candado" 18 %}<div><strong>Datos sensibles (Ley 21.719).</strong> Solo los ve quien tiene permiso de datos sensibles y se guardan únicamente con consentimiento explícito.
 {% if consentimiento_sensibles %}Consentimiento vigente desde el {{ consentimiento_sensibles.fecha|date:"d-m-Y" }} ({{ consentimiento_sensibles.get_medio_display|lower }}).{% else %}<strong>Aún no hay consentimiento registrado.</strong>{% endif %}</div></div>
@@ -14,7 +14,7 @@
   <div class="fche-datos__ancho"><dt>Condiciones de salud relevantes</dt><dd>{{ perfil.condiciones_salud|default:"—"|linebreaksbr }}</dd></div>
   <div><dt>Alergias y restricciones alimentarias</dt><dd>{{ perfil.alergias|default:"—" }}</dd></div>
   <div><dt>Tramo RSH</dt><dd>{{ perfil.get_tramo_rsh_display|default:"—" }}</dd></div>
-  <div class="fche-datos__ancho"><dt>Hogar</dt><dd>La jefatura y los integrantes del hogar se registran en la tarjeta «Vecino o vecina» de la <a href="{{ object.get_absolute_url }}?tab=datos">pestaña Datos</a>.</dd></div>
+  <div class="fche-datos__ancho"><dt>Hogar</dt><dd>La jefatura y los integrantes del hogar se registran en la tarjeta «Vecino o vecina» de la <a href="{{ object.get_absolute_url }}?tab=resumen">pestaña Resumen</a>.</dd></div>
   <div><dt>Actualizado</dt><dd>{{ perfil.actualizado_en|date:"d-m-Y H:i" }}</dd></div>
 </dl>
 {% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "candado" 18 %}</span><p class="fche-vacio__texto mb-0">Sin datos sensibles registrados.</p></div>{% endif %}

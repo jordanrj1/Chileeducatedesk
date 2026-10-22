@@ -1,7 +1,7 @@
 {# Qué es: Una tarjeta por tipo de registro de la persona (estudiante, vecino o vecina, invitado, voluntario), con su resumen y «Editar». El hogar va con 🔒. #}
-{# Dónde se usa: personas/pestanas/datos.html (/personas/<int:pk>, pestaña Datos) · Proceso: P9 #}
+{# Dónde se usa: personas/pestanas/resumen.html (/personas/<int:pk>, pestaña Resumen) · Proceso: P9 #}
 {% if tarjetas_fichas %}
-<section class="fche-fichas-tarjetas mb-4" aria-labelledby="fichas-titulo">
+<section class="fche-fichas-tarjetas" aria-labelledby="fichas-titulo">
   <h2 class="fche-ficha__sub mt-0" id="fichas-titulo">Tipo de registro</h2>
   <div class="fche-fichas-tarjetas__lista">
   {% for t in tarjetas_fichas %}

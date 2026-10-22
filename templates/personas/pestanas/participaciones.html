@@ -1,0 +1,4 @@
+{# Qué es: Pestaña Participaciones de la persona: actividades con rol y asistencia, horas, invitaciones (y reuniones y tareas con la segunda fase) e interacciones con ella. Los cargos y proyectos están en «Cargos y vínculos». #}
+{# Dónde se usa: /personas/<int:pk>?tab=participaciones (también ?tab=trayectoria o interacciones) · Proceso: P9 #}
+{% if "trayectoria" in secciones %}<section class="fche-apartado">{% include "personas/pestanas/trayectoria.html" %}</section>{% endif %}
+{% if "interacciones" in secciones %}<section class="fche-apartado">{% include "coordinacion/_interacciones.html" %}</section>{% endif %}

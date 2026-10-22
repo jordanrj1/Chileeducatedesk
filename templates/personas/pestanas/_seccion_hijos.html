@@ -1,0 +1,6 @@
+{# Qué es: Una sección de una pestaña de la persona (contactos, direcciones, formación…) como tarjeta suave, con su lista y su «+ Agregar». Recibe `x` (el contexto de la sección), y opcionales `titulo_seccion` y `ayuda`. #}
+{# Dónde se usa: personas/pestanas/contacto.html, estudios.html y privacidad.html (/personas/<int:pk>) · Proceso: P9 #}
+<section class="fche-apartado">
+{% include "generico/_hijos.html" with hijos=x.hijos titulo_pestana=titulo_seccion|default:x.titulo_pestana etiqueta_nuevo=x.etiqueta_nuevo url_nuevo=x.url_nuevo vacio=x.vacio puede_agregar=x.puede_agregar %}
+{% if ayuda %}<p class="small text-muted mt-3 mb-0">{{ ayuda }}</p>{% endif %}
+</section>

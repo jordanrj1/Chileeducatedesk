@@ -1,0 +1,4 @@
+{# Qué es: Pestaña Historial de la persona: qué cambió, quién y cuándo, y al final el origen de los datos (de qué formulario, carga o documento salieron). #}
+{# Dónde se usa: /personas/<int:pk>?tab=historial (también ?tab=origen) · Proceso: P9 #}
+{% if "cambios" in secciones %}<section class="fche-apartado" aria-labelledby="historial-titulo"><div class="fche-seccion"><h2 class="h6" id="historial-titulo">Cambios en la ficha</h2></div>{% include "generico/_historial.html" %}</section>{% endif %}
+{% if "origen" in secciones %}<section class="fche-apartado">{% include "documentos/pestanas/origen.html" %}</section>{% endif %}

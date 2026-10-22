@@ -1,0 +1,5 @@
+{# Qué es: Pestaña Contacto de la persona: contactos, direcciones 🔒 y contacto de emergencia 🔒 (este último solo con permiso de datos sensibles), cada uno con su «+ Agregar». #}
+{# Dónde se usa: /personas/<int:pk>?tab=contacto (también ?tab=contactos, direcciones o emergencia) · Proceso: P9 #}
+{% if "contactos" in secciones %}{% include "personas/pestanas/_seccion_hijos.html" with x=contactos %}{% endif %}
+{% if "direcciones" in secciones %}{% include "personas/pestanas/_seccion_hijos.html" with x=direcciones titulo_seccion="Direcciones 🔒" %}{% endif %}
+{% if "emergencia" in secciones %}{% include "personas/pestanas/_seccion_hijos.html" with x=emergencia titulo_seccion="Contacto de emergencia 🔒" %}{% endif %}

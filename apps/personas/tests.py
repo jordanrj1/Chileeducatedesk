@@ -271,8 +271,10 @@ def test_filtros_por_relacion_organizacion_y_comuna(cg, crear_actividad, rol, es
 
 
 def test_candado_en_datos_restringidos(cg, persona):
+    # Persona en 8 pestañas: las direcciones están en la pestaña Contacto; el RUT (vacío) sigue con su candado en «Sin completar».
     html = cg.get(persona.get_absolute_url()).content.decode()
-    assert "Direcciones 🔒" in html and "Dato restringido" in html and "Participaciones" in html
+    assert "Dato restringido" in html and "Participaciones" in html and "Privacidad 🔒" in html
+    assert "Direcciones 🔒" in cg.get(f"{persona.get_absolute_url()}?tab=contacto").content.decode()
 
 
 def test_agregar_persona_con_cargo_desde_la_organizacion(cg, universidad, persona):
@@ -288,7 +290,8 @@ def test_historial_muestra_la_fuente_del_dato(cg):
     cg.post("/personas/nueva", {"nombres": "Con Fuente"})
     p = Persona.objects.get()
     html = cg.get(f"/personas/{p.pk}?tab=historial").content.decode()
-    assert "Fuente de la información" in html and "Ingreso en el sistema" in html
+    # El origen se muestra una sola vez, al final del Historial, en su sección «Origen de la información» (antes, pestaña aparte).
+    assert "Origen de la información" in html and "Ingreso en el sistema" in html
 
 
 def test_pestana_direcciones_abre_y_la_direccion_se_edita_y_se_da_de_baja(cg):

@@ -346,41 +346,64 @@ def _hijos(objs, texto, detalle=None, url_base=None, slug=None, pk=None, vigente
     return res
 
 
+# Ficha de persona en 8 pestañas (antes 17). Cada pestaña reúne secciones; una sección se ve solo con su permiso
+# y la pestaña aparece si tiene al menos una sección visible. Los nombres antiguos siguen abriendo su pestaña.
+SECCIONES_PERSONA = {
+    "contacto": [("contactos", None), ("direcciones", None), ("emergencia", "personas.ver_sensibles")],
+    "estudios": [("formacion", None), ("experiencia", None), ("disponibilidad", None)],
+    "participaciones": [("trayectoria", "actividades.view_participacion"), ("interacciones", "coordinacion.view_interaccion")],
+    "privacidad": [("sensibles", "personas.ver_sensibles"), ("apoderados", "personas.ver_sensibles"),
+                   ("consentimientos", "personas.view_consentimiento"), ("verificaciones", "personas.ver_sensibles")],
+    "historial": [("cambios", "personas.view_historicalpersona"), ("origen", "documentos.view_origendato")],
+}
+ALIAS_PERSONA = {
+    "datos": "resumen", "contactos": "contacto", "direcciones": "contacto", "emergencia": "contacto",
+    "formacion": "estudios", "experiencia": "estudios", "disponibilidad": "estudios", "comunidades": "vinculos",
+    "trayectoria": "participaciones", "interacciones": "participaciones",
+    "sensibles": "privacidad", "apoderados": "privacidad", "consentimientos": "privacidad", "verificaciones": "privacidad",
+    "origen": "historial",
+}
+
+
 class PersonaFicha(FichaBase):
     model = Persona
     template_name = "personas/ficha.html"
     permission_required = "personas.view_persona"
-    pestanas_segunda_fase = {"verificaciones": "verificaciones"}
     breadcrumb = [("Personas", "/personas")]
     permiso_editar = "personas.change_persona"
     pestanas = [
-        ("datos", "Datos", "personas/pestanas/datos.html"),
-        ("contactos", "Contactos", "generico/_hijos.html"),
-        ("direcciones", "Direcciones 🔒", "generico/_hijos.html"),
-        ("formacion", "Formación", "generico/_hijos.html"),
-        ("experiencia", "Experiencia", "personas/pestanas/experiencia.html"),
-        ("disponibilidad", "Disponibilidad", "generico/_hijos.html"),
+        ("resumen", "Resumen", "personas/pestanas/resumen.html"),
+        ("contacto", "Contacto", "personas/pestanas/contacto.html"),
+        ("estudios", "Estudios y trayectoria", "personas/pestanas/estudios.html"),
         ("vinculos", "Cargos y vínculos", "personas/pestanas/vinculos.html"),
-        ("trayectoria", "Participaciones", "personas/pestanas/trayectoria.html", "actividades.view_participacion"),
+        ("participaciones", "Participaciones", "personas/pestanas/participaciones.html"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
-        ("interacciones", "Interacciones", "coordinacion/_interacciones.html", "coordinacion.view_interaccion"),
-        ("emergencia", "Contacto de emergencia 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
-        ("verificaciones", "Verificaciones 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
-        ("sensibles", "Datos sensibles 🔒", "personas/pestanas/sensibles.html", "personas.ver_sensibles"),
-        ("apoderados", "Apoderados 🔒", "generico/_hijos.html", "personas.ver_sensibles"),
-        ("consentimientos", "Consentimientos", "personas/pestanas/consentimientos.html", "personas.view_consentimiento"),
-        ("comunidades", "Comunidades", "generico/_hijos.html", "comunidades.view_comunidadmiembro"),
-        ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
-        ("historial", "Historial", "generico/_historial.html", "personas.view_historicalpersona"),
+        ("privacidad", "Privacidad 🔒", "personas/pestanas/privacidad.html"),
+        ("historial", "Historial", "personas/pestanas/historial.html"),
     ]
+    alias_pestanas = ALIAS_PERSONA
 
-    def pestanas_visibles(self):
+    def secciones(self, pestana):
+        """Secciones visibles de una pestaña según los permisos (y los ajustes de datos sensibles y de segunda fase)."""
         from django.conf import settings
 
+        from apps.nucleo.fases import modulo_activo
+
+        u = self.request.user
+        res = []
+        for clave, permiso in SECCIONES_PERSONA.get(pestana, []):
+            if permiso and not u.has_perm(permiso):
+                continue
+            if clave == "sensibles" and not getattr(settings, "DATOS_SENSIBLES", True):
+                continue
+            if clave == "verificaciones" and not modulo_activo("verificaciones"):
+                continue
+            res.append(clave)
+        return res
+
+    def pestanas_visibles(self):
         visibles = super().pestanas_visibles()
-        if not getattr(settings, "DATOS_SENSIBLES", True):
-            visibles = [p for p in visibles if p[0] != "sensibles"]
-        return visibles
+        return [p for p in visibles if p[0] not in SECCIONES_PERSONA or self.secciones(p[0])]
 
     def acciones_extra(self):
         res = []
@@ -421,12 +444,82 @@ class PersonaFicha(FichaBase):
         return {
             "titulo_pestana": titulo, "etiqueta_nuevo": etiqueta, "url_nuevo": reverse(f"personas:{slug}_nuevo", args=[self.object.pk]),
             "hijos": _hijos(objs, pk=self.object.pk, slug=slug, **kw), "vacio": f"Sin {titulo.lower()} registrados.",
+            "puede_agregar": self.request.user.has_perm("personas.change_persona"),
         }
 
-    def ctx_datos(self):
+    def _por_seccion(self, pestana):
+        """{sección: contexto de la sección} con las secciones visibles de la pestaña; la plantilla las incluye con `with`."""
+        ctx = {"secciones": self.secciones(pestana)}
+        for clave in ctx["secciones"]:
+            ctx[clave] = getattr(self, f"ctx_{clave}")()
+        return ctx
+
+    def ctx_resumen(self):
+        """Solo los datos con valor; los vacíos se cuentan aparte («Sin completar (N)»). Más las tarjetas por tipo de registro,
+        el contacto principal y la dirección vigente."""
         from .fichas import tarjetas
 
-        return {"tarjetas_fichas": tarjetas(self.object, self.request.user)}
+        p = self.object
+        nacimiento = ""
+        if p.fecha_nacimiento:
+            nacimiento = "Aproximada" if p.fecha_nacimiento_aproximada else f"{p.fecha_nacimiento:%d-%m-%Y}"
+            if p.edad is not None:
+                nacimiento += f" ({'≈ ' if p.fecha_nacimiento_aproximada else ''}{p.edad} años)"
+        campos = [
+            # (etiqueta, valor, forma, restringido, ancho). forma: texto, parrafo, etiquetas, enlace
+            ("RUT", p.rut, "texto", True, False),
+            (p.get_tipo_documento_display() if p.numero_documento else "Otro documento", p.numero_documento, "texto", True, False),
+            ("Fecha de nacimiento", nacimiento, "texto", False, False),
+            ("Sexo", p.get_sexo_display(), "texto", False, False),
+            ("Nacionalidad", p.nacionalidad, "texto", False, False),
+            ("Nombre social", p.nombre_social, "texto", False, False),
+            ("Perfil en la Fundación", [str(x) for x in p.perfiles.all()], "etiquetas", False, False),
+            ("Nivel educacional", p.get_nivel_educacional_display(), "texto", False, False),
+            ("Situación ocupacional", p.get_situacion_ocupacional_display(), "texto", False, False),
+            ("Profesión u oficio", p.profesion, "texto", False, False),
+            ("Sitio web", p.sitio_web, "enlace", False, False),
+            ("Idiomas", p.idiomas, "texto", False, False),
+            ("Canal de contacto preferido", str(p.canal_preferido or ""), "texto", False, False),
+            ("Áreas de interés", [str(x) for x in p.areas_interes.all()], "etiquetas", False, True),
+            ("Habilidades y conocimientos", p.habilidades, "parrafo", False, True),
+            ("Origen", str(p.origen or ""), "texto", False, False),
+            ("Observaciones", p.observaciones, "parrafo", False, True),
+        ]
+        llenos = [{"etiqueta": e, "valor": v, "forma": f, "restringido": r, "ancho": a} for e, v, f, r, a in campos if v]
+        vacios = [{"etiqueta": e, "restringido": r} for e, v, f, r, a in campos if not v and e != "Otro documento"]
+        residencia = p.direcciones.filter(vigente=True).select_related("direccion__comuna", "direccion__sector").order_by("tipo", "pk").first()
+        return {
+            "datos_llenos": llenos, "datos_vacios": vacios, "tarjetas_fichas": tarjetas(p, self.request.user),
+            "direccion_vigente": residencia,
+        }
+
+    def ctx_contacto(self):
+        return self._por_seccion("contacto")
+
+    def ctx_estudios(self):
+        return self._por_seccion("estudios")
+
+    def ctx_participaciones(self):
+        ctx = {"secciones": self.secciones("participaciones")}
+        for clave in ctx["secciones"]:
+            ctx.update(getattr(self, f"ctx_{clave}")())  # sin «hijos»: sus nombres no chocan
+        return ctx
+
+    def ctx_privacidad(self):
+        ctx = self._por_seccion("privacidad")
+        for plano in ("sensibles", "consentimientos"):  # sin «hijos»: sus nombres van directo a la plantilla
+            if plano in ctx:
+                ctx.update(ctx.pop(plano))
+        return ctx
+
+    def ctx_historial(self):
+        secciones = self.secciones("historial")
+        ctx = {"secciones": secciones}
+        if "cambios" in secciones:
+            ctx["cambios"] = super().ctx_historial()["cambios"]
+        if "origen" in secciones:
+            ctx.update(self.ctx_origen())  # al final de la pestaña, «Origen de la información»
+        return ctx
 
     def ctx_trayectoria(self):
         from apps.actividades.alcance import horas_persona
@@ -437,8 +530,6 @@ class PersonaFicha(FichaBase):
             "participaciones": p.participaciones.select_related("actividad__estado", "actividad__proyecto", "rol", "estado").order_by("-actividad__creado_en"),
             "reuniones": p.reuniones.select_related("reunion").order_by("-reunion__fecha"),
             "tareas": p.tareas_asignadas.select_related("tarea").order_by("-tarea__creado_en"),
-            "proyectos": p.proyectos.select_related("proyecto"),
-            "vinculos": p.vinculos.select_related("organizacion"),
             "invitaciones": p.invitaciones.select_related("actividad"),
         }
 
@@ -494,7 +585,8 @@ class PersonaFicha(FichaBase):
         from .vinculos import cargos_y_vinculos
 
         return {"grupos": cargos_y_vinculos(self.object), "url_nuevo": reverse("personas:vinculos_nuevo", args=[self.object.pk]),
-                "url_nuevo_lugar": reverse("personas:lugares_nuevo", args=[self.object.pk])}
+                "url_nuevo_lugar": reverse("personas:lugares_nuevo", args=[self.object.pk]),
+                "url_nueva_comunidad": reverse("personas:comunidades_nuevo", args=[self.object.pk])}  # antes en la pestaña Comunidades
 
     def ctx_emergencia(self):
         return self._hijo_ctx("Contacto de emergencia", "emergencia", "Contacto", self.object.contactos_emergencia.all(),
@@ -524,13 +616,6 @@ class PersonaFicha(FichaBase):
             "consentimientos": p.consentimientos.select_related("otorgado_por", "documento", "registrado_por"),
             "puede_agregar_consentimiento": self.request.user.has_perm("personas.add_consentimiento"),
         }
-
-    def ctx_comunidades(self):
-        ctx = self._hijo_ctx("Comunidades", "comunidades", "Comunidad", self.object.comunidades.select_related("comunidad__comuna"),
-                             url=lambda m: m.comunidad.get_absolute_url(), texto=lambda m: str(m.comunidad), detalle=lambda m: " · ".join(x for x in [m.get_rol_display(), m.comunidad.territorio,
-                                                                                                         f"desde {m.desde:%d-%m-%Y}" if m.desde else ""] if x))
-        ctx["puede_agregar"] = self.request.user.has_perm("comunidades.add_comunidadmiembro")
-        return ctx
 
     def ctx_verificaciones(self):
         return self._hijo_ctx("Verificaciones", "verificaciones", "Verificación", self.object.verificaciones.all(),

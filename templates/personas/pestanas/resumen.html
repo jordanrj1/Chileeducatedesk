@@ -1,0 +1,20 @@
+{# Qué es: Pestaña Resumen de la persona: solo los datos con valor (los vacíos, plegados en «Sin completar (N)» con «Completar ficha»), contacto principal, dirección vigente y una tarjeta por tipo de registro (estudiante, vecino…). #}
+{# Dónde se usa: /personas/<int:pk> (también ?tab=datos) · Proceso: P9 #}
+{% load fche %}<section class="fche-apartado" aria-labelledby="resumen-datos">
+  <div class="fche-seccion"><h2 class="h6" id="resumen-datos">Datos de la persona</h2></div>
+  <dl class="fche-datos">
+    {% if correo_principal or telefono_principal %}<div><dt>Contacto principal</dt><dd>{% if correo_principal %}<a href="mailto:{{ correo_principal }}">{{ correo_principal }}</a>{% endif %}{% if correo_principal and telefono_principal %}<br>{% endif %}{{ telefono_principal }}</dd></div>{% endif %}
+    {% if direccion_vigente %}<div><dt>Dirección {{ direccion_vigente.get_tipo_display|lower }} <span title="Dato restringido" aria-label="Dato restringido">🔒</span></dt><dd>{{ direccion_vigente.direccion }}</dd></div>{% endif %}
+    {% for d in datos_llenos %}<div{% if d.ancho %} class="fche-datos__ancho"{% endif %}><dt>{{ d.etiqueta }}{% if d.restringido %} <span title="Dato restringido" aria-label="Dato restringido">🔒</span>{% endif %}</dt>
+      <dd>{% if d.forma == "etiquetas" %}{% for x in d.valor %}<span class="badge text-bg-light border me-1">{{ x }}</span>{% endfor %}{% elif d.forma == "enlace" %}<a href="{{ d.valor }}" rel="noopener" target="_blank">{{ d.valor }}</a>{% elif d.forma == "parrafo" %}{{ d.valor|linebreaksbr }}{% else %}{{ d.valor }}{% endif %}</dd></div>{% endfor %}
+    <div><dt>Registrada</dt><dd>{{ object.creado_en|date:"d-m-Y" }}</dd></div>
+  </dl>
+  {% if datos_vacios %}
+  <details class="fche-sin-completar">
+    <summary>Sin completar ({{ datos_vacios|length }})</summary>
+    <ul class="fche-sin-completar__lista">{% for e in datos_vacios %}<li>{{ e.etiqueta }}{% if e.restringido %} <span title="Dato restringido" aria-label="Dato restringido">🔒</span>{% endif %}</li>{% endfor %}</ul>
+    {% if puede_editar and url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">{% icono "editar" 15 %}Completar ficha</a>{% endif %}
+  </details>
+  {% endif %}
+</section>
+{% if tarjetas_fichas %}<div class="fche-apartado">{% include "personas/pestanas/_fichas_tarjetas.html" %}</div>{% endif %}

@@ -68,12 +68,13 @@ def test_datos_sensibles_exigen_consentimiento(cg, persona):
 
 def test_datos_sensibles_permisos_y_ajuste(cg, cs, persona, settings):
     assert cs.get(f"/personas/{persona.pk}/sensibles/editar").status_code == 403
-    tabs = cg.get(persona.get_absolute_url()).content.decode().split("nav-tabs")[1].split("</ul>")[0]
-    assert "Datos sensibles" in tabs
+    # Los datos sensibles son una sección de la pestaña Privacidad 🔒: se mira esa pestaña, no la barra de pestañas.
+    privacidad = cg.get(f"{persona.get_absolute_url()}?tab=privacidad").content.decode().split('id="pestana"')[1]
+    assert "Datos sensibles (Ley 21.719)" in privacidad  # el aviso propio de la sección (el consentimiento «Datos sensibles» sigue aparte)
     settings.DATOS_SENSIBLES = False
     assert cg.get(f"/personas/{persona.pk}/sensibles/editar").status_code == 404
-    tabs = cg.get(persona.get_absolute_url()).content.decode().split("nav-tabs")[1].split("</ul>")[0]
-    assert "Datos sensibles" not in tabs
+    privacidad = cg.get(f"{persona.get_absolute_url()}?tab=privacidad").content.decode().split('id="pestana"')[1]
+    assert "Datos sensibles (Ley 21.719)" not in privacidad
 
 
 def test_gestor_sin_permiso_de_sensibles_no_ve_la_pestana(gestor, persona):

@@ -1,19 +1,22 @@
-{# Qué es: Cabecera de la ficha de persona: estado del registro, perfiles, comuna y botones. #}
+{# Qué es: Cabecera de la ficha de persona: estado del registro junto al nombre, una línea con perfil, edad, comuna y contacto principal, avisos (menor de edad, consentimientos) en una sola caja y las acciones secundarias en «Más acciones». #}
 {# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
 {% extends "generico/ficha.html" %}
 {% load fche %}
+{% block estado %}{% if object.estado_registro %}{% estado object.estado_registro %}{% endif %}{% if not object.activo %}{% estado "inactivo" "Inactiva" %}{% endif %}{% endblock %}
 {% block subtitulo %}
-<div class="d-flex flex-wrap gap-2 align-items-center">
-  {% if object.estado_registro %}{% estado object.estado_registro %}{% endif %}
-  {% if not object.activo %}{% estado "inactivo" "Inactiva" %}{% endif %}
-  {% if object.es_menor %}<span class="badge text-bg-warning">Menor de edad</span>{% endif %}
-  {% if object.edad is not None %}<span class="d-inline-flex align-items-center gap-1">{% icono "calendario" 15 %}{{ object.edad }} años</span>{% endif %}
-  {% for p in object.perfiles.all %}<span class="badge text-bg-primary">{{ p }}</span>{% endfor %}
-  {% if object.profesion %}<span class="d-inline-flex align-items-center gap-1">{% icono "persona" 15 %}{{ object.profesion }}</span>{% endif %}
-  {% if comuna_residencia %}<span class="d-inline-flex align-items-center gap-1">{% icono "lugares" 15 %}<a href="{{ comuna_residencia.get_absolute_url }}">{{ comuna_residencia }}</a></span>{% endif %}
-  {% if correo_principal %}<a class="d-inline-flex align-items-center gap-1" href="mailto:{{ correo_principal }}">{% icono "correo" 15 %}{{ correo_principal }}</a>{% endif %}
-  {% if telefono_principal %}<span class="d-inline-flex align-items-center gap-1">{% icono "telefono" 15 %}{{ telefono_principal }}</span>{% endif %}
-</div>
-{% if object.nombre_social %}<div class="small mt-1">Nombre social: <strong>{{ object.nombre_social }}</strong></div>{% endif %}
-{% if avisos_consentimiento %}<div class="d-flex flex-column gap-1 mt-2">{% for a in avisos_consentimiento %}<a class="d-inline-flex align-items-center gap-1 small text-warning-emphasis" href="?tab=consentimientos">{% icono "alerta" 14 %}{{ a }}</a>{% endfor %}</div>{% endif %}
+  {% if object.perfiles.all %}<li>{% for p in object.perfiles.all %}{{ p }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>{% endif %}
+  {% if object.nombre_social %}<li>Nombre social: <strong>{{ object.nombre_social }}</strong></li>{% endif %}
+  {% if object.edad is not None %}<li>{{ object.edad }} años</li>{% endif %}
+  {% if object.profesion %}<li>{{ object.profesion }}</li>{% endif %}
+  {% if comuna_residencia %}<li><a href="{{ comuna_residencia.get_absolute_url }}">{{ comuna_residencia }}</a></li>{% endif %}
+  {% if correo_principal %}<li><a href="mailto:{{ correo_principal }}">{{ correo_principal }}</a></li>{% endif %}
+  {% if telefono_principal %}<li>{{ telefono_principal }}</li>{% endif %}
+{% endblock %}
+{% block avisos %}
+  {% if object.es_menor %}<li><strong>Menor de edad.</strong> Sus datos se tratan con la autorización de su apoderado.</li>{% endif %}
+  {% for a in avisos_consentimiento %}<li><a href="?tab=privacidad">{{ a }}</a></li>{% endfor %}
+{% endblock %}
+{% block menu %}
+  {% if perms.personas.exportar_persona %}<a class="fche-menu__item" href="{% url 'personas:datos_personales' object.pk %}" title="Para responder si la persona pide conocer sus datos">Exportar sus datos personales</a>{% endif %}
+  {% if puede_agregar %}<form method="post" action="{% url 'personas:alternar' object.pk %}">{% csrf_token %}<button class="fche-menu__item">{% if object.activo %}Desactivar persona{% else %}Reactivar persona{% endif %}</button></form>{% endif %}
 {% endblock %}
