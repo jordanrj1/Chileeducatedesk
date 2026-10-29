@@ -3,6 +3,5 @@
 {% extends "generico/formulario.html" %}
 {% block campos %}
 {% include "generico/_campo.html" with campo=form.tipo %}
-{% include "territorio/_ubicacion.html" %}
-<div class="fche-form__rejilla">{% for campo in form.campos_sin_ubicacion %}{% include "generico/_campo.html" %}{% endfor %}</div>
+{% include "territorio/_direccion_form.html" with form_direccion=form sin_errores=True %}
 {% endblock %}

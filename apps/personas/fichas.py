@@ -9,6 +9,7 @@ from django.forms.utils import ErrorList
 from django.urls import reverse
 
 from apps.actividades.selector import ACTIVIDADES
+from apps.nucleo import memo
 from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores
 from apps.nucleo.models import EstadoVoluntario, Parentesco, PerfilPersona, TipoInvitado, TramoEtario
 from apps.nucleo.selector import pk_seguro
@@ -71,7 +72,7 @@ class ResidenciaForm(DireccionForm):
         return d
 
     def guardar(self, persona):
-        from apps.comunidades.models import Comunidad, ComunidadMiembro
+        from apps.comunidades.models import Comunidad
 
         d = self.cleaned_data
         PersonaDireccion.objects.create(persona=persona, direccion=self.save(), tipo="residencia")
@@ -79,8 +80,10 @@ class ResidenciaForm(DireccionForm):
         nueva = " ".join((d.get("nueva_comunidad") or "").split())
         if not comunidad and nueva and self.puede_crear_comunidad:
             comunidad = Comunidad.objects.create(nombre=nueva, comuna=d["comuna"], sector=d.get("sector"), tipo="vecinal", creado_por=self.usuario)
-        if comunidad:
-            ComunidadMiembro.objects.get_or_create(comunidad=comunidad, persona=persona, defaults={"rol": d.get("rol_comunidad") or "integrante"})
+        if comunidad:  # F26 P2: la única puerta para sumarla al padrón, sin duplicar
+            from apps.personas.vinculos import vincular
+
+            vincular(persona, comunidad=comunidad, rol_comunidad=d.get("rol_comunidad") or "integrante")
 
 
 class DatosVecinoForm(BootstrapMixin, forms.Form):
@@ -188,7 +191,8 @@ class FilasBase(BaseInlineFormSet):
             for campo, modelo in self.catalogos.items():
                 usados = [u for u in filas.values_list(f"{campo}_id", flat=True) if u] if filas is not None else []
                 etiqueta = (lambda o: o.etiqueta) if hasattr(modelo, "etiqueta") else str  # el tramo muestra sus edades
-                self._opciones[campo] = [(o.pk, etiqueta(o)) for o in modelo.objects.filter(Q(activo=True) | Q(pk__in=usados))]
+                # F26 Rb: dos grupos con el mismo catálogo (parentesco del hogar y de familiares) lo leen una vez
+                self._opciones[campo] = [(o.pk, etiqueta(o)) for o in memo.lista(modelo.objects.filter(Q(activo=True) | Q(pk__in=usados)))]
         return self._opciones
 
     def add_fields(self, form, index):
@@ -451,6 +455,10 @@ class SeccionInvitado(Seccion):
             obj = f.save(commit=False)
             obj.persona = persona
             obj.save()
+            if obj.organizacion_id:  # F26 P2: su organización de procedencia también queda como vínculo (sin duplicar)
+                from apps.personas.vinculos import vincular
+
+                vincular(persona, organizacion=obj.organizacion, cargo=obj.cargo)
 
     @classmethod
     def tarjeta(cls, persona, datos):
@@ -474,7 +482,12 @@ class SeccionVoluntario(Seccion):
     def armar(self, datos, persona, usuario):
         return {"ficha": FichaVoluntarioForm(datos, prefix="vol", instance=_uno_a_uno(persona, "ficha_voluntario"))}
 
-    guardar = SeccionInvitado.guardar
+    def guardar(self, persona):
+        f = self.formularios["ficha"]
+        if f in self.a_procesar():
+            obj = f.save(commit=False)
+            obj.persona = persona
+            obj.save()
 
     @classmethod
     def tarjeta(cls, persona, datos):

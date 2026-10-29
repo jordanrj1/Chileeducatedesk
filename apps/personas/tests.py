@@ -27,8 +27,9 @@ def test_ficha_rapida_solo_con_nombre(cg):
     assert p.creado_por is not None
 
 
-def test_persona_completa_con_contactos_normalizados(cg):
-    nueva(cg, rut="12.345.678-5", correo="Luis@Ejemplo.invalid", telefono="9 8765 4321")
+def test_persona_completa_con_contactos_normalizados(cg, comuna):
+    # F26 P2: la comuna donde vive cuenta para que la ficha quede «activo» (completitud calculada)
+    nueva(cg, rut="12.345.678-5", correo="Luis@Ejemplo.invalid", telefono="9 8765 4321", comuna=comuna.pk)
     p = Persona.objects.get()
     assert (p.rut_numero, p.rut_dv, p.rut) == (12345678, "5", "12.345.678-5")
     assert p.estado_registro.codigo == "activo"

@@ -16,11 +16,11 @@ class OrganizacionForm(BootstrapMixin, forms.ModelForm):
     rut = CampoRut(label="RUT de la organización", help_text="Opcional. Aparece en sus certificados, cartas o facturas. Ej.: 65.123.456-5.")
     secciones = [
         ("Identificación", "Solo el nombre y el tipo son obligatorios; el resto se puede completar después.",
-         ["nombre", "tipo", "rut", "otro_identificador", "descripcion", "comuna_municipal", "estado_registro", "es_propia"]),
+         ["nombre", "tipo", "rut", "otro_identificador", "descripcion", "comuna_municipal", "estado_registro"]),
         ("Contacto y dirección", "Dónde funciona o se reúne la organización. La dirección es opcional.", ["sitio_web", "direccion"]),
         ("Datos legales", "Complétalos con el certificado de vigencia o los estatutos a la vista. Si no los tienes, déjalos vacíos: "
                           "el resto se guarda igual.",
-         ["naturaleza", "naturaleza_juridica", "domicilio_legal", "vigencia_desde", "vigencia_hasta"], {"plegada": True}),
+         ["naturaleza", "naturaleza_juridica", "domicilio_legal", "vigencia_desde", "vigencia_hasta", "es_propia"], {"plegada": True}),  # F26 Ia: «Esta ficha es la de la Fundación» va aquí
     ]
 
     class Meta:

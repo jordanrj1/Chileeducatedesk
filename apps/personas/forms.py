@@ -36,7 +36,7 @@ SECCIONES_PERSONA = [
     ("Identificación", "Solo el nombre es obligatorio; el resto se puede completar después.",
      ["nombres", "apellido_paterno", "apellido_materno", "nombre_social", "rut", "sin_rut", "tipo_documento", "numero_documento", "fecha_nacimiento", "edad",
       "sexo", "nacionalidad"]),
-    ("Contacto", "Un dato basta para registrarla.", ["correo", "telefono", "canal_preferido"]),
+    ("Contacto", "Un dato basta para registrarla.", ["correo", "telefono", "comuna", "canal_preferido"]),
     ("Perfil y ocupación", "Qué es esta persona para la Fundación y a qué se dedica. Sirve para filtrar el banco de personas.",
      ["perfiles", "nivel_educacional", "situacion_ocupacional", "profesion", "sitio_web"]),
     ("Intereses y habilidades", "Para invitarla a las actividades que le interesan y encontrar talleristas y voluntarios.",
@@ -88,7 +88,8 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
             "nivel_educacional": "El más alto que alcanzó. Ej.: Media completa.",
             "situacion_ocupacional": "A qué se dedica hoy. Ej.: Trabaja y estudia.",
             "origen": "Ej.: Derivación (la envió la municipalidad).",
-            "estado_registro": "Qué tan completa está la ficha. Ej.: Incompleto, si falta el apellido o un contacto.",
+            "estado_registro": "«Activo» e «Incompleto» se calculan solos al guardar (falta el apellido, un contacto, la comuna o lo de su tipo). "
+                               "Elige otro solo si corresponde. Ej.: Por verificar.",
             "canal_preferido": "Ej.: WhatsApp.",
             "observaciones": "Lo que convenga saber y no tenga otro lugar. Ej.: prefiere que la llamen en la tarde.",
         }
@@ -130,8 +131,9 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
         self.tipos = []  # perfiles con ficha propia, cuando se muestran aparte (separar_tipos)
 
     def separar_tipos(self):
-        """Los perfiles con ficha propia (estudiante, vecino, invitado, voluntario) se marcan arriba como «Tipo de registro»
-        (botones que muestran su sección); la lista de perfiles queda con los demás. Lo enviado sigue siendo `perfiles`."""
+        """F26 P2: un solo bloque «Tipo de persona» (personas/_fichas.html): arriba los perfiles con ficha propia
+        (estudiante, vecino, invitado, voluntario: botones que muestran su sección) y debajo «Otros perfiles», la lista
+        con los demás. Lo enviado sigue siendo `perfiles`."""
         campo = self.fields.get("perfiles")
         if campo is None:
             return
@@ -139,10 +141,10 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
         self.tipos = [p for p in todos if p.ficha]
         campo.widget.choices = [(p.pk, str(p)) for p in todos if not p.ficha]
         campo.label = "Otros perfiles"
-        campo.help_text = "Los tipos con datos propios (como estudiante o voluntario) se marcan arriba, en «Tipo de registro»."
+        campo.help_text = "Además del tipo principal, si corresponde. Ej.: Tallerista, Dirigente."
 
     def tipos_ui(self):
-        """Botones de «Tipo de registro»: [(perfil, marcado)]."""
+        """Botones del tipo principal en «Tipo de persona»: [(perfil, marcado)]."""
         if not self.tipos:
             return []
         marcados = {str(v) for v in (self["perfiles"].value() or [])}
@@ -151,8 +153,9 @@ class PersonaForm(BootstrapMixin, forms.ModelForm):
     perfiles_en_lista = True  # la ficha rápida solo muestra los tipos, no la lista de otros perfiles
 
     def secciones_ui(self):
+        """Con los tipos aparte, «perfiles» no va en su sección: se dibuja dentro de «Tipo de persona» (F26 P2)."""
         res = super().secciones_ui()
-        if res and self.tipos and not self.perfiles_en_lista:
+        if res and self.tipos:
             res = [s._replace(campos=[c for c in s.campos if getattr(c, "name", "") != "perfiles"]) for s in res]
             res = [s for s in res if s.campos]
         return res
@@ -199,6 +202,9 @@ class PersonaNuevaForm(PersonaForm):
 
     correo = forms.EmailField(required=False, label="Correo electrónico", help_text="Ej.: nombre@ejemplo.cl")
     telefono = forms.CharField(label="Teléfono", required=False, max_length=40, help_text="Ej.: +56 9 1234 5678.")
+    # F26 P2: la comuna donde vive cuenta para la completitud; también en la ficha completa (antes solo en la rápida)
+    comuna = forms.ModelChoiceField(Comuna.objects.order_by("nombre"), required=False, label="Comuna donde vive",
+                                    help_text="Así aparece en el territorio. Ej.: Hualpén. Si es vecino o vecina, su dirección va en «Vecino o vecina».")
 
     class Meta(PersonaForm.Meta):
         fields = ["nombres", "apellido_paterno", "apellido_materno", "rut", "tipo_documento", "numero_documento", *CAMPOS_PERFIL[:2], "sexo",
@@ -488,24 +494,35 @@ class EstudianteForm(FormacionForm):
         fields = ["organizacion", "sede_institucion", "carrera", "estado", "jornada", "nivel_actual", "anio_inicio"]
 
 
-ETIQUETAS_VINCULO = {"organizacion": "Organización", "cargo": "Cargo", "fecha_inicio": "Desde", "fecha_termino": "Hasta (si ya dejó el cargo)"}
+ETIQUETAS_VINCULO = {"organizacion": "Organización", "rol": "Rol en la organización", "cargo": "Cargo", "fecha_inicio": "Desde", "fecha_termino": "Hasta (si ya dejó el cargo)"}
 AYUDAS_VINCULO = {
+    "rol": "Qué es en la organización: estudiante, docente, dirigente… El detalle va en el cargo.",
     "cargo": "Ej.: Presidenta; Encargado de vinculación con el medio.",
     "tipo_cargo": "Directorio: presidencia, secretaría o tesorería. Funcional: quien trabaja o coordina. Autoridad: alcalde o director de liceo.",
     "fecha_termino": "Los cargos no se borran: al dejarlo, se indica hasta cuándo y queda en la historia.",
 }
 
 
+def _roles_vinculo(form):
+    """F26 P2: los roles activos del catálogo y el que el vínculo ya tenía (para no perderlo al editar)."""
+    from django.db.models import Q
+
+    from apps.nucleo.models import RolOrganizacion
+
+    form.fields["rol"].queryset = RolOrganizacion.objects.filter(Q(activo=True) | Q(pk=form.instance.rol_id or 0))
+
+
 class VinculoForm(BootstrapMixin, forms.ModelForm):
     class Meta:
         model = PersonaOrganizacion
-        fields = ["organizacion", "cargo", "tipo_cargo", "fecha_inicio", "fecha_termino"]
+        fields = ["organizacion", "rol", "cargo", "tipo_cargo", "fecha_inicio", "fecha_termino"]
         labels = ETIQUETAS_VINCULO
         help_texts = AYUDAS_VINCULO
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.fields["organizacion"].queryset = Organizacion.objects.filter(activo=True)
+        _roles_vinculo(self)
 
 
 class VinculoDesdeOrganizacionForm(BootstrapMixin, forms.ModelForm):
@@ -515,7 +532,7 @@ class VinculoDesdeOrganizacionForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = PersonaOrganizacion
-        fields = ["persona", "cargo", "tipo_cargo", "fecha_inicio", "fecha_termino"]
+        fields = ["persona", "rol", "cargo", "tipo_cargo", "fecha_inicio", "fecha_termino"]
         labels = ETIQUETAS_VINCULO
         help_texts = AYUDAS_VINCULO
 
@@ -523,6 +540,7 @@ class VinculoDesdeOrganizacionForm(BootstrapMixin, forms.ModelForm):
         super().__init__(*a, **kw)
         from apps.nucleo.formularios import fijar_valores_selectores
 
+        _roles_vinculo(self)
         self.fields["persona"] = SelectorField(PERSONAS, label="Persona")
         self.fields["persona"].widget.attrs["class"] = "form-select"
         fijar_valores_selectores(self)

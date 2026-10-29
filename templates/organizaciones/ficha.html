@@ -1,4 +1,4 @@
-{# Qué es: Cabecera de la ficha de organización: tipo, estado, comuna y sitio web. #}
+{# Qué es: Cabecera de la ficha de organización: tipo, estado de la ficha (y «Inactiva» solo si lo está), comuna y sitio web; «Desactivar» en «Más acciones». #}
 {# Dónde se usa: /organizaciones/<int:pk> · Proceso: P4 #}
 {% extends "generico/ficha.html" %}
 {% load fche %}
@@ -7,4 +7,7 @@
   {% if object.tipo %}<li>{{ object.tipo }}</li>{% endif %}
   {% if comuna_ficha %}<li><a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></li>{% endif %}
   {% if object.sitio_web %}<li><a href="{{ object.sitio_web }}" target="_blank" rel="noopener">Sitio web</a></li>{% endif %}
+{% endblock %}
+{% block menu %}
+{% if puede_agregar %}<form method="post" action="{% url 'organizaciones:alternar' object.pk %}">{% csrf_token %}<button class="fche-menu__item">{% if object.activo %}Desactivar organización{% else %}Reactivar organización{% endif %}</button></form>{% endif %}
 {% endblock %}

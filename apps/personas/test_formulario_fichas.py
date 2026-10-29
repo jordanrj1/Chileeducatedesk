@@ -34,7 +34,7 @@ def test_estudiante_elige_sede_y_carrera_de_su_institucion_y_crea_las_que_faltan
     Carrera.objects.create(organizacion=otra, nombre="Carrera de Otra Institución")
     Carrera.objects.create(organizacion=universidad, nombre="Trabajo Social Ficticio")
     html = cg.get("/personas/nueva").content.decode()
-    assert "Tipo de registro" in html and 'data-tipo-ficha="estudiante"' in html
+    assert "Tipo de persona" in html and 'data-tipo-ficha="estudiante"' in html  # F26 P2: «Tipo de registro» y «Otros perfiles» en un bloque
     assert re.search(r'id="ficha-estudiante" data-ficha-seccion="estudiante" hidden', html)  # oculta hasta marcarla
     # al elegir la institución se ofrecen solo sus sedes y carreras
     html = cg.get(f"/personas/estudios/dependientes?_prefijo=est&est-organizacion={universidad.pk}").content.decode()
@@ -86,7 +86,9 @@ def test_vecino_con_direccion_comunidad_hogar_y_familiar(cg, comuna, crear_perso
     # la ficha muestra la tarjeta del vecino, con el hogar 🔒 y «Editar»
     html = cg.get(p.get_absolute_url()).content.decode()
     tarjeta = html[html.index('id="tarjeta-vecino"'):]
-    assert "Vecinos del Pasaje Inventado" in tarjeta and "2 · Hijo o hija · Niñez" in tarjeta and "Dato restringido" in tarjeta
+    # F26 P3a: la comunidad ya está arriba, en el resumen 360°: no se repite en la tarjeta
+    assert "Vecinos del Pasaje Inventado" in html[:html.index('id="tarjeta-vecino"')] and "Vecinos del Pasaje Inventado" not in tarjeta
+    assert "2 · Hijo o hija · Niñez" in tarjeta and "Dato restringido" in tarjeta
     assert f"/personas/{p.pk}/fichas/vecino" in tarjeta and nieta.get_absolute_url() in tarjeta
     editar = cg.get(f"/personas/{p.pk}/fichas/vecino").content.decode()
     assert "Cambiar en Direcciones" in editar and 'name="vec-int-0-cantidad" value="2"' in editar

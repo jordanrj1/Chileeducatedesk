@@ -1,4 +1,4 @@
-{# Qué es: Sección «Relaciones» al registrar una persona: filas para unirla a organizaciones, comunidades, proyectos o tareas y actividades, cada una con su rol. #}
+{# Qué es: Sección «Relaciones» al registrar una persona: filas para unirla a proyectos o tareas y actividades, cada una con su rol (F26 P2: la organización y la comunidad se piden una vez, en «Tipo de persona»). #}
 {# Dónde se usa: personas/nueva.html (/personas/nueva) · Proceso: P3 #}
 {% comment %}
 Recibe `relaciones` (apps/personas/relaciones.py). Cada fila muestra solo los campos de su tipo (data-mostrar-si-campo, static/js/fche.js).
@@ -6,7 +6,7 @@ Con JavaScript, «+ Agregar relación» copia la fila de la <template>; sin Java
 {% endcomment %}
 <{% if modo == 'rapida' %}details class="fche-bloque fche-bloque--plegable"{% if relaciones.total_error_count %} open{% endif %}{% else %}fieldset class="fche-bloque"{% endif %} id="relaciones" data-filas>
   {% if modo == 'rapida' %}<summary class="fche-bloque__titulo">Relaciones (opcional)</summary>{% else %}<legend class="fche-bloque__titulo">Relaciones</legend>{% endif %}
-  <p class="fche-bloque__ayuda">Opcional. Organizaciones, comunidades, proyectos o tareas y actividades con las que ya tiene relación, con su rol. Cada una queda en su «Cargos y vínculos» y en la ficha del otro lado. Las filas vacías no se guardan.</p>
+  <p class="fche-bloque__ayuda">Opcional. Otras relaciones: proyectos o tareas y actividades en que ya participa, con su rol. Su organización y su comunidad se indican arriba, en «Tipo de persona». Cada una queda en su «Cargos y vínculos» y en la ficha del otro lado. Las filas vacías no se guardan.</p>
   {{ relaciones.management_form }}
   {% for e in relaciones.non_form_errors %}<div class="fche-campo__error text-danger" role="alert">{{ e }}</div>{% endfor %}
   <div data-filas-lista>

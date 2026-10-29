@@ -56,6 +56,24 @@ class PersonaQuerySet(models.QuerySet):
             .order_by("-prioridad", "-creado_en")
         )
 
+    def con_completitud(self):
+        """F26 P2: precarga lo que mira `Persona.faltantes()`, para calcularlo sin una consulta por persona."""
+        return self.select_related("ficha_voluntario", "ficha_invitado").prefetch_related("contactos", "direcciones", "comunidades", "perfiles", "formaciones")
+
+
+# F26 P2: estados de la ficha que se calculan solos; los demás (por verificar, desactualizado, fallecida, fusionada…) son manuales
+ESTADOS_CALCULADOS = ("activo", "incompleto")
+# Parentescos de un contacto de emergencia que cuentan como apoderado (sin tildes ni mayúsculas)
+PALABRAS_APODERADO = {"madre", "padre", "mama", "papa", "apoderado", "apoderada", "tutor", "tutora"}
+
+
+def es_parentesco_apoderado(texto):
+    """«Madre», «Padre o madre», «Tutor legal», «Apoderada»… → True; «Tía», «Vecina» → False."""
+    import unicodedata
+
+    plano = "".join(c for c in unicodedata.normalize("NFD", (texto or "").lower()) if unicodedata.category(c) != "Mn")
+    return bool(PALABRAS_APODERADO & set(plano.replace("/", " ").replace(",", " ").replace("(", " ").replace(")", " ").split()))
+
 
 class Persona(models.Model):
     nombres = models.CharField(max_length=150)
@@ -152,20 +170,59 @@ class Persona(models.Model):
 
     def consentimiento_vigente(self, tipo):
         """El último consentimiento de ese tipo, si está otorgado y no revocado."""
-        c = self.consentimientos.filter(tipo=tipo).order_by("-fecha", "-pk").first()
+        c = self.ultimo_consentimiento(tipo)
         return c if c and c.otorgado and not c.revocado_en else None
+
+    def ultimo_consentimiento(self, tipo):
+        """El último consentimiento de ese tipo (vigente o no). F26 Rb: si la ficha los precargó (ordenados del más
+        reciente al más antiguo, ver PersonaFicha), no consulta; si no, una consulta como siempre."""
+        precargados = getattr(self, "_prefetched_objects_cache", {}).get("consentimientos")
+        if precargados is not None:
+            return next((c for c in precargados if c.tipo == tipo), None)
+        return self.consentimientos.filter(tipo=tipo).order_by("-fecha", "-pk").first()
 
     def avisos_consentimiento(self):
         """Lo que falta registrar para tratar los datos de esta persona (Ley 21.719)."""
         avisos = []
         if self.es_menor:
-            if not self.apoderados.filter(vigente=True).exists():
+            if not self.tiene_apoderado():
                 avisos.append("Es menor de edad y no tiene apoderado registrado.")
             if not self.consentimiento_vigente("apoderado"):
                 avisos.append("Es menor de edad y falta la autorización del apoderado.")
         if not self.consentimiento_vigente("datos"):
             avisos.append("Falta registrar el consentimiento para el tratamiento de sus datos.")
         return avisos
+
+    def tiene_apoderado(self):
+        """Apoderado vigente registrado, o (F26 P2) un contacto de emergencia vigente cuyo parentesco es de apoderado
+        (madre, padre, tutor legal o apoderado)."""
+        if self.apoderados.filter(vigente=True).exists():
+            return True
+        return any(es_parentesco_apoderado(p) for p in self.contactos_emergencia.filter(vigente=True).values_list("parentesco", flat=True))
+
+    def faltantes(self):
+        """F26 P2: lo que le falta a la ficha, en palabras simples: apellido, un contacto, comuna de residencia y lo propio
+        de su tipo (estudiante: formación vigente; vecino: comuna donde vive o su comunidad; voluntario e invitado: su
+        ficha). Usa lo precargado (`Persona.objects.con_completitud()`): sin consultas extra en una lista."""
+        res = []
+        if not self.apellido_paterno:
+            res.append("apellido")
+        if not any(c.vigente for c in self.contactos.all()):
+            res.append("un contacto")
+        residencias = [d for d in self.direcciones.all() if d.vigente and d.tipo == "residencia"]
+        fichas = {p.ficha for p in self.perfiles.all() if p.ficha}
+        if "vecino" in fichas:
+            if not residencias and not any(m.vigente for m in self.comunidades.all()):
+                res.append("comuna donde vive o su comunidad")
+        elif not residencias:
+            res.append("comuna de residencia")
+        if "estudiante" in fichas and not any(f.vigente for f in self.formaciones.all()):
+            res.append("formación vigente")
+        if "voluntario" in fichas and getattr(self, "ficha_voluntario", None) is None:
+            res.append("ficha de voluntariado")
+        if "invitado" in fichas and getattr(self, "ficha_invitado", None) is None:
+            res.append("ficha de invitado")
+        return res
 
     def get_absolute_url(self):
         return reverse("personas:ficha", args=[self.pk])
@@ -302,6 +359,9 @@ class PersonaOrganizacion(models.Model):
     persona = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name="vinculos")
     organizacion = models.ForeignKey("organizaciones.Organizacion", on_delete=models.PROTECT, related_name="vinculos")
     cargo = models.CharField(max_length=120, blank=True)
+    # F26 P2: el rol del catálogo (estudiante, docente, dirigente…); el cargo libre queda como detalle
+    rol = models.ForeignKey("nucleo.RolOrganizacion", null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                            verbose_name="rol en la organización", help_text="Ej.: Docente. El detalle va en el cargo (Profesora de Lenguaje).")
     tipo_cargo = models.CharField("tipo de cargo", max_length=12, choices=TIPOS_CARGO, default="funcional")
     fecha_inicio = models.DateField("desde", null=True, blank=True)
     fecha_termino = models.DateField("hasta", null=True, blank=True)

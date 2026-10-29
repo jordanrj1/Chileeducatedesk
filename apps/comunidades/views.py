@@ -1,17 +1,19 @@
 """Pantallas de comunidades: listado con filtros, crear (con la comuna ya elegida si viene del territorio),
 ficha con integrantes, actividades y alcance, desactivar sin borrar y exportar."""
+from django.db import transaction
 from django.db.models import Count, Q
 from django.urls import reverse
 
 from apps.nucleo.direccion_mixin import ComunaInicialMixin
 from apps.nucleo.selector import OpcionesVista
 from apps.nucleo.vistas_base import (
-    AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, filtro_activo, nombre_comuna, opciones_comunas,
+    AvisoDuplicadosMixin, AlternarActivoBase, CrearBase, EditarBase, FichaBase, Filtro, ListaBase, filtro_activo, nombre_comuna, opciones_comunas,
 )
 
 from .forms import ComunidadForm
 from .models import Comunidad
 from .selector import COMUNIDADES
+from .servicios import asegurar_referente, referente_del_padron
 
 
 class ComunidadLista(ListaBase):
@@ -50,13 +52,26 @@ class ComunidadExportar(ComunidadLista):
     permission_required = "comunidades.exportar_comunidad"
 
 
-class ComunidadNueva(ComunaInicialMixin, CrearBase):
+class ComunidadNueva(AvisoDuplicadosMixin, ComunaInicialMixin, CrearBase):
     model = Comunidad
     form_class = ComunidadForm
     permission_required = "comunidades.add_comunidad"
     titulo = "Nueva comunidad"
     breadcrumb = [("Comunidades", "/comunidades")]
     mensaje_ok = "Comunidad registrada. Agrega a sus integrantes desde la pestaña «Integrantes»."
+
+    def form_valid(self, form):
+        from apps.nucleo.duplicados import comunidades_parecidas
+
+        d = form.cleaned_data
+        aviso = self.aviso_duplicados(form, lambda: comunidades_parecidas(d.get("nombre"), d.get("comuna"), d.get("sector")),
+                                      "Esta comunidad podría ya estar registrada.")
+        if aviso:
+            return aviso
+        with transaction.atomic():
+            respuesta = super().form_valid(form)
+            asegurar_referente(self.object)  # F26 P2: el referente queda en su padrón
+        return respuesta
 
     def get_initial(self):
         ini = super().get_initial()
@@ -74,6 +89,13 @@ class ComunidadEditar(EditarBase):
     permission_required = "comunidades.change_comunidad"
     titulo = "Editar comunidad"
     breadcrumb = [("Comunidades", "/comunidades")]
+
+    def form_valid(self, form):
+        with transaction.atomic():
+            respuesta = super().form_valid(form)
+            if respuesta.status_code == 302:  # guardado (sin conflicto de versión)
+                asegurar_referente(self.object)  # F26 P2: el referente queda en su padrón
+        return respuesta
 
 
 class ComunidadAlternar(AlternarActivoBase):
@@ -110,8 +132,54 @@ class ComunidadFicha(FichaBase):
             "url_editar": reverse("comunidades:editar", args=[c.pk]),
             "url_volver": "/comunidades",
             "puede_agregar": self.request.user.has_perm("comunidades.change_comunidad"),
-            "n_integrantes": c.miembros.filter(vigente=True).count(),
+            "n_integrantes": self.n_integrantes(),
+            # F26 P2: si el campo está vacío, el referente (o dirigente) de su padrón
+            "referente_mostrado": self.referente_mostrado(),
         }
+
+    def n_integrantes(self):
+        if not hasattr(self, "_n_integrantes"):
+            self._n_integrantes = self.object.miembros.filter(vigente=True).count()
+        return self._n_integrantes
+
+    def referente_mostrado(self):
+        if not hasattr(self, "_referente"):
+            self._referente = self.object.referente or referente_del_padron(self.object)
+        return self._referente
+
+    def ctx_info(self):
+        """F26 Ia: los datos vacíos se cuentan aparte («Sin completar (N)»), como en la persona. Tramos y áreas: una consulta cada uno."""
+        c = self.object
+        tramos, areas = list(c.tramos_etarios.all()), list(c.areas_interes.all())
+        campos = [
+            ("Sector", c.sector_id), ("Organización que la representa", c.organizacion_id),
+            ("Referente o dirigente", self.referente_mostrado()), ("Población estimada", c.poblacion_estimada),
+            ("Edades principales", tramos or c.rango_etario), ("Áreas de interés", areas), ("Descripción", c.descripcion),
+            ("Diagnóstico y necesidades", c.diagnostico),
+        ]
+        return {"tramos_info": tramos, "areas_info": areas, "datos_vacios": [e for e, v in campos if not v], "vistazo": self.vistazo()}
+
+    def vistazo(self):
+        """F26 Ib: integrantes vigentes (de su población estimada), referente y la última y la próxima actividad dirigida a
+        ella o con participantes de ella. El referente y la población ya no se repiten en los datos de abajo. Consultas fijas."""
+        from apps.actividades.models import ActividadComunidad, Participacion
+        from apps.nucleo.vistazo import cuantas, fila, filas_ultima_y_proxima, item
+
+        c, u = self.object, self.request.user
+        n = self.n_integrantes()
+        cifra = cuantas(n, "integrante vigente", "integrantes vigentes")
+        if c.poblacion_estimada:
+            cifra += f" de ~{c.poblacion_estimada} (población estimada)"
+        ver_padron = u.has_perm("comunidades.view_comunidadmiembro")
+        filas = [fila("Integrantes", [], cifra=cifra, pie=("Ver integrantes", "?tab=integrantes") if ver_padron and n else None)]
+        ref = self.referente_mostrado()
+        filas.append(fila("Referente o dirigente", [item((ref, ref.get_absolute_url()), nota="según su padrón" if not c.referente_id else "")] if ref else [],
+                          "Sin referente registrado"))
+        if u.has_perm("actividades.view_actividad"):
+            filas += filas_ultima_y_proxima(
+                Q(actividad_id__in=ActividadComunidad.objects.filter(comunidad=c, vigente=True).values("actividad_id"))
+                | Q(actividad_id__in=Participacion.objects.filter(comunidad=c).values("actividad_id")))
+        return filas
 
     def ctx_integrantes(self):
         pk = self.object.pk

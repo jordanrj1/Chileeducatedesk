@@ -1,4 +1,4 @@
-{# Qué es: Cabecera de la ficha de lugar: tipo, comuna y capacidad. #}
+{# Qué es: Cabecera de la ficha de lugar: tipo, comuna y capacidad; «Desactivar» en «Más acciones». #}
 {# Dónde se usa: /lugares/<int:pk> · Proceso: P5 #}
 {% extends "generico/ficha.html" %}
 {% load fche %}
@@ -7,4 +7,7 @@
   {% if object.tipo %}<li>{{ object.tipo }}</li>{% endif %}
   {% if comuna_ficha %}<li><a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></li>{% endif %}
   <li>{% if object.capacidad %}Capacidad {{ object.capacidad }}{% else %}Capacidad no registrada{% endif %}</li>
+{% endblock %}
+{% block menu %}
+{% if puede_agregar %}<form method="post" action="{% url 'lugares:alternar' object.pk %}">{% csrf_token %}<button class="fche-menu__item">{% if object.activo %}Desactivar lugar{% else %}Reactivar lugar{% endif %}</button></form>{% endif %}
 {% endblock %}

@@ -11,7 +11,7 @@ from django.views.generic import CreateView, UpdateView
 from apps.nucleo.direccion_mixin import ComunaInicialMixin, ConDireccionMixin
 from apps.nucleo.models import TipoLugar
 from apps.nucleo.vistas_base import (
-    ControlVersionMixin, AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, nombre_comuna, opciones_comunas, opciones_modelo,
+    AvisoDuplicadosMixin, ControlVersionMixin, AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, nombre_comuna, opciones_comunas, opciones_modelo,
 )
 from apps.territorio.models import Comuna
 
@@ -82,12 +82,24 @@ class _Formulario(ConDireccionMixin, Permiso403Mixin):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
-class LugarNuevo(ComunaInicialMixin, _Formulario, CreateView):
+class LugarNuevo(AvisoDuplicadosMixin, ComunaInicialMixin, _Formulario, CreateView):
     permission_required = "lugares.add_lugar"
     titulo = "Nuevo lugar"
 
     def volver(self):
         return "/lugares"
+
+    def form_valid(self, form):
+        from django.db import transaction
+
+        from apps.nucleo.duplicados import lugares_parecidos
+
+        direccion = form.instance.direccion  # ConDireccionMixin ya la guardó, dentro de su transacción
+        aviso = self.aviso_duplicados(form, lambda: lugares_parecidos(form.cleaned_data.get("nombre"), direccion.comuna), "Este lugar podría ya estar registrado.")
+        if aviso:
+            transaction.set_rollback(True)  # sin lugar no queda una dirección suelta (la página se dibuja después)
+            return aviso
+        return super().form_valid(form)
 
 
 class LugarEditar(ControlVersionMixin, _Formulario, UpdateView):
@@ -153,12 +165,13 @@ class LugarFicha(FichaBase):
     permission_required = "lugares.view_lugar"
     breadcrumb = [("Lugares", "/lugares")]
     permiso_editar = "lugares.change_lugar"
+    origen_en_historial = True  # F26 Ia: «?tab=origen» de enlaces antiguos abre el historial
+    alias_pestanas = {"origen": "historial"}
     pestanas = [
         ("info", "Información", "lugares/pestanas/info.html"),
         ("personas", "Personas", "lugares/pestanas/personas.html", "personas.view_persona"),
         ("uso", "Uso histórico", "lugares/pestanas/uso.html"),
         ("disponibilidad", "Disponibilidad", "lugares/pestanas/disponibilidad.html"),
-        ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "lugares.view_historicallugar"),
     ]
 
@@ -173,6 +186,23 @@ class LugarFicha(FichaBase):
             "comuna_ficha": self.object.direccion.comuna,
         }
 
+    def ctx_info(self):
+        """F26 Ia: los datos vacíos se cuentan aparte («Sin completar (N)»), como en la persona."""
+        lg = self.object
+        campos = [("Capacidad", lg.capacidad), ("Propietaria", lg.organizacion_propietaria_id), ("Condiciones", lg.condiciones)]
+        return {"datos_vacios": [e for e, v in campos if not v], "vistazo": self.vistazo()}
+
+    def vistazo(self):
+        """F26 Ib: cuántas veces se ha usado (programaciones vigentes) y la última y la próxima actividad aquí. Tres consultas."""
+        from django.db.models import Q
+
+        from apps.nucleo.vistazo import cuantas, fila, filas_ultima_y_proxima
+
+        n = self.object.agendas.filter(vigente=True).count()
+        filas = [fila("Veces usado", [], cifra=cuantas(n, "actividad programada aquí", "actividades programadas aquí"),
+                      pie=("Ver uso histórico", "?tab=uso") if n else None)]
+        return filas + filas_ultima_y_proxima(Q(lugar=self.object), con_lugar=False)
+
     def ctx_personas(self):
         """Personas vinculadas a este lugar (estudian, trabajan o participan ahí) y estudiantes de esta sede."""
         vinculadas = self.object.personas_vinculadas.select_related("persona").order_by("-vigente", "persona__apellido_paterno")
@@ -182,10 +212,6 @@ class LugarFicha(FichaBase):
     def ctx_uso(self):
         return {"usos": self.object.agendas.select_related("actividad", "estado").order_by("-fecha", "-hora_inicio")[:100]}
 
-    def ctx_origen(self):
-        from apps.documentos.origen import contexto_origen
-
-        return contexto_origen(self.object, self.request.user)
 
     def ctx_disponibilidad(self):
         texto = self.request.GET.get("fecha", "")

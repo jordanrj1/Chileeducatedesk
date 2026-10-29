@@ -1,8 +1,8 @@
-{# Qué es: Una tarjeta por tipo de registro de la persona (estudiante, vecino o vecina, invitado, voluntario), con su resumen y «Editar». El hogar va con 🔒. #}
+{# Qué es: Bloque «Tipo de persona»: una tarjeta por tipo de la persona (estudiante, vecino o vecina, invitado, voluntario), con su resumen y «Editar». El hogar va con 🔒. #}
 {# Dónde se usa: personas/pestanas/resumen.html (/personas/<int:pk>, pestaña Resumen) · Proceso: P9 #}
 {% if tarjetas_fichas %}
 <section class="fche-fichas-tarjetas" aria-labelledby="fichas-titulo">
-  <h2 class="fche-ficha__sub mt-0" id="fichas-titulo">Tipo de registro</h2>
+  <h2 class="fche-ficha__sub mt-0" id="fichas-titulo">Tipo de persona</h2>
   <div class="fche-fichas-tarjetas__lista">
   {% for t in tarjetas_fichas %}
     <article class="fche-tarjeta fche-ficha-tarjeta" aria-labelledby="tarjeta-{{ t.codigo }}">

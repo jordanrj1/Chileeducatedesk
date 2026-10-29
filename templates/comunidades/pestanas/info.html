@@ -1,16 +1,17 @@
-{# Qué es: Pestaña Información de la comunidad. #}
+{# Qué es: Pestaña Información de la comunidad: arriba «De un vistazo» (F26 Ib, sin repetir lo de abajo); luego solo los datos con valor; los vacíos, plegados en «Sin completar (N)» (F26 Ia). «Desactivar» está en «Más acciones». #}
 {# Dónde se usa: /comunidades/<int:pk> · Proceso: Grupo #}
-{% load fche %}{% if perms.comunidades.change_comunidad %}{% url "texto_revisado" "comunidad-rango" object.pk as url_revisado %}{% endif %}<dl class="fche-datos mb-4">
+{% load fche %}{% if perms.comunidades.change_comunidad %}{% url "texto_revisado" "comunidad-rango" object.pk as url_revisado %}{% endif %}{% include "generico/_de_un_vistazo.html" %}
+<section class="fche-apartado" aria-labelledby="info-datos">
+  <div class="fche-seccion"><h2 class="h6" id="info-datos">Datos de la comunidad</h2></div>
+  <dl class="fche-datos">
   <div><dt>Tipo</dt><dd>{{ object.get_tipo_display }}</dd></div>
   <div><dt>Comuna</dt><dd><a href="{{ object.comuna.get_absolute_url }}">{{ object.comuna }}</a> <span class="small text-muted">· {{ object.comuna.provincia.region }}</span></dd></div>
-  <div><dt>Sector</dt><dd>{% if object.sector %}<a href="{{ object.sector.get_absolute_url }}">{{ object.sector }}</a>{% else %}—{% endif %}</dd></div>
-  <div><dt>Organización que la representa</dt><dd>{% if object.organizacion %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a>{% else %}—{% endif %}</dd></div>
-  <div><dt>Referente o dirigente</dt><dd>{% if object.referente %}<a href="{{ object.referente.get_absolute_url }}">{{ object.referente }}</a>{% else %}—{% endif %}</dd></div>
-  <div><dt>Población estimada</dt><dd>{{ object.poblacion_estimada|default:"—" }}</dd></div>
-  <div><dt>Edades principales</dt><dd>{% include "generico/_tramos.html" with tramos=object.tramos_etarios.all texto_anterior=object.rango_etario url_revisado=url_revisado %}</dd></div>
-  <div class="fche-datos__ancho"><dt>Áreas de interés</dt><dd>{% for a in object.areas_interes.all %}<span class="badge text-bg-primary me-1">{{ a }}</span>{% empty %}—{% endfor %}</dd></div>
-  <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
-  <div class="fche-datos__ancho"><dt>Diagnóstico y necesidades</dt><dd>{{ object.diagnostico|default:"—"|linebreaksbr }}</dd></div>
+  {% if object.sector %}<div><dt>Sector</dt><dd><a href="{{ object.sector.get_absolute_url }}">{{ object.sector }}</a></dd></div>{% endif %}
+  {% if object.organizacion %}<div><dt>Organización que la representa</dt><dd><a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a></dd></div>{% endif %}
+  {% if tramos_info or object.rango_etario %}<div><dt>Edades principales</dt><dd>{% include "generico/_tramos.html" with tramos=tramos_info texto_anterior=object.rango_etario url_revisado=url_revisado %}</dd></div>{% endif %}
+  {% if areas_info %}<div class="fche-datos__ancho"><dt>Áreas de interés</dt><dd>{% for a in areas_info %}<span class="badge text-bg-primary me-1">{{ a }}</span>{% endfor %}</dd></div>{% endif %}
+  {% if object.descripcion %}<div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|linebreaksbr }}</dd></div>{% endif %}
+  {% if object.diagnostico %}<div class="fche-datos__ancho"><dt>Diagnóstico y necesidades</dt><dd>{{ object.diagnostico|linebreaksbr }}</dd></div>{% endif %}
 </dl>
-{% if puede_agregar %}<form method="post" action="{% url 'comunidades:alternar' object.pk %}" class="pt-3 border-top">{% csrf_token %}
-  <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Desactivar comunidad{% else %}Reactivar comunidad{% endif %}</button></form>{% endif %}
+{% include "generico/_sin_completar.html" %}
+</section>

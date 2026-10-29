@@ -15,6 +15,6 @@
 </div>
 <div class="col-12 col-xl-6">
 <h2 class="h6 mb-2">Últimos contactos</h2>
-<ul class="fche-items">{% for i in interacciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ i.get_absolute_url }}">{{ i.fecha|date:"d-m-Y" }} · {{ i.canal }}</a><div class="fche-items__detalle">{{ i.resultado|truncatechars:80 }}</div></div></li>{% empty %}<li class="text-muted">Sin contactos registrados.</li>{% endfor %}</ul>
+{% include "coordinacion/_interacciones.html" with compacto=True sin_hora=True sin_proxima=True recortar=80 vacio_interacciones="Sin contactos registrados." %}
 </div>
 </div>

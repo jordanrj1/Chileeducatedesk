@@ -13,6 +13,8 @@ AYUDA_RESPONSABLE = (
     "Primero aparece el equipo de la Fundación. Para sumar a alguien al equipo: Organizaciones → la Fundación → "
     "Personas relacionadas → Agregar persona con cargo."
 )
+# F26 Ia: actividad, tarea y proyecto suman solos al responsable a su equipo; basta la ayuda corta.
+AYUDA_RESPONSABLE_EQUIPO = "Queda en el equipo automáticamente."
 
 
 def _vinculos_vigentes():

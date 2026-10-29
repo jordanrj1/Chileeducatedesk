@@ -1,6 +1,7 @@
 """Pantallas de organizaciones: listado, crear con aviso de parecidas, ficha con pestañas (contactos, carreras,
 personas con cargo, actividades, documentos, historial), cerrar autoridades al cambiar de administración,
 unir repetidas (Administrador) y buscador para elegir una organización desde otros formularios."""
+from apps.nucleo.utilidades import plural
 from django.contrib import messages
 from django.db.models import Count
 from django.http import HttpResponseRedirect
@@ -30,12 +31,19 @@ class OrganizacionLista(ListaBase):
     permiso_crear = "organizaciones.add_organizacion"
     etiqueta_crear = "+ Nueva organización"
     campos_busqueda = ("nombre", "otro_identificador", "descripcion")
-    columnas = [("Nombre", "nombre"), ("Tipo", "tipo"), ("RUT", "rut"), ("Comuna", lambda o: o.direccion.comuna if o.direccion_id else ""), ("Estado", "estado_registro")]
-    ordenes = {"nombre": "nombre"}
+    # F26 Ib: «Personas» (vínculos y formaciones vigentes, cada persona una vez) y «Actividades» (en que participa)
+    columnas = [("Nombre", "nombre"), ("Tipo", "tipo"), ("RUT", "rut"), ("Comuna", lambda o: o.direccion.comuna if o.direccion_id else ""),
+                ("Personas", "n_personas"), ("Actividades", "n_actividades"), ("Estado", "estado_registro")]
+    ordenes = {"nombre": "nombre", "personas": "n_personas", "actividades": "n_actividades"}
     orden_defecto = ("nombre",)
     filtros = [Filtro("tipo", "Tipo", "tipo_id", opciones_modelo(TipoOrganizacion), principal=True), filtro_activo(femenino=True)]
     url_exportar = "/organizaciones/exportar"
     permiso_exportar = "organizaciones.exportar_organizacion"
+
+    def filtrar(self, qs):
+        from .conteos import con_conteos
+
+        return con_conteos(super().filtrar(qs))  # antes de ordenar: se puede ordenar por los conteos
 
     def get_queryset(self):
         return super().get_queryset().select_related("tipo", "estado_registro", "direccion__comuna")
@@ -73,7 +81,11 @@ class OrganizacionNueva(ComunaInicialMixin, ConDireccionMixin, Permiso403Mixin, 
         if not self.request.POST.get("confirmar_duplicado"):
             cands = organizaciones_parecidas(form.cleaned_data["nombre"], form.cleaned_data.get("rut"))
             if cands:
-                return self.render_to_response(self.get_context_data(form=form, form_direccion=self._form_dir(), candidatos=cands))
+                from django.db import transaction
+
+                aviso = self.render_to_response(self.get_context_data(form=form, form_direccion=self._form_dir(), candidatos=cands))
+                transaction.set_rollback(True)  # F26 Ra: la dirección ya guardada no queda suelta (la página se dibuja después)
+                return aviso
         obj = form.save(commit=False)
         obj.creado_por = self.request.user
         if not obj.estado_registro_id:
@@ -134,6 +146,8 @@ class OrganizacionFicha(FichaBase):
     def pestanas_visibles(self):
         return [p for p in super().pestanas_visibles() if not (p[0] == "carreras" and not self.object.es_educativa)]
 
+    origen_en_historial = True  # F26 Ia: «?tab=origen» de enlaces antiguos abre el historial
+    alias_pestanas = {"origen": "historial"}
     pestanas = [
         ("info", "Información", "organizaciones/pestanas/info.html"),
         ("contactos", "Contactos", "generico/_hijos.html"),
@@ -141,7 +155,6 @@ class OrganizacionFicha(FichaBase):
         ("personas", "Personas relacionadas", "organizaciones/pestanas/personas.html"),
         ("actividades", "Actividades y proyectos", "organizaciones/pestanas/actividades.html", "actividades.view_actividadorganizacion"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
-        ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "organizaciones.view_historicalorganizacion"),
     ]
 
@@ -154,7 +167,7 @@ class OrganizacionFicha(FichaBase):
         return res
 
     def get_queryset(self):
-        return super().get_queryset().select_related("direccion__comuna", "comuna_municipal")
+        return super().get_queryset().select_related("tipo", "direccion__comuna", "comuna_municipal")
 
     def contexto_ficha(self):
         o = self.object
@@ -165,6 +178,60 @@ class OrganizacionFicha(FichaBase):
             # la comuna de su dirección o, si es una municipalidad sin dirección, la que representa
             "comuna_ficha": (o.direccion.comuna if o.direccion_id else None) or o.comuna_municipal,
         }
+
+    def ctx_info(self):
+        """F26 Ia: los datos vacíos se cuentan aparte («Sin completar (N)»), como en la persona. Sin consultas extra."""
+        o = self.object
+        campos = [
+            ("RUT u otro identificador", o.rut or o.otro_identificador), ("Estado de la ficha", o.estado_registro_id),
+            ("Dirección", o.direccion_id), ("Sitio web", o.sitio_web), ("Descripción", o.descripcion),
+            ("Naturaleza jurídica", o.naturaleza_id or o.naturaleza_juridica), ("Domicilio legal", o.domicilio_legal),
+            ("Vigencia", o.vigencia_desde or o.vigencia_hasta),
+        ]
+        if o.tipo.codigo == "municipalidad":
+            campos.insert(3, ("Comuna que administra", o.comuna_municipal_id))
+        return {"datos_vacios": [e for e, v in campos if not v], "vistazo": self.vistazo()}
+
+    def vistazo(self):
+        """F26 Ib: personas vinculadas, actividades y proyectos (con la última y la próxima), contacto principal y última
+        interacción, con enlaces. Siete consultas como máximo, sin importar cuántos registros tenga."""
+        from django.db.models import Q
+        from django.utils import timezone
+
+        from apps.nucleo.vistazo import cuantas, fila, filas_ultima_y_proxima, item
+        from apps.personas.models import Persona
+
+        from .conteos import cifras, personas_vigentes_de
+
+        o, u = self.object, self.request.user
+        filas = []
+        if u.has_perm("personas.view_persona"):
+            personas = Persona.objects.filter(personas_vigentes_de(o)).order_by("apellido_paterno", "nombres")
+            n = personas.count()
+            nombres = [item((p.nombre_completo, p.get_absolute_url())) for p in personas[:3]] if n else []
+            filas.append(fila("Personas vinculadas", nombres, "Sin personas vinculadas vigentes", cifra=cuantas(n, "persona vigente", "personas vigentes") if n else "",
+                              pie=(f"Ver las {n}" if n > 3 else "Ver vínculos", "?tab=personas") if n else None))
+        if u.has_perm("actividades.view_actividadorganizacion"):
+            n = cifras(o)
+            filas.append(fila("Actividades y proyectos", [], "Aún no participa en actividades ni proyectos",
+                              cifra=" · ".join([cuantas(n["act"], "actividad", "actividades"), cuantas(n["proy"], "proyecto", "proyectos")]) if n["act"] or n["proy"] else "",
+                              pie=("Ver actividades y proyectos", "?tab=actividades") if n["act"] or n["proy"] else None))
+            if n["act"]:
+                from apps.actividades.models import ActividadOrganizacion
+
+                filas += filas_ultima_y_proxima(Q(actividad_id__in=ActividadOrganizacion.objects.filter(organizacion=o, vigente=True).values("actividad_id")))
+        contacto = o.contactos.filter(vigente=True).select_related("tipo").order_by("-principal", "pk").first()
+        if contacto:
+            url = f"mailto:{contacto.valor}" if contacto.tipo.codigo == "correo" else ""
+            filas.append(fila("Contacto principal", [item((contacto.tipo, ""), (contacto.valor, url), nota=contacto.proposito)]))
+        else:
+            filas.append(fila("Contacto principal", [], "Sin contactos vigentes", pie=("Agregar contacto", "?tab=contactos") if self.request.user.has_perm(self.permiso_editar) else None,
+                              pie_en_linea=True))
+        if u.has_perm("coordinacion.view_interaccion"):
+            ultima = o.interacciones.select_related("canal").order_by("-fecha", "-pk").first()
+            filas.append(fila("Última interacción", [item((f"{timezone.localtime(ultima.fecha):%d-%m-%Y}", ultima.get_absolute_url()), (ultima.canal, ""), nota=ultima.motivo)]
+                              if ultima else [], "Sin interacciones registradas"))
+        return filas
 
     def ctx_contactos(self):
         pk = self.object.pk
@@ -191,10 +258,6 @@ class OrganizacionFicha(FichaBase):
             docs = docs.filter(restringido=False)
         return {"documentos": docs, "url_nuevo_doc": f"/documentos/nuevo?organizacion={self.object.pk}", "url_asociar_doc": f"/documentos/asociar?organizacion={self.object.pk}"}
 
-    def ctx_origen(self):
-        from apps.documentos.origen import contexto_origen
-
-        return contexto_origen(self.object, self.request.user)
 
     def ctx_carreras(self):
         pk = self.object.pk
@@ -249,7 +312,7 @@ class CerrarCargosAutoridad(Permiso403Mixin, __import__("django.views", fromlist
             v.save()
             n += 1
         registrar(request.user, "cargos_autoridad_cerrados", org, f"{n} cargos al {hasta:%d-%m-%Y}")
-        messages.success(request, f"{n} cargo(s) de autoridad cerrados al {hasta:%d-%m-%Y}. Los nuevos se agregan con «Agregar persona con cargo».")
+        messages.success(request, f"{plural(n, 'cargo de autoridad cerrado', 'cargos de autoridad cerrados')} al {hasta:%d-%m-%Y}. Los nuevos se agregan con «Agregar persona con cargo».")
         return HttpResponseRedirect(f"{org.get_absolute_url()}?tab=personas")
 
 

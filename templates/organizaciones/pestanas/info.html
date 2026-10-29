@@ -1,18 +1,18 @@
-{# Qué es: Pestaña Información de la organización. #}
+{# Qué es: Pestaña Información de la organización: arriba «De un vistazo» (F26 Ib, sin repetir lo de abajo); luego solo los datos con valor; los vacíos, plegados en «Sin completar (N)» (F26 Ia). El estado va una sola vez, como insignia en la cabecera; «Desactivar» está en «Más acciones». #}
 {# Dónde se usa: /organizaciones/<int:pk> · Proceso: P4 #}
-{% load fche %}<dl class="fche-datos mb-4">
+{% load fche %}{% include "generico/_de_un_vistazo.html" %}
+<section class="fche-apartado" aria-labelledby="info-datos">
+  <div class="fche-seccion"><h2 class="h6" id="info-datos">Datos de la organización</h2></div>
+  <dl class="fche-datos">
   <div><dt>Tipo</dt><dd>{{ object.tipo }}</dd></div>
-  <div><dt>RUT</dt><dd>{{ object.rut|default:"—" }}{% if object.otro_identificador %} · {{ object.otro_identificador }}{% endif %}</dd></div>
-  <div><dt>Estado</dt><dd>{% if object.estado_registro %}{% estado object.estado_registro %}{% else %}—{% endif %} {% if object.activo %}Activa{% else %}Inactiva{% endif %}</dd></div>
-  <div><dt>Dirección</dt><dd>{{ object.direccion|default:"—" }}</dd></div>
-  <div><dt>Comuna (municipalidad)</dt><dd>{{ object.comuna_municipal|default:"—" }}</dd></div>
-  <div><dt>Sitio web</dt><dd>{% if object.sitio_web %}<a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a>{% else %}—{% endif %}</dd></div>
-  <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
-  {% if object.naturaleza_id or object.naturaleza_juridica or object.vigencia_hasta or object.domicilio_legal %}
-  <div><dt>Naturaleza jurídica</dt><dd>{{ object.naturaleza|default:"—" }}{% if object.naturaleza_juridica %} <span class="text-muted">(escrito antes: «{{ object.naturaleza_juridica }}»; revisar)</span>{% endif %}</dd></div>
-  <div><dt>Domicilio legal</dt><dd>{{ object.domicilio_legal|default:"—" }}</dd></div>
-  <div><dt>Vigencia</dt><dd>{{ object.vigencia_desde|date:"d-m-Y"|default:"?" }} a {{ object.vigencia_hasta|date:"d-m-Y"|default:"?" }}</dd></div>
-  {% endif %}
+  {% if object.rut or object.otro_identificador %}<div><dt>RUT</dt><dd>{{ object.rut|default:"—" }}{% if object.otro_identificador %} · {{ object.otro_identificador }}{% endif %}</dd></div>{% endif %}
+  {% if object.direccion %}<div><dt>Dirección</dt><dd>{{ object.direccion }}</dd></div>{% endif %}
+  {% if object.comuna_municipal %}<div><dt>Comuna (municipalidad)</dt><dd>{{ object.comuna_municipal }}</dd></div>{% endif %}
+  {% if object.sitio_web %}<div><dt>Sitio web</dt><dd><a href="{{ object.sitio_web }}" rel="noopener" target="_blank">{{ object.sitio_web }}</a></dd></div>{% endif %}
+  {% if object.descripcion %}<div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|linebreaksbr }}</dd></div>{% endif %}
+  {% if object.naturaleza_id or object.naturaleza_juridica %}<div><dt>Naturaleza jurídica</dt><dd>{{ object.naturaleza|default:"—" }}{% if object.naturaleza_juridica %} <span class="text-muted">(escrito antes: «{{ object.naturaleza_juridica }}»; revisar)</span>{% endif %}</dd></div>{% endif %}
+  {% if object.domicilio_legal %}<div><dt>Domicilio legal</dt><dd>{{ object.domicilio_legal }}</dd></div>{% endif %}
+  {% if object.vigencia_desde or object.vigencia_hasta %}<div><dt>Vigencia</dt><dd>{{ object.vigencia_desde|date:"d-m-Y"|default:"?" }} a {{ object.vigencia_hasta|date:"d-m-Y"|default:"?" }}</dd></div>{% endif %}
 </dl>
-{% if puede_agregar %}<form method="post" action="{% url 'organizaciones:alternar' object.pk %}" class="pt-3 border-top">{% csrf_token %}
-  <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Desactivar organización{% else %}Reactivar organización{% endif %}</button></form>{% endif %}
+{% include "generico/_sin_completar.html" %}
+</section>

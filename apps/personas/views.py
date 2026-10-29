@@ -1,5 +1,6 @@
 """Pantallas de personas: listado con filtros, crear con aviso de duplicados, ficha con pestañas (las restringidas solo
 con permiso), editar, desactivar, unir repetidas (Administrador), reasignar, datos personales y datos sensibles."""
+from apps.nucleo.utilidades import plural
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -31,6 +32,46 @@ def _principal(persona, codigos):
         if c.vigente and c.tipo.codigo in codigos:
             return c.valor
     return ""
+
+
+# Permiso que deja ver el RUT en la lista de personas y en sus exportaciones (el mismo del territorio y del informe de proyecto)
+PERMISO_RUT = "personas.exportar_persona"
+
+
+def _contacto_principal(persona):
+    """Correo o teléfono vigente, primero el marcado como principal y, entre iguales, el correo. Usa lo precargado."""
+    tipos = {"correo": 0, "telefono_movil": 1, "telefono_fijo": 2}
+    candidatos = [c for c in persona.contactos.all() if c.vigente and c.tipo.codigo in tipos]
+    if not candidatos:
+        return ""
+    return min(candidatos, key=lambda c: (not c.principal, tipos[c.tipo.codigo], c.pk)).valor
+
+
+def _comuna_residencia(persona):
+    """Comuna de la residencia vigente (la primera registrada). Usa lo precargado."""
+    residencias = sorted((d for d in persona.direcciones.all() if d.vigente and d.tipo == "residencia"), key=lambda d: d.pk)
+    return residencias[0].direccion.comuna if residencias else None
+
+
+def _sin_cortes(texto):
+    from django.utils.html import format_html
+
+    return format_html('<span class="text-nowrap">{}</span>', texto) if texto else ""
+
+
+def _estado_ficha(persona):
+    """Insignia del estado de la ficha y, si está incompleta (o sin estado), debajo lo que le falta. Con otro estado
+    (activo, por verificar…) no se agrega nada, para no mostrar dos verdades."""
+    from django.utils.html import format_html
+
+    from apps.nucleo.templatetags.fche import badge_estado
+
+    e = persona.estado_registro
+    insignia = badge_estado(e.codigo, e.nombre) if e else ""
+    falta = persona.faltantes() if e is None or e.codigo == "incompleto" else []
+    if not falta:
+        return insignia
+    return format_html('{}<div class="small text-muted">Falta: {}</div>', insignia, ", ".join(falta))
 
 
 def _opciones_comunidad():
@@ -80,13 +121,28 @@ class PersonaLista(ListaBase):
     campos_busqueda = ()  # busca con Persona.objects.buscar (nombre, RUT, correo o teléfono), ver filtrar()
     buscable = True
     texto_busqueda = "Nombre, RUT, correo o teléfono…"
+    # F26 Ib: Nombre · Perfil · Contacto · Comuna · Edad · Estado de la ficha. El RUT, solo con el permiso que lo deja ver
+    # (PERMISO_RUT); «Origen» queda como filtro en «Más filtros». Todo sale de lo precargado: sin consultas por fila.
     columnas = [
         ("Nombre", lambda p: p.nombre_completo),
-        ("RUT 🔒", "rut"),
+        ("Perfil", lambda p: ", ".join(x.nombre for x in p.perfiles.all())),
+        ("Contacto", lambda p: _contacto_principal(p)),
+        ("Comuna", lambda p: _comuna_residencia(p) or ""),
+        ("Edad", lambda p: p.edad if p.edad is not None else ""),
+        ("Estado de la ficha", lambda p: _estado_ficha(p)),
+    ]
+    columna_rut = ("RUT 🔒", lambda p: _sin_cortes(p.rut))
+    # El Excel conserva lo útil por separado: correo y teléfono, lo que le falta y el origen
+    columnas_excel = [
+        ("Nombre", lambda p: p.nombre_completo),
+        ("RUT", "rut"),
+        ("Perfil", lambda p: ", ".join(x.nombre for x in p.perfiles.all())),
         ("Correo", lambda p: _principal(p, ["correo"])),
         ("Teléfono", lambda p: _principal(p, ["telefono_movil", "telefono_fijo"])),
+        ("Comuna", lambda p: _comuna_residencia(p) or ""),
         ("Edad", lambda p: p.edad if p.edad is not None else ""),
-        ("Registro", "estado_registro"),
+        ("Estado de la ficha", "estado_registro"),
+        ("Le falta", lambda p: ", ".join(p.faltantes())),
         ("Origen", "origen"),
     ]
     ordenes = {"nombre": "apellido_paterno", "creado": "creado_en"}
@@ -120,7 +176,20 @@ class PersonaLista(ListaBase):
         return super().filtrar(qs).buscar(self.request.GET.get("q"))
 
     def get_queryset(self):
-        return super().get_queryset().select_related("estado_registro", "origen").prefetch_related("contactos__tipo")
+        # con_completitud(): contactos, direcciones, comunidades, perfiles y formaciones para `faltantes()`; más el tipo de
+        # contacto y la comuna de la dirección. Número fijo de consultas por página.
+        return (super().get_queryset().select_related("estado_registro", "origen").con_completitud()
+                .prefetch_related("contactos__tipo", "direcciones__direccion__comuna"))
+
+    def columnas_visibles(self):
+        if not self.request.user.has_perm(PERMISO_RUT):
+            return self.columnas
+        return [self.columnas[0], self.columna_rut, *self.columnas[1:]]
+
+    def columnas_exportacion(self):
+        if self.request.user.has_perm(PERMISO_RUT):
+            return self.columnas_excel
+        return [c for c in self.columnas_excel if c[0] != "RUT"]
 
 
 class PersonaExportar(PersonaLista):
@@ -154,15 +223,16 @@ class PersonaNueva(Permiso403Mixin, CreateView):
         form.separar_tipos()
         datos = self.request.POST if self.request.method == "POST" else None
         self.fichas = RegistroFichas(datos, self.request.user, base=form)
-        from .relaciones import relaciones_formset
+        from .relaciones import organizacion_comunidad_form, relaciones_formset
 
-        self.relaciones = relaciones_formset(datos)  # F25: organizaciones, comunidades, proyectos y actividades de la persona
+        self.procedencia = organizacion_comunidad_form(datos)  # F26 P2: su organización y su comunidad, una sola vez
+        self.relaciones = relaciones_formset(datos)  # F25: las otras relaciones (proyectos, tareas y actividades)
         return form
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ctx.update(titulo="Nueva persona", volver_url="/personas", breadcrumb=[("Personas", "/personas")], modo=self.modo(), fichas=self.fichas,
-                   relaciones=self.relaciones)
+                   relaciones=self.relaciones, procedencia=self.procedencia)
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -175,7 +245,8 @@ class PersonaNueva(Permiso403Mixin, CreateView):
             return self.render_to_response(self.get_context_data(form=form))
         from .relaciones import relaciones_validas
 
-        if all([form.is_valid(), self.fichas.is_valid(), relaciones_validas(self.relaciones)]):
+        if all([form.is_valid(), self.fichas.is_valid(), relaciones_validas(self.relaciones),
+                not self.procedencia.is_bound or self.procedencia.is_valid()]):
             return self.form_valid(form)
         return self.form_invalid(form)
 
@@ -193,20 +264,17 @@ class PersonaNueva(Permiso403Mixin, CreateView):
             nota = self.request.POST.get("nota_distincion", "").strip()
             if nota:  # PE-E2: qué la distingue de la otra persona con el mismo nombre
                 persona.observaciones = (f"Se distingue de otra ficha parecida: {nota}\n" + persona.observaciones).strip()
-            tiene_contacto = bool(d.get("correo") or d.get("telefono"))
-            if self.modo() == "rapida":  # F25 E1: la ficha rápida queda «incompleto», para completarla después
-                persona.estado_registro = EstadoRegistro.objects.filter(codigo="incompleto").first()
-            elif not persona.estado_registro_id:
-                codigo = "activo" if (persona.apellido_paterno and tiene_contacto) else "incompleto"
-                persona.estado_registro = EstadoRegistro.objects.filter(codigo=codigo).first()
+            # F26 P2: «activo» o «incompleto» se calcula solo (apps/personas/senales.py) al guardar la persona, sus contactos,
+            # su dirección y su formación; un estado manual elegido en el formulario (p. ej. «Por verificar») se respeta
             persona.save()
             form.save_m2m()  # perfiles (también los «Tipo de registro») y áreas de interés (F22)
             self.fichas.guardar(persona)  # las secciones de los tipos marcados
             from .servicios import completar_ficha_rapida
 
             completar_ficha_rapida(persona, d)  # contactos y, en la ficha rápida, la comuna donde vive (si la ficha de vecino no dio la dirección)
-            from .relaciones import guardar_relaciones
+            from .relaciones import guardar_organizacion_comunidad, guardar_relaciones
 
+            guardar_organizacion_comunidad(self.procedencia, persona, self.request.user)
             guardar_relaciones(self.relaciones, persona, self.request.user)
             from apps.documentos.origen import registrar_origen
 
@@ -365,6 +433,17 @@ ALIAS_PERSONA = {
 }
 
 
+NOMBRE_GRUPO_VACIO = {"Organizaciones y cargos": "organizaciones", "Actividades y tareas": "actividades"}
+
+
+def _sin(nombres):
+    """[«organizaciones», «estudios», «lugares»] → «Sin organizaciones, estudios ni lugares.»"""
+    if not nombres:
+        return ""
+    texto = nombres[0] if len(nombres) == 1 else f"{', '.join(nombres[:-1])} ni {nombres[-1]}"
+    return f"Sin {texto}."
+
+
 class PersonaFicha(FichaBase):
     model = Persona
     template_name = "personas/ficha.html"
@@ -382,6 +461,16 @@ class PersonaFicha(FichaBase):
         ("historial", "Historial", "personas/pestanas/historial.html"),
     ]
     alias_pestanas = ALIAS_PERSONA
+
+    def get_queryset(self):
+        """F26 Rb: lo que miran la cabecera, el resumen y `faltantes()` se lee una vez (contactos con su tipo, perfiles…)."""
+        from django.db.models import Prefetch
+
+        from .models import Contacto
+
+        return Persona.objects.select_related("ficha_voluntario", "ficha_invitado").prefetch_related(
+            Prefetch("contactos", queryset=Contacto.objects.select_related("tipo")), "direcciones", "comunidades", "perfiles", "formaciones",
+            Prefetch("consentimientos", queryset=Consentimiento.objects.order_by("-fecha", "-pk")))
 
     def secciones(self, pestana):
         """Secciones visibles de una pestaña según los permisos (y los ajustes de datos sensibles y de segunda fase)."""
@@ -489,9 +578,69 @@ class PersonaFicha(FichaBase):
         vacios = [{"etiqueta": e, "restringido": r} for e, v, f, r, a in campos if not v and e != "Otro documento"]
         residencia = p.direcciones.filter(vigente=True).select_related("direccion__comuna", "direccion__sector").order_by("tipo", "pk").first()
         return {
-            "datos_llenos": llenos, "datos_vacios": vacios, "tarjetas_fichas": tarjetas(p, self.request.user),
-            "direccion_vigente": residencia,
+            "datos_llenos": llenos, "datos_vacios": vacios, "tarjetas_fichas": self._tarjetas_sin_repetir(tarjetas(p, self.request.user)),
+            "direccion_vigente": residencia, "resumen_360": self.resumen_360(),
+            "pie_vistazo": ("Ver todos los cargos y vínculos", "?tab=vinculos"),
         }
+
+    @staticmethod
+    def _tarjetas_sin_repetir(lista):
+        """F26 P3a: la formación vigente y las comunidades ya están en el Resumen 360°: no se repiten en las tarjetas."""
+        for t in lista:
+            if t["codigo"] == "estudiante":
+                t["filas"], t["vacio"] = [], "Su formación vigente aparece arriba, en el resumen."
+            elif t["codigo"] == "vecino":
+                t["filas"] = [f for f in t["filas"] if f["etiqueta"] != "Comunidad"]
+        return lista
+
+    def resumen_360(self):
+        """F26 P3a: la persona de un vistazo: organización y cargo vigentes (con el rol del catálogo), formación vigente,
+        comunidades vigentes, sus últimas 3 participaciones, la próxima actividad programada y lo que le falta a la ficha.
+        Todo con enlaces. Número fijo de consultas, sin importar cuántos registros tenga."""
+        from django.utils import timezone
+
+        from apps.actividades.models import AgendaActividad
+
+        from .vinculos import cargos_y_vinculos
+
+        p = self.object
+        grupos = dict(cargos_y_vinculos(p))
+        vigentes = {clave: [f for f in grupos.get(titulo, []) if f["vigente"]]
+                    for clave, titulo in (("cargos", "Organizaciones y cargos"), ("estudios", "Estudios"), ("comunidades", "Comunidades"))}
+        ultimas = grupos.get("Actividades y tareas", [])[:3] if self.request.user.has_perm("actividades.view_participacion") else None
+        proxima, ver_actividades = None, self.request.user.has_perm("actividades.view_actividad")
+        if ver_actividades:
+            suyas = p.participaciones.exclude(estado__codigo__in=["rechazo", "cancelo", "registro_erroneo"]).values("actividad_id")
+            proxima = (AgendaActividad.objects.filter(
+                vigente=True, fecha__gte=timezone.localdate(), actividad__estado__codigo__in=["planificada", "confirmada", "reprogramada"],
+                actividad_id__in=suyas)
+                .select_related("actividad__proyecto", "lugar").order_by("fecha", "hora_inicio", "pk").first())
+        return self._filas_vistazo({**vigentes, "ultimas": ultimas, "proxima": proxima, "ver_actividades": ver_actividades, "faltantes": p.faltantes()})
+
+    def _filas_vistazo(self, r):
+        """F26 Ib: el mismo «De un vistazo» de siempre, en filas para el parcial común (generico/_de_un_vistazo.html)."""
+        from apps.nucleo.vistazo import fila, item, item_agenda
+
+        def renglones(filas, entre_parentesis=True):
+            return [item((f["nombre"], f["url"]), (f["rol"], ""), nota=(f"({f['detalle']})" if entre_parentesis else f"· {f['detalle']}") if f.get("detalle") else "")
+                    for f in filas]
+
+        filas = [
+            fila("Organización y cargo", renglones(r["cargos"]), "Sin cargos vigentes"),
+            fila("Formación vigente", renglones(r["estudios"]), "Sin formación vigente"),
+            fila("Comunidades", [item((f["nombre"], f["url"]), (f["rol"], "")) for f in r["comunidades"]], "Sin comunidades vigentes"),
+        ]
+        if r["ver_actividades"]:
+            filas.append(fila("Próxima actividad", [item_agenda(r["proxima"])] if r["proxima"] else [], "Ninguna programada"))
+        if r["ultimas"] is not None:
+            filas.append(fila("Últimas participaciones", renglones(r["ultimas"], entre_parentesis=False), "Aún no participa en actividades",
+                              ancho=True, lista=True, pie=("Ver todas", "?tab=participaciones") if r["ultimas"] else None))
+        completar = None
+        if r["faltantes"] and self.request.user.has_perm(self.permiso_editar):
+            completar = ("Completar ficha", reverse("personas:editar", args=[self.object.pk]))
+        filas.append(fila("Le falta", [item((", ".join(r["faltantes"]), ""))] if r["faltantes"] else [], "Nada: la ficha tiene lo mínimo",
+                          ancho=True, pie=completar, pie_en_linea=True))
+        return {**r, "filas": filas}
 
     def ctx_contacto(self):
         return self._por_seccion("contacto")
@@ -584,7 +733,11 @@ class PersonaFicha(FichaBase):
     def ctx_vinculos(self):
         from .vinculos import cargos_y_vinculos
 
-        return {"grupos": cargos_y_vinculos(self.object), "url_nuevo": reverse("personas:vinculos_nuevo", args=[self.object.pk]),
+        todos = cargos_y_vinculos(self.object)
+        # F26 Ib: solo los grupos con datos; los vacíos, resumidos en una línea («Sin organizaciones, estudios ni lugares.»)
+        vacios = [NOMBRE_GRUPO_VACIO.get(t, t.lower()) for t, filas in todos if not filas]
+        return {"grupos": [(t, filas) for t, filas in todos if filas], "grupos_vacios": _sin(vacios),
+                "url_nuevo": reverse("personas:vinculos_nuevo", args=[self.object.pk]),
                 "url_nuevo_lugar": reverse("personas:lugares_nuevo", args=[self.object.pk]),
                 "url_nueva_comunidad": reverse("personas:comunidades_nuevo", args=[self.object.pk])}  # antes en la pestaña Comunidades
 
@@ -609,7 +762,7 @@ class PersonaFicha(FichaBase):
         for codigo, nombre in Consentimiento.TIPOS:
             if codigo == "apoderado" and not p.es_menor:
                 continue
-            ultimo = p.consentimientos.filter(tipo=codigo).order_by("-fecha", "-pk").first()
+            ultimo = p.ultimo_consentimiento(codigo)
             estado.append({"nombre": nombre, "ultimo": ultimo, "vigente": bool(ultimo and ultimo.vigente)})
         return {
             "estado_consentimientos": estado,
@@ -766,7 +919,7 @@ class PersonaReasignar(Permiso403Mixin, View):
                 a.save()  # queda en el historial de cada actividad
                 n += 1
         registrar(request.user, "responsable_reasignado", p, f"{n} actividades a {nuevo}. Motivo: {form.cleaned_data['motivo']}")
-        messages.success(request, f"{n} actividad(es) reasignadas a {nuevo}.")
+        messages.success(request, f"{plural(n, 'actividad reasignada', 'actividades reasignadas')} a {nuevo}.")
         return HttpResponseRedirect(p.get_absolute_url())
 
 

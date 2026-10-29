@@ -1,6 +1,7 @@
-{# Qué es: Pestaña Resumen de la persona: solo los datos con valor (los vacíos, plegados en «Sin completar (N)» con «Completar ficha»), contacto principal, dirección vigente y una tarjeta por tipo de registro (estudiante, vecino…). #}
+{# Qué es: Pestaña Resumen de la persona: arriba «De un vistazo» (F26 P3a: organización y cargo, formación y comunidades vigentes, próxima actividad, últimas 3 participaciones y lo que le falta, con enlaces); luego solo los datos con valor (los vacíos, plegados en «Sin completar (N)» con «Completar ficha»), contacto principal, dirección vigente y una tarjeta por tipo de registro (estudiante, vecino…). #}
 {# Dónde se usa: /personas/<int:pk> (también ?tab=datos) · Proceso: P9 #}
-{% load fche %}<section class="fche-apartado" aria-labelledby="resumen-datos">
+{% load fche %}{% include "generico/_de_un_vistazo.html" with vistazo=resumen_360.filas vistazo_pie=pie_vistazo %}
+<section class="fche-apartado" aria-labelledby="resumen-datos">
   <div class="fche-seccion"><h2 class="h6" id="resumen-datos">Datos de la persona</h2></div>
   <dl class="fche-datos">
     {% if correo_principal or telefono_principal %}<div><dt>Contacto principal</dt><dd>{% if correo_principal %}<a href="mailto:{{ correo_principal }}">{{ correo_principal }}</a>{% endif %}{% if correo_principal and telefono_principal %}<br>{% endif %}{{ telefono_principal }}</dd></div>{% endif %}

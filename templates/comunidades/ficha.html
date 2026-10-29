@@ -1,4 +1,4 @@
-{# Qué es: Cabecera de la ficha de comunidad (grupo de vecinos, curso, comité…): tipo, territorio e integrantes. #}
+{# Qué es: Cabecera de la ficha de comunidad (grupo de vecinos, curso, comité…): tipo, territorio e integrantes; «Desactivar» en «Más acciones». #}
 {# Dónde se usa: /comunidades/<int:pk> · Proceso: Grupo #}
 {% extends "generico/ficha.html" %}
 {% load fche %}
@@ -11,4 +11,5 @@
 {% endblock %}
 {% block menu %}
 {% if perms.actividades.add_actividad %}<a class="fche-menu__item" href="/actividades/nueva?comunidad={{ object.pk }}">+ Actividad para esta comunidad</a>{% endif %}
+{% if puede_agregar %}<form method="post" action="{% url 'comunidades:alternar' object.pk %}">{% csrf_token %}<button class="fche-menu__item">{% if object.activo %}Desactivar comunidad{% else %}Reactivar comunidad{% endif %}</button></form>{% endif %}
 {% endblock %}

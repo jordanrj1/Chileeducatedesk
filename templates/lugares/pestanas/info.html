@@ -1,13 +1,16 @@
-{# Qué es: Pestaña Información del lugar: dirección, capacidad, condiciones y dueño. #}
+{# Qué es: Pestaña Información del lugar: arriba «De un vistazo» (F26 Ib, sin repetir lo de abajo); luego dirección, capacidad, condiciones y dueño; los datos vacíos, plegados en «Sin completar (N)» (F26 Ia). «Desactivar» está en «Más acciones». #}
 {# Dónde se usa: /lugares/<int:pk> · Proceso: P5 #}
-<dl class="fche-datos mb-4">
+{% load fche %}{% include "generico/_de_un_vistazo.html" %}
+<section class="fche-apartado" aria-labelledby="info-datos">
+  <div class="fche-seccion"><h2 class="h6" id="info-datos">Datos del lugar</h2></div>
+  <dl class="fche-datos">
   <div><dt>Tipo</dt><dd>{{ object.tipo }}</dd></div>
-  <div><dt>Capacidad</dt><dd>{{ object.capacidad|default:"No registrada" }}</dd></div>
-  <div><dt>Estado</dt><dd>{% if object.activo %}Activo{% else %}Inactivo{% endif %}</dd></div>
+  {% if object.capacidad %}<div><dt>Capacidad</dt><dd>{{ object.capacidad }}</dd></div>{% endif %}
+  {% if not object.activo %}<div><dt>Estado</dt><dd>{% estado "inactivo" "Inactivo" %}</dd></div>{% endif %}
   <div><dt>Dirección</dt><dd>{{ object.direccion }}</dd></div>
   <div><dt>Región</dt><dd>{{ object.direccion.comuna.provincia.region }}</dd></div>
-  <div><dt>Propietaria</dt><dd>{% if object.organizacion_propietaria %}<a href="{{ object.organizacion_propietaria.get_absolute_url }}">{{ object.organizacion_propietaria }}</a>{% else %}—{% endif %}</dd></div>
-  <div class="fche-datos__ancho"><dt>Condiciones</dt><dd>{{ object.condiciones|default:"—"|linebreaksbr }}</dd></div>
+  {% if object.organizacion_propietaria %}<div><dt>Propietaria</dt><dd><a href="{{ object.organizacion_propietaria.get_absolute_url }}">{{ object.organizacion_propietaria }}</a></dd></div>{% endif %}
+  {% if object.condiciones %}<div class="fche-datos__ancho"><dt>Condiciones</dt><dd>{{ object.condiciones|linebreaksbr }}</dd></div>{% endif %}
 </dl>
-{% if puede_agregar %}<form method="post" action="{% url 'lugares:alternar' object.pk %}" class="pt-3 border-top">{% csrf_token %}
-  <button class="btn btn-outline-secondary btn-sm">{% if object.activo %}Desactivar lugar{% else %}Reactivar lugar{% endif %}</button></form>{% endif %}
+{% include "generico/_sin_completar.html" %}
+</section>
