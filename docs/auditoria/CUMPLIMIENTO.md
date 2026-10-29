@@ -59,7 +59,7 @@ Todas las pruebas citadas pasaron el 14-10-2026: **546 pruebas, 0 fallas**.
 
 | HU | Qué pide | Estado | Evidencia | Cómo probarlo |
 |---|---|---|---|---|
-| HU-TE-01 | Dirección en cascada región → comuna → sector | Cumple | `territorio/tests.py:148`, `:156`; `templates/territorio/_direccion.html` | Nueva organización → Dirección: al elegir la región se filtran las comunas, y luego los sectores. |
+| HU-TE-01 | Dirección en cascada región → comuna → sector | Cumple | `territorio/tests.py:148`, `:156`; `templates/territorio/_ubicacion.html` y `templates/territorio/_direccion_form.html` | Nueva organización → Dirección: al elegir la región se filtran las comunas, y luego los sectores. |
 | HU-TE-02 | Sectores dentro de sectores | Cumple | `territorio/tests.py:12`, `:114`; `apps/territorio/models.py:68` `sector_padre` | Territorio → una comuna → Sectores → crear «Etapa 1» con sector padre. |
 | HU-TE-03 | Ver todo lo de una comuna o sector | Cumple | `territorio/tests.py:93`; `territorio/test_contenedor.py:76`, `:217` | Territorio → la comuna: Resumen con cifras clicables y pestañas con contador. |
 | HU-TE-04 | Crear un sector sin salir y reconocer nombres escritos distinto | Cumple | `territorio/tests.py:167`, `:133`, `:142`; `apps/territorio/models.py:102` `SectorAlias` | En una dirección, «+ Crear sector». Escribir «Pobl. Las Flores» y luego «Población Las Flores»: avisa que se parece. |
