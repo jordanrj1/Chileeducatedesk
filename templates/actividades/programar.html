@@ -15,7 +15,7 @@
       <div class="col-12 col-md-4"><select class="form-select form-select-sm" name="nuevo_lugar_comuna" aria-label="Comuna"><option value="">Comuna</option>{% for c in comunas %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}</select></div>
       <div class="col-8 col-md-5"><input class="form-control form-control-sm" name="nuevo_lugar_calle" placeholder="Calle" aria-label="Calle"></div>
       <div class="col-4 col-md-3"><input class="form-control form-control-sm" name="nuevo_lugar_numero" placeholder="Número" aria-label="Número"></div>
-      <div class="col-12"><button type="button" class="btn btn-outline-primary btn-sm" hx-post="/lugares/crear-rapido" hx-include="closest .crear-lugar" hx-target="#{{ campo.id_for_label }}">Crear y seleccionar</button>
+      <div class="col-12"><button type="button" class="btn btn-outline-primary btn-sm" hx-post="/lugares/crear-rapido" hx-include="closest .crear-lugar" hx-disabled-elt="this" hx-sync="this:drop" hx-target="#{{ campo.id_for_label }}">Crear y seleccionar</button>
         <div id="aviso-lugar" class="small mt-1"></div></div>
     </div>
   </details>

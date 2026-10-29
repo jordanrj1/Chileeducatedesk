@@ -71,7 +71,9 @@ def test_actividades_muestra_actividades_y_tareas_con_filtro_y_calendario(cg, pr
     assert "Visita a la villa" in solo_tareas and "Charla suelta" not in solo_tareas
     assert "Visita a la villa" in cg.get(f"/proyectos/{proyecto.pk}?tab=actividades").content.decode()  # enlace antiguo sigue sirviendo
     eventos = cg.get(f"/calendario/eventos?start={FUTURO}&end={FUTURO + timedelta(days=1)}").json()
-    assert [e["title"] for e in eventos] == ["Tarea · Huertos Ficticios · Visita a la villa"]
+    # F26 P: título corto; el proyecto va en el detalle del evento
+    assert [e["title"] for e in eventos] == ["Visita a la villa"]
+    assert eventos[0]["extendedProps"]["proyecto"] == "Huertos Ficticios" and eventos[0]["extendedProps"]["tarea"]
 
 
 def test_pestana_tareas_con_consultas_fijas(cg, proyecto, crear_actividad, crear_persona, rol, estado_part, django_assert_max_num_queries):
@@ -94,8 +96,12 @@ def test_ficha_rapida_crea_persona_con_rut_comuna_organizacion_y_comunidad(cg, p
     from apps.personas.models import Persona, PersonaOrganizacion
 
     t = crear_actividad("Tarea", proyecto=proyecto)
-    form = cg.get(f"/actividades/{t.pk}/participantes/rapido?llego=1").content.decode()
-    assert "¿De qué grupo viene?" in form and "Comuna donde vive" in form
+    # F26 P1a: la ruta lleva al único «+ Agregar persona» con «Llegó / asistió» marcada; la persona nueva se crea con la
+    # ficha rápida de su buscador (/personas/crear-rapida). Los envíos a /participantes/rapido se siguen atendiendo.
+    r = cg.get(f"/actividades/{t.pk}/participantes/rapido?llego=1", follow=True)
+    form = r.content.decode()
+    assert "¿De qué grupo viene?" in form and "Llegó / asistió" in form and r.context["form"]["llego"].value() is True
+    assert "Comuna donde vive" in cg.get("/personas/crear-rapida").content.decode()
     assert "¿De qué grupo viene?" in cg.get(f"/actividades/{t.pk}/participantes/nuevo").content.decode()
     datos = {"nombres": "Rosa", "apellido_paterno": "Ficticia", "rut": "11.111.111-1", "nacionalidad": "Chilena", "sexo": "mujer",
              "comuna": comuna.pk, "rol": rol("voluntario").pk, "organizacion": junta.pk, "cargo": "Dirigente", "comunidad": comunidad.pk}

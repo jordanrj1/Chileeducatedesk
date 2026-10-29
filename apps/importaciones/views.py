@@ -19,11 +19,11 @@ from .models import Lote
 class LoteLista(ListaBase):
     model = Lote
     permission_required = "importaciones.importar_listado"
-    titulo = "Importaciones"
+    titulo = "Historial de cargas"  # F26 Ia: así se llama en el menú
     descripcion = "Cargas de listados desde Excel o CSV, con su revisión y posibilidad de revertir."
     url_crear = "/importaciones/nueva"
     permiso_crear = "importaciones.importar_listado"
-    etiqueta_crear = "+ Nueva importación"
+    etiqueta_crear = "+ Cargar planilla"
     columnas = [
         ("Lote", lambda l: f"#{l.pk}"), ("Tipo", "get_tipo_display"), ("Origen", "nombre_archivo"), ("Actividad", "actividad"),
         ("Estado", "get_estado_display"), ("Fecha", lambda l: l.creado_en.astimezone().strftime("%d-%m-%Y %H:%M")), ("Usuario", "usuario"),
@@ -31,7 +31,8 @@ class LoteLista(ListaBase):
     orden_defecto = ("-creado_en",)
     campos_busqueda = ("nombre_archivo", "fuente", "actividad__nombre")
     filtros = [Filtro("tipo", "Tipo", "tipo", lambda: list(Lote.TIPOS), principal=True), Filtro("estado", "Estado", "estado", lambda: list(Lote.ESTADOS), principal=True)]
-    texto_vacio = "Aún no se ha importado nada."
+    texto_vacio = "Aún no hay cargas."
+    texto_vacio_detalle = "Cada planilla que cargues (Excel o CSV) queda aquí, con su revisión y la opción de revertirla."
 
     def get_queryset(self):
         return super().get_queryset().select_related("actividad", "usuario")
@@ -50,7 +51,7 @@ class LoteNuevo(Permiso403Mixin, FormView):
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(titulo="Nueva importación", volver_url="/importaciones", breadcrumb=[("Importaciones", "/importaciones")])
+        ctx.update(titulo="Cargar planilla", volver_url="/importaciones", breadcrumb=[("Historial de cargas", "/importaciones")])
         return ctx
 
     def form_valid(self, form):
@@ -115,10 +116,10 @@ class LoteRevisar(Permiso403Mixin, View):
 
     def contexto(self, lote):
         return {
-            "lote": lote, "titulo": f"Revisar importación #{lote.pk}", "campos": procesar.CAMPOS[lote.tipo], "filas": lote.filas,
+            "lote": lote, "titulo": f"Revisar carga #{lote.pk}", "campos": procesar.CAMPOS[lote.tipo], "filas": lote.filas,
             "columnas": list(zip(range(len(lote.encabezados)), lote.encabezados, lote.mapeo)), "opciones_columna": lectura.COLUMNAS_POR_TIPO[lote.tipo],
             "es_personas": lote.tipo in ("personas", "listado_actividad"),
-            "breadcrumb": [("Importaciones", "/importaciones")], "volver_url": "/importaciones",
+            "breadcrumb": [("Historial de cargas", "/importaciones")], "volver_url": "/importaciones",
             "hay_pendientes": any(f["decision"] == "pendiente" for f in lote.filas),
             "n_pendientes": sum(1 for f in lote.filas if f["decision"] == "pendiente"),
             "a_aplicar": sum(1 for f in lote.filas if f["decision"] not in ("omitir", "pendiente")),
@@ -144,7 +145,7 @@ class LoteRevisar(Permiso403Mixin, View):
             lote.filas, lote.crudas = [], []  # no se conservan datos personales de una carga descartada
             lote.save()
             registrar(request.user, "importacion_descartada", lote)
-            messages.success(request, "Importación descartada. No se guardó ningún dato.")
+            messages.success(request, "Carga descartada. No se guardó ningún dato.")
             return HttpResponseRedirect("/importaciones")
         lote.crear_carreras = request.POST.get("crear_carreras") == "1"
         if accion == "mapear":  # IG-E1: el usuario indicó qué es cada columna; se vuelve a leer desde la planilla original
@@ -166,7 +167,7 @@ class LoteRevisar(Permiso403Mixin, View):
             except ValueError as e:
                 messages.error(request, str(e))
             else:
-                messages.success(request, f"Importación confirmada: {n['creados']} creados, {n['vinculados']} vinculados, {n['omitidos']} omitidos.")
+                messages.success(request, f"Carga confirmada: {n['creados']} creados, {n['vinculados']} vinculados, {n['omitidos']} omitidos.")
                 return HttpResponseRedirect(lote.get_absolute_url())
         else:
             messages.info(request, "Se revisaron nuevamente las filas con tus correcciones.")
@@ -176,7 +177,7 @@ class LoteRevisar(Permiso403Mixin, View):
 class LoteFicha(FichaBase):
     model = Lote
     permission_required = "importaciones.importar_listado"
-    breadcrumb = [("Importaciones", "/importaciones")]
+    breadcrumb = [("Historial de cargas", "/importaciones")]
     pestanas = [("resumen", "Resumen", "importaciones/resumen.html")]
 
     def encabezado(self):

@@ -31,6 +31,19 @@ class InteraccionNueva(_Nuevo):
     titulo = "Nueva interacción"
     prefill = ("persona", "organizacion", "solicitud", "actividad")
 
+    def hook(self, form, obj):
+        """F26 P1b: la primera interacción con una solicitud pendiente la pasa a «en seguimiento» (queda en su historial)."""
+        if obj.solicitud_id:
+            from apps.nucleo.auditoria import registrar
+            from apps.nucleo.models import EstadoSolicitud
+            from apps.solicitudes.models import Solicitud
+
+            if Solicitud.objects.filter(pk=obj.solicitud_id, estado__codigo="pendiente").exists():
+                s = Solicitud.objects.get(pk=obj.solicitud_id)
+                s.estado = EstadoSolicitud.objects.get(codigo="en_seguimiento")
+                s.save()
+                registrar(self.request.user, "solicitud_en_seguimiento", s, "Primera interacción registrada")
+
     def despues(self, obj):
         if obj.solicitud_id:
             return f"{obj.solicitud.get_absolute_url()}?tab=interacciones"

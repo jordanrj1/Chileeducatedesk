@@ -1,33 +1,31 @@
-{# Qué es: Pestaña Beneficiarios de una tarea: quienes asisten (rol Beneficiario o Participante) con rol · cargo, procedencia, comunidad, edad y asistencia; para quien tiene permiso, el apoderado o contacto de emergencia de los menores (🔒). #}
-{# Dónde se usa: /proyectos/<int:proyecto_pk>/tareas/<int:pk> y /actividades/<int:pk> de una tarea · Proceso: P3/P8 #}
-{% load fche %}<div class="fche-seccion">
+{# Qué es: Pestaña Beneficiarios de una tarea o actividad suelta (F26 P3a): quienes asisten (rol Beneficiario o Participante) con rol · cargo, procedencia, comunidad, edad y asistencia (solo lectura: se marca en «Pasar lista» de «Equipo y asistencia», F26 P1a); para quien tiene permiso, el apoderado o contacto de emergencia de los menores (🔒). #}
+{# Dónde se usa: /proyectos/<int:proyecto_pk>/tareas/<int:pk> y /actividades/<int:pk> · Proceso: P3/P8 #}
+{% load fche %}{% if object.proyecto_id %}{% firstof "tarea" as que %}{% else %}{% firstof "actividad" as que %}{% endif %}<div class="fche-seccion">
   <div><h2 class="h6">Beneficiarios <span class="fche-contador">{{ beneficiarios|length }}</span></h2>
-  <p class="small text-muted mb-0">A quienes va dirigida la tarea. Quien se registra desde el día de la tarea queda «Asistió»; antes, «Inscrito».</p></div>
+  <p class="small text-muted mb-0">A quienes va dirigida la {{ que }} (participantes, beneficiarios). Quien se registra desde el día de la {{ que }} queda «Asistió»; antes, «Inscrito».</p></div>
   {% if puede_registrar_beneficiario %}<div class="fche-seccion__acciones">
-    <a class="btn btn-primary btn-sm" href="{% url 'actividades:beneficiario_registrar' object.pk %}">+ Registrar beneficiario</a>
+    <a class="btn btn-primary btn-sm" href="{{ url_registrar_beneficiario }}">+ Registrar beneficiario</a>
     {% if perms.importaciones.importar_listado %}<a class="btn btn-outline-secondary btn-sm" href="/importaciones/nueva?actividad={{ object.pk }}">{% icono "importaciones" 15 %}Cargar listado</a>{% endif %}
   </div>{% endif %}
 </div>
-{% if capacidad_alerta %}<p class="small {% if capacidad_alerta.excede %}text-danger{% else %}text-muted{% endif %}">Cupos ocupados: {{ capacidad_alerta.n }} de {{ capacidad_alerta.capacidad }}{% if capacidad_alerta.espera %} · en lista de espera: {{ capacidad_alerta.espera }}{% endif %}{% if capacidad_alerta.excede %} — <strong>excede la capacidad</strong>{% endif %}</p>{% endif %}
+{% if capacidad_alerta %}<p class="small {% if capacidad_alerta.excede %}text-danger{% else %}text-muted{% endif %}">Cupos ocupados: {{ capacidad_alerta.n }} de {{ capacidad_alerta.capacidad }}{% if capacidad_alerta.participaciones != capacidad_alerta.n %} ({{ capacidad_alerta.participaciones }} participaciones de {{ capacidad_alerta.n }} personas: quien tiene varios roles ocupa un solo cupo){% endif %}{% if capacidad_alerta.espera %} · en lista de espera: {{ capacidad_alerta.espera }}{% endif %}{% if capacidad_alerta.excede %} — <strong>excede la capacidad</strong>{% elif capacidad_alerta.lleno %} — <strong>sin cupos</strong>: los nuevos pueden quedar «En lista de espera»{% endif %}</p>{% endif %}
 {% if beneficiarios %}
-{% if puede_asistencia %}<form method="post" action="{% url 'actividades:asistencia' object.pk %}">{% csrf_token %}<input type="hidden" name="volver" value="beneficiarios">{% endif %}
+{% if puede_asistencia %}<p class="small mb-2"><a class="btn btn-outline-primary btn-sm" href="?tab=participantes#pasar-lista">{% icono "usuarios_check" 15 %}Pasar lista</a> <span class="text-muted">La asistencia de todos se marca en «Equipo y asistencia».</span></p>{% endif %}
 <div class="table-responsive mb-3"><table class="table table-sm align-middle">
 <thead><tr><th>Persona</th><th>Rol · cargo</th><th>Procedencia</th><th>Comunidad</th><th>Edad</th><th>Asistencia</th>{% if ver_sensibles %}<th>Apoderado o contacto de emergencia 🔒</th>{% endif %}<th><span class="visually-hidden">Acciones</span></th></tr></thead>
 <tbody>{% for p in beneficiarios %}<tr class="{% if not p.activa %}text-muted{% endif %}{% if p.estado.codigo == 'registro_erroneo' %} text-decoration-line-through{% endif %}">
 <td><a href="{{ p.persona.get_absolute_url }}" hx-get="{% url 'personas:resumen' p.persona.pk %}" hx-target="#panel-persona-cuerpo" hx-swap="innerHTML"
   data-bs-toggle="offcanvas" data-bs-target="#panel-persona" aria-controls="panel-persona" title="Ver resumen de {{ p.persona }}">{{ p.persona }}</a></td>
 <td>{{ p.rol_y_cargo }}</td>
-<td class="small">{% if p.institucion %}<a href="{{ p.institucion.get_absolute_url }}">{{ p.institucion }}</a>{% if p.procedencia.cargo %} · {{ p.procedencia.cargo }}{% endif %}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-<td class="small">{% if p.comunidad %}<a href="{{ p.comunidad.get_absolute_url }}">{{ p.comunidad }}</a>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+{% with pr=p.procedencia %}<td class="small">{% if pr.institucion %}<a href="{{ pr.institucion.get_absolute_url }}">{{ pr.institucion }}</a>{% if pr.cargo %} · {{ pr.cargo }}{% endif %}{% if pr.institucion_calculada %} <span class="text-muted" title="No está en la participación: se toma de los vínculos vigentes de la persona">(de su ficha)</span>{% endif %}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+<td class="small">{% if pr.comunidad %}<a href="{{ pr.comunidad.get_absolute_url }}">{{ pr.comunidad }}</a>{% if pr.comunidad_calculada %} <span class="text-muted" title="No está en la participación: se toma del padrón de la comunidad">(de su ficha)</span>{% endif %}{% else %}<span class="text-muted">—</span>{% endif %}</td>{% endwith %}
 <td class="text-nowrap">{% if p.persona.edad is not None %}{{ p.persona.edad }} años{% if p.persona.es_menor %} <span class="badge text-bg-light border">Menor</span>{% endif %}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-<td>{% if puede_asistencia and p.estado.codigo != "registro_erroneo" %}<select class="form-select form-select-sm" name="asistencia_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}" style="min-width:8.5rem;">
-<option value="" {% if p.asistencia is None %}selected{% endif %}>{% if p.estado.codigo == "confirmado" %}Inscrito{% else %}Sin dato{% endif %}</option><option value="si" {% if p.asistencia is True %}selected{% endif %}>Asistió</option><option value="no" {% if p.asistencia is False %}selected{% endif %}>No asistió</option></select>
-{% elif p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% elif p.estado.codigo == "confirmado" %}Inscrito{% else %}{% estado p.estado %}{% endif %}</td>
+<td>{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% elif p.estado.codigo == "confirmado" %}Inscrito{% else %}{% estado p.estado %}{% endif %}{% if p.pk in calculadas_sesiones %}<span class="d-block small text-muted">Calculada desde las sesiones</span>{% endif %}</td>
 {% if ver_sensibles %}<td class="small">{% for c in p.persona.emergencias %}<span class="d-block">{{ c.nombre }}{% if c.parentesco %} ({{ c.parentesco }}){% endif %} · {{ c.telefono }}</span>{% empty %}{% if p.persona.es_menor %}<span class="text-warning-emphasis">Falta registrarlo</span>{% else %}<span class="text-muted">—</span>{% endif %}{% endfor %}</td>{% endif %}
 <td class="text-nowrap text-end">{% if p.asistencia is True %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:constancia' object.pk p.pk %}">{% icono "imprimir" 14 %}Constancia</a>{% endif %}
 {% if puede_agregar and perms.actividades.change_participacion %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:participante_editar' object.pk p.pk %}">Editar</a>
 {% if p.estado.codigo != "registro_erroneo" %}<a class="btn btn-outline-danger btn-sm" href="{% url 'actividades:participante_quitar' object.pk p.pk %}" title="Se registró por error">Quitar</a>{% endif %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
-{% if puede_asistencia %}<button class="btn btn-primary btn-sm mb-2">Guardar asistencia</button></form>{% elif antes_de_fecha %}<p class="small text-muted">La asistencia se marca desde el día de la tarea ({{ agenda.fecha|date:"d-m-Y" }}).</p>{% endif %}
+{% if antes_de_fecha %}<p class="small text-muted">La asistencia se marca desde el día de la {{ que }} ({{ agenda.fecha|date:"d-m-Y" }}).</p>{% endif %}
 {% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "personas" 18 %}</span><p class="fche-vacio__texto">Aún no hay beneficiarios registrados.</p>
-{% if puede_registrar_beneficiario %}<a class="btn btn-primary btn-sm" href="{% url 'actividades:beneficiario_registrar' object.pk %}">+ Registrar beneficiario</a>{% endif %}</div>{% endif %}
+{% if puede_registrar_beneficiario %}<a class="btn btn-primary btn-sm" href="{{ url_registrar_beneficiario }}">+ Registrar beneficiario</a>{% endif %}</div>{% endif %}
 {% include "actividades/_panel_persona.html" %}

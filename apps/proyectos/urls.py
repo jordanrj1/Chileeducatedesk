@@ -3,7 +3,7 @@ from django.urls import path
 
 from apps.nucleo.hijos import urls_hijo
 
-from . import forms, models, views
+from . import finalizar, forms, models, views
 
 app_name = "proyectos"
 P = dict(padre_modelo=models.Proyecto, campo_padre="proyecto")
@@ -13,6 +13,8 @@ urlpatterns = [
     path("proyectos/nuevo", views.ProyectoNuevo.as_view(), name="nuevo"),
     path("proyectos/<int:pk>", views.ProyectoFicha.as_view(), name="ficha"),
     path("proyectos/<int:pk>/editar", views.ProyectoEditar.as_view(), name="editar"),
+    path("proyectos/<int:pk>/finalizar", finalizar.FinalizarProyecto.as_view(), name="finalizar"),  # F26 P3a
+    path("proyectos/<int:pk>/informe", finalizar.InformeProyecto.as_view(), name="informe"),
     *urls_hijo("proyectos", "equipo", "Equipo", modelo=models.ProyectoPersona, form_class=forms.EquipoForm, tab="equipo", etiqueta="persona del equipo", **P),
     *urls_hijo("proyectos", "beneficiarios", "Beneficiario", modelo=models.ProyectoPersona, form_class=forms.BeneficiarioForm, tab="beneficiarios", etiqueta="beneficiario", **P),
     *urls_hijo("proyectos", "organizaciones", "Organizacion", modelo=models.ProyectoOrganizacion, form_class=forms.ProyectoOrganizacionForm, tab="organizaciones", etiqueta="organización", **P),

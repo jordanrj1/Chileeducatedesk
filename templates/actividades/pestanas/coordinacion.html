@@ -1,5 +1,5 @@
-{# Qué es: Pestaña Coordinación: llamadas, correos y reuniones registradas sobre la actividad, y próximas acciones. #}
-{# Dónde se usa: /actividades/<int:pk> · Proceso: P6 #}
+{# Qué es: Sección Coordinación: llamadas, correos y reuniones registradas sobre la actividad, y próximas acciones. #}
+{# Dónde se usa: dentro de la pestaña Información de una actividad suelta, /actividades/<int:pk> (F26 P3a: ya no es pestaña) · Proceso: P6 #}
 {% load fche %}{% if puede_agregar %}
 <div class="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
   {% if perms.coordinacion.add_interaccion %}<a class="btn btn-outline-primary btn-sm" href="{% url 'coordinacion:interaccion_nueva' %}?actividad={{ object.pk }}">+ Nueva interacción</a>{% endif %}
@@ -11,23 +11,23 @@
 {% endif %}
 <div class="row g-4">
 <div class="col-12 col-xl-6">
-<h2 class="h6 mb-2">Interacciones <span class="fche-contador">{{ interacciones|length }}</span></h2>
-<ul class="fche-items">{% for i in interacciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ i.get_absolute_url }}">{{ i.fecha|date:"d-m-Y H:i" }} · {{ i.canal }} · {{ i.persona|default:i.organizacion|default:"—" }}</a><div class="fche-items__detalle">{{ i.resultado }}{% if i.proxima_accion %} → {{ i.proxima_accion }}{% if i.proxima_fecha %} ({{ i.proxima_fecha|date:"d-m-Y" }}){% endif %}{% endif %}</div></div></li>{% empty %}<li class="text-muted">Sin interacciones.</li>{% endfor %}</ul>
+<h3 class="h6 mb-2">Interacciones <span class="fche-contador">{{ interacciones|length }}</span></h3>
+{% include "coordinacion/_interacciones.html" with compacto=True con_quien=True %}
 </div>
 <div class="col-12 col-xl-6">
-<h2 class="h6 mb-2">Invitaciones <span class="fche-contador">{{ invitaciones|length }}</span></h2>
+<h3 class="h6 mb-2">Invitaciones <span class="fche-contador">{{ invitaciones|length }}</span></h3>
 <ul class="fche-items">{% for i in invitaciones %}<li><a class="fche-items__titulo" href="{{ i.get_absolute_url }}">{{ i.persona }}</a> {% estado i.estado i.get_estado_display %}</li>{% empty %}<li class="text-muted">Sin invitaciones.</li>{% endfor %}</ul>
 </div>
 <div class="col-12 col-xl-6">
-<h2 class="h6 mb-2">Solicitudes de apoyo <span class="fche-contador">{{ colaboraciones|length }}</span></h2>
+<h3 class="h6 mb-2">Solicitudes de apoyo <span class="fche-contador">{{ colaboraciones|length }}</span></h3>
 <ul class="fche-items">{% for c in colaboraciones %}<li><a class="fche-items__titulo" href="{{ c.get_absolute_url }}">{{ c.organizacion }} · {{ c.tipo_apoyo }}</a> {% estado c.estado c.get_estado_display %}</li>{% empty %}<li class="text-muted">Sin solicitudes de apoyo.</li>{% endfor %}</ul>
 </div>
 {% if modulos.reuniones %}<div class="col-12 col-xl-6">
-<h2 class="h6 mb-2">Reuniones <span class="fche-contador">{{ reuniones|length }}</span></h2>
+<h3 class="h6 mb-2">Reuniones <span class="fche-contador">{{ reuniones|length }}</span></h3>
 <ul class="fche-items">{% for r in reuniones %}<li><a class="fche-items__titulo" href="{{ r.get_absolute_url }}">{{ r.fecha|date:"d-m-Y" }} · {{ r.titulo }}</a></li>{% empty %}<li class="text-muted">Sin reuniones.</li>{% endfor %}</ul>
 </div>{% endif %}
 {% if modulos.tareas %}<div class="col-12 col-xl-6">
-<h2 class="h6 mb-2">Tareas <span class="fche-contador">{{ tareas|length }}</span></h2>
+<h3 class="h6 mb-2">Tareas <span class="fche-contador">{{ tareas|length }}</span></h3>
 <ul class="fche-items">{% for t in tareas %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ t.get_absolute_url }}">{{ t.titulo }}</a><div class="fche-items__detalle">{% for r in t.responsables.all %}{{ r }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if t.fecha_limite %} · vence {{ t.fecha_limite|date:"d-m-Y" }}{% endif %}</div></div>{% estado t.estado t.get_estado_display %}</li>{% empty %}<li class="text-muted">Sin tareas.</li>{% endfor %}</ul>
 </div>{% endif %}
 </div>

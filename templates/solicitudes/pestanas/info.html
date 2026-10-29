@@ -1,9 +1,10 @@
 {# Qué es: Pestaña Información de la solicitud, con botón Crear actividad. #}
 {# Dónde se usa: /solicitudes/<int:pk> · Proceso: P2 #}
-{% load fche %}{% if puede_proyecto or puede_actividad or puede_convertir or object.estado.codigo == "descartada" and perms.solicitudes.change_solicitud %}
+{% load fche %}{% if puede_proyecto or puede_actividad or puede_tarea or puede_convertir or object.estado.codigo == "descartada" and perms.solicitudes.change_solicitud %}
 <div class="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom align-items-center">
   {% if puede_proyecto %}<form method="post" action="{% url 'solicitudes:crear_proyecto' object.pk %}">{% csrf_token %}<button class="btn btn-success btn-sm">{% icono "proyectos" 15 %}Crear proyecto</button></form>{% endif %}
-  {% if puede_actividad %}<form method="post" action="{% url 'solicitudes:crear_actividad' object.pk %}">{% csrf_token %}<button class="btn btn-outline-success btn-sm">{% icono "actividades" 15 %}Crear actividad</button></form>{% endif %}
+  {% if puede_actividad %}<a class="btn btn-outline-success btn-sm" href="{% url 'actividades:nueva' %}?solicitud={{ object.pk }}">{% icono "actividades" 15 %}Crear actividad</a>{% endif %}
+  {% if puede_tarea %}<a class="btn btn-success btn-sm" href="{% url 'actividades:tarea_nueva' object.proyecto_id %}?solicitud={{ object.pk }}">{% icono "actividades" 15 %}Crear tarea en el proyecto</a>{% endif %}
   {% if puede_convertir %}
   <form method="post" action="{% url 'solicitudes:estado' object.pk %}">{% csrf_token %}<input type="hidden" name="estado" value="en_seguimiento"><button class="btn btn-outline-secondary btn-sm">Pasar a seguimiento</button></form>
   <form method="post" action="{% url 'solicitudes:estado' object.pk %}" class="d-flex gap-1 ms-md-auto">{% csrf_token %}<input type="hidden" name="estado" value="descartada"><input class="form-control form-control-sm" name="motivo" placeholder="Motivo" aria-label="Motivo para descartar" required><button class="btn btn-outline-danger btn-sm">Descartar</button></form>

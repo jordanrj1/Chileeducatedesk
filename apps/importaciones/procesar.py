@@ -345,14 +345,19 @@ def _formacion(lote, f, persona, d):
     if d.get("carrera") and not carrera and lote.crear_carreras:
         carrera = Carrera.objects.create(organizacion=org, nombre=d["carrera"].strip())
         LoteItem.objects.create(lote=lote, tipo_objeto="carrera", objeto_id=carrera.pk, fila=f["fila"])
-    if PersonaFormacion.objects.filter(persona=persona, organizacion=org, carrera=carrera).exists():
-        return
+    # F26 P2: vincular() crea la formación o reutiliza la que ya tenía en esa institución (y carrera), sin duplicar
+    from apps.personas.vinculos import vincular
+
+    res = vincular(persona, organizacion=org, carrera=carrera, estado_formacion="estudiante")
+    fm = res["formacion"]
+    if fm not in res["creados"]:
+        return  # ya la tenía: el lote no la registra (deshacer el lote no la toca)
     nivel = "".join(c for c in str(d.get("nivel_actual") or "") if c.isdigit())[:2]
-    fm = PersonaFormacion.objects.create(
-        persona=persona, organizacion=org, carrera=carrera, sede=(d.get("sede") or "").strip()[:120],
-        jornada=JORNADAS.get((d.get("jornada") or "").strip().lower(), ""), nivel_actual=int(nivel) if nivel else None,
-        asignatura=(d.get("asignatura") or "").strip()[:200],
-    )
+    fm.sede = (d.get("sede") or "").strip()[:120]
+    fm.jornada = JORNADAS.get((d.get("jornada") or "").strip().lower(), "")
+    fm.nivel_actual = int(nivel) if nivel else None
+    fm.asignatura = (d.get("asignatura") or "").strip()[:200]
+    fm.save(update_fields=["sede", "jornada", "nivel_actual", "asignatura"])
     LoteItem.objects.create(lote=lote, tipo_objeto="formacion", objeto_id=fm.pk, fila=f["fila"])
 
 

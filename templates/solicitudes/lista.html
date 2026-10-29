@@ -1,0 +1,12 @@
+{# Qué es: Listado de solicitudes y oportunidades con pestañas por estado (con su contador) encima de la lista. #}
+{# Dónde se usa: /solicitudes · Proceso: P2 #}
+{% extends "generico/lista.html" %}
+{% block antes_filtros %}
+<nav aria-label="Solicitudes por estado">
+  <ul class="nav nav-tabs fche-pestanas-estado mb-3">
+    {% for p in pestanas_estado %}
+    <li class="nav-item"><a class="nav-link{% if p.activa %} active{% endif %}" href="{{ p.url }}"{% if p.activa %} aria-current="page"{% endif %}>{{ p.etiqueta }} <span class="fche-contador">{{ p.n }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endblock %}

@@ -25,8 +25,13 @@ def test_los_tres_lugares_usan_los_mismos_campos_y_etiquetas():
 
 
 def test_las_tres_pantallas_muestran_la_ficha_rapida(cg, actividad):
+    # F26 P1a: /participantes/rapido lleva al único «+ Agregar persona», cuyo buscador crea la persona con la ventana
+    # «+ Crear persona» (/personas/crear-rapida, la segunda pantalla de esta lista)
+    r = cg.get(f"/actividades/{actividad.pk}/participantes/rapido")
+    assert r.status_code == 302 and r["Location"] == f"/actividades/{actividad.pk}/participantes/nuevo"
+    unico = cg.get(r["Location"]).content.decode()
+    assert 'name="persona"' in unico and "crear=1" in unico
     pantallas = [  # (prefijo de los campos, página)
-        ("", cg.get(f"/actividades/{actividad.pk}/participantes/rapido").content.decode()),
         ("rapida-", cg.get("/personas/crear-rapida").content.decode()),
         ("", cg.get("/personas/nueva").content.decode()),  # modo rápido
     ]
@@ -60,8 +65,12 @@ def test_modo_rapido_de_personas_queda_incompleto_con_comuna(cg, comuna):
     r = cg.post("/personas/nueva", {"modo": "rapida", "nombres": "Rápida", "apellido_paterno": "Completa", "correo": "rapida@ejemplo.invalid",
                                     "comuna": comuna.pk})
     p = Persona.objects.get(nombres="Rápida")
-    assert r.status_code == 302 and p.estado_registro.codigo == "incompleto"
+    # F26 P2: el estado se calcula (completitud): con apellido, un contacto y la comuna, la ficha rápida ya queda «activo»;
+    # sin contacto queda «incompleto»
+    assert r.status_code == 302 and p.estado_registro.codigo == "activo"
     assert p.direcciones.get(tipo="residencia").direccion.comuna == comuna
+    cg.post("/personas/nueva", {"modo": "rapida", "nombres": "Rápida Dos", "apellido_paterno": "Sin Contacto", "comuna": comuna.pk})
+    assert Persona.objects.get(nombres="Rápida Dos").estado_registro.codigo == "incompleto"
 
 
 # --- E2: cinco estados; toda alta queda «Inscrito» -------------------------------------------

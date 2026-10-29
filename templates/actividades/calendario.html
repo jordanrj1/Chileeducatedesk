@@ -4,21 +4,35 @@
 {% load static fche %}
 {% block titulo %}Calendario{% endblock %}
 {% block descripcion %}Calendario de actividades programadas, con filtros por estado, zona, responsable y organización.{% endblock %}
-{% block breadcrumb %}<li class="breadcrumb-item active" aria-current="page">Calendario</li>{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item"><a href="/actividades">Actividades</a></li><li class="breadcrumb-item active" aria-current="page">Calendario</li>{% endblock %}
 {% block contenido %}
 <header class="fche-pagina">
-  <div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">Calendario</h1><p class="fche-pagina__bajada">Programación vigente de las actividades. Haz clic en una para abrir su ficha.</p></div>
-  {% if perms.actividades.add_actividad %}<div class="fche-pagina__acciones"><a class="btn btn-primary btn-sm" href="/actividades/nueva">+ Actividad</a></div>{% endif %}
+  <div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">Actividades</h1><p class="fche-pagina__bajada">Programación vigente de las actividades. Haz clic en una para abrir su ficha.</p></div>
+  {% if perms.actividades.add_actividad %}<div class="fche-pagina__acciones"><a class="btn btn-primary btn-sm" href="/actividades/nueva">+ Nueva actividad</a></div>{% endif %}
 </header>
-<div class="fche-filtros">
-  <div class="fche-filtros__campo"><select id="f-estado" class="form-select" aria-label="Estado"><option value="">Todos los estados</option>{% for e in estados %}<option value="{{ e.codigo }}">{{ e.nombre }}</option>{% endfor %}</select></div>
-  <div class="fche-filtros__campo"><select id="f-zona" class="form-select" aria-label="Zona"><option value="">Todas las zonas</option>{% for c in comunas %}<option value="{{ c.pk }}">{{ c.nombre }}</option>{% endfor %}</select></div>
-  <div class="fche-filtros__campo"><select id="f-responsable" class="form-select" aria-label="Responsable"><option value="">Todos los responsables</option>{% for p in responsables %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}</select></div>
-  <div class="fche-filtros__campo"><select id="f-organizacion" class="form-select" aria-label="Organización"><option value="">Todas las organizaciones</option>{% for o in organizaciones %}<option value="{{ o.pk }}">{{ o.nombre }}</option>{% endfor %}</select></div>
-  <div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="f-historicas"><label class="form-check-label small" for="f-historicas">Mostrar programaciones anteriores</label></div>
-</div>
+{% include "actividades/_vista.html" with vista="calendario" %}
+<form class="fche-filtros" method="get" role="search" aria-label="Filtrar el calendario" id="filtros-calendario">
+  <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true">Filtrar</button>
+  <div class="fche-filtros__campo fche-filtros__campo--principal"><select id="f-estado" name="estado" class="form-select" aria-label="Estado" title="Estado"><option value="">Estado: todos</option>{% for e in estados %}<option value="{{ e.codigo }}"{% if elegido.estado == e.codigo %} selected{% endif %}>{{ e.nombre }}</option>{% endfor %}</select></div>
+  <div class="fche-filtros__campo fche-filtros__campo--principal"><select id="f-zona" name="zona" class="form-select" aria-label="Zona" title="Zona"><option value="">Zona: todas</option>{% for c in comunas %}<option value="{{ c.pk }}"{% if elegido.zona == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.nombre }}</option>{% endfor %}</select></div>
+  <details class="fche-filtros__mas">
+    <summary class="btn btn-outline-secondary">{% icono "filtro" 16 %}Filtros</summary>
+    <div class="fche-filtros__panel">
+      <fieldset class="fche-filtros__grupo">
+        <legend class="fche-filtros__etiqueta">Con quién</legend>
+        <div class="fche-filtros__campo"><label class="form-label fche-filtros__rotulo" for="f-responsable">Responsable</label><select id="f-responsable" name="responsable" class="form-select"><option value="">Todos</option>{% for p in responsables %}<option value="{{ p.pk }}"{% if elegido.responsable == p.pk|stringformat:"s" %} selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
+        <div class="fche-filtros__campo"><label class="form-label fche-filtros__rotulo" for="f-organizacion">Organización</label><select id="f-organizacion" name="organizacion" class="form-select"><option value="">Todas</option>{% for o in organizaciones %}<option value="{{ o.pk }}"{% if elegido.organizacion == o.pk|stringformat:"s" %} selected{% endif %}>{{ o.nombre }}</option>{% endfor %}</select></div>
+      </fieldset>
+      <fieldset class="fche-filtros__grupo">
+        <legend class="fche-filtros__etiqueta">Programación</legend>
+        <div class="fche-filtros__campo"><div class="form-check fche-filtros__casilla"><input class="form-check-input" type="checkbox" id="f-historicas" name="historicas" value="1"{% if elegido.historicas == "1" %} checked{% endif %}><label class="form-check-label" for="f-historicas">Mostrar programaciones anteriores</label></div></div>
+      </fieldset>
+      <div class="fche-filtros__panel-acciones"><button class="btn btn-primary btn-sm" type="submit">Aplicar filtros</button></div>
+    </div>
+  </details>
+</form>
 <section class="fche-tarjeta fche-calendario">
-  <div class="fche-leyenda mb-3" aria-label="Colores por estado">{% for c, color in colores.items %}<span><i style="background:{{ color }}"></i>{{ c }}</span>{% endfor %}</div>
+  <div class="fche-leyenda mb-3" role="group" aria-label="Colores por estado">{% for e in estados %}{% estado e %}{% endfor %}</div>
   <div id="calendario" data-eventos="{% url 'actividades:calendario_eventos' %}"></div>
   <noscript><p>El calendario requiere JavaScript. Usa el listado de <a href="/actividades">actividades</a>.</p></noscript>
 </section>

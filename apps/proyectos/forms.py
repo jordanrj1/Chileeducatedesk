@@ -4,7 +4,7 @@ from django import forms
 from apps.nucleo.formularios import BootstrapMixin, SelectorField
 from apps.nucleo.models import RolParticipacion, TipoIntervencion
 from apps.organizaciones.selector import ORGANIZACIONES
-from apps.personas.selector import AYUDA_RESPONSABLE, PERSONAS
+from apps.personas.selector import AYUDA_RESPONSABLE_EQUIPO, PERSONAS
 from apps.territorio.destinos import DestinosMixin
 
 from .models import Postulacion, Proyecto, ProyectoComunidad, ProyectoOrganizacion, ProyectoPersona
@@ -18,7 +18,7 @@ class ProyectoForm(DestinosMixin, BootstrapMixin, forms.ModelForm):
     """Crear y editar el proyecto. «¿Dónde?» guarda una o más comunas o sectores (apps/territorio/destinos.py); la zona
     escrita a mano antes solo aparece si tiene texto, para revisarla y borrarla."""
 
-    responsable = _persona(required=False, filtros={"equipo_primero": 1}, help_text=AYUDA_RESPONSABLE)
+    responsable = _persona(required=False, filtros={"equipo_primero": 1}, help_text=AYUDA_RESPONSABLE_EQUIPO)
     secciones = [
         ("Identificación", "", ["nombre", "estado", "area_tematica", "responsable", "fecha_inicio", "fecha_termino"]),
         ("¿Dónde se desarrolla o a quién va dirigido?", "Las comunas o sectores donde se desarrolla; puedes agregar varios. No es obligatorio.",
@@ -112,6 +112,14 @@ class _PersonaProyectoForm(BootstrapMixin, forms.ModelForm):
 class EquipoForm(_PersonaProyectoForm):
     tipo_fijo = "equipo"
 
+    def save(self, commit=True):
+        obj = super().save(commit)
+        if commit:  # F26 P2: marcarlo responsable aquí cambia también el responsable del proyecto (una sola verdad)
+            from .servicios import responsable_desde_equipo
+
+            responsable_desde_equipo(obj)
+        return obj
+
 
 class BeneficiarioForm(_PersonaProyectoForm):
     tipo_fijo = "beneficiario"
@@ -145,6 +153,14 @@ class ProyectoOrganizacionForm(BootstrapMixin, forms.ModelForm):
 
     def validate_unique(self):
         pass
+
+    def save(self, commit=True):
+        obj = super().save(commit)
+        if commit:  # F26 P2: la persona de contacto queda vinculada a la organización
+            from apps.personas.vinculos import vincular_contacto
+
+            vincular_contacto(obj.contacto, obj.organizacion)
+        return obj
 
 
 class PostulacionForm(BootstrapMixin, forms.ModelForm):

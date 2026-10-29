@@ -1,8 +1,0 @@
-{# Qué es: Pestaña Seguimiento: contactos registrados sobre la solicitud. #}
-{# Dónde se usa: /solicitudes/<int:pk> · Proceso: P6 #}
-{% load fche %}<div class="fche-seccion"><h2 class="h6">Contactos y seguimiento{% if interacciones %} <span class="fche-contador">{{ interacciones|length }}</span>{% endif %}</h2>
-{% if puede_agregar and perms.coordinacion.add_interaccion %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'coordinacion:interaccion_nueva' %}?solicitud={{ object.pk }}">+ Registrar interacción</a></div>{% endif %}</div>
-{% if interacciones %}<ol class="fche-linea">{% for i in interacciones %}<li class="fche-linea__item">
-<div class="fche-linea__cabecera"><a class="fche-linea__tipo" href="{{ i.get_absolute_url }}">{{ i.canal }} · {{ i.persona|default:i.organizacion|default:"—" }}</a><span class="fche-linea__meta">{{ i.fecha|date:"d-m-Y H:i" }}</span></div>
-<div class="small mt-1">{{ i.resultado }}</div>{% if i.proxima_accion %}<div class="small mt-1 text-primary">→ {{ i.proxima_accion }}{% if i.proxima_fecha %} ({{ i.proxima_fecha|date:"d-m-Y" }}){% endif %}</div>{% endif %}</li>{% endfor %}</ol>
-{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "reuniones" 18 %}</span><p class="fche-vacio__texto mb-0">Aún no se ha registrado ningún contacto.</p></div>{% endif %}

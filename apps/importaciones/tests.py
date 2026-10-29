@@ -138,7 +138,9 @@ def test_confirmar_crea_personas_contactos_participacion_y_origen(cg, actividad,
     assert r.status_code == 302 and lote.estado == "confirmado" and lote.resumen["aplicado"]["creados"] == 3
     assert Persona.objects.count() == 3 and actividad.participaciones.count() == 3
     ana = Persona.objects.get(nombres="Ana María")
-    assert ana.rut == "12.345.678-" + calcular_dv(12345678) and ana.estado_registro.codigo == "activo"
+    # F26 P2: estado calculado; la planilla no trae la comuna donde vive, así que la ficha queda «incompleto» y dice qué falta
+    assert ana.rut == "12.345.678-" + calcular_dv(12345678) and ana.estado_registro.codigo == "incompleto"
+    assert ana.faltantes() == ["comuna de residencia"]
     assert set(ana.contactos.values_list("valor_normalizado", flat=True)) == {"ana@ejemplo.invalid", "+56987654321"}
     carla = Persona.objects.get(nombres="Carla")
     assert carla.estado_registro.codigo == "incompleto" and not carla.contactos.exists()
@@ -160,7 +162,7 @@ def test_no_se_confirma_con_errores_sin_omitir(cg, actividad, rol):
     subir(cg, actividad, rol, malo)
     lote = Lote.objects.get()
     html = cg.get(f"/importaciones/{lote.pk}/revisar").content.decode()
-    assert "disabled" in html and "1 fila(s) por resolver" in html
+    assert "disabled" in html and "1 fila por resolver"  # F26 P: plural correcto in html
     r = cg.post(f"/importaciones/{lote.pk}/revisar", {"accion": "confirmar"})
     lote.refresh_from_db()
     assert r.status_code == 200 and lote.estado == "previa" and not Persona.objects.exists()

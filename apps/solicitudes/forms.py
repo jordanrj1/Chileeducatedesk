@@ -27,3 +27,11 @@ class SolicitudForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self.fields["canal"].queryset = Canal.objects.filter(activo=True)
+
+    def save(self, commit=True):
+        obj = super().save(commit)
+        if commit:  # F26 P2: la persona de contacto queda vinculada a la organización
+            from apps.personas.vinculos import vincular_contacto
+
+            vincular_contacto(obj.persona, obj.organizacion)
+        return obj

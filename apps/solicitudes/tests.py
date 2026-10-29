@@ -109,7 +109,8 @@ def test_historial_y_permisos(cg, ca, cs):
 
 def test_nueva_oportunidad_y_por_identificar(cg):
     html = cg.get("/solicitudes").content.decode()
-    assert "+ Nueva oportunidad" in html
+    # F26 P1b: un solo «+ Nueva» (el formulario pregunta el origen); la dirección de oportunidad sigue sirviendo
+    assert 'href="/solicitudes/nueva">+ Nueva</a>' in html and "+ Nueva oportunidad" not in html
     r = cg.get("/solicitudes/nueva?oportunidad=1").content.decode()
     assert "Nueva oportunidad" in r and 'value="busqueda_activa" selected' in r
     nueva(cg, motivo="Sin saber quién llamó")

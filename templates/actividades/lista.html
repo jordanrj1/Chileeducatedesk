@@ -1,0 +1,4 @@
+{# Qué es: Listado de actividades (y tareas) con el selector «Lista | Calendario» encima de los filtros. #}
+{# Dónde se usa: /actividades · Proceso: P5 #}
+{% extends "generico/lista.html" %}
+{% block antes_filtros %}{% include "actividades/_vista.html" with vista="lista" %}{% endblock %}

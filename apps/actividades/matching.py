@@ -1,4 +1,5 @@
 """F16 — Búsqueda asistida. Propone candidatos con razones y conflictos; nunca asigna por sí sola."""
+from apps.nucleo.utilidades import plural
 from dataclasses import dataclass, field
 
 from django.db.models import Count, Q
@@ -57,7 +58,7 @@ def buscar_personas(actividad, texto="", area="", institucion=None, carrera=None
         else:
             razones.append("La actividad aún no tiene fecha y hora: no se puede revisar la disponibilidad")
         if p.n_actividades:
-            razones.append(f"Ha participado en {p.n_actividades} actividad(es)")
+            razones.append(f"Ha participado en {plural(p.n_actividades, 'actividad', 'actividades')}")
         c = Candidato(p, estado, razones, p.n_actividades)
         if solo_disponibles and estado == "conflicto":
             continue
@@ -110,6 +111,6 @@ def buscar_organizaciones(actividad, tipo=None, comuna=None, texto="", limite=40
     qs = qs.annotate(n_actividades=Count("actividades", distinct=True)).order_by("-n_actividades", "nombre")[:limite]
     res = []
     for o in qs:
-        razones = [f"Ha intervenido en {o.n_actividades} actividad(es)"] if o.n_actividades else ["Sin actividades previas"]
+        razones = [f"Ha intervenido en {plural(o.n_actividades, 'actividad', 'actividades')}"] if o.n_actividades else ["Sin actividades previas"]
         res.append(Candidato(o, "ok" if o.n_actividades else "sin_datos", razones, o.n_actividades))
     return _ordenar(res)

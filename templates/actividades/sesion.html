@@ -60,7 +60,8 @@
           {% if puede_asistencia %}<select class="form-select form-select-sm" style="max-width:9.5rem" name="asistio_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}">
             <option value="" {% if valor is None %}selected{% endif %}>Sin registro</option><option value="si" {% if valor is True %}selected{% endif %}>Asistió</option><option value="no" {% if valor is False %}selected{% endif %}>No asistió</option></select>
           {% else %}<span class="small">{% if valor is True %}Asistió{% elif valor is False %}No asistió{% else %}—{% endif %}</span>{% endif %}</li>{% endfor %}</ul>
-        {% if puede_asistencia %}<div class="fche-tarjeta__pie"><button class="btn btn-primary btn-sm">Guardar asistencia de la sesión</button></div>{% endif %}
+        {% if puede_asistencia %}<div class="fche-tarjeta__pie"><button class="btn btn-primary btn-sm">Guardar asistencia de la sesión</button>
+          <p class="small text-muted mb-0 mt-2">La asistencia de la actividad se calcula desde las sesiones: asistió si vino al menos a una; no asistió si faltó a todas. Se puede corregir en «Pasar lista».</p></div>{% endif %}
       </form>
       {% else %}<div class="fche-pendiente__vacio">La actividad aún no tiene participantes registrados.</div>{% endif %}
     </section>

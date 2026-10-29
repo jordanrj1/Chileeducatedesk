@@ -27,6 +27,7 @@ class Proyecto(models.Model):
     fecha_termino = models.DateField("término", null=True, blank=True)
     estado = models.CharField(max_length=12, choices=ESTADOS, default="preparacion")
     responsable = models.ForeignKey("personas.Persona", null=True, blank=True, on_delete=models.PROTECT, related_name="proyectos_a_cargo")
+    conclusion = models.TextField("conclusión", blank=True, help_text="Qué se logró y qué queda pendiente. Se escribe al finalizar el proyecto (F26 P3a).")
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     creado_en = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()

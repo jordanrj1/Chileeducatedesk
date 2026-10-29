@@ -1,4 +1,8 @@
-{# Qué es: Formulario para agregar un participante (si no existe, se crea con «+ Crear persona» del buscador). #}
-{# Dónde se usa: /actividades/<int:pk>/participantes/nuevo · Proceso: P3 #}
+{# Qué es: El único «+ Agregar persona» de la actividad o tarea (F26 P1a): persona (si no existe, «+ Crear persona» del buscador abre la ficha rápida), rol, cargo, estado, de qué grupo viene, «Llegó / asistió» y, con permiso de datos sensibles, el apoderado o contacto de emergencia de un menor. «Guardar y agregar otra» mantiene el rol, el estado y el grupo. #}
+{# Dónde se usa: /actividades/<int:pk>/participantes/nuevo (también llegan aquí /participantes/rapido y /beneficiarios/registrar) · Proceso: P3/P8 #}
 {% extends "generico/formulario.html" %}
-{% block extra_form %}{% if llego %}<input type="hidden" name="llego" value="1"><p class="small text-muted mt-2">Quedará marcada como asistente.</p>{% endif %}{% endblock %}
+{% block extra_form %}<input type="hidden" name="volver" value="{{ volver }}">
+<noscript><p class="small text-muted mt-3 mb-0">Sin JavaScript el buscador muestra solo las primeras personas. Si no está, regístrala primero en <a href="/personas/nueva">Personas → Nueva</a> y vuelve aquí.</p></noscript>
+{% if not form.puede_sensibles %}<p class="small text-muted mt-3 mb-0">El apoderado o contacto de emergencia de un menor lo registra quien tiene permiso de datos sensibles, en la ficha de la persona.</p>{% endif %}
+{% endblock %}
+{% block acciones_form %}<button type="submit" class="btn btn-outline-primary" name="otra" value="1">Guardar y agregar otra</button>{% endblock %}

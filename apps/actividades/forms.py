@@ -7,11 +7,11 @@ from apps.comunidades.selector import COMUNIDADES
 from apps.lugares.campos import LugarChoiceField
 from apps.lugares.models import Lugar
 from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores_selectores, preparar_tramos
-from apps.nucleo.models import AreaTematica, EstadoParticipacion, Modalidad, RolParticipacion, TipoActividad, TipoIntervencion
+from apps.nucleo.models import AreaTematica, EstadoParticipacion, Modalidad, RolOrganizacion, RolParticipacion, TipoActividad, TipoIntervencion
 from apps.organizaciones.selector import ORGANIZACIONES
 from apps.personas.forms import CAMPOS_FICHA_RAPIDA, SECCIONES_FICHA_RAPIDA, FichaRapidaForm
 from apps.personas.models import Persona
-from apps.personas.selector import AYUDA_RESPONSABLE, PERSONAS
+from apps.personas.selector import AYUDA_RESPONSABLE_EQUIPO, PERSONAS
 from apps.proyectos.models import Proyecto
 from apps.territorio.destinos import DestinosMixin
 from apps.territorio.models import Comuna, Sector
@@ -28,7 +28,7 @@ class ActividadForm(DestinosMixin, BootstrapMixin, forms.ModelForm):
     """Crear y editar la actividad: qué es, para qué y para quién, y dónde (a la vista); los detalles van plegados.
     «¿Dónde?» guarda uno o más territorios (apps/territorio/destinos.py) junto con la actividad."""
 
-    responsable = SelectorField(PERSONAS, filtros={"equipo_primero": 1}, required=False, help_text=AYUDA_RESPONSABLE)
+    responsable = SelectorField(PERSONAS, filtros={"equipo_primero": 1}, required=False, help_text=AYUDA_RESPONSABLE_EQUIPO)
     actividad_padre = SelectorField(
         ACTIVIDADES, filtros={"raiz": 1}, required=False, label="Jornada a la que pertenece",
         help_text="Solo si esta charla o taller ocurre dentro de una jornada ya registrada. Ej.: una feria con varios talleres.",
@@ -84,15 +84,50 @@ class ActividadForm(DestinosMixin, BootstrapMixin, forms.ModelForm):
         return p
 
 
-class TareaForm(BootstrapMixin, forms.ModelForm):
-    """F25: «Nueva tarea» del proyecto en un solo paso. Una tarea es una actividad con proyecto: aquí se piden sus datos,
-    su fecha (que la deja programada) y su destino (lugar o comunidad); la vista guarda todo junto."""
+class ProgramarAhoraMixin(forms.Form):
+    """Fecha, horas y lugar opcionales al crear: con fecha y hora de inicio, la vista la deja programada en la misma
+    transacción (servicios.programar). Sin fecha, se programa después desde la ficha."""
 
-    responsable = SelectorField(PERSONAS, filtros={"equipo_primero": 1}, required=False, help_text=AYUDA_RESPONSABLE)
     fecha = forms.DateField(widget=forms.DateInput, required=False, label="Fecha", help_text="Si aún no se sabe, déjala vacía y prográmala después.")
     hora_inicio = forms.TimeField(widget=forms.TimeInput, required=False, label="Hora de inicio", help_text="Ej.: 10:00.")
     hora_fin = forms.TimeField(widget=forms.TimeInput, required=False, label="Hora de término", help_text="Ej.: 12:00.")
     lugar = LugarChoiceField(required=False, help_text="Sala, sede o espacio, si ya se sabe.")
+    que_se_programa = "la actividad"
+
+    def clean(self):
+        d = super().clean()
+        fecha, ini, fin = d.get("fecha"), d.get("hora_inicio"), d.get("hora_fin")
+        if fecha and not ini:
+            self.add_error("hora_inicio", "Indica la hora de inicio (o deja la fecha vacía).")
+        if (ini or fin) and not fecha:
+            self.add_error("fecha", f"Indica la fecha de {self.que_se_programa}.")
+        if ini and fin and fin <= ini:
+            self.add_error("hora_fin", "La hora de término debe ser posterior a la de inicio.")
+        return d
+
+
+class ActividadDesdeSolicitudForm(ProgramarAhoraMixin, ActividadForm):
+    """F26 P1b: «Crear actividad» desde una solicitud. Los mismos datos de una actividad nueva, rellenos con la
+    solicitud, más «Programar ahora» (opcional) para dejarla con fecha en el mismo paso."""
+
+    secciones = [
+        *ActividadForm.secciones[:1],
+        ("Programar ahora", "Opcional. Con fecha y hora de inicio queda programada y aparece en el calendario.",
+         ["fecha", "hora_inicio", "hora_fin", "lugar"]),
+        *ActividadForm.secciones[1:],
+    ]
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        fijar_valores_selectores(self)  # el responsable que viene de la solicitud se dibuja ya elegido
+
+
+class TareaForm(ProgramarAhoraMixin, BootstrapMixin, forms.ModelForm):
+    """F25: «Nueva tarea» del proyecto en un solo paso. Una tarea es una actividad con proyecto: aquí se piden sus datos,
+    su fecha (que la deja programada) y su destino (lugar o comunidad); la vista guarda todo junto."""
+
+    responsable = SelectorField(PERSONAS, filtros={"equipo_primero": 1}, required=False, help_text=AYUDA_RESPONSABLE_EQUIPO)
+    que_se_programa = "la tarea"
     comunidad = SelectorField(COMUNIDADES, required=False, label="Comunidad", crear=False,
                               help_text="Si la tarea va a una comunidad (con o sin lugar). Ej.: Vecinos de la Etapa 2.")
     secciones = [
@@ -117,17 +152,6 @@ class TareaForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         preparar_tramos(self)
-
-    def clean(self):
-        d = super().clean()
-        fecha, ini, fin = d.get("fecha"), d.get("hora_inicio"), d.get("hora_fin")
-        if fecha and not ini:
-            self.add_error("hora_inicio", "Indica la hora de inicio (o deja la fecha vacía).")
-        if (ini or fin) and not fecha:
-            self.add_error("fecha", "Indica la fecha de la tarea.")
-        if ini and fin and fin <= ini:
-            self.add_error("hora_fin", "La hora de término debe ser posterior a la de inicio.")
-        return d
 
 
 class ProgramarForm(BootstrapMixin, forms.Form):
@@ -243,16 +267,54 @@ class GrupoMixin(forms.Form):
     # también queda como el cargo de la persona en ella.
     cargo = forms.CharField(max_length=120, required=False, label="Cargo o función",
                             help_text=AYUDA_CARGO + " Si eliges la organización, también queda como su cargo en ella.")
+    # F26 P2: qué es en esa organización (catálogo «Rol en la organización»); si se deja vacío, se deduce del cargo
+    rol_organizacion = forms.ModelChoiceField(RolOrganizacion.objects.filter(activo=True), required=False, label="Rol en la organización",
+                                              help_text="Ej.: Docente, Dirigente. Si lo dejas vacío, se deduce del cargo.")
     comunidad = SelectorField(COMUNIDADES, required=False, label="Comunidad de la que viene", help_text="Ej.: Vecinos de la Etapa 2.")
 
     SECCION_GRUPO = ("¿De qué grupo viene?", "Opcional. Queda en la ficha de la persona y en la de la organización o comunidad.",
-                     ["organizacion", "comunidad"])
+                     ["organizacion", "rol_organizacion", "comunidad"])
 
 
-class ParticipanteNuevoForm(GrupoMixin, BootstrapMixin, forms.ModelForm):
-    persona = selector_persona()
+class MenorMixin(forms.Form):
+    """Bloque «Si es menor de edad»: apoderado o contacto de emergencia (dato restringido). El formulario que lo usa
+    borra estos campos si quien registra no tiene personas.ver_sensibles."""
+
+    es_menor = forms.BooleanField(required=False, label="Es menor de edad",
+                                  help_text="Márcalo si no sabes la fecha de nacimiento. Con la fecha, se deduce solo.")
+    apoderado_nombre = forms.CharField(max_length=150, required=False, label="Nombre del apoderado o contacto de emergencia", help_text="Ej.: María Pérez.")
+    apoderado_parentesco = forms.CharField(max_length=60, required=False, label="Parentesco", help_text="Ej.: madre, abuelo, tía.")
+    apoderado_telefono = forms.CharField(max_length=40, required=False, label="Teléfono del apoderado o contacto de emergencia",
+                                         help_text="Ej.: +56 9 1234 5678.")
+    CAMPOS_MENOR = ["es_menor", "apoderado_nombre", "apoderado_parentesco", "apoderado_telefono"]
+    AYUDA_MENOR = ("Dato restringido 🔒: solo lo ve quien tiene permiso de datos sensibles. "
+                   "Si es menor, se pide su apoderado o un contacto de emergencia.")
+
+    def clean_apoderado_telefono(self):
+        from apps.nucleo.utilidades import normalizar_telefono, telefono_normalizado_valido
+
+        t = (self.cleaned_data.get("apoderado_telefono") or "").strip()
+        if t and not telefono_normalizado_valido(normalizar_telefono(t)):
+            raise forms.ValidationError("No se pudo interpretar el teléfono. Usa el formato +56 9 1234 5678.")
+        return t
+
+    def _exigir_apoderado(self):
+        d = self.cleaned_data
+        if not (d.get("apoderado_nombre") or "").strip():
+            self.add_error("apoderado_nombre", "Es menor de edad: indica el nombre de su apoderado o contacto de emergencia.")
+        if not d.get("apoderado_telefono") and "apoderado_telefono" not in self.errors:
+            self.add_error("apoderado_telefono", "Es menor de edad: indica un teléfono de su apoderado o contacto de emergencia.")
+
+
+class ParticipanteNuevoForm(MenorMixin, GrupoMixin, BootstrapMixin, forms.ModelForm):
+    """F26 P1a: el único «+ Agregar persona». La persona se elige en el buscador (si no existe, «+ Crear persona» abre la
+    ficha rápida), con su rol, cargo, estado, «¿De qué grupo viene?» y «Llegó / asistió». El bloque de menor de edad
+    (solo con personas.ver_sensibles) se muestra si el rol es del grupo «Asistentes» (con JavaScript; sin él, siempre) o
+    si la persona elegida es menor; si es menor, asiste y no tiene contacto de emergencia, se pide."""
+
+    persona = selector_persona(help_text="Escribe para buscar. Si no está, elige «+ Crear persona»: abre la ficha rápida y queda elegida.")
     otro_rol = forms.BooleanField(required=False, label="Sí, agregarla también con este rol")
-    secciones = [("Participante", "", ["persona", "rol", "cargo", "otro_rol", "estado", "observaciones"]), GrupoMixin.SECCION_GRUPO]
+    llego = forms.BooleanField(required=False, label="Llegó / asistió", help_text="Márcala si ya está aquí: queda «Asistió».")
 
     class Meta:
         model = Participacion
@@ -260,14 +322,37 @@ class ParticipanteNuevoForm(GrupoMixin, BootstrapMixin, forms.ModelForm):
         labels = ETIQUETAS_PARTICIPACION
         help_texts = AYUDAS_PARTICIPACION
 
-    def __init__(self, *a, actividad=None, **kw):
+    def __init__(self, *a, actividad=None, puede_sensibles=False, permitir_llego=True, **kw):
         super().__init__(*a, **kw)
         self.actividad = actividad
+        self.puede_sensibles = puede_sensibles
         self.fields["rol"].queryset = RolParticipacion.objects.filter(activo=True)
         self.fields["estado"].queryset = estados_para_elegir()
-        self.fields["estado"].initial = EstadoParticipacion.objects.filter(codigo="confirmado").first()
+        if "estado" not in self.initial:
+            self.fields["estado"].initial = EstadoParticipacion.objects.filter(codigo="confirmado").first()
         if not self.is_bound:
             del self.fields["otro_rol"]  # la casilla aparece solo si la persona ya participa con otro rol (F25 E3)
+        if not permitir_llego:
+            del self.fields["llego"]  # antes del día de la actividad no se marca la asistencia
+        self.secciones = [("Persona y rol", "", ["persona", "rol", "cargo", "otro_rol", "estado", "llego", "observaciones"]), GrupoMixin.SECCION_GRUPO]
+        if puede_sensibles:
+            self.secciones.append(("Si es menor de edad", self.AYUDA_MENOR, self.CAMPOS_MENOR))
+            asistentes = " ".join(str(pk) for pk in RolParticipacion.objects.filter(grupo="asistente").values_list("pk", flat=True))
+            for c in self.CAMPOS_MENOR:  # static/js/fche.js: se ven solo si el rol elegido es del grupo «Asistentes»
+                self.fields[c].widget.attrs.update({"data-mostrar-si-campo": "rol", "data-mostrar-si-valor": asistentes})
+        else:
+            for c in self.CAMPOS_MENOR:
+                del self.fields[c]
+        fijar_valores_selectores(self)
+
+    def es_menor_de_edad(self):
+        persona = self.cleaned_data.get("persona")
+        return bool(persona and persona.es_menor) or bool(self.cleaned_data.get("es_menor"))
+
+    def _mostrar_bloque_menor(self):
+        for c in self.CAMPOS_MENOR:
+            for atributo in ("data-mostrar-si-campo", "data-mostrar-si-valor"):
+                self.fields[c].widget.attrs.pop(atributo, None)
 
     def clean(self):
         d = super().clean()
@@ -279,6 +364,10 @@ class ParticipanteNuevoForm(GrupoMixin, BootstrapMixin, forms.ModelForm):
             self.add_error("otro_rol", aviso_otro_rol(persona, roles, rol))
         elif not roles:
             self.fields.pop("otro_rol", None)
+        if self.puede_sensibles and self.es_menor_de_edad():
+            self._mostrar_bloque_menor()  # la persona es menor: el bloque se ve sea cual sea el rol
+            if rol and rol.grupo == "asistente" and persona and not persona.contactos_emergencia.filter(vigente=True).exists():
+                self._exigir_apoderado()
         return d
 
     def validate_unique(self):
@@ -303,11 +392,18 @@ def ayuda_horas(agenda):
 
 
 class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
-    institucion = SelectorField(ORGANIZACIONES, filtros={"tipo": "institucion_educativa"}, required=False, label="Institución de procedencia",
-                                help_text="Universidad, instituto o liceo del que viene (estudiantes). Se completa sola con la formación vigente.")
+    # F26 P2: cualquier organización activa (no solo las educativas): una junta, una empresa o una municipalidad también
+    institucion = SelectorField(ORGANIZACIONES, required=False, label="Institución u organización de procedencia",
+                                help_text="De dónde viene: su universidad o liceo, su junta de vecinos, su empresa… "
+                                          "Se completa sola con la formación vigente.")
+    # F26 P2: al corregir la procedencia, también se puede dejar en la ficha de la persona (vínculo o padrón)
+    actualizar_vinculo = forms.BooleanField(required=False, label="Actualizar también su vínculo",
+                                            help_text="Si cambias la institución o la comunidad, queda también en la ficha de la persona "
+                                                      "(su vínculo con la organización o su lugar en el padrón), sin duplicar.")
     secciones = [
         ("Participación", "", ["rol", "cargo", "estado", "observaciones"]),
-        ("Procedencia y horas", "Para los informes: de qué institución y comunidad viene, y cuántas horas aportó o recibió.", ["institucion", "comunidad", "horas"]),
+        ("Procedencia y horas", "Para los informes: de qué institución y comunidad viene, y cuántas horas aportó o recibió.",
+         ["institucion", "comunidad", "actualizar_vinculo", "horas"]),
     ]
 
     class Meta:
@@ -347,20 +443,15 @@ class PersonaRapidaForm(GrupoMixin, FichaRapidaForm):
     field_order = [*CAMPOS_FICHA_RAPIDA, "rol", "cargo"]
 
 
-class BeneficiarioForm(GrupoMixin, FichaRapidaForm):
+class BeneficiarioForm(MenorMixin, GrupoMixin, FichaRapidaForm):
     """F25 F2: «+ Registrar beneficiario» de una tarea. La ficha rápida única, el rol (Beneficiario o Participante, los del
     grupo de asistentes), su grupo (organización con cargo, comunidad) y, si es menor de edad, su apoderado o contacto de
-    emergencia (dato restringido: el bloque solo existe para quien puede ver datos sensibles)."""
+    emergencia (dato restringido: el bloque solo existe para quien puede ver datos sensibles).
+    F26 P1a: la pantalla ahora es «+ Agregar persona» (ParticipanteNuevoForm); este formulario sigue atendiendo los envíos
+    a la ruta antigua /beneficiarios/registrar."""
 
     rol = forms.ModelChoiceField(RolParticipacion.objects.none(), label="Rol en la tarea", help_text="Beneficiario, o Participante si solo asiste.")
-    es_menor = forms.BooleanField(required=False, label="Es menor de edad",
-                                  help_text="Márcalo si no sabes la fecha de nacimiento. Con la fecha, se deduce solo.")
-    apoderado_nombre = forms.CharField(max_length=150, required=False, label="Nombre del apoderado o contacto de emergencia", help_text="Ej.: María Pérez.")
-    apoderado_parentesco = forms.CharField(max_length=60, required=False, label="Parentesco", help_text="Ej.: madre, abuelo, tía.")
-    apoderado_telefono = forms.CharField(max_length=40, required=False, label="Teléfono del apoderado o contacto de emergencia",
-                                         help_text="Ej.: +56 9 1234 5678.")
-    CAMPOS_MENOR = ["es_menor", "apoderado_nombre", "apoderado_parentesco", "apoderado_telefono"]
-    field_order = [*CAMPOS_FICHA_RAPIDA, "rol", "cargo", "organizacion", "comunidad", *CAMPOS_MENOR]
+    field_order = [*CAMPOS_FICHA_RAPIDA, "rol", "cargo", "organizacion", "rol_organizacion", "comunidad", *MenorMixin.CAMPOS_MENOR]
 
     def __init__(self, *a, puede_sensibles=False, **kw):
         super().__init__(*a, **kw)
@@ -369,8 +460,7 @@ class BeneficiarioForm(GrupoMixin, FichaRapidaForm):
         self.puede_sensibles = puede_sensibles
         self.secciones = [*SECCIONES_FICHA_RAPIDA, ("En esta tarea", "", ["rol", "cargo"]), GrupoMixin.SECCION_GRUPO]
         if puede_sensibles:
-            self.secciones.append(("Si es menor de edad", "Dato restringido 🔒: solo lo ve quien tiene permiso de datos sensibles. "
-                                   "Si es menor, se pide su apoderado o un contacto de emergencia.", self.CAMPOS_MENOR))
+            self.secciones.append(("Si es menor de edad", self.AYUDA_MENOR, self.CAMPOS_MENOR))
         else:
             for c in self.CAMPOS_MENOR:
                 del self.fields[c]
@@ -382,21 +472,10 @@ class BeneficiarioForm(GrupoMixin, FichaRapidaForm):
             return Persona(fecha_nacimiento=nacimiento).es_menor
         return bool(d.get("es_menor"))
 
-    def clean_apoderado_telefono(self):
-        from apps.nucleo.utilidades import normalizar_telefono, telefono_normalizado_valido
-
-        t = (self.cleaned_data.get("apoderado_telefono") or "").strip()
-        if t and not telefono_normalizado_valido(normalizar_telefono(t)):
-            raise forms.ValidationError("No se pudo interpretar el teléfono. Usa el formato +56 9 1234 5678.")
-        return t
-
     def clean(self):
         d = super().clean()
         if self.puede_sensibles and self.es_menor_de_edad():
-            if not (d.get("apoderado_nombre") or "").strip():
-                self.add_error("apoderado_nombre", "Es menor de edad: indica el nombre de su apoderado o contacto de emergencia.")
-            if not d.get("apoderado_telefono") and "apoderado_telefono" not in self.errors:
-                self.add_error("apoderado_telefono", "Es menor de edad: indica un teléfono de su apoderado o contacto de emergencia.")
+            self._exigir_apoderado()
         return d
 
 
@@ -424,6 +503,14 @@ class ActividadOrganizacionForm(BootstrapMixin, forms.ModelForm):
 
     def validate_unique(self):
         pass
+
+    def save(self, commit=True):
+        obj = super().save(commit)
+        if commit:  # F26 P2: la persona de contacto queda vinculada a la organización
+            from apps.personas.vinculos import vincular_contacto
+
+            vincular_contacto(obj.contacto, obj.organizacion)
+        return obj
 
 
 class ActividadComunidadForm(BootstrapMixin, forms.ModelForm):

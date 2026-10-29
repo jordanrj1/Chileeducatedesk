@@ -84,6 +84,7 @@ def crear_serie(actividad, usuario, primera_fecha, frecuencia_dias, repeticiones
             estado=_estado("pendiente"), creado_por=usuario,
         )
         programar(hija, usuario, fecha, hora_inicio, hora_fin, lugar, actividad.modalidad)
+        asegurar_responsable_en_equipo(hija, usuario)  # F26 P2 [P]
         creadas.append(hija)
     registrar(usuario, "serie_creada", actividad, f"{repeticiones} actividades cada {frecuencia_dias} días desde {primera_fecha:%d-%m-%Y}")
     return creadas
@@ -149,6 +150,9 @@ def finalizar(actividad, usuario):
         raise ReglaNegocio(f"No se puede finalizar una actividad {actividad.estado.nombre.lower()}.")
     from .reglas import antes_de_la_fecha
 
+    agenda = actividad.agenda_vigente
+    if not agenda or not agenda.fecha:  # F26 P1b: sin fecha no se sabe cuándo ocurrió (ni cuenta en informes por período)
+        raise ReglaNegocio("Programa la fecha antes de finalizar: la actividad no tiene una fecha vigente.")
     if antes_de_la_fecha(actividad):
         raise ReglaNegocio(f"La actividad es el {actividad.agenda_vigente.fecha:%d-%m-%Y}: se puede finalizar desde ese día.")
     faltan = []
@@ -225,3 +229,77 @@ def asegurar_organizacion(participacion):
         return None
     tipo = TipoIntervencion.objects.filter(codigo="aporta_personas").first()
     return ActividadOrganizacion.objects.create(actividad_id=participacion.actividad_id, organizacion_id=org_id, tipo_intervencion=tipo, vigente=True)
+
+
+def participaciones_con_sesiones(actividad):
+    """F26 P1a: ids de las participaciones con al menos una marca (asistió o no) en las listas de las sesiones. Una consulta."""
+    from .models import SesionAsistencia
+
+    return set(SesionAsistencia.objects.filter(sesion__actividad=actividad, asistio__isnull=False)
+               .values_list("participacion_id", flat=True).distinct())
+
+
+def asistencia_desde_sesiones(actividad):
+    """F26 P1a (varios días): la asistencia de cada participación se calcula desde las listas de las sesiones.
+    Asistió si fue al menos a una sesión; no asistió si está marcada ausente en todas las sesiones con lista; sin datos de
+    sesiones (o con alguna sesión con lista donde no aparece), no se toca. La corrección manual sigue posible en «Pasar
+    lista». Consultas fijas. Devuelve cuántas participaciones cambiaron."""
+    from apps.nucleo.models import EstadoParticipacion
+
+    from .models import SesionAsistencia
+
+    marcas = {}
+    con_lista = set()
+    for sesion_id, part_id, asistio in SesionAsistencia.objects.filter(sesion__actividad=actividad, asistio__isnull=False).values_list(
+            "sesion_id", "participacion_id", "asistio"):
+        con_lista.add(sesion_id)
+        marcas.setdefault(part_id, {})[sesion_id] = asistio
+    if not marcas:
+        return 0
+    estados = {e.codigo: e for e in EstadoParticipacion.objects.filter(codigo__in=["asistio", "no_asistio"])}
+    n = 0
+    for p in actividad.participaciones.select_related("estado").filter(pk__in=marcas).exclude(estado__codigo="registro_erroneo"):
+        suyas = marcas[p.pk]
+        if any(suyas.values()):
+            nuevo = True
+        elif set(suyas) == con_lista:
+            nuevo = False
+        else:
+            continue
+        if nuevo != p.asistencia:
+            p.asistencia = nuevo
+            p.estado = estados["asistio" if nuevo else "no_asistio"]
+            p.save()
+            n += 1
+    return n
+
+
+def rol_equipo_para_responsable():
+    """F26 P2 [P]: el rol con que el responsable entra al equipo ejecutor: «Coordinador» si está en el catálogo (activo y
+    del grupo equipo ejecutor); si no, el primer rol activo de ese grupo."""
+    from apps.nucleo.models import RolParticipacion
+
+    roles = RolParticipacion.objects.filter(activo=True, grupo="ejecutor").order_by("orden", "nombre")
+    return roles.filter(codigo="coordinador").first() or roles.first()
+
+
+def asegurar_responsable_en_equipo(actividad, usuario=None):
+    """F26 P2 [P]: el responsable de la actividad o tarea queda en su equipo ejecutor. Si ya participa con un rol de ese
+    grupo (sin contar los registros erróneos) no se cambia nada; si no, se agrega como «Inscrito» con el rol de
+    `rol_equipo_para_responsable()`. Nunca duplica ni quita a nadie."""
+    from apps.actividades.forms import estado_inicial
+
+    from .models import Participacion
+
+    if not actividad.responsable_id:
+        return None
+    ya = (Participacion.objects.filter(actividad=actividad, persona_id=actividad.responsable_id, rol__grupo="ejecutor")
+          .exclude(estado__codigo="registro_erroneo").first())
+    if ya is not None:
+        return ya
+    rol = rol_equipo_para_responsable()
+    if rol is None:
+        return None
+    part, _ = Participacion.objects.get_or_create(actividad=actividad, persona_id=actividad.responsable_id, rol=rol,
+                                                  defaults={"estado": estado_inicial(), "creado_por": usuario})
+    return part

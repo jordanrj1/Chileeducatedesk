@@ -78,7 +78,15 @@ class Actividad(models.Model):
 
     @property
     def agenda_vigente(self):
+        if "_agenda_vigente_fija" in self.__dict__:  # F26 Rb: leída una vez por la ficha (ver fijar_agenda_vigente)
+            return self.__dict__["_agenda_vigente_fija"]
         return self.agendas.filter(vigente=True).select_related("lugar").first()
+
+    def fijar_agenda_vigente(self):
+        """F26 Rb: la ficha (solo lectura) lee la agenda vigente una sola vez; las demás lecturas de esta instancia la reutilizan.
+        No se usa donde se reprograma: ahí cada lectura consulta la base."""
+        self._agenda_vigente_fija = self.agendas.filter(vigente=True).select_related("lugar").first()
+        return self._agenda_vigente_fija
 
     @property
     def es_virtual(self):

@@ -1,5 +1,5 @@
 """Pruebas de F25 F: la tarea en un solo lugar (specs/f25/spec.md, sección F).
-F1 ocho pestañas en la tarea (las actividades sueltas no cambian) · F2 Equipo y asistencia, Beneficiarios y su registro
+F1 ocho pestañas en la tarea (F26 P3a: también en la actividad suelta) · F2 Equipo y asistencia, Beneficiarios y su registro
 (con el apoderado de un menor) · F3 cargo o función libre y roles «Invitado o invitada» y «Autoridad» · F4 resultados de
 las tareas en el Resumen del proyecto. Todos los datos son ficticios."""
 import re
@@ -45,20 +45,20 @@ def _participar(a, persona, rol, estado, **kw):
 
 
 # --- F1 · pestañas ------------------------------------------------------------------
-def test_tarea_tiene_exactamente_ocho_pestanas_y_la_suelta_conserva_las_suyas(cg, tarea, actividad):
-    assert _pestanas(cg.get(tarea.get_absolute_url()).content.decode()) == [
-        "Información", "Equipo y asistencia", "Beneficiarios", "Organizaciones", "Sesiones", "Cierre", "Documentos", "Historial"]
+OCHO = ["Información", "Equipo y asistencia", "Beneficiarios", "Organizaciones", "Sesiones", "Cierre", "Documentos", "Historial"]
+
+
+def test_tarea_tiene_exactamente_ocho_pestanas_y_la_suelta_tambien(cg, tarea, actividad):
+    assert _pestanas(cg.get(tarea.get_absolute_url()).content.decode()) == OCHO
     # la misma tarea abierta por /actividades/<id> también es tarea
     assert "Equipo y asistencia" in _pestanas(cg.get(f"/actividades/{tarea.pk}").content.decode())
-    sueltas = _pestanas(cg.get(actividad.get_absolute_url()).content.decode())
-    for etiqueta in ("Público y comunidades", "Participantes", "Agenda", "Coordinación", "Resultados", "Alcance", "Origen", "Historial"):
-        assert etiqueta in sueltas, etiqueta
-    assert "Equipo y asistencia" not in sueltas and "Cierre" not in sueltas
+    # F26 P3a: la actividad suelta usa las mismas ocho pestañas (antes conservaba las suyas)
+    assert _pestanas(cg.get(actividad.get_absolute_url()).content.decode()) == OCHO
 
 
 def test_beneficiarios_de_la_tarea_se_ve_sin_segunda_fase(cg, tarea, actividad, sin_segunda_fase):
     assert "Beneficiarios" in _pestanas(cg.get(tarea.get_absolute_url()).content.decode())
-    assert "Beneficiarios" not in _pestanas(cg.get(actividad.get_absolute_url()).content.decode())  # la suelta sigue como estaba
+    assert "Beneficiarios" in _pestanas(cg.get(actividad.get_absolute_url()).content.decode())  # F26 P3a: también en la suelta
 
 
 def test_tab_agenda_en_una_tarea_abre_informacion_con_el_historial_de_reprogramaciones(cg, gestor, tarea, lugar):
@@ -68,8 +68,10 @@ def test_tab_agenda_en_una_tarea_abre_informacion_con_el_historial_de_reprograma
     assert _activa(html) == "info" and "Fecha y reprogramaciones" in html
     assert "La sede no estaba disponible" in html and gestor.get_username() in html and "v1" in html and "v2" in html
     assert "Público y comunidades" in html and "Comunidades destinatarias" in html  # público también en Información
-    for antigua in ("publico", "coordinacion", "alcance"):
+    for antigua in ("publico", "coordinacion"):
         assert _activa(cg.get(f"{tarea.get_absolute_url()}?tab={antigua}").content.decode()) == "info", antigua
+    # F26 P3a: el Alcance pasó a Cierre (antes no se veía en ninguna pestaña de la tarea)
+    assert _activa(cg.get(f"{tarea.get_absolute_url()}?tab=alcance").content.decode()) == "resultados"
     assert _activa(cg.get(f"{tarea.get_absolute_url()}?tab=asistencia").content.decode()) == "participantes"
     historial = cg.get(f"{tarea.get_absolute_url()}?tab=origen").content.decode()
     assert _activa(historial) == "historial" and "Cambios de la actividad" in historial and "Origen de la información" in historial
@@ -83,7 +85,10 @@ def test_equipo_y_asistencia_separa_equipo_e_invitados_y_beneficiarios_va_aparte
                 estado_part("confirmado"))
     equipo = cg.get(f"{tarea.get_absolute_url()}?tab=participantes").content.decode()
     assert "Equipo ejecutor" in equipo and "Invitados y contactos" in equipo
-    assert "Tallerista" in equipo and "Autoridad · Alcalde de Comuna Ficticia" in equipo and "Vecina" not in equipo
+    # F26 P1a: «Pasar lista» incluye a todos (también a los beneficiarios); el detalle del equipo sigue sin ellos
+    lista, detalle = equipo.split('id="pasar-lista"')[1].split("</section>", 1)
+    assert "Vecina" in lista and "Beneficiarios" in lista
+    assert "Tallerista" in detalle and "Autoridad · Alcalde de Comuna Ficticia" in detalle and "Vecina" not in detalle
     benef = cg.get(f"{tarea.get_absolute_url()}?tab=beneficiarios").content.decode()
     assert "Vecina" in benef and "Tallerista" not in benef and "30 años" in benef and "Inscrito" in benef
     assert "+ Registrar beneficiario" in benef
@@ -91,7 +96,10 @@ def test_equipo_y_asistencia_separa_equipo_e_invitados_y_beneficiarios_va_aparte
 
 def test_registrar_beneficiario_menor_crea_su_contacto_de_emergencia(cg, tarea, comuna, rol):
     url = f"/actividades/{tarea.pk}/beneficiarios/registrar"
-    assert "Si es menor de edad" in cg.get(url).content.decode()
+    # F26 P1a: la ruta lleva al único «+ Agregar persona» con el rol Beneficiario elegido; sus envíos se siguen atendiendo
+    r = cg.get(url, follow=True)
+    assert r.redirect_chain[0][0].startswith(f"/actividades/{tarea.pk}/participantes/nuevo?rol=beneficiario")
+    assert "Si es menor de edad" in r.content.decode() and r.context["form"]["rol"].value() == rol("beneficiario").pk
     datos = {"nombres": "Tomasito", "apellido_paterno": "Ficticio", "sin_rut": "on", "comuna": comuna.pk, "rol": rol("beneficiario").pk,
              "fecha_nacimiento": (HOY - timedelta(days=365 * 10)).isoformat()}
     r = cg.post(url, datos)  # menor (por la fecha) sin apoderado: se pide
@@ -147,7 +155,7 @@ def test_cargo_en_los_formularios_y_roles_nuevos(cg, actividad, persona, rol, es
         "invitado": ("Invitado o invitada", "contacto"), "autoridad": ("Autoridad", "contacto")}
     form = cg.get(f"/actividades/{actividad.pk}/participantes/nuevo").content.decode()
     assert "Cargo o función" in form and "Alcalde de Hualpén" in form
-    assert "Cargo o función" in cg.get(f"/actividades/{actividad.pk}/participantes/rapido").content.decode()
+    assert "Cargo o función" in cg.get(f"/actividades/{actividad.pk}/participantes/rapido", follow=True).content.decode()  # F26: lleva al único formulario
     r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": persona.pk, "rol": rol("autoridad").pk,
                                                                         "estado": estado_part("confirmado").pk, "cargo": "Seremi ficticio"})
     assert r.status_code == 302

@@ -1,0 +1,30 @@
+{# Qué es: «Finalizar proyecto» (F26 P3a): avisa cuántas tareas siguen abiertas (con enlaces), sugiere el estado según sus tareas sin imponerlo [V#7], pide la conclusión y ofrece descargar el informe en Excel. #}
+{# Dónde se usa: /proyectos/<int:pk>/finalizar · Proceso: P11 #}
+{% extends "base.html" %}
+{% load fche %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">Finalizar</li>{% endblock %}
+{% block contenido %}
+<header class="fche-pagina"><div class="fche-pagina__texto"><h1 class="fche-pagina__titulo">{{ titulo }}</h1>
+<p class="fche-pagina__bajada">Revisa sus tareas, escribe la conclusión y elige el estado con que queda el proyecto. Nada se borra.</p></div></header>
+<div class="fche-tarjeta" style="max-width:48rem;">
+  <div class="fche-tarjeta__cuerpo">
+    {% if abiertas %}
+    <div class="alert alert-warning d-flex gap-2" role="status">{% icono "alerta" 18 %}<div>{{ abiertas|length|pluralize:"Queda,Quedan" }} <strong>{{ abiertas|length }}</strong> de {{ total_tareas }} tarea{{ total_tareas|pluralize }} {{ abiertas|length|pluralize:"abierta,abiertas" }} (sin finalizar ni cancelar). Puedes finalizar el proyecto igual, pero conviene revisarlas:</div></div>
+    <ul class="fche-items mb-3">{% for t in abiertas %}<li><a class="fche-items__titulo" href="{{ t.get_absolute_url }}">{{ t.nombre }}</a> <span class="small text-muted">{% if t.agenda_v %}{{ t.agenda_v.0.fecha|date:"d-m-Y" }}{% else %}sin programar{% endif %}</span> {% estado t.estado %}</li>{% endfor %}</ul>
+    {% else %}
+    <div class="alert alert-light border d-flex gap-2" role="status">{% icono "ok" 18 %}<div>{% if total_tareas %}Todas sus tareas ({{ total_tareas }}) están realizadas o canceladas.{% else %}El proyecto no tiene tareas.{% endif %}</div></div>
+    {% endif %}
+    <p class="small mb-3">Estado sugerido: <strong>{{ sugerido_nombre }}</strong>. {{ sugerido.1 }}</p>
+    {% if puede_informe %}<p class="mb-0"><a class="btn btn-outline-secondary btn-sm" href="{% url 'proyectos:informe' obj.pk %}">{% icono "descargar" 15 %}Descargar informe (Excel)</a>
+      <span class="small text-muted d-block mt-1">Tareas, asistencia, alcance y aliados.</span></p>{% endif %}
+  </div>
+  <form method="post" data-aviso-cambios>{% csrf_token %}
+    <div class="fche-tarjeta__cuerpo pt-0">{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}</div>
+    <div class="fche-form__acciones">
+      <button class="btn btn-primary">Guardar y finalizar</button>
+      <a class="btn btn-outline-secondary volver" href="{{ obj.get_absolute_url }}">Volver sin cambiar nada</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

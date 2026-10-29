@@ -349,7 +349,18 @@ def test_asistencia(cg, crear_actividad, crear_persona, rol, estado_part):
 
 # --- finalizar (queda «realizada») ----------------------------------------------------------
 def confirmada(crear_actividad, **kw):
-    return crear_actividad("Por finalizar", estado="confirmada", **kw)
+    # F26 P1b: finalizar exige una fecha vigente; la actividad «por finalizar» queda con fecha de hoy
+    a = crear_actividad("Por finalizar", estado="confirmada", **kw)
+    AgendaActividad.objects.create(actividad=a, fecha=date.today(), hora_inicio=time(10), estado=a.estado)
+    return a
+
+
+def test_finalizar_sin_fecha_se_rechaza_con_mensaje_claro(crear_actividad, gestor):
+    a = crear_actividad("Sin fecha", estado="confirmada", resultado="ok", asistencia_sin_registro=True)
+    with pytest.raises(ReglaNegocio, match="Programa la fecha antes de finalizar"):
+        servicios.finalizar(a, gestor)
+    a.refresh_from_db()
+    assert a.estado.codigo == "confirmada"
 
 
 def test_finalizar_exige_asistencia_y_resultado(crear_actividad, gestor):
@@ -568,7 +579,8 @@ def test_cargar_listado_desde_la_actividad(cg, actividad):
 
 def test_agregar_persona_que_llego(cg, crear_actividad, crear_persona, rol, estado_part):
     actividad = crear_actividad("En curso", estado="confirmada")
-    assert "+ Agregar persona que llegó" in cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()  # F25 E7
+    html = cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()
+    assert "+ Agregar persona" in html and "Agregar persona que llegó" not in html  # F26 P1a: un solo botón, con «Llegó / asistió»
     p = crear_persona("Llegó")
     r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("participante").pk, "estado": estado_part("confirmado").pk, "llego": "1"})
     part = actividad.participaciones.get(persona=p)

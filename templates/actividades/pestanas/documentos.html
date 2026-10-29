@@ -1,6 +1,0 @@
-{# Qué es: Pestaña Documentos de la actividad (subir o asociar). Casi igual a documentos/pestanas/lista.html. #}
-{# Dónde se usa: /actividades/<int:pk> · Proceso: P7 #}
-{% load fche %}<div class="fche-seccion"><h2 class="h6">Documentos y evidencias</h2>
-{% if puede_agregar and perms.documentos.add_documento %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{% url 'documentos:nuevo' %}?actividad={{ object.pk }}">{% icono "subir" 15 %}Subir nuevo</a>
-<a class="btn btn-outline-primary btn-sm" href="{% url 'documentos:asociar' %}?actividad={{ object.pk }}">{% icono "enlace" 15 %}Asociar existente</a></div>{% endif %}</div>
-{% include "documentos/_lista.html" %}

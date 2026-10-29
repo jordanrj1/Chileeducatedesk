@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.views.generic import CreateView
 
 from apps.nucleo.direccion_mixin import ComunaInicialMixin
-from apps.nucleo.vistas_base import EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, cambios_historial
+from apps.nucleo.vistas_base import AvisoDuplicadosMixin, EditarBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, cambios_historial
 from apps.territorio.destinos import fila_inicial, texto_destino
 
 from .forms import ProyectoForm
@@ -28,7 +28,7 @@ class ProyectoLista(ListaBase):
     campos_busqueda = ("nombre", "descripcion", "zona", "objetivo_general")
     columnas = [
         ("Proyecto", "nombre"), ("Estado", "get_estado_display"), ("Zona", lambda p: p.zona_resumen), ("Responsable", "responsable"),
-        ("Actividades", lambda p: p.n_actividades),
+        ("Tareas", lambda p: p.n_actividades),  # F26 Ia: en el proyecto se dicen «tareas»
         ("Inicio", lambda p: p.fecha_inicio.strftime("%d-%m-%Y") if p.fecha_inicio else "—"),
     ]
     ordenes = {"nombre": "nombre", "inicio": "fecha_inicio"}
@@ -50,7 +50,10 @@ class ProyectoExportar(ProyectoLista):
     permission_required = "proyectos.exportar_proyecto"
 
 
-class ProyectoNuevo(ComunaInicialMixin, Permiso403Mixin, CreateView):
+from .servicios import asegurar_responsable  # noqa: E402
+
+
+class ProyectoNuevo(AvisoDuplicadosMixin, ComunaInicialMixin, Permiso403Mixin, CreateView):
     model = Proyecto
     form_class = ProyectoForm
     permission_required = "proyectos.add_proyecto"
@@ -77,12 +80,17 @@ class ProyectoNuevo(ComunaInicialMixin, Permiso403Mixin, CreateView):
 
     def form_valid(self, form):
         from apps.documentos.origen import registrar_origen
+        from apps.nucleo.duplicados import proyectos_parecidos
 
+        aviso = self.aviso_duplicados(form, lambda: proyectos_parecidos(form.cleaned_data.get("nombre")), "Este proyecto podría ya estar registrado.")
+        if aviso:
+            return aviso
         with transaction.atomic():  # el proyecto y sus territorios («¿Dónde?») se guardan juntos o no se guardan
             obj = form.save(commit=False)
             obj.creado_por = self.request.user
             obj.save()
             form.save_m2m()
+            asegurar_responsable(obj)  # F26 P2: el responsable queda en el equipo
             registrar_origen(obj, self.request.user)
         messages.success(self.request, "Proyecto creado. Puedes agregar actividades, equipo y documentos cuando quieras.")
         return HttpResponseRedirect(obj.get_absolute_url())
@@ -97,7 +105,10 @@ class ProyectoEditar(EditarBase):
 
     def form_valid(self, form):
         with transaction.atomic():  # el proyecto y sus territorios se guardan juntos o no se guardan
-            return super().form_valid(form)
+            respuesta = super().form_valid(form)
+            if respuesta.status_code == 302:  # guardado (no hubo conflicto de versión)
+                asegurar_responsable(self.object)  # F26 P2: el responsable queda en el equipo
+            return respuesta
 
 
 class ProyectoFicha(FichaBase):
@@ -107,6 +118,7 @@ class ProyectoFicha(FichaBase):
     breadcrumb = [("Proyectos", "/proyectos")]
     permiso_editar = "proyectos.change_proyecto"
     pestanas_segunda_fase = {"beneficiarios": "beneficiarios", "postulacion": "postulaciones", "presupuesto": "finanzas"}
+    origen_en_historial = True  # F26 Ia
     pestanas = [
         ("resumen", "Resumen", "proyectos/pestanas/resumen.html"),
         ("equipo", "Equipo", "generico/_hijos.html"),
@@ -116,9 +128,8 @@ class ProyectoFicha(FichaBase):
         ("tareas", "Tareas", "proyectos/pestanas/actividades.html", "actividades.view_actividad"),  # F25: la clave se conserva
         ("postulacion", "Postulación", "generico/_hijos.html"),
         ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
-        ("documentos", "Documentos", "proyectos/pestanas/documentos.html", "documentos.view_documento"),
+        ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
         ("presupuesto", "Presupuesto", "proyectos/pestanas/presupuesto.html", "finanzas.view_movimiento"),
-        ("origen", "Origen", "documentos/pestanas/origen.html", "documentos.view_origendato"),
         ("historial", "Historial", "generico/_historial.html", "proyectos.view_historicalproyecto"),
     ]
 
@@ -127,6 +138,17 @@ class ProyectoFicha(FichaBase):
             "url_editar": reverse("proyectos:editar", args=[self.object.pk]), "url_volver": "/proyectos",
             "puede_agregar": self.request.user.has_perm("proyectos.change_proyecto"),
         }
+
+    def acciones_extra(self):
+        """F26 P3a: «Finalizar proyecto» (con permiso de edición) y el informe en Excel (con permiso de exportar)."""
+        u, pk = self.request.user, self.object.pk
+        res = []
+        if u.has_perm("proyectos.change_proyecto"):
+            res.append(("Finalizar proyecto" if self.object.estado not in ("finalizado", "cancelado") else "Editar la conclusión",
+                        reverse("proyectos:finalizar", args=[pk])))
+        if u.has_perm("proyectos.exportar_proyecto"):
+            res.append(("Descargar informe (Excel)", reverse("proyectos:informe", args=[pk])))
+        return res
 
     def ctx_resumen(self):
         from apps.actividades.models import AgendaActividad
@@ -196,7 +218,7 @@ class ProyectoFicha(FichaBase):
         ctx["poblacion"] = self.object.poblacion_objetivo
         return ctx
 
-    alias_pestanas = {"actividades": "tareas"}  # «?tab=actividades» de enlaces antiguos abre las tareas
+    alias_pestanas = {"actividades": "tareas", "origen": "historial"}  # enlaces antiguos: «actividades» abre las tareas; «origen», el historial
 
     def ctx_tareas(self):
         """Tareas del proyecto (actividades con proyecto) con su fecha y lugar vigentes, comunidades, participantes y asistencia.
@@ -220,7 +242,9 @@ class ProyectoFicha(FichaBase):
         docs = self.object.documentos.select_related("tipo")
         if not self.request.user.has_perm("documentos.ver_restringido"):
             docs = docs.filter(restringido=False)
-        return {"documentos": docs}
+        pk = self.object.pk
+        return {"documentos": docs, "titulo_documentos": "Documentos del proyecto", "sin_contador_documentos": True,
+                "url_nuevo_doc": f"/documentos/nuevo?proyecto={pk}", "url_asociar_doc": f"/documentos/asociar?proyecto={pk}"}
 
     def ctx_presupuesto(self):
         from apps.finanzas.resumen import resumen_proyecto
@@ -236,7 +260,3 @@ class ProyectoFicha(FichaBase):
             "puede_agregar": self.request.user.has_perm("finanzas.change_itempresupuesto"),
         }
 
-    def ctx_origen(self):
-        from apps.documentos.origen import contexto_origen
-
-        return contexto_origen(self.object, self.request.user)

@@ -1,5 +1,5 @@
 {# Qué es: Pestaña Resultados: observaciones, incidencias, resultado y botón Finalizar. #}
-{# Dónde se usa: /actividades/<int:pk> · Proceso: P8 #}
+{# Dónde se usa: /actividades/<int:pk> (pestaña Cierre); al final, el Alcance (F26 P3a: antes su propia pestaña) · Proceso: P8 #}
 {% load fche %}<h2 class="h6 mb-3">Resultados de la actividad</h2>
 {% if finalizada %}
 <div class="alert alert-secondary d-flex gap-2">{% icono "ok" 18 %}<div>Actividad <strong>realizada</strong>{% if agenda %} el {{ agenda.fecha|date:"d-m-Y" }}{% endif %}; finalizada en el sistema el {{ object.finalizada_en|date:"d-m-Y H:i"|default:"—" }}{% if object.finalizada_por %} por {{ object.finalizada_por }}{% endif %}.
@@ -18,8 +18,10 @@ Los datos de la actividad ya no se editan; el resultado y la asistencia se puede
   <div class="fche-tarjeta__cuerpo">
     <h3 class="h6 mb-2">Finalizar actividad</h3>
     <p class="small text-muted mb-2">Para finalizar se requiere la asistencia registrada (o «sin registro» explícito) y el resultado. La actividad quedará como <strong>realizada</strong>.</p>
-    {% if sin_asistencia and not object.asistencia_sin_registro %}<p class="small text-warning-emphasis d-flex gap-1 align-items-center mb-0">{% icono "alerta" 14 %}{{ sin_asistencia }} participante(s) aún no tienen asistencia registrada.</p>{% endif %}
+    {% if sin_asistencia and not object.asistencia_sin_registro %}<p class="small text-warning-emphasis d-flex gap-1 align-items-center mb-0">{% icono "alerta" 14 %}{{ sin_asistencia }} participante{{ sin_asistencia|pluralize }} aún no {{ sin_asistencia|pluralize:"tiene,tienen" }} asistencia registrada.</p>{% endif %}
   </div>
   <div class="fche-form__acciones"><button class="btn btn-dark" onclick="return confirm('¿Finalizar la actividad? Quedará como realizada.')">Finalizar actividad</button></div>
 </form>
 {% elif not finalizada and object.estado.codigo != "cancelada" and not antes_de_fecha %}<p class="small text-muted mt-3">Para finalizar, la actividad debe estar planificada, confirmada o reprogramada.</p>{% endif %}
+{% if mostrar_alcance %}<section class="mt-5" id="alcance" aria-labelledby="titulo-alcance"><h2 class="h6 mb-2" id="titulo-alcance">Alcance</h2>
+{% include "actividades/pestanas/alcance.html" %}</section>{% endif %}

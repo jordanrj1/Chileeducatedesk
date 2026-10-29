@@ -30,7 +30,7 @@
   <div class="fche-filtros__acciones"><button class="btn btn-primary">{% icono "buscar" 16 %}Buscar</button></div></form>
 {% if buscado %}
   {% if resultados %}
-  <p class="fche-resumen-lista"><span><strong>{{ resultados|length }}</strong> candidato(s) · ✓ sin conflicto · ⚠ con conflicto · ○ sin información suficiente</span></p>
+  <p class="fche-resumen-lista"><span><strong>{{ resultados|length }}</strong> candidato{{ resultados|length|pluralize }} · ✓ sin conflicto · ⚠ con conflicto · ○ sin información suficiente</span></p>
   <ul class="fche-items">{% for c in resultados %}
     <li>
       <div class="d-flex gap-3 min-w-0">

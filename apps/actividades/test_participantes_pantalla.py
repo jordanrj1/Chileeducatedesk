@@ -38,9 +38,12 @@ def test_E4_la_organizacion_queda_en_la_actividad_y_la_procedencia_se_ve_complet
     cg.post(f"/actividades/{actividad.pk}/participantes/{p.pk}/editar", {"rol": p.rol_id, "estado": p.estado_id, "institucion": universidad.pk})
     assert ActividadOrganizacion.objects.filter(actividad=actividad).count() == 1 and not ActividadOrganizacion.objects.get(pk=org.pk).vigente
     # procedencia: institución, sede, carrera y cargo, con enlaces
+    # F26 P2: un estudiante en una institución educativa queda con su formación (vincular()), no con un vínculo de cargo
+    assert PersonaFormacion.objects.filter(persona=ana, organizacion=universidad).count() == 1
+    assert not PersonaOrganizacion.objects.filter(persona__in=[ana, beto]).exists()
     carrera = Carrera.objects.create(organizacion=universidad, nombre="Pedagogía Ficticia")
-    PersonaFormacion.objects.create(persona=ana, organizacion=universidad, sede_institucion=lugar, carrera=carrera)
-    PersonaOrganizacion.objects.filter(persona=beto, organizacion=universidad).update(cargo="Ayudante de laboratorio")
+    PersonaFormacion.objects.filter(persona=ana, organizacion=universidad).update(sede_institucion=lugar, carrera=carrera)
+    PersonaOrganizacion.objects.create(persona=beto, organizacion=universidad, cargo="Ayudante de laboratorio")
     html = cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()
     assert f'href="{universidad.get_absolute_url()}"' in html and f'href="{lugar.get_absolute_url()}"' in html
     assert "Pedagogía Ficticia" in html and "Ayudante de laboratorio" in html
@@ -66,16 +69,18 @@ def test_E5_resumen_de_la_persona_para_el_panel(cg, cs, actividad, universidad, 
 # --- E7: asistencia en la tabla de Participantes ---------------------------------------------
 def test_E7_asistencia_se_marca_en_participantes(cg, crear_actividad, gestor, lugar, crear_persona, rol, estado_part):
     a = crear_actividad("Hoy", estado="confirmada")
-    p = _participar(a, crear_persona(), rol("participante"), estado_part("confirmado"))
+    # F26 P3a: la actividad suelta usa «Equipo y asistencia» como la tarea; el detalle muestra al equipo (un participante va en Beneficiarios)
+    p = _participar(a, crear_persona(), rol("tallerista"), estado_part("confirmado"))
     servicios.programar(a, gestor, FUTURO, time(10), time(11), lugar, None)
     html = cg.get(f"{a.get_absolute_url()}?tab=participantes").content.decode()
-    assert "Se marca desde el día de la actividad" in html and f'name="asistencia_{p.pk}"' not in html
+    # F26 P1a: «Pasar lista» usa una casilla por fila (name="asistio"); antes del día no se ofrece
+    assert "Se marca desde el día de la actividad" in html and f'name="asistio" value="{p.pk}"' not in html
     servicios.programar(a, gestor, HOY, time(10), time(11), lugar, None, "se adelantó")
     r = cg.get(f"{a.get_absolute_url()}?tab=asistencia")  # la dirección antigua abre Participantes
     html = r.content.decode()
     assert r.context["pestana"] == "participantes" and "asistencia" not in [c for c, _ in r.context["pestanas"]]
-    assert f'name="asistencia_{p.pk}"' in html and "Guardar asistencia" in html and "Sin registro de asistencia" in html
-    assert "+ Agregar persona que llegó" in html
+    assert f'name="asistio" value="{p.pk}"' in html and "Guardar asistencia" in html and "Sin registro de asistencia" in html
+    assert "+ Agregar persona" in html and "Agregar persona que llegó" not in html  # F26 P1a: un solo «+ Agregar persona»
     r = cg.post(f"/actividades/{a.pk}/asistencia", {f"asistencia_{p.pk}": "si", "sin_registro": "0"})
     p.refresh_from_db()
     assert p.asistencia is True and r["Location"].endswith("?tab=participantes")
@@ -86,8 +91,13 @@ def test_E8_pestanas_en_varias_lineas_y_tablas_con_desplazamiento():
     css = (Path(settings.BASE_DIR) / "static" / "css" / "fche.css").read_text(encoding="utf-8")
     bloque = css[css.index(".nav-tabs {"):]
     bloque = bloque[:bloque.index("}")]
-    assert "flex-wrap: wrap" in bloque and "scrollbar-width: none" not in bloque
-    assert ".nav-tabs::-webkit-scrollbar { display: none; }" not in css and "mask-image" not in css
+    assert "flex-wrap: wrap" in bloque and "scrollbar-width: none" not in bloque  # en escritorio, varias líneas como antes
+    # F26 Ib: solo en celular (≤576 px) van en una fila que se desplaza de lado; la barra oculta vive solo en ese bloque
+    celular = css[css.index("/* F26 Ib: en celular"):]
+    celular = celular[:celular.index("\n}\n")]
+    assert "@media (max-width: 575.98px)" in celular and "flex-wrap: nowrap" in celular and "overflow-x: auto" in celular
+    assert css.count(".nav-tabs::-webkit-scrollbar { display: none; }") == 1 and ".nav-tabs::-webkit-scrollbar" in celular
+    assert "mask-image" not in css
     assert ".table-responsive::-webkit-scrollbar" in css
 
 
@@ -96,8 +106,9 @@ def test_E9_cada_grupo_explica_quienes_son(cg, actividad, crear_persona, rol, es
     _participar(actividad, crear_persona(), rol("tallerista"), estado_part("confirmado"))
     _participar(actividad, crear_persona(), rol("participante"), estado_part("confirmado"))
     html = cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()
-    assert "Quienes realizan la actividad (tallerista, voluntario, estudiante, practicante, tutor…). Se separan por el rol." in html
-    assert "A quienes va dirigida (participantes, beneficiarios)." in html
+    # F26 P3a: la actividad suelta usa las pestañas de la tarea: el equipo en «Equipo y asistencia», a quienes va dirigida en Beneficiarios
+    assert "Quienes realizan la actividad (tallerista, voluntario, estudiante, coordinador…). Se separan por el rol." in html
+    assert "A quienes va dirigida la actividad (participantes, beneficiarios)." in cg.get(f"/actividades/{actividad.pk}?tab=beneficiarios").content.decode()
 
 
 # --- E10: cupos ------------------------------------------------------------------------------
@@ -106,7 +117,7 @@ def test_E10_cupos_explica_varios_roles(cg, actividad, gestor, lugar, crear_pers
     ana, beto = crear_persona(), crear_persona()
     _participar(actividad, ana, rol("participante"), estado_part("confirmado"))
     _participar(actividad, beto, rol("participante"), estado_part("confirmado"))
-    url = f"/actividades/{actividad.pk}?tab=participantes"
+    url = f"/actividades/{actividad.pk}?tab=beneficiarios"  # F26 P3a: los cupos se ven con los beneficiarios, como en la tarea
     html = cg.get(url).content.decode()
     assert "Cupos ocupados: 2 de 20" in html and "participaciones de" not in html  # sin paréntesis si coinciden
     _participar(actividad, ana, rol("voluntario"), estado_part("confirmado"))

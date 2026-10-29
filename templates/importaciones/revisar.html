@@ -15,7 +15,7 @@
 </div>
 {% if lote.resumen.columnas_ignoradas %}<p class="small text-muted">Columnas no reconocidas (ignoradas): {{ lote.resumen.columnas_ignoradas|join:", " }}</p>{% endif %}
 {% if lote.resumen.ya_cargado %}<div class="alert alert-warning d-flex gap-2">{% icono "alerta" 18 %}<div>Este mismo archivo ya se cargó en el <a href="/importaciones/{{ lote.resumen.ya_cargado.pk }}">lote #{{ lote.resumen.ya_cargado.pk }}</a> ({{ lote.resumen.ya_cargado.fecha }}). Revisa que no estés cargándolo dos veces.</div></div>{% endif %}
-{% if lote.resumen.filas_de_total %}<p class="small text-muted">Se ignoraron {{ lote.resumen.filas_de_total }} fila(s) de totales.</p>{% endif %}
+{% if lote.resumen.filas_de_total %}<p class="small text-muted">{{ lote.resumen.filas_de_total|pluralize:"Se ignoró,Se ignoraron" }} {{ lote.resumen.filas_de_total }} fila{{ lote.resumen.filas_de_total|pluralize }} de totales.</p>{% endif %}
 <form method="post">{% csrf_token %}
 <details class="fche-tarjeta mb-3" {% if lote.resumen.columnas_ignoradas %}open{% endif %}><summary class="px-3 py-2">Columnas de la planilla ({{ columnas|length }})</summary>
   <div class="px-3 pb-3">
@@ -45,8 +45,8 @@
 <div class="fche-tarjeta mt-3 fche-form__acciones" style="border-radius:var(--fche-radio-lg);">
   <button class="btn btn-primary" name="accion" value="confirmar" {% if hay_pendientes %}disabled title="Resuelve las filas pendientes"{% endif %}>{% icono "ok" 16 %}Confirmar carga ({{ a_aplicar }} filas)</button>
   <button class="btn btn-outline-primary" name="accion" value="revisar">Revisar de nuevo con mis correcciones</button>
-  <button class="btn btn-outline-danger ms-md-auto" name="accion" value="descartar">Descartar importación</button>
-  {% if hay_pendientes %}<p class="small text-danger mb-0 w-100">{{ n_pendientes }} fila(s) por resolver: corrige los datos y pulsa «Revisar de nuevo», elige qué hacer con los posibles duplicados, u omítelas.</p>{% endif %}
+  <button class="btn btn-outline-danger ms-md-auto" name="accion" value="descartar">Descartar carga</button>
+  {% if hay_pendientes %}<p class="small text-danger mb-0 w-100">{{ n_pendientes }} fila{{ n_pendientes|pluralize }} por resolver: corrige los datos y pulsa «Revisar de nuevo», elige qué hacer con los posibles duplicados, u omítelas.</p>{% endif %}
 </div>
 </form>
 {% endblock %}

@@ -1,0 +1,8 @@
+{# Qué es: Selector «Lista | Calendario» de Actividades (F26 P1b): el calendario es otra vista de las mismas actividades. #}
+{# Dónde se usa: /actividades (actividades/lista.html) y /calendario · Proceso: P5 #}
+{% load fche %}{% if perms.actividades.view_agendaactividad %}
+<nav class="fche-vista mb-3" aria-label="Ver actividades como">
+  <a class="btn btn-sm {% if vista == 'calendario' %}btn-outline-secondary{% else %}btn-secondary{% endif %}" href="/actividades"{% if vista != 'calendario' %} aria-current="page"{% endif %}>{% icono "actividades" 15 %}Lista</a>
+  <a class="btn btn-sm {% if vista == 'calendario' %}btn-secondary{% else %}btn-outline-secondary{% endif %}" href="/calendario"{% if vista == 'calendario' %} aria-current="page"{% endif %}>{% icono "calendario" 15 %}Calendario</a>
+</nav>
+{% endif %}

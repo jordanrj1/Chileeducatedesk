@@ -1,4 +1,4 @@
-{# Qué es: Pestaña Resumen del proyecto: estado, zona (sus territorios y el texto anterior, si lo hay), área, fechas, responsable y los resultados de sus tareas. #}
+{# Qué es: Pestaña Resumen del proyecto: estado, zona (sus territorios y el texto anterior, si lo hay), área, fechas, responsable, la conclusión (al finalizar, F26 P3a) y los resultados de sus tareas. #}
 {# Dónde se usa: /proyectos/<int:pk> · Proceso: P11 #}
 {% load fche %}<dl class="fche-datos">
   <div><dt>Estado</dt><dd>{% estado object.estado object.get_estado_display %}</dd></div>
@@ -7,12 +7,13 @@
   <div><dt>Área temática</dt><dd>{{ object.area_tematica|default:"—" }}</dd></div>
   <div><dt>Fechas</dt><dd>{{ object.fecha_inicio|date:"d-m-Y"|default:"?" }} a {{ object.fecha_termino|date:"d-m-Y"|default:"?" }}</dd></div>
   <div><dt>Responsable</dt><dd>{% if object.responsable %}<a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a>{% else %}—{% endif %}</dd></div>
-  <div class="fche-datos__ancho"><dt>Actividades</dt><dd><strong class="fche-num">{{ total_actividades }}</strong>{% for n, c in por_estado.items %} · {{ n }}: {{ c }}{% endfor %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Tareas</dt><dd><strong class="fche-num">{{ total_actividades }}</strong>{% for n, c in por_estado.items %} · {{ n }}: {{ c }}{% endfor %}</dd></div>
   <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
   <div class="fche-datos__ancho"><dt>Objetivo general</dt><dd>{{ object.objetivo_general|default:"—"|linebreaksbr }}</dd></div>
   <div class="fche-datos__ancho"><dt>Objetivos específicos</dt><dd>{{ object.objetivos_especificos|default:"—"|linebreaksbr }}</dd></div>
   <div class="fche-datos__ancho"><dt>Diagnóstico</dt><dd>{{ object.diagnostico|default:"—"|linebreaksbr }}</dd></div>
   <div class="fche-datos__ancho"><dt>Población objetivo</dt><dd>{{ object.poblacion_objetivo|default:"—"|linebreaksbr }}</dd></div>
+  {% if object.conclusion %}<div class="fche-datos__ancho"><dt>Conclusión</dt><dd>{{ object.conclusion|linebreaksbr }}</dd></div>{% endif %}
 </dl>
 <section class="mt-4" aria-labelledby="titulo-resultados-tareas">
 <h2 class="h6 mb-2" id="titulo-resultados-tareas">Resultados de las tareas{% if tareas_resultado %} <span class="fche-contador">{{ tareas_resultado|length }}</span>{% endif %}</h2>
