@@ -44,6 +44,7 @@ def respuesta_elegido(campo, valor, texto, aviso=""):
     r = HttpResponse("")
     r["HX-Reswap"] = "none"
     r["HX-Trigger"] = json.dumps({"fche:elegido": {"campo": campo_seguro(campo), "valor": valor, "texto": texto, "aviso": aviso}})
+    r.envio_completado = True  # F26 Ra: si la ventana se envía dos veces, la segunda recibe esta misma respuesta y no crea otra
     return r
 
 

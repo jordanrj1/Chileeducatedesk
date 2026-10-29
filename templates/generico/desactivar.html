@@ -9,7 +9,7 @@
 <p class="fche-pagina__bajada">Desactivar no borra nada: el registro deja de aparecer en las listas habituales y se puede reactivar.</p></div></header>
 <div class="fche-tarjeta" style="max-width:48rem;">
   <div class="fche-tarjeta__cuerpo">
-    <div class="alert alert-warning d-flex gap-2">{% icono "alerta" 18 %}<div>Tiene <strong>{{ afectados|length }}</strong> actividad(es) en curso o futuras. Desactivarlo no las cambia, pero tendrás que revisarlas:</div></div>
+    <div class="alert alert-warning d-flex gap-2">{% icono "alerta" 18 %}<div>Tiene <strong>{{ afectados|length }}</strong> actividad{{ afectados|length|pluralize:"es" }} en curso o {{ afectados|length|pluralize:"futura,futuras" }}. Desactivarlo no las cambia, pero tendrás que revisarlas:</div></div>
     <ul class="fche-items">{% for texto, url in afectados %}<li><a class="fche-items__titulo" href="{{ url }}">{{ texto }}</a>{% icono "derecha" 16 "text-muted" %}</li>{% endfor %}</ul>
   </div>
   <form method="post" class="fche-form__acciones">{% csrf_token %}<input type="hidden" name="confirmar" value="1">

@@ -1,0 +1,10 @@
+{# Qué es: Bloque «De un vistazo» de las fichas (F26 P3a e Ib): filas con una cifra, renglones con enlaces y lo vacío en gris. Recibe `vistazo` (filas de apps/nucleo/vistazo.py) y, opcional, `vistazo_pie` (texto, url). #}
+{# Dónde se usa: pestaña Resumen de la persona e Información de organización, comunidad y lugar · Proceso: P4 #}
+<section class="fche-apartado fche-resumen-360" aria-labelledby="resumen-360">
+  <div class="fche-seccion"><h2 class="h6" id="resumen-360">De un vistazo</h2></div>
+  <dl class="fche-datos">
+    {% for f in vistazo %}<div{% if f.ancho %} class="fche-datos__ancho"{% endif %}><dt>{{ f.etiqueta }}</dt><dd>{% if f.cifra %}<strong>{{ f.cifra }}</strong>{% if f.items %}<br>{% endif %}{% endif %}{% if f.items %}{% if f.lista %}<ul class="list-unstyled mb-0">{% for i in f.items %}<li>{% include "generico/_vistazo_item.html" %}</li>{% endfor %}</ul>{% else %}{% for i in f.items %}{% include "generico/_vistazo_item.html" %}{% if not forloop.last %}<br>{% endif %}{% endfor %}{% endif %}{% elif not f.cifra %}<span class="text-muted">{{ f.vacio }}</span>{% endif %}{% if f.pie %}{% if f.pie_en_linea %} · <a href="{{ f.pie.1 }}">{{ f.pie.0 }}</a>{% else %}{% if not f.lista %}<br>{% endif %}<a class="small" href="{{ f.pie.1 }}">{{ f.pie.0 }}</a>{% endif %}{% endif %}</dd></div>
+    {% endfor %}
+  </dl>
+  {% if vistazo_pie %}<p class="small mb-0"><a href="{{ vistazo_pie.1 }}">{{ vistazo_pie.0 }}</a></p>{% endif %}
+</section>

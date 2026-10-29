@@ -1,0 +1,3 @@
+{# Qué es: Un renglón de «De un vistazo»: partes unidas con « · » (con enlace si tienen dirección) y una nota en gris. #}
+{# Dónde se usa: generico/_de_un_vistazo.html · Proceso: P4 #}
+{% for texto, url in i.partes %}{% if not forloop.first %} · {% endif %}{% if url %}<a href="{{ url }}">{{ texto }}</a>{% else %}{{ texto }}{% endif %}{% endfor %}{% if i.nota %} <span class="small text-muted">{{ i.nota }}</span>{% endif %}

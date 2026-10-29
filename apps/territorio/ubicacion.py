@@ -11,6 +11,7 @@ from django.db.models import Q
 from django.forms.utils import ErrorDict
 from django.urls import reverse
 
+from apps.nucleo import memo
 from apps.nucleo.formularios import BloqueDeSeccion, BootstrapMixin
 from apps.nucleo.selector import pk_seguro
 
@@ -160,17 +161,18 @@ class UbicacionMixin:
         return R, P, C, S, CM
 
     def _armar_listas(self):
+        # F26 Rb: con dos ubicaciones en la misma página (p. ej. actividad y su lugar) las listas se leen una vez (memo.lista)
         R, P, C, S, CM = self._resolver()
         self._elegidos = {"region": R, "provincia": P, "comuna": C, "sector": S, "comunidad": CM}
         f = self.fields
-        f["region"].choices = [VACIO] + [(r.pk, r.nombre) for r in Region.objects.order_by("codigo")]
-        f["provincia"].choices = [VACIO] + [(p.pk, p.nombre) for p in (Provincia.objects.filter(region=R) if R else Provincia.objects.all()).order_by("nombre")]
+        f["region"].choices = [VACIO] + [(r.pk, r.nombre) for r in memo.lista(Region.objects.order_by("codigo"))]
+        f["provincia"].choices = [VACIO] + [(p.pk, p.nombre) for p in memo.lista((Provincia.objects.filter(region=R) if R else Provincia.objects.all()).order_by("nombre"))]
         if P or R:
             comunas = Comuna.objects.filter(**({"provincia": P} if P else {"provincia__region": R})).order_by("nombre")
-            f["comuna"].choices = [VACIO] + [(c.pk, c.nombre) for c in comunas]
+            f["comuna"].choices = [VACIO] + [(c.pk, c.nombre) for c in memo.lista(comunas)]
         else:  # sin región: todas, agrupadas por región
             todas = Comuna.objects.select_related("provincia__region").order_by("provincia__region__codigo", "nombre")
-            f["comuna"].choices = [VACIO] + [(r.nombre, [(c.pk, c.nombre) for c in lista]) for r, lista in groupby(todas, key=lambda c: c.provincia.region)]
+            f["comuna"].choices = [VACIO] + [(r.nombre, [(c.pk, c.nombre) for c in lista]) for r, lista in groupby(memo.lista(todas), key=lambda c: c.provincia.region)]
         sector = f["sector"]
         if C:
             sector.queryset = Sector.para_elegir(conservar=self._conservar).filter(comuna=C)

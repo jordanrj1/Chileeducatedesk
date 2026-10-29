@@ -1,4 +1,4 @@
-{# Qué es: Resultados del buscador de arriba, agrupados por personas, organizaciones, actividades, lugares y documentos. #}
+{# Qué es: Resultados del buscador de arriba, agrupados por personas, organizaciones, actividades, lugares y documentos: hasta 5 por grupo con «Ver todos (n)», que lleva a la lista del módulo; con un tipo elegido, todos por páginas. Filtros con la barra común. #}
 {# Dónde se usa: /buscar · Proceso: P10 #}
 {% extends "base.html" %}
 {% load fche %}
@@ -11,17 +11,7 @@
     <p class="fche-pagina__bajada">Busca en personas, organizaciones, proyectos, actividades, lugares, reuniones y documentos. No distingue mayúsculas ni tildes.</p>
   </div>
 </header>
-<form class="fche-filtros" method="get" role="search">
-  <div class="fche-filtros__busqueda" style="flex-basis:100%;">{% icono "buscar" 16 %}<input class="form-control" type="search" name="q" value="{{ datos.q }}" placeholder="Nombre, RUT, correo, teléfono, actividad…" aria-label="Texto a buscar"></div>
-  <div class="fche-filtros__campo"><select class="form-select" name="tipo" aria-label="Tipo"><option value="">Tipo: todos</option>{% for v, n in tipos %}{% if v != "reunion" or modulos.reuniones %}<option value="{{ v }}" {% if datos.tipo == v %}selected{% endif %}>{{ n }}</option>{% endif %}{% endfor %}</select></div>
-  <div class="fche-filtros__campo"><select class="form-select" name="estado" aria-label="Estado de la actividad"><option value="">Estado: todos</option>{% for e in estados %}<option value="{{ e.codigo }}" {% if datos.estado == e.codigo %}selected{% endif %}>{{ e.nombre }}</option>{% endfor %}</select></div>
-  <div class="fche-filtros__campo"><select class="form-select" name="zona" aria-label="Zona"><option value="">Zona: todas</option>{% for c in comunas %}<option value="{{ c.pk }}" {% if datos.zona == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}</select></div>
-  <div class="fche-filtros__campo"><select class="form-select" name="tipo_actividad" aria-label="Tipo de actividad"><option value="">Tipo de actividad</option>{% for t in tipos_actividad %}<option value="{{ t.pk }}" {% if datos.tipo_actividad == t.pk|stringformat:"s" %}selected{% endif %}>{{ t.nombre }}</option>{% endfor %}</select></div>
-  <div class="fche-filtros__campo fche-filtros__campo--fecha"><input class="form-control" type="date" name="desde" value="{{ datos.desde }}" aria-label="Desde" title="Desde"></div>
-  <div class="fche-filtros__campo fche-filtros__campo--fecha"><input class="form-control" type="date" name="hasta" value="{{ datos.hasta }}" aria-label="Hasta" title="Hasta"></div>
-  <div class="form-check mb-0 ms-1"><input class="form-check-input" type="checkbox" name="con_actividades" value="1" id="ca" {% if datos.con_actividades %}checked{% endif %}><label class="form-check-label small" for="ca">Organizaciones con actividades</label></div>
-  <div class="fche-filtros__acciones"><button class="btn btn-primary">{% icono "buscar" 16 %}Buscar</button>{% if hay_criterio %}<a class="btn btn-link text-decoration-none" href="/buscar">Limpiar</a>{% endif %}</div>
-</form>
+{% include "generico/_filtros.html" %}
 
 {% if not hay_criterio %}
 <div class="fche-vacio"><span class="fche-vacio__icono">{% icono "buscar" 22 %}</span><p class="fche-vacio__titulo">¿Qué necesitas encontrar?</p>
@@ -30,17 +20,18 @@
 <div class="fche-vacio"><span class="fche-vacio__icono">{% icono "buscar" 22 %}</span><p class="fche-vacio__titulo">Sin resultados{% if termino %} para «{{ termino }}»{% endif %}</p>
 <p class="fche-vacio__texto">Prueba con menos filtros, otra palabra o solo una parte del nombre.</p><a class="btn btn-outline-secondary btn-sm" href="/buscar{% if termino %}?q={{ termino|urlencode }}{% endif %}">Buscar solo el texto</a></div>
 {% else %}
-<p class="fche-resumen-lista"><span><strong>{{ total }} resultado(s)</strong>{% if termino %} para «{{ termino }}»{% endif %}</span>{% if hay_tope %}<span class="text-warning-emphasis">Son muchos: se muestran los primeros {{ limite }} de cada tipo; afina la búsqueda con más palabras o filtros.</span>{% endif %}</p>
-{% for nombre, total_grupo, items in agrupados %}
+{% if hay_tope %}<p class="fche-resumen-lista"><span class="text-warning-emphasis">Son muchos: se muestran los primeros {{ limite }} de cada tipo; afina la búsqueda con más palabras o filtros.</span></p>{% endif %}
+{% for g in agrupados %}
 <section class="mb-4">
-<h2 class="h6 mt-3">{{ nombre }} <span class="fche-contador">{{ total_grupo }}</span></h2>
-<ul class="fche-resultados" data-resaltar="{{ termino }}">{% for r in items %}
+<h2 class="h6 mt-3">{{ g.nombre }} <span class="fche-contador">{{ g.total }}</span></h2>
+<ul class="fche-resultados" data-resaltar="{{ termino }}">{% for r in g.items %}
   <li class="fche-resultado">
-    <div class="d-flex gap-3 min-w-0"><span class="fche-acceso__icono flex-shrink-0">{% icono nombre|lower 16 %}</span>
+    <div class="d-flex gap-3 min-w-0"><span class="fche-acceso__icono flex-shrink-0">{% icono g.nombre|lower 16 %}</span>
       <div class="min-w-0"><a class="fw-semibold" href="{{ r.url }}">{{ r.titulo }}</a>
       {% if r.detalle %}<div class="small text-muted">{{ r.detalle }}</div>{% endif %}</div></div>
     <div class="text-end small flex-shrink-0">{% if r.estado %}{% estado r.estado %}{% endif %}{% if r.fecha %}<div class="text-muted mt-1">{{ r.fecha }}</div>{% endif %}</div>
   </li>{% endfor %}</ul>
+{% if g.ver_todos %}<p class="mt-2 mb-0 small"><a class="fw-semibold" href="{{ g.ver_todos }}">Ver todos ({{ g.total }})<span class="visually-hidden"> en {{ g.nombre|lower }}</span></a></p>{% endif %}
 </section>
 {% endfor %}
 {% if pagina.has_other_pages %}<div class="fche-paginacion"><span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span><nav aria-label="Páginas"><ul class="pagination pagination-sm">

@@ -243,7 +243,7 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):hover { text-decoration: underlin
 .form-check-input:checked { background-color: var(--fche-primario); border-color: var(--fche-primario); }
 .form-check-input:focus { box-shadow: var(--fche-anillo); border-color: #7b9cf0; }
 .form-control.is-invalid, .form-select.is-invalid, .fche-campo--error .form-control, .fche-campo--error .form-select { border-color: #e2655c; }
-textarea.form-control { min-height: 6rem; }
+/* Áreas de texto: la altura la dan sus filas (3 por defecto, BootstrapMixin); con data-crecer, fche.js la agranda al escribir. */
 .input-group-text { background: var(--fche-superficie-2); border-color: var(--fche-borde-fuerte); color: var(--fche-texto-suave); }
 
 /* Tarjetas */
@@ -276,6 +276,26 @@ textarea.form-control { min-height: 6rem; }
 .table > thead th:last-child, .table > tbody td:last-child { padding-right: 1.15rem; }
 .table-responsive + nav, .table-responsive + .fche-paginacion { margin-top: 1.1rem; }
 
+/* Listados en celular (F26 Ib): cada fila es una tarjeta: el nombre arriba y cada dato con su etiqueta; sin desplazamiento lateral */
+@media (max-width: 575.98px) {
+  .fche-tabla-apilable > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .table-responsive:has(> .fche-tabla-apilable) { overflow-x: visible; }
+  .fche-tabla-apilable, .fche-tabla-apilable > tbody, .fche-tabla-apilable > tbody > tr { display: block; width: 100%; }
+  .fche-tabla-apilable > tbody > tr { padding: .8rem 1rem; border-bottom: 1px solid var(--fche-borde); }
+  .fche-tabla-apilable > tbody > tr:last-child { border-bottom: 0; }
+  .fche-tabla-apilable > tbody > tr > td {
+    display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; min-width: 0;
+    padding: .2rem 0; border-bottom-width: 0; text-align: right; overflow-wrap: anywhere;
+  }
+  .fche-tabla-apilable > tbody > tr > td::before {
+    content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left;
+    font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fche-texto-suave);
+  }
+  .fche-tabla-apilable > tbody > tr > td:first-child { display: block; padding: 0 0 .35rem; text-align: left; font-size: 1rem; }
+  .fche-tabla-apilable > tbody > tr > td:first-child::before { content: none; }
+  .fche-tabla-apilable > tbody > tr > td.fche-celda-vacia { display: none; }
+}
+
 /* Pestañas de las fichas: subrayado, con desplazamiento horizontal en pantallas chicas */
 .nav-tabs {
   --bs-nav-tabs-border-width: 0; --bs-nav-link-padding-x: .15rem; --bs-nav-link-padding-y: .7rem;
@@ -288,6 +308,12 @@ textarea.form-control { min-height: 6rem; }
 .nav-tabs .nav-link:hover::after { background: var(--fche-borde-fuerte); }
 .nav-tabs .nav-link.active { color: var(--fche-primario); background: transparent; }
 .nav-tabs .nav-link.active::after { background: var(--fche-primario); }
+/* F26 Ib: en celular, una sola fila que se desplaza de lado (sin barra visible); la activa queda a la vista (fche.js) */
+@media (max-width: 575.98px) {
+  .nav-tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tabs > .nav-item { flex: 0 0 auto; scroll-snap-align: start; }
+}
 .nav-pills { --bs-nav-pills-link-active-bg: var(--fche-primario-suave); --bs-nav-pills-link-active-color: var(--fche-primario-oscuro); --bs-nav-link-color: var(--fche-texto-2); --bs-nav-link-font-weight: 550; gap: .25rem; padding: .25rem; background: #eaedf3; border-radius: .6rem; display: inline-flex; }
 .nav-pills .nav-link { border-radius: .45rem; padding: .35rem .9rem; font-size: .875rem; }
 .nav-pills .nav-link.active { background: #fff; color: var(--fche-texto); box-shadow: var(--fche-sombra); }
@@ -366,9 +392,9 @@ dl.row > dd { margin-bottom: .75rem; }
 .fche-filtros__busqueda .fche-icono { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--fche-texto-suave); pointer-events: none; }
 .fche-filtros__busqueda input { padding-left: 2.3rem; }
 .fche-filtros__campo { flex: 0 1 12rem; min-width: 9rem; }
-.fche-filtros__campo--fecha { flex-basis: 10.5rem; }
+.fche-filtros__campo--fecha { flex-basis: 12.75rem; flex-shrink: 0; } /* «Desde» + dd-mm-aaaa sin cortar */
 .fche-filtros__campo .form-select, .fche-filtros__campo .form-control, .fche-filtros__busqueda input { height: 2.4rem; }
-.fche-filtros__acciones { display: flex; gap: .4rem; margin-left: auto; }
+.fche-filtros__acciones { display: flex; gap: .4rem; }
 .fche-filtros__etiqueta { display: block; font-size: .7rem; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--fche-texto-suave); margin: 0 0 .2rem .1rem; }
 /* Barra con menos ruido (generico/_filtros.html): 2 o 3 filtros a la vista, «Más filtros» plegable (un <details>, funciona
    sin JavaScript) y la línea de filtros aplicados con su × para quitarlos. */
@@ -378,7 +404,7 @@ dl.row > dd { margin-bottom: .75rem; }
 .fche-filtros__casilla { display: flex; align-items: center; gap: .45rem; min-height: 2.4rem; margin: 0; padding-left: 0; }
 .fche-filtros__casilla .form-check-input { float: none; margin: 0; border-color: var(--fche-texto-suave); }
 .fche-filtros__campo:has(.fche-filtros__casilla) { flex: 0 0 auto; min-width: 0; }
-.fche-filtros__mas > summary { display: inline-flex; align-items: center; gap: .4rem; height: 2.4rem; list-style: none; color: var(--fche-texto); font-weight: 550; }
+.fche-filtros__mas > summary, .fche-filtros__boton { --bs-btn-font-size: .875rem; display: inline-flex; align-items: center; gap: .4rem; height: 2.4rem; list-style: none; color: var(--fche-texto); font-weight: 550; }
 .fche-filtros__mas > summary::-webkit-details-marker { display: none; }
 .fche-filtros__mas > summary:hover { text-decoration: none; }
 .fche-filtros__mas[open] > summary { background: var(--fche-primario-suave); border-color: var(--fche-primario-borde); color: var(--fche-primario-oscuro); }
@@ -402,7 +428,8 @@ dl.row > dd { margin-bottom: .75rem; }
 .fche-filtros__limpiar { margin-left: auto; font-weight: 600; }
 @media (max-width: 575.98px) {
   .fche-filtros__campo, .fche-filtros__mas { flex: 1 1 100%; }
-  .fche-filtros__mas > summary { width: 100%; justify-content: center; }
+  .fche-filtros__acciones { flex: 1 1 100%; }
+  .fche-filtros__mas > summary, .fche-filtros__boton { width: 100%; justify-content: center; }
   .fche-filtros__panel { position: static; margin-top: .6rem; grid-template-columns: 1fr; box-shadow: none; }
   .fche-filtros__limpiar { margin-left: 0; }
 }
@@ -750,13 +777,21 @@ a.fche-mosaico__item:hover { border-color: var(--fche-primario-borde); box-shado
 .fc .fc-button { font-weight: 550; font-size: .82rem; border-radius: .45rem; box-shadow: var(--fche-sombra-sm); text-transform: capitalize; }
 .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { color: var(--fche-primario-oscuro); }
 .fc .fc-button:focus { box-shadow: var(--fche-anillo) !important; }
-.fc .fc-toolbar-title { font-size: 1.15rem; font-weight: 700; text-transform: capitalize; }
+.fc .fc-toolbar-title { font-size: 1.15rem; font-weight: 700; }
+.fc .fc-toolbar-title::first-letter { text-transform: uppercase; } /* «Octubre de 2026», no «Octubre De 2026» */
 .fc .fc-col-header-cell-cushion { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fche-texto-suave); padding: .55rem .25rem; }
 .fc .fc-daygrid-day-number { font-size: .8rem; color: var(--fche-texto-2); padding: .4rem .5rem; }
 .fc .fc-event { border-radius: .35rem; font-size: .76rem; padding: 1px 3px; }
+/* F26 P: el evento usa el mismo tono que la insignia de su estado (clase fche-estado--<tono>, que define las variables --fe-*) */
+.fc .fche-evento { --fc-event-bg-color: var(--fe-fondo); --fc-event-border-color: var(--fe-punto); --fc-event-text-color: var(--fe-texto); }
+.fc .fche-evento.fc-h-event, .fc .fche-evento.fc-v-event { border-left-width: 3px; }
+.fc .fche-evento.fc-daygrid-dot-event { color: var(--fe-texto); }
+.fche-evento--anterior { --fe-fondo: #f1f3f7; --fe-texto: #667085; --fe-punto: #c4cbd6; }
+.fc .fche-evento--anterior { border-style: dashed; }
 .fche-leyenda { display: flex; flex-wrap: wrap; gap: .35rem .9rem; font-size: .78rem; color: var(--fche-texto-2); }
 .fche-leyenda span { display: inline-flex; align-items: center; gap: .35rem; }
 .fche-leyenda i { width: .65rem; height: .65rem; border-radius: 50%; display: inline-block; }
+.fche-catalogos__buscar { max-width: 28rem; }
 
 /* Constancia */
 .fche-documento { max-width: 46rem; padding: 3.5rem 3.5rem 3rem; background: #fff; border: 1px solid var(--fche-borde); border-radius: var(--fche-radio-sm); box-shadow: var(--fche-sombra-lg); font-family: Georgia, "Times New Roman", serif; font-size: 1.02rem; line-height: 1.75; }
@@ -824,6 +859,9 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-form__rejilla > .fche-ubicacion { grid-column: 1 / -1; }
 .fche-ubicacion__listas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); column-gap: 1.25rem; }
 .fche-ubicacion__provincia, .fche-ubicacion__crear, .fche-ubicacion__sinjs { margin: -.4rem 0 1rem; font-size: .85rem; }
+.fche-direccion__mas { margin: .25rem 0 1rem; }
+.fche-direccion__mas > summary { font-size: .85rem; }
+.fche-direccion__mas[open] > summary { margin-bottom: .6rem; }
 .fche-ubicacion__sector { margin: -.2rem 0 1rem; }
 .fche-ubicacion__sector > summary { font-size: .9rem; color: var(--fche-texto-suave); cursor: pointer; }
 .fche-ubicacion__sector .fche-campo { max-width: 26rem; }
@@ -873,3 +911,40 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-ficha-tarjeta__datos { display: grid; gap: .55rem; margin: 0; }
 .fche-ficha-tarjeta__datos dt { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fche-texto-suave); }
 .fche-ficha-tarjeta__datos dd { margin: 0; overflow-wrap: anywhere; }
+/* F26 P1a · «Pasar lista»: una fila por persona con su casilla. En pantalla ancha, columnas; en angosta, apilada. */
+.fche-lista-asistencia { margin: 0 0 1.5rem; padding: .9rem 1rem; border: 1px solid var(--fche-borde); border-radius: var(--fche-radio); background: var(--fche-superficie); }
+.fche-lista-asistencia__grupo { margin: 0 0 .9rem; }
+.fche-lista-asistencia__titulo { float: none; width: auto; margin: 0 0 .35rem; font-size: .85rem; font-weight: 600; color: var(--fche-texto-2); }
+.fche-lista-asistencia__filas { list-style: none; margin: 0; padding: 0; }
+.fche-lista-asistencia__fila { display: grid; grid-template-columns: 1.5rem minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.5fr); align-items: center; gap: .25rem .75rem;
+  padding: .45rem .25rem; border-top: 1px solid var(--fche-borde); }
+.fche-lista-asistencia__fila .form-check-input { width: 1.25rem; height: 1.25rem; margin: 0; }
+.fche-lista-asistencia__persona { font-weight: 600; cursor: pointer; }
+.fche-lista-asistencia__rol, .fche-lista-asistencia__estado { font-size: .85rem; color: var(--fche-texto-2); }
+.fche-lista-asistencia__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+@media (max-width: 575.98px) {
+  .fche-lista-asistencia { padding: .75rem; }
+  .fche-lista-asistencia__fila { grid-template-columns: 1.5rem minmax(0, 1fr); }
+  .fche-lista-asistencia__rol, .fche-lista-asistencia__estado { grid-column: 2; }
+}
+
+/* F26 P1b: selector «Lista | Calendario» de Actividades */
+.fche-vista { display: inline-flex; gap: .4rem; flex-wrap: wrap; }
+.fche-vista .btn { display: inline-flex; align-items: center; gap: .35rem; }
+/* F26 P1b: en pantalla angosta una tabla ancha se desplaza dentro de su contenedor y no estira la ficha ni la tarjeta
+   (los hijos de flex y grid no se encogen por debajo de su contenido si no tienen min-width: 0). */
+.fche-contenido, .fche-ficha-cabecera, .fche-ficha-cuerpo, .fche-tarjeta, .fche-seccion, .fche-apartado { min-width: 0; max-width: 100%; }
+.fche-ficha-cuerpo .row > [class*="col"], .fche-contenido .row > [class*="col"], .fche-pendiente__lista > li > * { min-width: 0; }
+.table-responsive { max-width: 100%; }
+.fche-pendiente--suelta { height: auto; }  /* «Para hoy y vencidas» va sola, fuera de la grilla de tarjetas */
+/* F26 P1b: un solo botón de filtros que no salta a otra línea: los filtros parten angostos y crecen si hay espacio */
+.fche-filtros__busqueda { flex: 2 1 12rem; }
+.fche-filtros__campo--principal { flex: 1 1 8.5rem; max-width: 14rem; }
+.fche-filtros__campo--principal.fche-filtros__campo--fecha { flex-basis: 12.75rem; flex-shrink: 0; max-width: none; }
+.fche-filtros__mas { flex: 0 0 auto; }
+@media (max-width: 575.98px) { .fche-filtros__campo--principal { max-width: none; } .fche-filtros__mas { flex: 1 1 100%; } }
+
+/* F26 Ra: botón «Guardando…» mientras se envía un formulario (static/js/fche.js) */
+.fche-guardando { width: .85rem; height: .85rem; border-width: .14em; vertical-align: -.1em; margin-right: .2rem; }
+button[aria-busy="true"] { cursor: progress; }
+.fche-duplicados ul { padding-left: 1.1rem; }

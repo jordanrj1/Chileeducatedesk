@@ -20,10 +20,22 @@ document.addEventListener("DOMContentLoaded", function () {
       fetch(el.dataset.eventos + "?" + q.toString(), { credentials: "same-origin" })
         .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(ok).catch(fail);
     },
-    eventDidMount: function (a) { a.el.title = a.event.extendedProps.estado + (a.event.extendedProps.lugar ? " · " + a.event.extendedProps.lugar : ""); },
+    // F26 P: el título del evento es corto; el estado, el proyecto (si es tarea) y el lugar van en el detalle al pasar el mouse
+    eventDidMount: function (a) {
+      var x = a.event.extendedProps;
+      a.el.title = [a.event.title, x.estado, x.proyecto ? "Proyecto: " + x.proyecto : "", x.lugar].filter(Boolean).join(" · ");
+    },
   });
   cal.render();
   estado.addEventListener("change", function () { cal.refetchEvents(); });
   historicas.addEventListener("change", function () { cal.refetchEvents(); });
   extras.forEach(function (par) { if (par[1]) par[1].addEventListener("change", function () { cal.refetchEvents(); }); });
+  // «Aplicar filtros» (o Enter) vuelve a pedir los eventos sin recargar la página y cierra el panel «Filtros»
+  var form = document.getElementById("filtros-calendario");
+  if (form) form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var mas = form.querySelector("details[open]");
+    if (mas) mas.open = false;
+    cal.refetchEvents();
+  });
 });

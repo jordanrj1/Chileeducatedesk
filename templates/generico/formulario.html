@@ -14,12 +14,13 @@
 {% block antes_form %}{% endblock %}
 <form method="post" enctype="multipart/form-data" data-aviso-cambios novalidate class="fche-form fche-tarjeta">
   {% csrf_token %}
-  {% if version_registro %}<input type="hidden" name="_version" value="{{ version_registro }}">{% endif %}
+  {% if version_registro %}<input type="hidden" name="_version" value="{{ version_registro }}">{% else %}{% marca_envio %}{% endif %}
   <div class="fche-form__cuerpo">
     {% if form.non_field_errors %}<div class="alert alert-danger d-flex gap-2" role="alert">{% icono "error" 18 %}<div>{{ form.non_field_errors }}</div></div>
     {% elif form.errors %}<div class="alert alert-danger d-flex gap-2 fche-errores" role="alert">{% icono "error" 18 %}<div>Revisa {{ form.errors|length }} campo{{ form.errors|length|pluralize }} marcado{{ form.errors|length|pluralize }} en rojo.</div></div>{% endif %}
     {% block campos %}{% include "generico/_campos.html" %}{% endblock %}
     {% block extra_form %}{% endblock %}
+    {% if duplicados %}{% include "generico/_aviso_duplicados.html" %}{% endif %}
   </div>
   <div class="fche-form__acciones">
     <button type="submit" class="btn btn-primary">{% block texto_guardar %}Guardar{% endblock %}</button>

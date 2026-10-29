@@ -7,6 +7,7 @@ from django import forms
 from django.db.models import Q
 from django.utils.functional import lazy
 
+from . import memo
 from .selector import TOPE, pk_seguro
 
 
@@ -32,6 +33,25 @@ def a_desplegable(campo):
     campo.widget = nuevo
 
 
+class IteradorCompartido(forms.models.ModelChoiceIterator):
+    """F26 Rb: las opciones de un catálogo se leen una vez por petición aunque las pidan varios campos o filas."""
+
+    def __iter__(self):
+        if self.field.empty_label is not None:
+            yield ("", self.field.empty_label)
+        for obj in memo.lista(self.queryset):
+            yield self.choice(obj)
+
+
+def compartir_opciones(campo):
+    """Un ModelChoiceField (no los buscadores, que tienen su propio iterador) pasa a leer sus opciones con
+    IteradorCompartido. Si el formulario cambia después la consulta, el campo sigue usando este iterador."""
+    if isinstance(campo, forms.ModelChoiceField) and campo.iterator is forms.models.ModelChoiceIterator:
+        campo.iterator = IteradorCompartido
+        if not hasattr(campo, "_choices"):
+            campo.widget.choices = campo.choices
+
+
 class BootstrapMixin:
     """Aplica clases de Bootstrap a todos los campos. Toda selección múltiple pasa a ser desplegable (SelectorMultiple)."""
 
@@ -46,6 +66,7 @@ class BootstrapMixin:
             self.fields["vigente"].help_text = "Desmárcala para dar de baja este dato sin borrarlo: queda en el historial."
         fijar_valores_selectores(self)
         for campo in self.fields.values():
+            compartir_opciones(campo)
             a_desplegable(campo)
             w = campo.widget
             if isinstance(w, forms.CheckboxSelectMultiple):
@@ -58,7 +79,10 @@ class BootstrapMixin:
                 clase = "form-control"
             w.attrs["class"] = (w.attrs.get("class", "") + " " + clase).strip()
             if isinstance(w, forms.Textarea):
-                w.attrs.setdefault("rows", 3)
+                # F26 Ia: Django trae rows="10" (texto) por defecto; un form que pide otro número lo conserva.
+                if w.attrs.get("rows") in (None, "10"):
+                    w.attrs["rows"] = 3
+                w.attrs.setdefault("data-crecer", "")  # fche.js la hace crecer al escribir; sin JS queda de 3 filas
             if isinstance(w, forms.DateInput):
                 w.input_type = "date"
                 w.format = "%Y-%m-%d"
@@ -148,13 +172,14 @@ class _IteradorLimitado(forms.models.ModelChoiceIterator):
             yield ("", campo.empty_label)
         fuente, pk = campo.fuente, campo.valor_actual
         if pk:
-            actual = fuente.con_relaciones(self.queryset.filter(pk=pk)).first()
+            actual = next(iter(memo.lista(fuente.con_relaciones(self.queryset.filter(pk=pk))[:1])), None)
             if actual is not None:
                 yield self.choice(actual)
         qs = fuente.base(**campo.filtros)
         if pk:
             qs = qs.exclude(pk=pk)
-        for grupo, objs in fuente.agrupar(fuente.con_relaciones(fuente.ordenar(qs))[:TOPE]):
+        # F26 Rb: varios buscadores iguales en la página (p. ej. las filas de «Relaciones») leen sus opciones una sola vez
+        for grupo, objs in fuente.agrupar(memo.lista(fuente.con_relaciones(fuente.ordenar(qs))[:TOPE])):
             if grupo and objs:
                 yield (grupo, [self.choice(o) for o in objs])
             else:

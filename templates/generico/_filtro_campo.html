@@ -1,4 +1,4 @@
-{# Qué es: Trozo que dibuja un filtro de listado: lista desplegable (con grupos), casilla, fecha, número o texto. A la vista va compacto; dentro de «Más filtros», con su rótulo visible. #}
+{# Qué es: Trozo que dibuja un filtro de listado: lista desplegable (con grupos), casilla, fecha, número o texto. A la vista va compacto; dentro del panel «Filtros», con su rótulo visible. #}
 {# Dónde se usa: generico/_filtros.html, con principal=True en la barra y principal=False en el panel · Proceso: P10 #}
 {% with id_campo="filtro-"|add:f.param %}
 <div class="fche-filtros__campo{% if principal %} fche-filtros__campo--principal{% endif %}{% if f.entrada == 'date' %} fche-filtros__campo--fecha{% endif %}">

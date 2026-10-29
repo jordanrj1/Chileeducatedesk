@@ -41,7 +41,7 @@ formulario sin guardar y lo vuelve a dibujar con las listas al día.
           <label class="form-label" for="{{ u.id }}-padre">Dentro de (opcional)</label>
           <select class="form-select" id="{{ u.id }}-padre" name="{{ u.nombre_padre }}"><option value="">Ninguno: es un sector de la comuna</option>{% for s in u.padres %}<option value="{{ s.pk }}"{% if u.padre_escrito == s.pk|stringformat:"s" %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
         </div>{% endif %}
-        <button type="button" class="btn btn-sm btn-primary" id="{{ u.id }}-crear" hx-post="{% url 'territorio:sector_crear_rapido' %}" hx-vals="{{ u.vals_crear }}">+ Crear sector</button>
+        <button type="button" class="btn btn-sm btn-primary" id="{{ u.id }}-crear" hx-post="{% url 'territorio:sector_crear_rapido' %}" hx-vals="{{ u.vals_crear }}" hx-disabled-elt="this" hx-sync="this:drop">+ Crear sector</button>
       </div>
       <noscript><p class="form-text mb-0">Sin JavaScript, crea el sector en <a href="{{ u.comuna.get_absolute_url }}?tab=sectores" target="_blank" rel="noopener">la ficha de {{ u.comuna.nombre }}<span class="visually-hidden"> (se abre en otra pestaña)</span></a> y luego pulsa «Actualizar listas».</p></noscript>
     </details>
@@ -49,7 +49,7 @@ formulario sin guardar y lo vuelve a dibujar con las listas al día.
     <button type="button" class="btn btn-sm btn-outline-secondary" disabled aria-describedby="{{ u.id }}-sin-comuna">+ Crear sector</button>
     <span class="form-text" id="{{ u.id }}-sin-comuna">Primero elige la comuna: cada sector pertenece a una comuna.</span>
     {% endif %}
-    <div class="fche-ubicacion__aviso small text-{{ u.nivel }}-emphasis" id="{{ u.id }}-aviso" role="status">{% if u.mensaje %}{{ u.mensaje }}{% if u.confirmar %} <button type="button" class="btn btn-sm btn-outline-warning" hx-post="{% url 'territorio:sector_crear_rapido' %}" hx-vals="{{ u.vals_confirmar }}">Crear igual</button>{% endif %}{% endif %}</div>
+    <div class="fche-ubicacion__aviso small text-{{ u.nivel }}-emphasis" id="{{ u.id }}-aviso" role="status">{% if u.mensaje %}{{ u.mensaje }}{% if u.confirmar %} <button type="button" class="btn btn-sm btn-outline-warning" hx-post="{% url 'territorio:sector_crear_rapido' %}" hx-vals="{{ u.vals_confirmar }}" hx-disabled-elt="this" hx-sync="this:drop">Crear igual</button>{% endif %}{% endif %}</div>
   </div>
   {% endif %}
   </details>

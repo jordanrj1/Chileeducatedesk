@@ -117,6 +117,7 @@ class ListaBase(Permiso403Mixin, ListView):
     permiso_crear = None
     etiqueta_crear = "Nuevo"
     texto_vacio = "Aún no hay registros."
+    texto_vacio_detalle = ""  # segunda línea del estado vacío; sin ella: «Cuando se registren <título>, aparecerán aquí.»
     url_exportar = None
     permiso_exportar = None
     botones_extra = ()  # [(etiqueta, url, permiso)]
@@ -132,10 +133,19 @@ class ListaBase(Permiso403Mixin, ListView):
     def responder_xlsx(self):
         from .exportacion import respuesta_xlsx
 
+        columnas = self.columnas_exportacion()
         filas = []
         for obj in self.get_queryset():
-            filas.append(["" if v is None else str(v) for v in (self._valor(obj, a) for _, a in self.columnas)])
-        return respuesta_xlsx(self.request.user, self.titulo, [e for e, _ in self.columnas], filas)
+            filas.append(["" if v is None else str(v) for v in (self._valor(obj, a) for _, a in columnas)])
+        return respuesta_xlsx(self.request.user, self.titulo, [e for e, _ in columnas], filas)
+
+    def columnas_visibles(self):
+        """Columnas de la tabla. Una lista puede cambiarlas según los permisos de quien mira (p. ej. el RUT)."""
+        return self.columnas
+
+    def columnas_exportacion(self):
+        """Columnas del Excel: por defecto, las mismas de la tabla."""
+        return self.columnas_visibles()
 
     def valor_filtro(self, f):
         v = self.request.GET.get(f.param, "").strip()
@@ -222,9 +232,10 @@ class ListaBase(Permiso403Mixin, ListView):
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
+        columnas = self.columnas_visibles()
         filas = []
         for obj in ctx["object_list"]:
-            filas.append({"obj": obj, "celdas": [self._valor(obj, a) for _, a in self.columnas]})
+            filas.append({"obj": obj, "celdas": [self._valor(obj, a) for _, a in columnas]})
         aplicados = getattr(self, "aplicados", {})
         visibles, activos = [], []
         for f in self.filtros:
@@ -250,7 +261,7 @@ class ListaBase(Permiso403Mixin, ListView):
             descripcion=self.descripcion,
             breadcrumb=self.breadcrumb,
             filas=filas,
-            encabezados=[e for e, _ in self.columnas],
+            encabezados=[e for e, _ in columnas],
             filtros_ui=visibles,  # se conserva por compatibilidad: todos los filtros dibujables
             filtros_principales=[u for u in visibles if u["principal"]],
             filtros_mas=mas,
@@ -267,6 +278,7 @@ class ListaBase(Permiso403Mixin, ListView):
             puede_crear=bool(self.url_crear and (not self.permiso_crear or self.request.user.has_perm(self.permiso_crear))),
             etiqueta_crear=self.etiqueta_crear,
             texto_vacio=self.texto_vacio,
+            texto_vacio_detalle=self.texto_vacio_detalle,
             hay_filtros=bool(activos),
             botones_extra=[(e, u) for e, u, p in self.botones_extra if not p or self.request.user.has_perm(p)],
             url_exportar=self.url_exportar
@@ -302,6 +314,20 @@ class ControlVersionMixin:
             form.add_error(None, self.MENSAJE_VERSION)
             return self.form_invalid(form)
         return super().form_valid(form)
+
+
+class AvisoDuplicadosMixin:
+    """F26 Ra: antes de crear, muestra los posibles repetidos (apps/nucleo/duplicados.py) en el mismo formulario.
+    «Es distinto, guardar» (confirmar_duplicado) guarda igual. Nunca bloquea ni fusiona."""
+
+    def aviso_duplicados(self, form, buscar, titulo, **extra):
+        """`buscar`: función sin argumentos que entrega [(registro, [razones])]. Devuelve la respuesta con el aviso o None."""
+        if self.request.POST.get("confirmar_duplicado"):
+            return None
+        candidatos = buscar()
+        if not candidatos:
+            return None
+        return self.render_to_response(self.get_context_data(form=form, duplicados=candidatos, duplicados_titulo=titulo, **extra))
 
 
 class FormularioMixin:
@@ -433,7 +459,22 @@ class FichaBase(Permiso403Mixin, DetailView):
         if volver and "?" not in volver:
             ctx["url_volver"] = self.request.session.get(f"lista:{volver}", volver)
         ctx["acciones_extra"] = self.acciones_extra()
+        if self.solo_ficha():
+            ctx["marco_ficha"] = "generico/_solo_ficha.html"
         return ctx
+
+    def solo_ficha(self):
+        """F26 Rb: un cambio de pestaña por HTMX (apunta a #ficha-completa) recibe solo la ficha, sin el marco de la página.
+        Al recargar la dirección, o al volver con el historial del navegador, llega la página completa."""
+        htmx = getattr(self.request, "htmx", None)
+        return bool(htmx) and htmx.target == "ficha-completa" and not htmx.history_restore_request
+
+    def render_to_response(self, context, **kw):
+        from django.utils.cache import patch_vary_headers
+
+        respuesta = super().render_to_response(context, **kw)
+        patch_vary_headers(respuesta, ("HX-Request", "HX-Target"))  # la misma dirección da la ficha sola o la página completa
+        return respuesta
 
     def contexto_ficha(self):
         return {}
@@ -442,13 +483,18 @@ class FichaBase(Permiso403Mixin, DetailView):
         """[(etiqueta, url)] que aparecen junto a «Editar» en la cabecera de la ficha."""
         return []
 
+    origen_en_historial = False  # F26 Ia: el origen de los datos va como sección al final del Historial (sin pestaña propia)
+
     def ctx_historial(self):
         ctx = {"cambios": cambios_historial(self.object)}
         etiqueta = f"{self.object._meta.app_label}.{self.object._meta.model_name}"
-        from apps.documentos.origen import MODELOS_CON_ORIGEN, origenes_de
+        from apps.documentos.origen import MODELOS_CON_ORIGEN, contexto_origen, origenes_de
 
-        if etiqueta in MODELOS_CON_ORIGEN and self.request.user.has_perm("documentos.view_origendato"):
-            ctx["origenes_historial"] = origenes_de(self.object)  # HI-04: de qué fuente salió el dato
+        if self.request.user.has_perm("documentos.view_origendato"):
+            if self.origen_en_historial:
+                ctx.update(contexto_origen(self.object, self.request.user), mostrar_origen=True)
+            elif etiqueta in MODELOS_CON_ORIGEN:
+                ctx["origenes_historial"] = origenes_de(self.object)  # HI-04: de qué fuente salió el dato
         return ctx
 
 

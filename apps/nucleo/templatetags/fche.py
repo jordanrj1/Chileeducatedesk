@@ -77,6 +77,14 @@ def icono(nombre, tam=18, clase=""):
     )
 
 
+@register.simple_tag
+def marca_envio():
+    """F26 Ra: campo oculto con la marca de un solo uso de un formulario de creación (ver apps/nucleo/envio_unico.py)."""
+    from apps.nucleo.envio_unico import CAMPO, nueva_marca
+
+    return format_html('<input type="hidden" name="{}" value="{}">', CAMPO, nueva_marca())
+
+
 # Tono de color para cada estado (por su código estable)
 TONOS = {
     "pendiente": "gris", "planificada": "azul", "confirmada": "verde", "reprogramada": "naranja", "suspendida": "amarillo",
@@ -98,8 +106,13 @@ TONOS = {
 COLUMNAS_ESTADO = {"Estado", "Registro", "Acceso"}
 
 
+def tono_estado(codigo):
+    """Tono de color de un estado («azul», «verde»…). Fuente única: la usan las insignias y el calendario (F26 P)."""
+    return TONOS.get(codigo, "gris")
+
+
 def badge_estado(codigo, texto):
-    tono = TONOS.get(codigo, "gris")
+    tono = tono_estado(codigo)
     return format_html('<span class="fche-estado fche-estado--{}"><span class="fche-estado__punto" aria-hidden="true"></span>{}</span>', tono, texto)
 
 

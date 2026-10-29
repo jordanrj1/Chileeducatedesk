@@ -46,12 +46,32 @@ def _form(modelo):
     return F
 
 
+# F26 P: área de cada catálogo según dónde se usa (los que no estén aquí van a «Otros»)
+AREAS = {
+    "Actividades": ("estado-actividad", "tipo-actividad", "modalidad", "tramo-etario", "rol-participacion", "estado-participacion",
+                    "tipo-intervencion", "estado-solicitud", "canal"),
+    "Personas": ("perfil-persona", "origen-persona", "estado-registro", "tipo-contacto", "area-tematica", "parentesco", "tipo-invitado",
+                 "estado-voluntario"),
+    "Organizaciones": ("tipo-organizacion", "naturaleza-juridica", "rol-organizacion"),
+    "Lugares y territorio": ("tipo-lugar",),
+    "Documentos": ("tipo-documento",),
+}
+
+
+def catalogos_por_area():
+    """[(área, [(slug, nombre, cantidad)])] en el orden de AREAS; lo no asignado, al final en «Otros»."""
+    area_de = {slug: area for area, slugs in AREAS.items() for slug in slugs}
+    grupos = {area: [] for area in [*AREAS, "Otros"]}
+    for slug, m in CATALOGOS.items():
+        grupos[area_de.get(slug, "Otros")].append((slug, m._meta.verbose_name_plural.capitalize(), m.objects.count()))
+    return [(area, items) for area, items in grupos.items() if items]
+
+
 class Indice(Permiso403Mixin, View):
     permission_required = "nucleo.view_estadoactividad"
 
     def get(self, request):
-        items = [(slug, m._meta.verbose_name_plural.capitalize(), m.objects.count()) for slug, m in CATALOGOS.items()]
-        return render(request, "administracion/catalogos.html", {"items": items, "titulo": "Catálogos", "breadcrumb": [("Administración", "/administracion/")]})
+        return render(request, "administracion/catalogos.html", {"areas": catalogos_por_area(), "titulo": "Catálogos", "breadcrumb": [("Administración", "/administracion/")]})
 
 
 class Lista(View):

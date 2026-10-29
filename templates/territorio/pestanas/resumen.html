@@ -15,7 +15,7 @@
 <ul class="fche-kpis fche-kpis--contenedor" role="list" aria-label="Indicadores de {{ nombre_ambito }}">
   {% for k in indicadores %}
   <li>
-  {% if k.enlace %}<a class="fche-kpi" href="?tab={{ k.clave }}" hx-get="?tab={{ k.clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true">{% else %}<div class="fche-kpi">{% endif %}
+  {% if k.enlace %}<a class="fche-kpi" href="?tab={{ k.clave }}" hx-get="?tab={{ k.clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true" hx-sync="#ficha-completa:replace">{% else %}<div class="fche-kpi">{% endif %}
     <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono k.icono 18 %}</span>{{ k.titulo }}</span>
     <span class="fche-kpi__valor">{{ k.valor }}</span>
     <span class="fche-kpi__nota">{{ k.nota }}</span>

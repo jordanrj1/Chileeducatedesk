@@ -1,12 +1,13 @@
 """Arma el menú lateral y las acciones rápidas para cada página. Cada opción lleva el permiso que exige
-y solo se muestra si el usuario lo tiene, así cada rol ve su propio menú. Oculta lo de 2.ª fase."""
+y solo se muestra si el usuario lo tiene, así cada rol ve su propio menú. Oculta lo de 2.ª fase.
+F26 P1b: el Calendario es una vista dentro de Actividades (Lista | Calendario), el historial de cargas va en
+Configuración y «Cargar planilla» y «+ Proyecto» están en «+ Nuevo»."""
 # (etiqueta, ruta, permiso, icono, grupo[, módulo de segunda fase])
 MENU = [
     ("Inicio", "/dashboard", None, "inicio", ""),
     ("Solicitudes", "/solicitudes", "solicitudes.view_solicitud", "solicitudes", "Operación"),
     ("Proyectos", "/proyectos", "proyectos.view_proyecto", "proyectos", "Operación"),
     ("Actividades", "/actividades", "actividades.view_actividad", "actividades", "Operación"),
-    ("Calendario", "/calendario", "actividades.view_agendaactividad", "calendario", "Operación"),
     ("Reuniones", "/reuniones", "coordinacion.view_reunion", "reuniones", "Operación", "reuniones"),
     ("Tareas", "/tareas", "coordinacion.view_tarea", "tareas", "Operación", "tareas"),
     ("Personas", "/personas", "personas.view_persona", "personas", "Registro"),
@@ -15,8 +16,8 @@ MENU = [
     ("Lugares", "/lugares", "lugares.view_lugar", "lugares", "Registro"),
     ("Territorio", "/territorio", "territorio.view_comuna", "territorio", "Registro"),
     ("Documentos", "/documentos", "documentos.view_documento", "documentos", "Registro"),
-    ("Importaciones", "/importaciones", "importaciones.importar_listado", "importaciones", "Gestión"),
     ("Finanzas", "/finanzas", "finanzas.view_movimiento", "finanzas", "Gestión", "finanzas"),
+    ("Historial de cargas", "/importaciones", "importaciones.importar_listado", "importaciones", "Configuración"),
     ("Catálogos", "/administracion/catalogos/", "nucleo.view_estadoactividad", "catalogos", "Configuración"),
     ("Administración", "/administracion/", "auth.view_user", "administracion", "Configuración"),
     ("Ayuda", "/ayuda", None, "ayuda", "Configuración"),
@@ -25,13 +26,18 @@ MENU = [
 # Creación rápida desde la barra superior: (etiqueta, ruta, permiso, icono[, módulo])
 NUEVO = [
     ("+ Solicitud", "/solicitudes/nueva", "solicitudes.add_solicitud", "solicitudes"),
+    ("+ Proyecto", "/proyectos/nuevo", "proyectos.add_proyecto", "proyectos"),
     ("+ Actividad", "/actividades/nueva", "actividades.add_actividad", "actividades"),
     ("+ Persona", "/personas/nueva", "personas.add_persona", "persona_mas"),
     ("+ Organización", "/organizaciones/nueva", "organizaciones.add_organizacion", "organizaciones"),
     ("+ Comunidad", "/comunidades/nueva", "comunidades.add_comunidad", "comunidades"),
     ("+ Lugar", "/lugares/nuevo", "lugares.add_lugar", "lugares"),
     ("+ Documento", "/documentos/nuevo", "documentos.add_documento", "documentos"),
+    ("+ Cargar planilla", "/importaciones/nueva", "importaciones.importar_listado", "importaciones"),
 ]
+
+# F26 P1b: rutas sin entrada propia en el menú que marcan otra (el Calendario es una vista de Actividades)
+MENU_ALIAS = {"/calendario": "/actividades"}
 
 
 def _hubo_guardado(request):
@@ -49,6 +55,9 @@ def navegacion(request):
     if not user or not user.is_authenticated:
         return {"menu": [], "menu_grupos": [], "menu_nuevo": [], "modulos": modulos, "hubo_guardado": False}
     ruta = request.path
+    for prefijo, destino in MENU_ALIAS.items():
+        if ruta == prefijo or ruta.startswith(prefijo + "/"):
+            ruta = destino
     visibles = [
         (e, r, icono, grupo) for e, r, perm, icono, grupo, *modulo in MENU
         if (not perm or user.has_perm(perm)) and (not modulo or modulo_activo(modulo[0]))

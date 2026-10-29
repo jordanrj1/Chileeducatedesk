@@ -69,3 +69,16 @@ class DireccionForm(UbicacionMixin, BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Direccion
         fields = ["comuna", "sector", "calle", "numero", "block", "depto", "referencia"]
+
+    # F26 Ia: block, depto y referencia van plegados en «Más datos de la dirección» (territorio/_direccion_form.html)
+    CAMPOS_MAS = ("block", "depto", "referencia")
+
+    def campos_principales(self):
+        return [c for c in self.campos_sin_ubicacion() if c.name not in self.CAMPOS_MAS]
+
+    def campos_mas(self):
+        return [c for c in self.campos_sin_ubicacion() if c.name in self.CAMPOS_MAS]
+
+    def mas_abierto(self):
+        """El pliegue se abre solo si alguno de sus campos trae valor o error."""
+        return any(c.value() or c.errors for c in self.campos_mas())

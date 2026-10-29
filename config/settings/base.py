@@ -43,6 +43,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.nucleo.memo.MemoPeticionMiddleware",  # F26 Rb: un catálogo pedido por varios campos se lee una vez por petición
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -51,6 +52,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
     "apps.nucleo.sin_cache.SinCacheMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "apps.nucleo.limites.LimitePeticionesMiddleware",  # F26 Ra: 429 si alguien envía o busca demasiado seguido
+    "apps.nucleo.envio_unico.EnvioUnicoMiddleware",  # F26 Ra: un formulario de creación enviado dos veces crea una sola vez
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
@@ -132,6 +135,14 @@ CONTACTO_ADMINISTRADOR = env("CONTACTO_ADMINISTRADOR", default="")
 # AC-E1: bloqueo temporal tras varios intentos fallidos [P]
 INTENTOS_MAXIMOS = env.int("INTENTOS_MAXIMOS", default=5)
 BLOQUEO_MINUTOS = env.int("BLOQUEO_MINUTOS", default=15)
+
+# F26 Ra: límite de peticiones por usuario (o por IP sin sesión) y por minuto [P]. 0 = sin límite.
+# El ingreso no cuenta aquí: tiene su propio bloqueo (INTENTOS_MAXIMOS).
+LIMITE_ENVIOS_MINUTO = env.int("LIMITE_ENVIOS_MINUTO", default=60)
+LIMITE_BUSQUEDAS_MINUTO = env.int("LIMITE_BUSQUEDAS_MINUTO", default=120)
+LIMITE_EXPORTACIONES_MINUTO = env.int("LIMITE_EXPORTACIONES_MINUTO", default=10)
+# Memoria del proceso (waitress corre un solo proceso con varios hilos): cuenta los límites y las marcas de envío en curso.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "fche"}}
 
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/dashboard"

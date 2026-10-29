@@ -1,6 +1,6 @@
-{# Qué es: Pestaña Documentos de persona, organización y solicitud. #}
-{# Dónde se usa: /organizaciones/<int:pk>, /personas/<int:pk>, /solicitudes/<int:pk> · Proceso: P7 #}
-{% load fche %}<div class="fche-seccion"><h2 class="h6">Documentos{% if documentos %} <span class="fche-contador">{{ documentos|length }}</span>{% endif %}</h2>
+{# Qué es: Pestaña Documentos de toda ficha (subir o asociar). Variables: documentos, url_nuevo_doc, url_asociar_doc; opcionales titulo_documentos (por defecto «Documentos») y sin_contador_documentos. #}
+{# Dónde se usa: /actividades/<int:pk>, /proyectos/<int:pk>, /organizaciones/<int:pk>, /personas/<int:pk>, /solicitudes/<int:pk> · Proceso: P7 #}
+{% load fche %}<div class="fche-seccion"><h2 class="h6">{{ titulo_documentos|default:"Documentos" }}{% if documentos and not sin_contador_documentos %} <span class="fche-contador">{{ documentos|length }}</span>{% endif %}</h2>
 {% if puede_agregar and perms.documentos.add_documento %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nuevo_doc }}">{% icono "subir" 15 %}Subir nuevo</a>
 <a class="btn btn-outline-primary btn-sm" href="{{ url_asociar_doc }}">{% icono "enlace" 15 %}Asociar existente</a></div>{% endif %}</div>
 {% include "documentos/_lista.html" %}

@@ -1,11 +1,19 @@
-{# Qué es: Pestaña Interacciones de la persona: llamadas, correos y reuniones con ella. #}
-{# Dónde se usa: /personas/<int:pk> · Proceso: P6 #}
-{% load fche %}<div class="fche-seccion"><h2 class="h6">Interacciones{% if interacciones %} <span class="fche-contador">{{ interacciones|length }}</span>{% endif %}</h2>
-{% if perms.coordinacion.add_interaccion %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_interaccion }}">+ Registrar interacción</a></div>{% endif %}</div>
+{# Qué es: Lista de interacciones (llamadas, correos, reuniones) de cualquier ficha. Única plantilla de interacciones (F26 P3). #}
+{# Dónde se usa: /personas/<int:pk>?tab=participaciones, /solicitudes/<int:pk>?tab=interacciones (Seguimiento), /actividades/<int:pk> (sección Coordinación de Información), /organizaciones/<int:pk>?tab=actividades (Últimos contactos) · Proceso: P6 #}
+{% comment %}Variables: interacciones. Opcionales:
+  compacto (lista breve sin encabezado propio; el título lo pone quien la incluye) · titulo_interacciones · vacio_interacciones
+  url_nueva_interaccion (botón «+ Registrar interacción», con permiso) · con_quien (persona u organización junto al canal)
+  con_vinculos (actividad y solicitud de cada interacción) · recortar (largo máximo del resultado) · marcar_cumplidas
+  sin_hora · sin_proxima{% endcomment %}
+{% load fche %}{% if compacto %}
+<ul class="fche-items">{% for i in interacciones %}<li><div class="fche-items__texto"><a class="fche-items__titulo" href="{{ i.get_absolute_url }}">{% if sin_hora %}{{ i.fecha|date:"d-m-Y" }}{% else %}{{ i.fecha|date:"d-m-Y H:i" }}{% endif %} · {{ i.canal }}{% if con_quien %} · {{ i.persona|default:i.organizacion|default:"—" }}{% endif %}</a><div class="fche-items__detalle">{% if recortar %}{{ i.resultado|truncatechars:recortar }}{% else %}{{ i.resultado }}{% endif %}{% if i.proxima_accion and not sin_proxima %} → {{ i.proxima_accion }}{% if i.proxima_fecha %} ({{ i.proxima_fecha|date:"d-m-Y" }}){% endif %}{% endif %}</div></div></li>{% empty %}<li class="text-muted">{{ vacio_interacciones|default:"Sin interacciones." }}</li>{% endfor %}</ul>
+{% else %}<div class="fche-seccion"><h2 class="h6">{{ titulo_interacciones|default:"Interacciones" }}{% if interacciones %} <span class="fche-contador">{{ interacciones|length }}</span>{% endif %}</h2>
+{% if url_nueva_interaccion and perms.coordinacion.add_interaccion %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_interaccion }}">+ Registrar interacción</a></div>{% endif %}</div>
 {% if interacciones %}
 <ol class="fche-linea">{% for i in interacciones %}<li class="fche-linea__item">
-  <div class="fche-linea__cabecera"><a class="fche-linea__tipo" href="{{ i.get_absolute_url }}">{{ i.canal }}</a><span class="fche-linea__meta">{{ i.fecha|date:"d-m-Y H:i" }}{% if i.actividad %} · <a href="{{ i.actividad.get_absolute_url }}">{{ i.actividad }}</a>{% endif %}{% if i.solicitud %} · <a href="{{ i.solicitud.get_absolute_url }}">{{ i.solicitud }}</a>{% endif %}</span></div>
-  <div class="small mt-1">{{ i.resultado|truncatechars:160 }}</div>
-  {% if i.proxima_accion %}<div class="small mt-1 {% if i.accion_cumplida %}text-muted{% else %}text-primary{% endif %}">→ {{ i.proxima_accion }}{% if i.proxima_fecha %} ({{ i.proxima_fecha|date:"d-m-Y" }}){% endif %}{% if i.accion_cumplida %} ✓{% endif %}</div>{% endif %}
+  <div class="fche-linea__cabecera"><a class="fche-linea__tipo" href="{{ i.get_absolute_url }}">{{ i.canal }}{% if con_quien %} · {{ i.persona|default:i.organizacion|default:"—" }}{% endif %}</a><span class="fche-linea__meta">{{ i.fecha|date:"d-m-Y H:i" }}{% if con_vinculos %}{% if i.actividad %} · <a href="{{ i.actividad.get_absolute_url }}">{{ i.actividad }}</a>{% endif %}{% if i.solicitud %} · <a href="{{ i.solicitud.get_absolute_url }}">{{ i.solicitud }}</a>{% endif %}{% endif %}</span></div>
+  <div class="small mt-1">{% if recortar %}{{ i.resultado|truncatechars:recortar }}{% else %}{{ i.resultado }}{% endif %}</div>
+  {% if i.proxima_accion %}<div class="small mt-1 {% if marcar_cumplidas and i.accion_cumplida %}text-muted{% else %}text-primary{% endif %}">→ {{ i.proxima_accion }}{% if i.proxima_fecha %} ({{ i.proxima_fecha|date:"d-m-Y" }}){% endif %}{% if marcar_cumplidas and i.accion_cumplida %} ✓{% endif %}</div>{% endif %}
 </li>{% endfor %}</ol>
-{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "reuniones" 18 %}</span><p class="fche-vacio__texto mb-0">Sin interacciones registradas.</p></div>{% endif %}
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "reuniones" 18 %}</span><p class="fche-vacio__texto mb-0">{{ vacio_interacciones|default:"Sin interacciones registradas." }}</p></div>{% endif %}
+{% endif %}

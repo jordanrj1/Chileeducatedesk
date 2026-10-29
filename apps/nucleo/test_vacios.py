@@ -40,7 +40,7 @@ def test_lista_de_espera_no_ocupa_cupo(cg, actividad, lugar, gestor, crear_perso
     espera = Participacion.objects.create(actividad=actividad, persona=crear_persona(), rol=rol("participante"), estado=estado_part("lista_espera"))
     assert not espera.activa and espera.en_espera
     assert "capacidad" not in {p.codigo for p in revisar(actividad)}
-    html = cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()
+    html = cg.get(f"/actividades/{actividad.pk}?tab=beneficiarios").content.decode()  # F26 P3a: los cupos van con los beneficiarios
     assert "Cupos ocupados: 20 de 20" in html and "en lista de espera: 1" in html and "sin cupos" in html
     # al confirmarla desde la espera, vuelve a contar y aparece el exceso
     espera.estado = estado_part("confirmado")

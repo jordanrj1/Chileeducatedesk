@@ -1,0 +1,11 @@
+{# Qué es: Campos de una dirección en un formulario: ubicación en cascada (región → comuna → sector, con «+ Crear sector») más calle y número; block, depto y referencia plegados en «Más datos de la dirección» (abierto si alguno trae valor o error, F26 Ia). Única copia (F26 P3). Recibe `form_direccion`; `sin_errores` cuando el formulario común ya muestra sus errores generales. #}
+{# Dónde se usa: se incluye en lugares/formulario.html, organizaciones/_direccion.html y personas/direccion.html · Proceso: P5 #}
+{% if form_direccion.non_field_errors and not sin_errores %}<div class="alert alert-danger" role="alert">{{ form_direccion.non_field_errors }}</div>{% endif %}
+{% include "territorio/_ubicacion.html" with form=form_direccion %}
+<div class="fche-form__rejilla">{% for campo in form_direccion.campos_principales %}{% include "generico/_campo.html" %}{% endfor %}</div>
+{% with mas=form_direccion.campos_mas %}{% if mas %}
+<details class="fche-direccion__mas"{% if form_direccion.mas_abierto %} open{% endif %}>
+  <summary>Más datos de la dirección (block, depto, referencia)</summary>
+  <div class="fche-form__rejilla">{% for campo in mas %}{% include "generico/_campo.html" %}{% endfor %}</div>
+</details>
+{% endif %}{% endwith %}

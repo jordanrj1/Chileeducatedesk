@@ -83,6 +83,15 @@ def _media_temporal(settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path / "media"
 
 
+@pytest.fixture(autouse=True)
+def _sin_limite_de_peticiones(settings):
+    """F26 Ra: las pruebas no chocan con el límite de peticiones (apps/nucleo/limites.py); se prueba aparte, encendido a propósito."""
+    from django.core.cache import cache
+
+    settings.LIMITE_ENVIOS_MINUTO = settings.LIMITE_BUSQUEDAS_MINUTO = settings.LIMITE_EXPORTACIONES_MINUTO = 0
+    cache.clear()
+
+
 @pytest.fixture
 def lugar(db, comuna):
     from apps.lugares.models import Lugar

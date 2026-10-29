@@ -1,0 +1,10 @@
+{# Qué es: Aviso «podría ya existir» antes de guardar un registro nuevo (F26 Ra), con enlaces a los parecidos y «Es distinto, guardar». Nunca bloquea ni fusiona. #}
+{# Dónde se usa: generico/formulario.html al crear lugar, comunidad, proyecto, actividad o tarea y solicitud · Proceso: P2, P5 y P6 #}
+{% load fche %}<div class="alert alert-warning mt-2 mb-3 fche-duplicados" role="alert" aria-labelledby="aviso-duplicados-titulo">
+  <p class="mb-2" id="aviso-duplicados-titulo"><strong>{{ duplicados_titulo|default:"Esto podría ya estar registrado." }}</strong> Revisa antes de guardar uno repetido:</p>
+  <ul class="mb-2">{% for obj, razones in duplicados %}
+    <li><a href="{{ obj.get_absolute_url }}" target="_blank" rel="noopener">{{ obj }}<span class="visually-hidden"> (se abre en otra pestaña)</span></a>{% if obj.activo is False %} <span class="badge text-bg-secondary">desactivado</span>{% endif %} — <span class="small">{{ razones|join:", " }}</span></li>
+  {% endfor %}</ul>
+  <p class="small mb-2">{{ duplicados_ayuda|default:"Si es el mismo, ábrelo y complétalo ahí. Si es otro, guárdalo igual." }}</p>
+  <button class="btn btn-warning btn-sm" name="confirmar_duplicado" value="1" type="submit">Es distinto, guardar</button>
+</div>

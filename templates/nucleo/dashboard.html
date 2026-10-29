@@ -1,9 +1,9 @@
-{# Qué es: Panel de inicio: lo pendiente de hoy (actividades incompletas, solicitudes sin respuesta, personas por completar, próximas acciones) y accesos rápidos. #}
+{# Qué es: Panel de inicio: «Para hoy y vencidas» arriba, indicadores que no repiten las tarjetas, «Indicadores del período» con Mes · Trimestre · Año (F26 P3a, por ?periodo=, sin JavaScript), los próximos 7 días y lo pendiente (actividades incompletas, solicitudes sin respuesta, personas por completar, próximas acciones). Crear algo nuevo se hace desde «+ Nuevo». #}
 {# Dónde se usa: /dashboard · Proceso: P1 #}
 {% extends "base.html" %}
 {% load fche %}
 {% block titulo %}Inicio{% endblock %}
-{% block descripcion %}Resumen del día: actividades próximas, pendientes y accesos rápidos.{% endblock %}
+{% block descripcion %}Resumen del día: lo de hoy y lo atrasado, actividades próximas y pendientes.{% endblock %}
 {% block migas %}{% endblock %}
 {% block contenido %}
 <header class="fche-pagina">
@@ -24,65 +24,75 @@
 </section>
 {% endif %}
 
-{% if proximas or tarjetas %}
-<ul class="fche-kpis" role="list" aria-label="Resumen">
-  {% if proximas %}
+{% if para_hoy %}
+<section class="fche-tarjeta fche-pendiente fche-pendiente--suelta mb-4" aria-labelledby="para-hoy-titulo" id="para-hoy">
+  <div class="fche-tarjeta__cabecera">
+    <h2 class="fche-tarjeta__titulo" id="para-hoy-titulo">{% icono "reloj" 18 "text-primary" %}Para hoy y vencidas{% if para_hoy.total %} <span class="fche-contador">{{ para_hoy.total }}</span>{% endif %}</h2>
+  </div>
+  {% if para_hoy.items %}
+  <ul class="fche-pendiente__lista">
+    {% for nombre, url, detalle, fecha, tipo in para_hoy.items %}<li><span class="min-w-0"><span class="small text-muted">{{ tipo }} · </span><a href="{{ url }}">{{ nombre }}</a></span><span class="fche-pendiente__detalle">{{ detalle }}</span></li>{% endfor %}
+  </ul>
+  {% if para_hoy.resto %}<div class="fche-tarjeta__pie small text-muted">y {{ para_hoy.resto }} más</div>{% endif %}
+  {% else %}<div class="fche-pendiente__vacio">{% icono "ok" 18 %}Nada para hoy ni atrasado.</div>{% endif %}
+</section>
+{% endif %}
+
+{% if indicadores %}
+<ul class="fche-kpis" role="list" aria-label="Indicadores">
+  {% for k in indicadores %}
   <li>
-    <a class="fche-kpi" href="/calendario">
-      <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "calendario" 18 %}</span>Próximos 7 días</span>
-      <span class="fche-kpi__valor">{{ proximas.total }}</span>
-      <span class="fche-kpi__nota">actividad{{ proximas.total|pluralize:"es" }} programada{{ proximas.total|pluralize }}</span>
-    </a>
-  </li>
-  {% endif %}
-  {% for t in tarjetas|slice:":4" %}
-  <li>
-    <a class="fche-kpi {% if t.total %}fche-kpi--atencion{% else %}fche-kpi--ok{% endif %}" href="{% if t.url %}{{ t.url }}{% else %}#tarjeta-{{ forloop.counter }}{% endif %}">
-      <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono t.icono 18 %}</span>{{ t.titulo }}</span>
-      <span class="fche-kpi__valor">{{ t.total }}</span>
-      <span class="fche-kpi__nota">{% if t.total %}requiere{{ t.total|pluralize:"n" }} atención{% else %}al día{% endif %}</span>
+    <a class="fche-kpi" href="{{ k.url }}">
+      <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono k.icono 18 %}</span>{{ k.titulo }}</span>
+      <span class="fche-kpi__valor">{{ k.valor }}</span>
+      <span class="fche-kpi__nota">{{ k.nota }}</span>
     </a>
   </li>
   {% endfor %}
 </ul>
 {% endif %}
 
-<div class="row g-4 mb-4 align-items-start">
-  {% if proximas %}
-  <div class="col-12 col-xl-8">
-    <section class="fche-tarjeta" aria-labelledby="proximas-titulo">
-      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo" id="proximas-titulo">{% icono "calendario" 18 "text-primary" %}Próximas actividades</h2><a class="small" href="/calendario">Ver calendario</a></div>
-      {% if proximas.items %}
-      <ul class="fche-pendiente__lista">
-        {% for ag in proximas.items %}
-        <li>
-          <div class="d-flex gap-3 align-items-center min-w-0">
-            <span class="text-center flex-shrink-0" style="width:2.75rem;"><span class="d-block small text-uppercase fw-semibold {% if ag.fecha == proximas.hoy %}text-primary{% else %}text-muted{% endif %}" style="font-size:.75rem;letter-spacing:.04em;">{% if ag.fecha == proximas.hoy %}Hoy{% else %}{{ ag.fecha|date:"D" }}{% endif %}</span><span class="d-block fw-bold fs-5 lh-1 fche-num">{{ ag.fecha|date:"j" }}</span></span>
-            <div class="min-w-0"><a href="{{ ag.actividad.get_absolute_url }}">{{ ag.actividad.nombre }}</a>
-              <div class="small text-muted">{% if ag.hora_inicio %}{{ ag.hora_inicio|time:"H:i" }}{% else %}Sin hora{% endif %}{% if ag.lugar %} · {{ ag.lugar }}{% endif %}{% if ag.ultimo_minuto %} · <span class="text-warning-emphasis">cambio de último minuto</span>{% endif %}</div></div>
-          </div>
-          <span class="fche-pendiente__detalle">{% estado ag.actividad.estado %}</span>
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}<div class="fche-pendiente__vacio">{% icono "calendario" 18 %}No hay actividades programadas para los próximos 7 días.</div>{% endif %}
-    </section>
+{% if periodo %}
+<section class="mb-4" id="indicadores-periodo" aria-labelledby="periodo-titulo">
+  <div class="fche-seccion">
+    <div><h2 class="h6" id="periodo-titulo">Indicadores del período · {{ periodo.etiqueta }}</h2>
+    <p class="small text-muted mb-0">Del {{ periodo.desde|date:"d-m-Y" }} al {{ periodo.hasta|date:"d-m-Y" }}. Cuenta lo realizado (finalizado) con fecha en el período.</p></div>
+    <nav class="fche-seccion__acciones" aria-label="Elegir período">
+      {% for clave, nombre in periodo.opciones %}<a class="btn btn-sm {% if clave == periodo.periodo %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?periodo={{ clave }}#indicadores-periodo"{% if clave == periodo.periodo %} aria-current="true"{% endif %}>{{ nombre }}</a>{% endfor %}
+    </nav>
   </div>
-  {% endif %}
-  <div class="col-12 {% if proximas %}col-xl-4{% endif %}">
-    <section class="fche-tarjeta" aria-labelledby="accesos-titulo">
-      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo" id="accesos-titulo">{% icono "rayo" 18 "text-primary" %}Acciones rápidas</h2></div>
-      <div class="fche-tarjeta__cuerpo"><div class="fche-accesos fche-accesos--compacto">
-        {% if perms.solicitudes.add_solicitud %}<a class="fche-acceso" href="/solicitudes/nueva"><span class="fche-acceso__icono">{% icono "solicitudes" 17 %}</span>+ Solicitud</a>
-        <a class="fche-acceso" href="/solicitudes/nueva?oportunidad=1"><span class="fche-acceso__icono">{% icono "tendencia" 17 %}</span>+ Oportunidad</a>{% endif %}
-        {% if perms.actividades.add_actividad %}<a class="fche-acceso" href="/actividades/nueva"><span class="fche-acceso__icono">{% icono "actividades" 17 %}</span>+ Actividad</a>{% endif %}
-        {% if perms.personas.add_persona %}<a class="fche-acceso" href="/personas/nueva"><span class="fche-acceso__icono">{% icono "persona_mas" 17 %}</span>+ Persona</a>{% endif %}
-        {% if perms.organizaciones.add_organizacion %}<a class="fche-acceso" href="/organizaciones/nueva"><span class="fche-acceso__icono">{% icono "organizaciones" 17 %}</span>+ Organización</a>{% endif %}
-        {% if perms.lugares.add_lugar %}<a class="fche-acceso" href="/lugares/nuevo"><span class="fche-acceso__icono">{% icono "lugares" 17 %}</span>+ Lugar</a>{% endif %}
-      </div></div>
-    </section>
-  </div>
-</div>
+  <ul class="fche-kpis" role="list" aria-label="Indicadores del período">
+    {% for k in periodo.items %}
+    <li>{% if k.url %}<a class="fche-kpi" href="{{ k.url }}">{% else %}<div class="fche-kpi">{% endif %}
+      <span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono k.icono 18 %}</span>{{ k.titulo }}</span>
+      <span class="fche-kpi__valor">{{ k.valor|floatformat:"-1" }}</span>
+      <span class="fche-kpi__nota">{{ k.nota }}</span>
+    {% if k.url %}</a>{% else %}</div>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if proximas %}
+<section class="fche-tarjeta mb-4" aria-labelledby="proximas-titulo">
+  <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo" id="proximas-titulo">{% icono "calendario" 18 "text-primary" %}Próximos 7 días{% if proximas.total %} <span class="fche-contador">{{ proximas.total }}</span>{% endif %}</h2><a class="small" href="/calendario">Ver calendario</a></div>
+  {% if proximas.items %}
+  <ul class="fche-pendiente__lista">
+    {% for ag in proximas.items %}
+    <li>
+      <div class="d-flex gap-3 align-items-center min-w-0">
+        <span class="text-center flex-shrink-0" style="width:2.75rem;"><span class="d-block small text-uppercase fw-semibold {% if ag.fecha == proximas.hoy %}text-primary{% else %}text-muted{% endif %}" style="font-size:.75rem;letter-spacing:.04em;">{% if ag.fecha == proximas.hoy %}Hoy{% else %}{{ ag.fecha|date:"D" }}{% endif %}</span><span class="d-block fw-bold fs-5 lh-1 fche-num">{{ ag.fecha|date:"j" }}</span></span>
+        <div class="min-w-0"><a href="{{ ag.actividad.get_absolute_url }}">{{ ag.actividad.nombre }}</a>
+          <div class="small text-muted">{% if ag.hora_inicio %}{{ ag.hora_inicio|time:"H:i" }}{% else %}Sin hora{% endif %}{% if ag.lugar %} · {{ ag.lugar }}{% endif %}{% if ag.ultimo_minuto %} · <span class="text-warning-emphasis">cambio de último minuto</span>{% endif %}</div></div>
+      </div>
+      <span class="fche-pendiente__detalle">{% estado ag.actividad.estado %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if proximas.total > proximas.items|length %}<div class="fche-tarjeta__pie small text-muted">y {{ proximas.total|add:"-8" }} más · <a href="/calendario">ver calendario</a></div>{% endif %}
+  {% else %}<div class="fche-pendiente__vacio">{% icono "calendario" 18 %}No hay actividades programadas para los próximos 7 días.</div>{% endif %}
+</section>
+{% endif %}
 
 <h2 class="h6 mb-3">Pendientes</h2>
 <div class="row g-4">

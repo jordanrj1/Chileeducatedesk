@@ -17,6 +17,7 @@
   </div>
 </header>
 
+{% block antes_filtros %}{% endblock %}
 {% include "generico/_filtros.html" %}
 
 {% if resumen %}
@@ -32,13 +33,13 @@
 {% block cuerpo %}
 {% if filas %}
 <div class="table-responsive">
-<table class="table table-hover align-middle">
+<table class="table table-hover align-middle fche-tabla-apilable">
   <caption class="visually-hidden">{{ titulo }}</caption>
   <thead><tr>{% for e in encabezados %}<th scope="col">{{ e }}</th>{% endfor %}</tr></thead>
   <tbody>
   {% for fila in filas %}
     <tr>{% for celda_valor in fila.celdas %}{% with enc=encabezados|slice:forloop.counter|last %}
-      <td>{% if forloop.first and fila.obj.get_absolute_url %}<a href="{{ fila.obj.get_absolute_url }}">{{ celda_valor }}</a>{% else %}{% celda celda_valor enc %}{% endif %}</td>
+      <td data-label="{{ enc }}"{% if celda_valor is None or celda_valor == "" %} class="fche-celda-vacia"{% endif %}>{% if forloop.first and fila.obj.get_absolute_url %}<a href="{{ fila.obj.get_absolute_url }}">{{ celda_valor }}</a>{% else %}{% celda celda_valor enc %}{% endif %}</td>
     {% endwith %}{% endfor %}</tr>
   {% endfor %}
   </tbody>
@@ -56,7 +57,7 @@
 <div class="fche-vacio">
   <span class="fche-vacio__icono">{% icono "dato_vacio" 22 %}</span>
   <p class="fche-vacio__titulo">{{ texto_vacio }}</p>
-  <p class="fche-vacio__texto">Cuando se registren {{ titulo|lower }}, aparecerán aquí.</p>
+  <p class="fche-vacio__texto">{% if texto_vacio_detalle %}{{ texto_vacio_detalle }}{% else %}Cuando se registren {{ titulo|lower }}, aparecerán aquí.{% endif %}</p>
   {% if puede_crear %}<a class="btn btn-primary btn-sm" href="{{ url_crear }}">{{ etiqueta_crear }}</a>{% endif %}
 </div>
 {% endif %}

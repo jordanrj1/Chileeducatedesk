@@ -581,7 +581,7 @@ class SectorCrearRapido(Permiso403Mixin, View):
     def _respuesta(self, comuna, seleccionado, mensaje, nivel, confirmar=False):
         pares = _sectores_activos(comuna) if comuna else []
         boton = format_html(
-            ' <button type="button" class="btn btn-sm btn-outline-warning" hx-post="/territorio/sectores/crear" hx-include="closest .crear-sector, [name$=\'comuna\']" '
+            ' <button type="button" class="btn btn-sm btn-outline-warning" hx-post="/territorio/sectores/crear" hx-include="closest .crear-sector, [name$=\'comuna\']" hx-disabled-elt="this" hx-sync="this:drop" '
             'hx-vals=\'{{"confirmar_sector": "1"}}\' hx-target="#{}">Crear igual</button>', getattr(self, "destino", "") or "id_sector"
         ) if confirmar else ""
         # «-emphasis»: el tono oscuro de cada color, con contraste AA sobre blanco

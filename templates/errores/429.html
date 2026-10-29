@@ -1,0 +1,14 @@
+{# Qué es: Pantalla «demasiadas solicitudes seguidas», con el tiempo de espera y botón para volver. #}
+{# Dónde se usa: cualquier página que responda con error 429 (límite de peticiones, apps/nucleo/limites.py) · Proceso: P1 #}
+{% extends "base.html" %}
+{% load fche %}
+{% block titulo %}Demasiadas solicitudes{% endblock %}
+{% block migas %}{% endblock %}
+{% block contenido %}{% block publico %}
+<div class="fche-error">
+  <div class="fche-error__codigo">429</div>
+  <h1>Vas demasiado rápido</h1>
+  <p>Llegaron demasiadas solicitudes en menos de un minuto ({{ que }}). Espera {{ espera }} segundo{{ espera|pluralize }} y vuelve a intentarlo. Lo que ya estaba guardado no se perdió.</p>
+  <a href="/dashboard" class="btn btn-primary mt-2">{% icono "inicio" 16 %}Volver al inicio</a>
+</div>
+{% endblock %}{% endblock %}

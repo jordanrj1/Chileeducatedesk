@@ -1,7 +1,8 @@
 /* Comportamientos comunes:
    - aviso de cambios sin guardar (DA-03);
    - borrador en la pestaña si la sesión vence o el servidor falla (AC-E2, AC-E3, UI-E6), con el nombre elegido en los buscadores;
-   - un solo envío por formulario aunque se haga doble clic (UI-E1);
+   - un solo envío por formulario aunque se haga doble clic (UI-E1), con «Guardando…» en el botón pulsado (F26 Ra);
+   - Enter en un formulario largo pasa al campo siguiente en vez de enviarlo a medias (F26 Ra);
    - Enter en el cuadro de «+ Crear sector» crea el sector en vez de enviar el formulario;
    - «Tipo de registro» de una persona: marcar un tipo muestra su sección;
    - barra de filtros de los listados: dirección sin campos vacíos y «Más filtros» que se cierra con Esc;
@@ -89,6 +90,9 @@
       oculto.type = "hidden"; oculto.name = boton.name; oculto.value = boton.value;
       form.appendChild(oculto);
     }
+    if ((form.getAttribute("method") || "").toLowerCase() === "post" || form.hasAttribute("hx-post")) {
+      ponerGuardando(boton && boton.form === form ? boton : form.querySelector("button[type=submit], button:not([type])"));
+    }
     window.setTimeout(function () {
       Array.prototype.forEach.call(form.querySelectorAll("button[type=submit], button:not([type]), input[type=submit]"), function (b) { b.disabled = true; });
     }, 0);
@@ -102,12 +106,63 @@
     if (form.matches("[data-cerrar-sesion]")) { try { almacen.clear(); } catch (err) { /* nada */ } }
   });
 
+  // F26 Ra: el botón pulsado muestra «Guardando…» con un giro pequeño y aria-busy mientras se envía.
+  function ponerGuardando(boton) {
+    if (!boton || boton.tagName !== "BUTTON" || boton.hasAttribute("data-texto-original")) return;
+    boton.setAttribute("data-texto-original", boton.innerHTML);
+    boton.setAttribute("aria-busy", "true");
+    boton.innerHTML = '<span class="spinner-border spinner-border-sm fche-guardando" aria-hidden="true"></span> Guardando…';
+  }
+  function quitarGuardando(raiz) {
+    var botones = raiz.matches && raiz.matches("[data-texto-original]") ? [raiz] : [];
+    Array.prototype.push.apply(botones, raiz.querySelectorAll("[data-texto-original]"));
+    botones.forEach(function (b) {
+      b.innerHTML = b.getAttribute("data-texto-original");
+      b.removeAttribute("data-texto-original");
+      b.removeAttribute("aria-busy");
+    });
+  }
+  function liberar(form) {
+    delete form.dataset.enviando;
+    Array.prototype.forEach.call(form.querySelectorAll("[disabled]"), function (b) { if (b.type === "submit" || b.tagName === "BUTTON") b.disabled = false; });
+    quitarGuardando(form);
+  }
+
   // Volver con «Atrás» del navegador: el formulario vuelve a estar disponible.
   window.addEventListener("pageshow", function () {
-    Array.prototype.forEach.call(document.querySelectorAll("form[data-enviando='1']"), function (f) {
-      delete f.dataset.enviando;
-      Array.prototype.forEach.call(f.querySelectorAll("[disabled]"), function (b) { if (b.type === "submit" || b.tagName === "BUTTON") b.disabled = false; });
+    Array.prototype.forEach.call(document.querySelectorAll("form[data-enviando='1']"), liberar);
+    quitarGuardando(document);
+  });
+
+  // Botones y formularios HTMX que crean o guardan («Crear y elegir», «+ Crear sector», «Crear y seleccionar»):
+  // hx-disabled-elt y hx-sync los bloquean mientras se envían; aquí muestran «Guardando…» y, si la respuesta no
+  // reemplazó el formulario (error o «Usar existente»), vuelven a su estado.
+  document.addEventListener("htmx:beforeRequest", function (e) {
+    var elt = e.detail && e.detail.elt;
+    if (elt && elt.tagName === "BUTTON" && elt.hasAttribute("hx-post")) ponerGuardando(elt);
+  });
+  document.addEventListener("htmx:afterRequest", function (e) {
+    var elt = e.detail && e.detail.elt;
+    if (!elt || !elt.isConnected || !elt.hasAttribute("hx-post")) return;
+    if (elt.tagName === "FORM") liberar(elt); else quitarGuardando(elt);
+  });
+
+  // F26 Ra: Enter en un formulario largo (con data-aviso-cambios) pasa al campo siguiente: se guarda solo con el botón.
+  // En un área de texto sigue siendo salto de línea. Los buscadores (combobox), el buscador general, los filtros y los
+  // formularios de una línea (ingreso, buscar) no tienen data-aviso-cambios o se excluyen aquí. Sin JavaScript, lo normal.
+  var NO_SALTA = ["submit", "button", "reset", "image", "file", "search", "checkbox", "radio"];
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || e.isComposing || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    var el = e.target;
+    if (!el || el.tagName !== "INPUT" || !el.form || !el.form.matches("[data-aviso-cambios]")) return;
+    if (NO_SALTA.indexOf((el.type || "text").toLowerCase()) !== -1 || el.getAttribute("role") === "combobox" || el.closest("[data-enter-dispara]")) return;
+    e.preventDefault();
+    var campos = Array.prototype.filter.call(el.form.elements, function (c) {
+      return !c.disabled && c.type !== "hidden" && c.tagName !== "FIELDSET" && c.tagName !== "BUTTON" && c.type !== "submit" &&
+        !(c.tagName === "SELECT" && c.hasAttribute("data-selector")) && c.getClientRects().length > 0 && c.tabIndex >= 0;
     });
+    var siguiente = campos[campos.indexOf(el) + 1];
+    if (siguiente) siguiente.focus();
   });
 
   // Barra de filtros de los listados (generico/_filtros.html). Sin JavaScript todo funciona igual; con él:
@@ -127,6 +182,16 @@
     e.preventDefault();
     var consulta = limpios.toString();
     window.location.assign(window.location.pathname + (consulta ? "?" + consulta : ""));
+  });
+  // F26 P1b: con un solo botón «Filtros», cambiar una lista o casilla a la vista la aplica al tiro
+  // (sin JavaScript se aplica con «Aplicar filtros» o con Enter en el buscador).
+  document.addEventListener("change", function (e) {
+    var campo = e.target;
+    if (!campo.closest || !campo.closest(".fche-filtros__campo--principal")) return;
+    if (!(campo.tagName === "SELECT" || campo.type === "checkbox")) return;
+    var form = campo.closest("form[data-filtros]");
+    if (!form || !form.querySelector("details.fche-filtros__mas")) return;
+    if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
   });
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
@@ -220,6 +285,11 @@
     var marcadas = {};
     Array.prototype.forEach.call(form.querySelectorAll("[data-tipo-ficha]"), function (c) { if (c.checked) marcadas[c.getAttribute("data-tipo-ficha")] = true; });
     Array.prototype.forEach.call(form.querySelectorAll("[data-ficha-seccion]"), function (s) { s.hidden = !marcadas[s.getAttribute("data-ficha-seccion")]; });
+    // F26 P2: lo que ya pide la sección de un tipo marcado no se repite en «Organización y comunidad»
+    Array.prototype.forEach.call(form.querySelectorAll("[data-ocultar-si-tipo]"), function (el) {
+      var caja = el.closest(".fche-campo");
+      if (caja) caja.hidden = el.getAttribute("data-ocultar-si-tipo").split(" ").some(function (t) { return marcadas[t]; });
+    });
   }
   document.addEventListener("change", function (e) {
     if (e.target.matches && e.target.matches("[data-tipo-ficha]") && e.target.form) mostrarFichas(e.target.form);
@@ -295,6 +365,9 @@
         var conDato = el.type === "checkbox" ? el.checked : !!el.value;
         var ver = valores.indexOf(origen.value) !== -1 || conDato && origen.value === "";
         caja.hidden = !ver || !!(cajaOrigen && cajaOrigen.hidden);
+        // Si todos los campos de una sección quedan ocultos, también su título (p. ej. «Si es menor de edad»).
+        var bloque = caja.closest("fieldset.fche-bloque");
+        if (bloque) bloque.hidden = !Array.prototype.some.call(bloque.querySelectorAll(".fche-campo"), function (c) { return !c.hidden; });
       }
       (el.form || origen).addEventListener("change", aplicar);
       aplicar();
@@ -360,5 +433,95 @@
     if (!abierto) return;
     abierto.open = false;
     abierto.querySelector("summary").focus();
+  });
+})();
+
+// F26 P1a: «Pasar lista». Con JavaScript aparece «Marcar todos» (marca o desmarca las casillas sin enviar) y se oculta
+// «Todos asistieron», que sin JavaScript envía la lista con todos marcados. La pestaña puede llegar por HTMX.
+(function () {
+  function preparar(raiz) {
+    Array.prototype.forEach.call((raiz || document).querySelectorAll("[data-marcar-todos]"), function (btn) {
+      btn.hidden = false;
+      var sinJs = btn.form && btn.form.querySelector("[data-todos-sin-js]");
+      if (sinJs) sinJs.hidden = true;
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () { preparar(document); });
+  document.addEventListener("htmx:afterSettle", function (e) { preparar(e.target); });
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest("[data-marcar-todos]");
+    if (!btn || !btn.form) return;
+    var casillas = btn.form.querySelectorAll("input[type='checkbox'][name='asistio']");
+    var todas = Array.prototype.every.call(casillas, function (c) { return c.checked; });
+    Array.prototype.forEach.call(casillas, function (c) { c.checked = !todas; });
+    btn.textContent = todas ? "Marcar todos" : "Desmarcar todos";
+  });
+})();
+
+// F26 Ia: las áreas de texto parten en 3 filas y crecen al escribir (data-crecer, lo pone BootstrapMixin). Sin JavaScript
+// quedan de 3 filas y se pueden agrandar a mano. También las que llegan por HTMX (ventanas «+ Crear»).
+(function () {
+  function ajustar(el) {
+    el.style.height = "auto";
+    el.style.height = (el.scrollHeight + el.offsetHeight - el.clientHeight) + "px";
+  }
+  function preparar(raiz) {
+    Array.prototype.forEach.call((raiz || document).querySelectorAll("textarea[data-crecer]"), function (el) {
+      if (el.value) ajustar(el);
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () { preparar(document); });
+  document.addEventListener("htmx:afterSettle", function (e) { preparar(e.target); });
+  document.addEventListener("input", function (e) {
+    if (e.target.matches && e.target.matches("textarea[data-crecer]")) ajustar(e.target);
+  });
+})();
+
+// F26 Ib: en celular las pestañas van en una fila con desplazamiento horizontal; al cargar (o al cambiar de pestaña con
+// HTMX) la activa queda a la vista. Equivale a scrollIntoView({inline: "nearest"}), pero solo mueve la fila de pestañas,
+// nunca la página. Sin JavaScript, la fila igual se desplaza con el dedo.
+(function () {
+  function mostrarActiva(raiz) {
+    Array.prototype.forEach.call((raiz || document).querySelectorAll(".nav-tabs"), function (nav) {
+      if (nav.scrollWidth <= nav.clientWidth) return;
+      var activa = nav.querySelector(".nav-link.active");
+      if (!activa) return;
+      var r = activa.getBoundingClientRect(), n = nav.getBoundingClientRect(), margen = 24;
+      if (r.left < n.left) nav.scrollLeft += r.left - n.left - margen;
+      else if (r.right > n.right) nav.scrollLeft += r.right - n.right + margen;
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () { mostrarActiva(document); });
+  document.addEventListener("htmx:afterSettle", function (e) { mostrarActiva(e.target); });
+})();
+
+// F26 P: buscador de tarjetas (catálogos). Escribir filtra las tarjetas por nombre, sin tildes ni mayúsculas, y oculta los
+// grupos que quedan vacíos. Sin JavaScript el buscador no aparece y se ven todas.
+(function () {
+  function normalizar(t) { return (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+  function preparar(caja) {
+    var cont = document.querySelector(caja.getAttribute("data-filtrar-tarjetas"));
+    var entrada = caja.querySelector("input");
+    var estado = caja.querySelector("[role=status]");
+    if (!cont || !entrada) return;
+    caja.hidden = false;
+    entrada.addEventListener("input", function () {
+      var palabras = normalizar(entrada.value).split(/\s+/).filter(Boolean), total = 0;
+      Array.prototype.forEach.call(cont.querySelectorAll("[data-grupo-tarjetas]"), function (g) {
+        var visibles = 0;
+        Array.prototype.forEach.call(g.querySelectorAll("[data-tarjeta]"), function (t) {
+          var texto = normalizar(t.getAttribute("data-tarjeta"));
+          var ok = palabras.every(function (p) { return texto.indexOf(p) !== -1; });
+          t.hidden = !ok;
+          if (ok) visibles++;
+        });
+        g.hidden = visibles === 0;
+        total += visibles;
+      });
+      if (estado) estado.textContent = !palabras.length ? "" : (total === 0 ? "Ningún catálogo coincide con lo escrito." : (total === 1 ? "1 catálogo" : total + " catálogos"));
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-filtrar-tarjetas]"), preparar);
   });
 })();

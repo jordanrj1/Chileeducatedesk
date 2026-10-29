@@ -108,7 +108,7 @@ def test_resultados_paginados_y_con_enlace(cg, crear_persona):
     for i in range(60):
         crear_persona(f"Paginada{i:02d}")
     html = hallar(cg, q="paginada", tipo="persona")
-    assert "60 resultado" in html and "Siguiente" in html and "/personas/" in html
+    assert "<strong>60</strong> resultados" in html and "Siguiente" in html  # F26 P: la cifra va en la barra común de filtros and "/personas/" in html
     assert "Paginada29" in cg.get("/buscar?q=paginada&tipo=persona&page=2").content.decode() or "Paginada" in cg.get("/buscar?q=paginada&tipo=persona&page=2").content.decode()
 
 
@@ -160,7 +160,8 @@ def test_dashboard_muestra_pendientes(cg, mundo, crear_persona, gestor):
     html = cg.get("/dashboard").content.decode()
     assert "Actividades incompletas" in html and "Taller de educación financiera" in html  # le falta el responsable
     assert "Mandar la carta" in html and "Nadie ha respondido" in html and "Incompleta" in html
-    assert "+ Persona" in html
+    # F26 P1b: sin «Acciones rápidas»; crear una persona se hace desde «+ Nuevo» de la barra superior
+    assert 'class="dropdown-item" href="/personas/nueva"' in html and "Acciones rápidas" not in html
 
 
 def test_cola_de_incompletos_prioriza_actividades_proximas(mundo, crear_persona, rol, estado_part):
@@ -171,7 +172,8 @@ def test_cola_de_incompletos_prioriza_actividades_proximas(mundo, crear_persona,
     sin_actividad = crear_persona("SinActividad", estado_registro=inc)
     con_proxima = crear_persona("ConProxima", estado_registro=inc)
     Participacion.objects.create(actividad=mundo["a"], persona=con_proxima, rol=rol("voluntario"), estado=estado_part("invitado"))
-    cola = list(Persona.objects.cola_incompletos())
+    # F26 P2: el estado se calcula, así que otras fichas del «mundo» también pueden estar incompletas: se miran estas dos
+    cola = [p for p in Persona.objects.cola_incompletos() if p.pk in (sin_actividad.pk, con_proxima.pk)]
     assert cola[0] == con_proxima and cola[0].prioridad is True and cola[1] == sin_actividad
 
 
@@ -190,8 +192,14 @@ def test_resultados_agrupados_por_tipo(cg, mundo):
 def test_menu_de_usuario_y_acciones_rapidas(cg):
     html = cg.get("/dashboard").content.decode()
     assert "Mi cuenta" in html and "Cerrar sesión" in html and 'id="cargando"' in html and 'id="reintentar"' in html
-    for accion in ("+ Solicitud", "+ Oportunidad", "+ Actividad", "+ Persona", "+ Organización", "+ Lugar"):
-        assert accion in html, accion
+    # F26 P1b: las acciones de crear viven solo en «+ Nuevo» (se quitó «Acciones rápidas» del Inicio y «+ Oportunidad»,
+    # porque el formulario de solicitud pregunta el origen). Se suman «+ Proyecto» y «Cargar planilla».
+    nuevo = html.split('aria-label="Crear nuevo registro"')[1].split("</ul>")[0]
+    for ruta, texto in (("/solicitudes/nueva", "Solicitud"), ("/proyectos/nuevo", "Proyecto"), ("/actividades/nueva", "Actividad"),
+                        ("/personas/nueva", "Persona"), ("/organizaciones/nueva", "Organización"), ("/lugares/nuevo", "Lugar"),
+                        ("/importaciones/nueva", "Cargar planilla")):
+        assert f'href="{ruta}"' in nuevo and texto in nuevo, ruta
+    assert "Acciones rápidas" not in html and "+ Oportunidad" not in html
     assert "/static/js/fche.js" in html
 
 

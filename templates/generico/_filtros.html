@@ -1,14 +1,15 @@
-{# Qué es: Barra de filtros de los listados: buscador, 2 o 3 filtros a la vista, «Más filtros» plegable (funciona sin JavaScript) y la línea con cuántos resultados hay, los filtros aplicados como etiquetas con × y «Limpiar filtros», que conserva el orden. #}
+{# Qué es: Barra de filtros de los listados: buscador, 2 o 3 filtros a la vista, un solo botón «Filtros» que despliega los demás y los aplica con «Aplicar filtros» (funciona sin JavaScript; con él, cambiar un filtro a la vista lo aplica al tiro; sin otros filtros, el mismo botón «Filtros» aplica lo elegido) y la línea con cuántos resultados hay, los filtros aplicados como etiquetas con × y «Limpiar filtros», que conserva el orden. #}
 {# Dónde se usa: generico/lista.html, en los listados que heredan de ListaBase (personas, actividades, documentos, lugares…) · Proceso: P10 #}
 {% load fche %}
 {% if buscable or filtros_ui or filtros_activos %}
 <form class="fche-filtros" method="get" role="search" aria-label="Filtrar {{ titulo|lower }}" data-filtros>
   {% if orden_actual %}<input type="hidden" name="orden" value="{{ orden_actual }}">{% endif %}
-  {% if buscable %}<div class="fche-filtros__busqueda">{% icono "buscar" 16 %}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="{{ texto_busqueda }}" aria-label="Buscar en {{ titulo|lower }}"></div>{% endif %}
+  {% if filtros_mas %}<button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true">Filtrar</button>{% endif %}{# Enter en el buscador aplica, aunque «Aplicar filtros» esté plegado #}
+  {% if buscable %}<div class="fche-filtros__busqueda">{% icono "buscar" 16 %}<input class="form-control" type="search" name="q" value="{{ q }}" placeholder="{{ texto_busqueda }}" aria-label="{% if etiqueta_busqueda %}{{ etiqueta_busqueda }}{% else %}Buscar en {{ titulo|lower }}{% endif %}"></div>{% endif %}
   {% for f in filtros_principales %}{% include "generico/_filtro_campo.html" with principal=True %}{% endfor %}
   {% if filtros_mas %}
   <details class="fche-filtros__mas">
-    <summary class="btn btn-outline-secondary">{% icono "filtro" 16 %}Más filtros{% if n_mas_activos %} <span class="fche-contador fche-contador--activo">{{ n_mas_activos }}</span><span class="visually-hidden"> aplicado{{ n_mas_activos|pluralize }}</span>{% endif %}</summary>
+    <summary class="btn btn-outline-secondary">{% icono "filtro" 16 %}Filtros{% if n_mas_activos %} <span class="fche-contador fche-contador--activo">{{ n_mas_activos }}</span><span class="visually-hidden"> aplicado{{ n_mas_activos|pluralize }}</span>{% endif %}</summary>
     <div class="fche-filtros__panel">
       {% regroup filtros_mas by grupo as grupos %}{% for g in grupos %}
       <fieldset class="fche-filtros__grupo">
@@ -19,10 +20,11 @@
       <div class="fche-filtros__panel-acciones"><button class="btn btn-primary btn-sm" type="submit">Aplicar filtros</button></div>
     </div>
   </details>
-  {% endif %}
+  {% else %}
   <div class="fche-filtros__acciones">
-    <button class="btn btn-outline-primary" type="submit">{% icono "filtro" 16 %}Filtrar</button>
+    <button class="btn btn-outline-secondary fche-filtros__boton" type="submit">{% icono "filtro" 16 %}Filtros</button>
   </div>
+  {% endif %}
   {% if filtros_activos %}
   <div class="fche-filtros__activos">
     <span class="fche-filtros__total"><strong>{{ paginator.count }}</strong> resultado{{ paginator.count|pluralize }}</span>

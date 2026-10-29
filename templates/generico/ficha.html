@@ -1,7 +1,8 @@
 {# Qué es: Ficha común con cabecera y pestañas. Arriba el título y su estado, una línea de datos clave separados por «·», UNA acción principal (Editar) y el resto en «Más acciones»; los avisos van juntos en una caja suave. #}
 {# Las fichas de cada módulo la extienden y llenan los bloques: contexto (sobre el título), estado, subtitulo (cada dato en un <li>), avisos (cada aviso en un <li>), menu (acciones secundarias con la clase fche-menu__item). #}
 {# Dónde se usa: 5 rutas, p. ej. /documentos/<int:pk> · Proceso: P9 #}
-{% extends "base.html" %}
+{# F26 Rb: al cambiar de pestaña por HTMX, FichaBase pone marco_ficha="generico/_solo_ficha.html" y se envía solo #ficha-completa (sin menú, barra ni pie). #}
+{% extends marco_ficha|default:"base.html" %}
 {% load fche %}
 {% block titulo %}{{ titulo }}{% endblock %}
 {% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">{{ titulo }}</li>{% endblock %}
@@ -37,7 +38,7 @@
     <ul class="nav nav-tabs" hx-boost="false" aria-label="Secciones de la ficha">
       {% for clave, etiqueta in pestanas %}
       <li class="nav-item"><a class="nav-link {% if clave == pestana %}active{% endif %}" href="?tab={{ clave }}"{% if clave == pestana %} aria-current="page"{% endif %}
-          hx-get="?tab={{ clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true">{{ etiqueta }}</a></li>
+          hx-get="?tab={{ clave }}" hx-target="#ficha-completa" hx-select="#ficha-completa" hx-swap="outerHTML" hx-push-url="true" hx-sync="#ficha-completa:replace">{{ etiqueta }}</a></li>
       {% endfor %}
     </ul>
   </section>

@@ -1,6 +1,7 @@
 """Buscador general (la caja de arriba): busca en personas, organizaciones, proyectos, actividades, lugares,
 documentos, comunidades y minutas, sin tildes ni mayúsculas. Cada tipo solo aparece si el usuario tiene permiso
 para verlo, y los documentos restringidos nunca se muestran a quien no puede abrirlos (F15)."""
+from .utilidades import plural
 from dataclasses import dataclass
 from datetime import date
 
@@ -40,9 +41,15 @@ def _personas(u, f):
         qs = qs.filter(estado_registro__codigo=f["estado_registro"])
     if f["tipo_actividad"]:
         qs = qs.filter(participaciones__actividad__tipo_id=f["tipo_actividad"])
-    for p in qs.distinct()[:LIMITE_POR_TIPO]:
-        n = p.participaciones.count()
-        det = " · ".join(x for x in [p.profesion, f"{n} participación(es)" if n else "", str(p.estado_registro or "")] if x)
+    # F26 Rb: el número de participaciones va en la misma consulta (antes, una consulta por persona)
+    from django.db.models import Count, OuterRef, Subquery
+
+    from apps.actividades.models import Participacion
+
+    n_part = Participacion.objects.filter(persona=OuterRef("pk")).order_by().values("persona").annotate(c=Count("pk")).values("c")
+    for p in qs.distinct().annotate(n_part=Subquery(n_part))[:LIMITE_POR_TIPO]:
+        n = p.n_part or 0
+        det = " · ".join(x for x in [p.profesion, plural(n, "participación", "participaciones") if n else "", str(p.estado_registro or "")] if x)
         yield Resultado("persona", p.nombre_completo, p.get_absolute_url(), det, "" if p.activo else "Desactivado")
 
 
@@ -64,7 +71,7 @@ def _organizaciones(u, f):
         qs = qs.filter(actividades__isnull=False)
     qs = qs.select_related("tipo").annotate(n=Count("actividades", distinct=True)).distinct()[:LIMITE_POR_TIPO]
     for o in qs:
-        yield Resultado("organizacion", o.nombre, o.get_absolute_url(), f"{o.tipo} · {o.n} actividad(es)", "" if o.activo else "Desactivado")
+        yield Resultado("organizacion", o.nombre, o.get_absolute_url(), f"{o.tipo} · {plural(o.n, 'actividad', 'actividades')}", "" if o.activo else "Desactivado")
 
 
 def _proyectos(u, f):
@@ -112,8 +119,12 @@ def _actividades(u, f):
         if f["hasta"]:
             ag = ag.filter(fecha__lte=f["hasta"])
         qs = qs.filter(Exists(ag))
-    for a in qs[:LIMITE_POR_TIPO]:
-        ag = a.agenda_vigente
+    # F26 Rb: la agenda vigente (con su lugar) de todas las actividades en una sola consulta
+    from django.db.models import Prefetch
+
+    vigente = AgendaActividad.objects.filter(vigente=True).select_related("lugar")
+    for a in qs.prefetch_related(Prefetch("agendas", queryset=vigente, to_attr="agenda_vigente_sel"))[:LIMITE_POR_TIPO]:
+        ag = next(iter(a.agenda_vigente_sel), None)
         det = " · ".join(x for x in [str(a.proyecto) if a.proyecto_id else "", str(a.tipo) if a.tipo_id else "", str(ag.lugar) if ag and ag.lugar else ""] if x)
         yield Resultado("actividad", a.nombre, a.get_absolute_url(), det, a.estado.nombre, f"{ag.fecha:%d-%m-%Y}" if ag else "")
 

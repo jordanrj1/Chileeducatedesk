@@ -1,6 +1,6 @@
-{# Qué es: Pestaña Historial: qué cambió, quién y cuándo, con la versión anterior. #}
+{# Qué es: Pestaña Historial: qué cambió, quién y cuándo, con la versión anterior. En proyecto, organización y lugar termina con la sección «Origen de la información» (F26 Ia; antes era una pestaña). #}
 {# Dónde se usa: 7 rutas, p. ej. /comunidades/<int:pk> · Proceso: P9 #}
-{% load fche %}{% if origenes_historial %}
+{% load fche %}{% if origenes_historial and not mostrar_origen %}
 <div class="alert alert-info small mb-4"><strong class="d-block mb-1">Fuente de la información</strong>
 {% for o in origenes_historial %}{{ o.get_fuente_display }}{% if o.documento %} (<a href="{{ o.documento.get_absolute_url }}">{{ o.documento }}</a>){% endif %} · {{ o.fecha|date:"d-m-Y" }} · {{ o.registrado_por|default:"sistema" }} · {{ o.get_estado_verificacion_display }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
 {% endif %}
@@ -14,3 +14,4 @@
 {% endfor %}
 </ol>
 {% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "historial" 18 %}</span><p class="fche-vacio__texto mb-0">Sin historial.</p></div>{% endif %}
+{% if mostrar_origen %}<section class="mt-4">{% include "documentos/pestanas/origen.html" %}</section>{% endif %}

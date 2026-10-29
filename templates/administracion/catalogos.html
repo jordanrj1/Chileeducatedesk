@@ -1,4 +1,4 @@
-{# Qué es: Lista de catálogos (listas de opciones) que se pueden editar. #}
+{# Qué es: Lista de catálogos (listas de opciones) que se pueden editar, agrupados por área, con un buscador que filtra las tarjetas (sin JavaScript se ven todas). #}
 {# Dónde se usa: /administracion/catalogos/ · Proceso: P12 #}
 {% extends "base.html" %}
 {% load fche %}
@@ -7,7 +7,19 @@
 {% block contenido %}
 <header class="fche-pagina"><div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Configuración</p><h1 class="fche-pagina__titulo">Catálogos</h1>
 <p class="fche-pagina__bajada">Opciones que aparecen en los formularios. Desactivar una opción no borra información histórica.</p></div></header>
+<div class="fche-catalogos__buscar mb-3" data-filtrar-tarjetas="#catalogos" hidden>
+  <label class="form-label" for="buscar-catalogo">Buscar un catálogo</label>
+  <input class="form-control" type="search" id="buscar-catalogo" placeholder="Por ejemplo: tipo de actividad, parentesco…" autocomplete="off" aria-describedby="buscar-catalogo-estado">
+  <p class="small text-muted mt-1 mb-0" id="buscar-catalogo-estado" role="status" aria-live="polite"></p>
+</div>
+<div id="catalogos">
+{% for area, items in areas %}
+<section class="fche-catalogos__grupo mb-4" aria-labelledby="area-{{ forloop.counter }}" data-grupo-tarjetas>
+<h2 class="h6 mb-2" id="area-{{ forloop.counter }}">{{ area }}</h2>
 <div class="fche-mosaico">
-{% for slug, nombre, n in items %}<a class="fche-mosaico__item align-items-center" href="/administracion/catalogos/{{ slug }}/"><span class="fche-mosaico__icono">{% icono "catalogos" 18 %}</span><span class="flex-grow-1"><span class="fche-mosaico__titulo">{{ nombre }}</span><span class="fche-mosaico__texto">{{ n }} opci{{ n|pluralize:"ón,ones" }}</span></span>{% icono "derecha" 16 "text-muted" %}</a>{% endfor %}
+{% for slug, nombre, n in items %}<a class="fche-mosaico__item align-items-center" href="/administracion/catalogos/{{ slug }}/" data-tarjeta="{{ nombre }} {{ area }}"><span class="fche-mosaico__icono">{% icono "catalogos" 18 %}</span><span class="flex-grow-1"><span class="fche-mosaico__titulo">{{ nombre }}</span><span class="fche-mosaico__texto">{{ n }} opci{{ n|pluralize:"ón,ones" }}</span></span>{% icono "derecha" 16 "text-muted" %}</a>{% endfor %}
+</div>
+</section>
+{% endfor %}
 </div>
 {% endblock %}

@@ -10,6 +10,14 @@
 (function () {
   "use strict";
   var contador = 0;
+  /* F26 Rb: listas ya pedidas (dirección completa → HTML), para no repetir la misma petición al reabrir o volver a
+     escribir lo mismo. Tope de entradas (sale la más antigua) y se vacía al crear o guardar algo (ver más abajo). */
+  var memoria = new Map(), TOPE_MEMORIA = 60;
+  function recordar(url, html) {
+    memoria.delete(url);
+    memoria.set(url, html);
+    if (memoria.size > TOPE_MEMORIA) memoria.delete(memoria.keys().next().value);
+  }
   var ICONO_QUITAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
   function textoDe(opcion) {
@@ -126,28 +134,36 @@
       return base + (base.indexOf("?") === -1 ? "?" : "&") + "q=" + encodeURIComponent(q) + "&actual=" + encodeURIComponent(select.value || "");
     }
 
+    function pintar(html) {
+      panel.innerHTML = html; // armado y escapado por el servidor
+      var lista = panel.querySelector('[role="listbox"]');
+      if (lista) {
+        lista.id = id + "-lista";
+        if (etiqueta) lista.setAttribute("aria-labelledby", etiqueta.id);
+        input.setAttribute("aria-controls", lista.id);
+      }
+      Array.prototype.forEach.call(opciones(), function (o, i) { o.id = id + "-op-" + i; });
+      var pie = panel.querySelector(".fche-selector__pie");
+      vivo.textContent = pie ? pie.textContent : "";
+      panel.removeAttribute("aria-busy");
+      activa = -1;
+      input.removeAttribute("aria-activedescendant");
+      ubicar();
+    }
+
     function cargar(q) {
       if (controlador) controlador.abort();
+      controlador = null;
+      var url = direccion(q);
+      if (memoria.has(url)) { var guardada = memoria.get(url); recordar(url, guardada); pintar(guardada); return; }
       controlador = window.AbortController ? new window.AbortController() : null;
       panel.setAttribute("aria-busy", "true");
       if (!panel.querySelector('[role="listbox"]')) panel.innerHTML = '<div class="fche-selector__estado">Cargando…</div>';
-      window.fetch(direccion(q), { credentials: "same-origin", headers: { "HX-Request": "true" }, signal: controlador ? controlador.signal : undefined })
+      window.fetch(url, { credentials: "same-origin", headers: { "HX-Request": "true" }, signal: controlador ? controlador.signal : undefined })
         .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.text(); })
         .then(function (html) {
-          panel.innerHTML = html; // armado y escapado por el servidor
-          var lista = panel.querySelector('[role="listbox"]');
-          if (lista) {
-            lista.id = id + "-lista";
-            if (etiqueta) lista.setAttribute("aria-labelledby", etiqueta.id);
-            input.setAttribute("aria-controls", lista.id);
-          }
-          Array.prototype.forEach.call(opciones(), function (o, i) { o.id = id + "-op-" + i; });
-          var pie = panel.querySelector(".fche-selector__pie");
-          vivo.textContent = pie ? pie.textContent : "";
-          panel.removeAttribute("aria-busy");
-          activa = -1;
-          input.removeAttribute("aria-activedescendant");
-          ubicar();
+          recordar(url, html); // solo las respuestas correctas; un error se vuelve a pedir
+          pintar(html);
         })
         .catch(function (e) {
           if (e && e.name === "AbortError") return;
@@ -264,6 +280,7 @@
     select.addEventListener("fche:fijar", function (e) { // creado o elegido en la ventana «+ Crear…»
       var d = e.detail || {};
       if (!d.valor) return;
+      memoria.clear(); // lo recién creado debe aparecer en las listas
       fijar(d.valor, d.texto || "");
       aviso.textContent = d.aviso || "";
       sinAbrir = true;
@@ -419,7 +436,14 @@
   // Respuesta del servidor al crear (encabezado HX-Trigger «fche:elegido»).
   document.addEventListener("fche:elegido", function (e) {
     var d = e.detail || {};
+    memoria.clear(); // F26 Rb: lo recién creado debe aparecer en las listas guardadas
     entregar(d.campo, d);
+  });
+
+  // F26 Rb: cualquier guardado por HTMX (crear un sector, una comunidad…) puede cambiar lo que ofrecen las listas.
+  document.addEventListener("htmx:afterRequest", function (e) {
+    var cfg = e.detail && e.detail.requestConfig;
+    if (cfg && String(cfg.verb).toLowerCase() !== "get" && e.detail.successful) memoria.clear();
   });
 
   // «Usar esta persona / organización» en el aviso de parecidos.

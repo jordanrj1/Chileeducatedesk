@@ -35,7 +35,8 @@ def test_recorrido_completo_normal(cg, lugar, universidad):
     # 4. Participantes (uno nuevo, uno creado desde la actividad)
     cg.post(f"/actividades/{actividad.pk}/participantes/rapido", {"nombres": "Diego", "apellido_paterno": "Voluntario", "rol": RolParticipacion.objects.get(codigo="voluntario").pk})
     cg.post(f"/actividades/{actividad.pk}/participantes/rapido", {"nombres": "Elisa", "apellido_paterno": "Estudiante", "rol": RolParticipacion.objects.get(codigo="estudiante").pk})
-    assert actividad.participaciones.count() == 2
+    # F26 P2 [P]: la responsable (Claudia) entra sola al equipo ejecutor como coordinadora: 2 participantes más ella
+    assert actividad.participaciones.count() == 3 and actividad.participaciones.get(persona=claudia).rol.codigo == "coordinador"
     # 5. Programar
     # (se programa para hoy: asistencia, resultado y finalizar se habilitan desde el día de la actividad)
     cg.post(f"/actividades/{actividad.pk}/programar", {"fecha": date.today(), "hora_inicio": "18:00", "hora_fin": "20:00", "lugar": lugar.pk})
@@ -49,7 +50,7 @@ def test_recorrido_completo_normal(cg, lugar, universidad):
     # 8. Asistencia y resultado
     datos = {f"asistencia_{p.pk}": "si" for p in actividad.participaciones.all()}
     cg.post(f"/actividades/{actividad.pk}/asistencia", datos)
-    cg.post(f"/actividades/{actividad.pk}/resultados", {"resultado": "Asistieron todos; se cumplió el objetivo.", "observaciones": "Buen clima", "incidencias": "", "indicadores": "2 de 2"})
+    cg.post(f"/actividades/{actividad.pk}/resultados", {"resultado": "Asistieron todos; se cumplió el objetivo.", "observaciones": "Buen clima", "incidencias": "", "indicadores": "3 de 3"})
     # 9. Evidencia
     cg.post("/documentos/nuevo", {"nombre": "Fotos del taller", "archivo": SimpleUploadedFile("fotos.png", b"\x89PNG ficticio"), "tipo": TipoDocumento.objects.get(codigo="otro").pk, "fecha": str(date.today()), "actividad": actividad.pk})
     assert actividad.documentos.count() == 1
@@ -205,11 +206,14 @@ def test_recorrido_de_solicitud_a_actividad_realizada(cg, universidad, crear_per
     marta = crear_persona("Marta")
     cg.post("/solicitudes/nueva", {"origen": "solicitud_externa", "fecha": str(date.today()), "persona": marta.pk, "organizacion": universidad.pk, "motivo": "Estudiantes disponibles para apoyo escolar"})
     s = Solicitud.objects.get()
-    cg.post(f"/solicitudes/{s.pk}/crear-actividad")
+    # F26 P1b: «Crear actividad» abre el formulario relleno y «Programar ahora» la deja con fecha en el mismo paso
+    # (finalizar exige fecha; antes la actividad quedaba sin programar y se pasaba a «planificada» a mano)
+    url = cg.get(f"/solicitudes/{s.pk}/crear-actividad")["Location"]
+    cg.post(url, {"nombre": s.motivo, "fecha": str(date.today()), "hora_inicio": "10:00"})
     s.refresh_from_db()
     a = s.actividad
+    assert a.estado.codigo == "planificada" and s.estado.codigo == "convertida"
     cg.post(f"/actividades/{a.pk}/participantes/rapido", {"nombres": "Iván", "apellido_paterno": "Apoyo", "rol": RolParticipacion.objects.get(codigo="practicante").pk})
-    cg.post(f"/actividades/{a.pk}/estado", {"estado": "planificada"})
     cg.post(f"/actividades/{a.pk}/resultados", {"resultado": "Se apoyó a 12 estudiantes", "asistencia_sin_registro": "on"})
     cg.post(f"/actividades/{a.pk}/finalizar")
     a.refresh_from_db()
@@ -239,7 +243,7 @@ def test_todas_las_pantallas_principales_responden(cg, ca, actividad, persona, u
         "/proyectos", "/proyectos/nuevo", f"/proyectos/{pr.pk}", f"/proyectos/{pr.pk}/editar", f"/proyectos/{pr.pk}/equipo/nuevo", f"/proyectos/{pr.pk}/beneficiarios/nuevo",
         f"/proyectos/{pr.pk}/organizaciones/nuevo", f"/proyectos/{pr.pk}/postulaciones/nuevo", "/actividades", "/actividades/nueva", f"/actividades/{actividad.pk}",
         f"/actividades/{actividad.pk}/editar", f"/actividades/{actividad.pk}/programar", f"/actividades/{actividad.pk}/confirmar", f"/actividades/{actividad.pk}/participantes/nuevo",
-        f"/actividades/{actividad.pk}/participantes/rapido", f"/actividades/{actividad.pk}/candidatos", f"/actividades/{actividad.pk}/organizaciones/nuevo", f"/actividades/{actividad.pk}/sesiones/nuevo",
+        f"/actividades/{actividad.pk}/candidatos", f"/actividades/{actividad.pk}/organizaciones/nuevo", f"/actividades/{actividad.pk}/sesiones/nuevo",
         f"/actividades/{actividad.pk}/territorios/nuevo", "/calendario", "/solicitudes", "/solicitudes/nueva", f"/solicitudes/{sol.pk}", f"/solicitudes/{sol.pk}/editar",
         "/interacciones/nueva", "/reuniones", "/reuniones/nueva", f"/reuniones/{reunion.pk}", f"/reuniones/{reunion.pk}/editar", f"/reuniones/{reunion.pk}/asistentes/nuevo",
         "/tareas", "/tareas/nueva", f"/tareas/{tarea.pk}", f"/tareas/{tarea.pk}/editar", f"/tareas/{tarea.pk}/responsables/nuevo", "/invitaciones/nueva", "/colaboraciones/nueva",
@@ -249,5 +253,8 @@ def test_todas_las_pantallas_principales_responden(cg, ca, actividad, persona, u
     for ruta in rutas:
         r = cg.get(ruta)
         assert r.status_code == 200, f"{ruta} -> {r.status_code}"
+    # F26 P1a: /participantes/rapido lleva al único «+ Agregar persona» (/participantes/nuevo, que está en la lista)
+    r = cg.get(f"/actividades/{actividad.pk}/participantes/rapido", follow=True)
+    assert r.status_code == 200 and r.redirect_chain == [(f"/actividades/{actividad.pk}/participantes/nuevo", 302)]
     for ruta in ["/administracion/", "/administracion/usuarios", "/administracion/usuarios/nuevo", "/administracion/roles", "/administracion/auditoria"]:
         assert ca.get(ruta).status_code == 200, ruta

@@ -1,5 +1,6 @@
 """Pantalla base para unir dos fichas repetidas (personas u organizaciones): se elige cuál queda,
 se pide motivo y confirmación, y el historial de ambas se junta. Solo para el Administrador."""
+from apps.nucleo.utilidades import plural
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -69,7 +70,7 @@ class FusionarBase(View):
             return render(request, "generico/fusionar.html", self._ctx(form), status=400)
         messages.success(request, f"Fichas fusionadas: {movidos} registros pasaron a «{destino}».")
         if conservados:
-            messages.warning(request, f"{len(conservados)} registro(s) quedaron en la ficha desactivada porque ya existían en la que se conserva: " + "; ".join(conservados[:5]))
+            messages.warning(request, f"{plural(len(conservados), 'registro quedó', 'registros quedaron')} en la ficha desactivada porque ya existían en la que se conserva: " + "; ".join(conservados[:5]))
         return HttpResponseRedirect(self.destino_url(destino))
 
     def destino_url(self, destino):

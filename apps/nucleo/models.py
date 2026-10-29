@@ -144,6 +144,8 @@ TipoInvitado = _catalogo("TipoInvitado", "tipo de invitado", "tipos de invitado"
 EstadoVoluntario = _catalogo("EstadoVoluntario", "estado del voluntariado", "estados del voluntariado")
 # Forma legal con que se constituyó una organización (figura en su certificado de vigencia o en sus estatutos)
 NaturalezaJuridica = _catalogo("NaturalezaJuridica", "naturaleza jurídica", "naturalezas jurídicas")
+# F26 P2: qué es la persona en una organización (estudiante, docente, dirigente…); el cargo libre da el detalle
+RolOrganizacion = _catalogo("RolOrganizacion", "rol en la organización", "roles en la organización")
 
 CATALOGOS = {
     "estado-actividad": EstadoActividad,
@@ -167,6 +169,7 @@ CATALOGOS = {
     "tipo-invitado": TipoInvitado,
     "estado-voluntario": EstadoVoluntario,
     "naturaleza-juridica": NaturalezaJuridica,
+    "rol-organizacion": RolOrganizacion,
 }
 
 

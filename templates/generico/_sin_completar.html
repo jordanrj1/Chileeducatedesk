@@ -1,0 +1,9 @@
+{# Qué es: Datos vacíos de una ficha plegados en «Sin completar (N)», con «Completar ficha» (F26 Ia; mismo patrón del Resumen de la persona). Recibe `datos_vacios` (lista de rótulos). #}
+{# Dónde se usa: pestaña Información de organización, comunidad y lugar · Proceso: P4 #}
+{% load fche %}{% if datos_vacios %}
+<details class="fche-sin-completar">
+  <summary>Sin completar ({{ datos_vacios|length }})</summary>
+  <ul class="fche-sin-completar__lista">{% for e in datos_vacios %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% if puede_editar and url_editar %}<a class="btn btn-outline-primary btn-sm" href="{{ url_editar }}">{% icono "editar" 15 %}Completar ficha</a>{% endif %}
+</details>
+{% endif %}

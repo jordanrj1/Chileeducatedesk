@@ -168,7 +168,10 @@ def test_actividad_para_una_comunidad_y_procedencia_automatica(cg, comunidad, pe
     p2 = Participacion.objects.create(actividad=a, persona=vecina, rol=rol("participante"), estado=estado_part("confirmado"))
     assert p1.institucion == universidad and p2.comunidad == comunidad
     html = cg.get(f"{a.get_absolute_url()}?tab=participantes").content.decode()
-    assert "Equipo ejecutor" in html and "Asistentes" in html and "Universidad Ficticia" in html
+    assert "Equipo ejecutor" in html and "Universidad Ficticia" in html
+    # F26 P3a: la suelta usa las pestañas de la tarea: los asistentes en Beneficiarios y el público dentro de Información
+    benef = cg.get(f"{a.get_absolute_url()}?tab=beneficiarios").content.decode()
+    assert "Vecina" in benef and "Vecinos del Sector Ficticio" in benef
     assert "Vecinos del Sector Ficticio" in cg.get(f"{a.get_absolute_url()}?tab=publico").content.decode()
 
 

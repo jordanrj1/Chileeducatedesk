@@ -25,7 +25,7 @@ def test_pestanas_ocultas(cg, sin_segunda_fase, actividad, persona):
     from apps.proyectos.models import Proyecto
 
     a = cg.get(f"/actividades/{actividad.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
-    assert "Beneficiarios" not in a and "Participantes" in a
+    assert "Beneficiarios" in a and "Equipo y asistencia" in a  # F26 P3a: la suelta usa las ocho pestañas de la tarea (Beneficiarios siempre)
     assert "Sesiones" in a  # F22: la bitácora de sesiones es visible sin segunda fase
     p = cg.get(f"/personas/{persona.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
     assert "Verificaciones" not in p
@@ -40,7 +40,7 @@ def test_beneficiarios_aparecen_como_participantes(cg, sin_segunda_fase, activid
     from apps.actividades.models import Participacion
 
     Participacion.objects.create(actividad=actividad, persona=persona, rol=rol("beneficiario"), estado=estado_part("invitado"))
-    assert "Ana María" in cg.get(f"/actividades/{actividad.pk}?tab=participantes").content.decode()
+    assert "Ana María" in cg.get(f"/actividades/{actividad.pk}?tab=beneficiarios").content.decode()  # F26 P3a: pestaña Beneficiarios, como en la tarea
 
 
 def test_panel_muestra_proximas_acciones_de_interacciones(cg, sin_segunda_fase, persona):
@@ -51,7 +51,8 @@ def test_panel_muestra_proximas_acciones_de_interacciones(cg, sin_segunda_fase, 
     Interaccion.objects.create(canal=canal, persona=persona, proxima_accion="Lejana", proxima_fecha=hoy + timedelta(days=40))
     Tarea.objects.create(titulo="Tarea de segunda fase", fecha_limite=hoy)
     html = cg.get("/dashboard").content.decode()
-    assert "Tareas por vencer" in html and "Volver a llamar a la junta" in html
+    # F26 P1b: con las interacciones la tarjeta se llama «Próximas acciones» (antes «Tareas por vencer»)
+    assert "Próximas acciones" in html and "Tareas por vencer" not in html and "Volver a llamar a la junta" in html
     assert "Ya hecha" not in html and "Lejana" not in html and "Tarea de segunda fase" not in html
 
 
@@ -73,7 +74,7 @@ def test_habilitar_solo_reuniones_y_tareas(cg, settings, actividad, persona):
     html = cg.get("/dashboard").content.decode()
     assert 'href="/reuniones"' in html and 'href="/tareas"' in html and 'href="/finanzas"' not in html
     tabs = cg.get(f"/actividades/{actividad.pk}").content.decode().split("nav-tabs")[1].split("</ul>")[0]
-    assert "Sesiones" in tabs and "Beneficiarios" not in tabs  # F22: sesiones siempre visibles
+    assert "Sesiones" in tabs and "Coordinación" not in tabs  # F22: sesiones siempre visibles; F26 P3a: Coordinación va en Información
     coord = cg.get(f"/actividades/{actividad.pk}?tab=coordinacion").content.decode()
     assert "+ Nueva reunión" in coord and "+ Nueva tarea" in coord
     assert cg.get(f"/personas/{persona.pk}/verificaciones/nuevo").status_code == 404

@@ -84,3 +84,9 @@ def separar_nombre(texto: str):
     if len(palabras) == 3:
         return palabras[0], palabras[1], palabras[2]
     return " ".join(palabras[:-2]), palabras[-2], palabras[-1]
+
+
+# --- Textos ----------------------------------------------------------
+def plural(n, singular: str, plural: str = "") -> str:
+    """«1 actividad», «2 actividades»: la cifra con la palabra en singular o plural (por defecto, singular + «s»)."""
+    return f"{n} {singular if n == 1 else (plural or singular + 's')}"

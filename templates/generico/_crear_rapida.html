@@ -1,7 +1,7 @@
 {# Qué es: Contenido de la ventana «+ Crear…» que se abre desde un buscador: pide lo mínimo y avisa si el registro podría ya existir. #}
 {# Dónde se usa: /personas/crear-rapida y /organizaciones/crear-rapida, dentro de la ventana de base.html · Proceso: P3 y P4 #}
-{% load fche %}<form hx-post="{{ accion }}" hx-target="#modal-rapido-contenido" hx-swap="innerHTML" novalidate>
-  {% csrf_token %}
+{% load fche %}<form hx-post="{{ accion }}" hx-target="#modal-rapido-contenido" hx-swap="innerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" novalidate>
+  {% csrf_token %}{% marca_envio %}
   <input type="hidden" name="campo" value="{{ campo_id }}">
   {% for nombre, valor in filtros.items %}<input type="hidden" name="{{ nombre }}" value="{{ valor }}">{% endfor %}
   <div class="modal-header">
