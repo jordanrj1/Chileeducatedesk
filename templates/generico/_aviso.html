@@ -1,0 +1,12 @@
+{# Qué es: Un aviso accionable de la cabecera de una ficha (F27 B): icono, título, texto o lista corta y, si corresponde, un botón. Va dentro de <ul class="fche-ficha-avisos">. #}
+{# Recibe: tono (advertencia, info o neutro), simbolo (nombre del icono), titulo, texto, lista (pastillas; con lineas=True, una frase por línea), url y accion (texto del botón). #}
+{# Dónde se usa: cabecera de las fichas (persona, actividad, solicitud, territorio) · Proceso: P4 #}
+{% load fche %}<li class="fche-aviso fche-aviso--{{ tono|default:'advertencia' }}">
+  <span class="fche-aviso__icono">{% icono simbolo|default:"alerta" 16 %}</span>
+  <div class="fche-aviso__cuerpo">
+    {% if titulo %}<strong class="fche-aviso__titulo">{{ titulo }}</strong>{% endif %}
+    {% if texto %}<span class="fche-aviso__texto">{{ texto }}</span>{% endif %}
+    {% if lista %}<ul class="{% if lineas %}fche-aviso__lineas{% else %}fche-aviso__lista{% endif %}">{% for x in lista %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+  {% if url and accion %}<a class="btn btn-sm btn-outline-secondary fche-aviso__accion" href="{{ url }}">{{ accion }}</a>{% endif %}
+</li>

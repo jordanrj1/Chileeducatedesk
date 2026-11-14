@@ -1,6 +1,6 @@
 {# Qué es: Trozo que dibuja un campo de formulario con su etiqueta, ayuda y error. #}
 {# Dónde se usa: se incluye en 12 plantillas, p. ej. actividades/pestanas/resultados.html · Proceso: Todos #}
-{% load fche %}<div class="fche-campo{% if campo.errors %} fche-campo--error{% endif %}{% if campo.widget_type == 'textarea' or campo.widget_type == 'checkboxselectmultiple' or campo.widget_type == 'selectmultiple' %} fche-campo--ancho{% endif %}">
+{% load fche %}<div class="fche-campo{% if campo.errors %} fche-campo--error{% endif %}{% if campo.widget_type == 'textarea' or campo.widget_type == 'checkboxselectmultiple' or campo.widget_type == 'selectmultiple' %} fche-campo--ancho{% endif %}{% if campo.widget_type == 'date' or campo.widget_type == 'time' %} fche-campo--fecha{% endif %}">
   {% if campo.widget_type == 'checkbox' %}
     <div class="form-check">{{ campo }} <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label></div>
   {% elif campo.widget_type == 'selectormultiple' %}{# selección múltiple desplegable: botón, buscador y etiquetas con × #}
@@ -13,5 +13,10 @@
     {% else %}{{ campo }}{% endif %}
   {% endif %}
   {% if campo.help_text %}<div class="form-text" id="{{ campo.auto_id }}_helptext">{{ campo.help_text }}</div>{% endif %}
+  {% if campo.widget_type == 'selectcondescripcion' %}{% with descripciones=campo.field.widget.lista_descripciones %}{% if descripciones %}{# F27: la descripción del valor elegido; sin JavaScript, todas en una ayuda plegable #}
+  <div class="form-text fche-descripcion" id="{{ campo.auto_id }}_descripcion" data-descripcion-de="{{ campo.auto_id }}" aria-live="polite" hidden></div>
+  <details class="fche-descripciones"><summary>¿Qué significa cada opción?</summary>
+    <dl>{% for etiqueta, texto in descripciones %}<dt>{{ etiqueta }}</dt><dd>{{ texto }}</dd>{% endfor %}</dl></details>
+  {% endif %}{% endwith %}{% endif %}
   {% for e in campo.errors %}<div class="fche-campo__error text-danger">{% icono "error" 14 %}{{ e }}</div>{% endfor %}
 </div>

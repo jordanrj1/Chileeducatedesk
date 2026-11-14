@@ -41,7 +41,7 @@ def _form(modelo):
     class F(BootstrapMixin, forms.ModelForm):
         class Meta:
             model = modelo
-            fields = ["nombre", *getattr(modelo, "campos_extra", []), "orden", "activo"]
+            fields = ["nombre", "descripcion", *getattr(modelo, "campos_extra", []), "orden", "activo"]
 
     return F
 
@@ -53,7 +53,7 @@ AREAS = {
     "Personas": ("perfil-persona", "origen-persona", "estado-registro", "tipo-contacto", "area-tematica", "parentesco", "tipo-invitado",
                  "estado-voluntario"),
     "Organizaciones": ("tipo-organizacion", "naturaleza-juridica", "rol-organizacion"),
-    "Lugares y territorio": ("tipo-lugar",),
+    "Lugares y territorio": ("tipo-lugar", "relacion-lugar"),
     "Documentos": ("tipo-documento",),
 }
 
@@ -84,6 +84,8 @@ class Lista(View):
             "slug": slug, "filas": filas, "form": form, "titulo": modelo._meta.verbose_name_plural.capitalize(),
             "con_edades": "edad_min" in getattr(modelo, "campos_extra", []),
             "con_ficha": "ficha" in getattr(modelo, "campos_extra", []),
+            "con_cargo": "con_cargo" in getattr(modelo, "campos_extra", []),
+            "con_ambito": "ambito" in getattr(modelo, "campos_extra", []),
             "puede_crear": request.user.has_perm(f"nucleo.add_{modelo._meta.model_name}"),
             "puede_editar": request.user.has_perm(f"nucleo.change_{modelo._meta.model_name}"),
             "puede_desactivar": request.user.has_perm(f"nucleo.desactivar_{modelo._meta.model_name}"),

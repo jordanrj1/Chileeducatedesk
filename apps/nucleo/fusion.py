@@ -12,7 +12,8 @@ from .auditoria import registrar
 # Datos que se copian a la ficha que queda si allí están vacíos
 COMPLETAR = {
     "Persona": ["apellido_paterno", "apellido_materno", "profesion", "sitio_web", "origen_id", "tipo_documento", "numero_documento",
-                "nombre_social", "fecha_nacimiento", "sexo", "nacionalidad", "nivel_educacional", "situacion_ocupacional", "habilidades", "idiomas", "canal_preferido_id"],
+                "nombre_social", "fecha_nacimiento", "sexo", "nacionalidad", "nivel_educacional", "situacion_ocupacional", "habilidades", "idiomas", "canal_preferido_id",
+                "foto"],  # F27: la foto pasa si la que se conserva no tiene (el archivo queda compartido; se borra solo si nadie lo usa)
     "Organizacion": ["otro_identificador", "descripcion", "sitio_web", "direccion_id", "naturaleza_id", "naturaleza_juridica", "domicilio_legal", "vigencia_desde", "vigencia_hasta"],
 }
 

@@ -1,5 +1,5 @@
-{# Qué es: Ficha común con cabecera y pestañas. Arriba el título y su estado, una línea de datos clave separados por «·», UNA acción principal (Editar) y el resto en «Más acciones»; los avisos van juntos en una caja suave. #}
-{# Las fichas de cada módulo la extienden y llenan los bloques: contexto (sobre el título), estado, subtitulo (cada dato en un <li>), avisos (cada aviso en un <li>), menu (acciones secundarias con la clase fche-menu__item). #}
+{# Qué es: Ficha común con cabecera y pestañas. Arriba, la tarjeta de identidad (F27 B): retrato (foto, iniciales o icono del tipo), nombre grande con su estado, etiquetas, datos clave con icono y una línea extra opcional; a la derecha UNA acción principal (Editar), «Más acciones» y Volver. Debajo, los avisos accionables, uno por caja, y las pestañas. #}
+{# Las fichas de cada módulo la extienden y llenan los bloques: retrato, contexto (sobre el título), estado, etiquetas (<li> de .fche-etiquetas), subtitulo (cada dato en un <li> con su icono), identidad_extra, avisos (cada aviso con generico/_aviso.html), menu (acciones secundarias con la clase fche-menu__item). #}
 {# Dónde se usa: 5 rutas, p. ej. /documentos/<int:pk> · Proceso: P9 #}
 {# F26 Rb: al cambiar de pestaña por HTMX, FichaBase pone marco_ficha="generico/_solo_ficha.html" y se envía solo #ficha-completa (sin menú, barra ni pie). #}
 {% extends marco_ficha|default:"base.html" %}
@@ -11,15 +11,17 @@
   <section class="fche-ficha-cabecera" aria-labelledby="ficha-titulo">
     <div class="fche-ficha-cabecera__fila">
       <div class="fche-ficha-cabecera__identidad">
-        {% if icono_ficha %}<span class="fche-avatar fche-avatar--lg tono-0" aria-hidden="true">{% icono icono_ficha 24 %}</span>
-        {% else %}<span class="fche-avatar fche-avatar--lg {{ titulo|tono_avatar }}" aria-hidden="true">{{ titulo|iniciales }}</span>{% endif %}
-        <div class="min-w-0">
+        {% block retrato %}{% if icono_ficha %}<span class="fche-retrato fche-retrato--icono" aria-hidden="true">{% icono icono_ficha 28 %}</span>
+        {% else %}<span class="fche-retrato {{ titulo|tono_avatar }}" aria-hidden="true">{{ titulo|iniciales }}</span>{% endif %}{% endblock %}
+        <div class="fche-ficha-cabecera__cuerpo">
           {% block contexto %}{% if tipo_ficha %}<p class="fche-pagina__antetitulo">{{ tipo_ficha }}</p>{% endif %}{% endblock %}
           <div class="fche-ficha-cabecera__linea-titulo">
             <h1 class="fche-ficha-cabecera__titulo" id="ficha-titulo">{{ titulo }}</h1>
             {% block estado %}{% endblock %}
           </div>
-          <div class="fche-meta-marco"><ul class="fche-meta" aria-label="Datos clave">{% block subtitulo %}{% endblock %}</ul></div>
+          <ul class="fche-etiquetas" aria-label="Etiquetas">{% block etiquetas %}{% endblock %}</ul>
+          <ul class="fche-meta" aria-label="Datos clave">{% block subtitulo %}{% endblock %}</ul>
+          {% block identidad_extra %}{% endblock %}
         </div>
       </div>
       <div class="fche-ficha-cabecera__acciones">
