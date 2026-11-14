@@ -1,0 +1,21 @@
+{# Qué es: Agregar o editar un contacto de una persona. F27: si el correo o teléfono ya lo tiene otra persona, avisa antes de guardar con tres salidas: es la misma persona (su ficha y «Unir fichas»), es otra que lo comparte (con motivo) o cancelar. #}
+{# Dónde se usa: /personas/<int:pk>/contactos/nuevo y /personas/<int:pk>/contactos/<int:hijo_pk>/editar · Proceso: P9 #}
+{% extends "generico/formulario.html" %}
+{% load fche %}
+{% block extra_form %}{% if form.repetidos %}
+<section class="alert alert-warning mt-3" role="alert" aria-labelledby="aviso-repetido">
+  <h2 class="h6" id="aviso-repetido">{% icono "alerta" 16 %} Este contacto ya lo tiene:
+    {% for c in form.repetidos %}<a href="{{ c.persona.get_absolute_url }}">{{ c.persona.nombre_completo }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</h2>
+  <ol class="mb-0 ps-3">
+    <li class="mb-2"><strong>Es la misma persona:</strong> no se guarda nada.
+      {% for c in form.repetidos %}<a href="{{ c.persona.get_absolute_url }}">Ver la ficha de {{ c.persona.nombre_completo }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}
+      {% if puede_fusionar %} · <a href="{{ url_fusionar }}">Unir fichas</a>{% else %} · Para unir las fichas, pídeselo al Administrador.{% endif %}</li>
+    <li class="mb-2"><strong>Es otra persona que comparte este contacto:</strong> elige el motivo y guarda. La decisión queda registrada con tu usuario y la fecha.
+      <div class="row g-2 mt-1">
+        {% for campo in form.compartir %}<div class="col-12 col-md-6">{% include "generico/_campo.html" with campo=campo %}</div>{% endfor %}
+      </div>
+      <button type="submit" name="compartir" value="1" class="btn btn-warning btn-sm mt-2">Guardar como contacto compartido</button></li>
+    <li><strong>Cancelar:</strong> <a href="{{ volver_url }}">volver a la ficha sin guardar</a>.</li>
+  </ol>
+</section>
+{% endif %}{% endblock %}

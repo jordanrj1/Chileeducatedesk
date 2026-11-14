@@ -1,20 +1,41 @@
-{# Qué es: Cabecera de la ficha de persona: estado del registro junto al nombre, una línea con perfil, edad, comuna y contacto principal, avisos (menor de edad, consentimientos) en una sola caja y las acciones secundarias en «Más acciones». #}
+{# Qué es: Cabecera de la ficha de persona como tarjeta de identidad (F27 B): foto (o iniciales) en círculo, nombre con su estado, perfiles como etiquetas, datos con icono (edad, comuna, correo con enlace, teléfono con enlace), organización y cargo vigentes; acciones a la derecha. Debajo, los avisos: menor de edad, consentimiento pendiente y «Le falta» (con los datos opcionales sin completar plegados), uno debajo del otro. #}
 {# Dónde se usa: /personas/<int:pk> · Proceso: P9 #}
 {% extends "generico/ficha.html" %}
 {% load fche %}
+{% block retrato %}{% if foto_url %}<img class="fche-retrato fche-retrato--persona" src="{{ foto_url }}" alt="Foto de {{ titulo }}" width="72" height="72" loading="lazy" decoding="async">
+{% else %}<span class="fche-retrato fche-retrato--persona {{ titulo|tono_avatar }}" aria-hidden="true">{{ titulo|iniciales }}</span>{% endif %}{% endblock %}
 {% block estado %}{% if object.estado_registro %}{% estado object.estado_registro %}{% endif %}{% if not object.activo %}{% estado "inactivo" "Inactiva" %}{% endif %}{% endblock %}
+{% block etiquetas %}{% for p in object.perfiles.all %}<li>{{ p }}</li>{% endfor %}{% endblock %}
 {% block subtitulo %}
-  {% if object.perfiles.all %}<li>{% for p in object.perfiles.all %}{{ p }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>{% endif %}
-  {% if object.nombre_social %}<li>Nombre social: <strong>{{ object.nombre_social }}</strong></li>{% endif %}
-  {% if object.edad is not None %}<li>{{ object.edad }} años</li>{% endif %}
-  {% if object.profesion %}<li>{{ object.profesion }}</li>{% endif %}
-  {% if comuna_residencia %}<li><a href="{{ comuna_residencia.get_absolute_url }}">{{ comuna_residencia }}</a></li>{% endif %}
-  {% if correo_principal %}<li><a href="mailto:{{ correo_principal }}">{{ correo_principal }}</a></li>{% endif %}
-  {% if telefono_principal %}<li>{{ telefono_principal }}</li>{% endif %}
+  {% if object.nombre_social %}<li>{% icono "persona" 15 %}<span>Nombre social: <strong>{{ object.nombre_social }}</strong></span></li>{% endif %}
+  {% if object.edad is not None %}<li>{% icono "calendario" 15 %}<span>{{ object.edad }} años</span></li>{% endif %}
+  {% if comuna_residencia %}<li>{% icono "lugares" 15 %}<a href="{{ comuna_residencia.get_absolute_url }}">{{ comuna_residencia }}</a></li>{% endif %}
+  {% if correo_principal %}<li>{% icono "correo" 15 %}<a href="mailto:{{ correo_principal }}">{{ correo_principal }}</a></li>{% endif %}
+  {% if telefono_principal %}<li>{% icono "telefono" 15 %}<a href="tel:{{ telefono_principal|cut:' ' }}">{{ telefono_principal }}</a></li>{% endif %}
 {% endblock %}
+{% block identidad_extra %}{% if vinculos_cabecera %}
+<ul class="fche-ficha-cabecera__vinculos" aria-label="Organización y cargo vigentes">
+  {% for v in vinculos_cabecera %}<li>{% icono "organizaciones" 15 %}<span><a href="{{ v.organizacion.get_absolute_url }}">{{ v.organizacion }}</a> <span class="fche-ficha-cabecera__rol" title="{{ v.rol }}">· {{ v.rol|truncatechars:60 }}</span></span></li>{% endfor %}
+  {% if vinculos_mas %}<li class="fche-ficha-cabecera__mas"><a href="?tab=vinculos">y {{ vinculos_mas }} vínculo{{ vinculos_mas|pluralize }} más</a></li>{% endif %}
+</ul>
+{% endif %}{% endblock %}
 {% block avisos %}
-  {% if object.es_menor %}<li><strong>Menor de edad.</strong> Sus datos se tratan con la autorización de su apoderado.</li>{% endif %}
-  {% for a in avisos_consentimiento %}<li><a href="?tab=privacidad">{{ a }}</a></li>{% endfor %}
+  {% if object.es_menor %}{% include "generico/_aviso.html" with tono="info" simbolo="info" titulo="Menor de edad." texto="Sus datos se tratan con la autorización de su apoderado." lista=None url=None %}{% endif %}
+  {% if avisos_consentimiento %}{% include "generico/_aviso.html" with tono="advertencia" simbolo="candado" titulo="Consentimiento pendiente" texto=None lista=avisos_consentimiento lineas=True url=url_consentimiento|default:"?tab=privacidad" accion=url_consentimiento|yesno:"Registrar consentimiento,Ver privacidad" %}{% endif %}
+  {% if faltantes or datos_vacios %}
+  <li class="fche-aviso {% if faltantes %}fche-aviso--advertencia{% else %}fche-aviso--neutro{% endif %}" id="aviso-le-falta">
+    <span class="fche-aviso__icono">{% if faltantes %}{% icono "alerta" 16 %}{% else %}{% icono "dato_vacio" 16 %}{% endif %}</span>
+    <div class="fche-aviso__cuerpo">
+      {% if faltantes %}<strong class="fche-aviso__titulo">Le falta</strong>
+      <ul class="fche-aviso__lista">{% for f in faltantes %}<li>{{ f }}</li>{% endfor %}</ul>
+      {% else %}<strong class="fche-aviso__titulo">Tiene lo mínimo</strong>{% endif %}
+      {% if datos_vacios %}<details class="fche-aviso__mas"><summary>{% if faltantes %}Y {% endif %}{{ datos_vacios|length }} dato{{ datos_vacios|length|pluralize }} opcional{{ datos_vacios|length|pluralize:"es" }} sin completar</summary>
+        <ul class="fche-aviso__lista fche-aviso__lista--suave">{% for e in datos_vacios %}<li>{{ e.etiqueta }}{% if e.restringido %} <span title="Dato restringido" aria-label="Dato restringido">🔒</span>{% endif %}</li>{% endfor %}</ul>
+      </details>{% endif %}
+    </div>
+    {% if puede_editar and url_editar %}<a class="btn btn-sm {% if faltantes %}btn-primary{% else %}btn-outline-secondary{% endif %} fche-aviso__accion" href="{{ url_editar }}">{% icono "editar" 15 %}Completar</a>{% endif %}
+  </li>
+  {% endif %}
 {% endblock %}
 {% block menu %}
   {% if perms.personas.exportar_persona %}<a class="fche-menu__item" href="{% url 'personas:datos_personales' object.pk %}" title="Para responder si la persona pide conocer sus datos">Exportar sus datos personales</a>{% endif %}

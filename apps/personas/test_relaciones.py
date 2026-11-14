@@ -95,7 +95,8 @@ def test_experiencia_muestra_cargo_terminado_y_la_externa_aparte(cg, persona, ju
     PersonaOrganizacion.objects.create(persona=persona, organizacion=junta, cargo="Tesorera", tipo_cargo="directorio",
                                        fecha_inicio=date(2020, 1, 1), fecha_termino=date(2022, 12, 31))
     PersonaOrganizacion.objects.create(persona=persona, organizacion=junta, cargo="Secretaria vigente")
-    html = cg.get(f"{persona.get_absolute_url()}?tab=experiencia").content.decode()
+    # F27 B: el cargo vigente se ve en la tarjeta de identidad (en todas las pestañas); aquí se mira solo el cuerpo de la pestaña
+    html = cg.get(f"{persona.get_absolute_url()}?tab=experiencia").content.decode().split('id="pestana"', 1)[1]
     assert "Tesorera" in html and "01-01-2020 a 31-12-2022" in html and junta.get_absolute_url() in html
     assert "Secretaria vigente" not in html
     assert "Experiencia fuera de la Fundación" in html

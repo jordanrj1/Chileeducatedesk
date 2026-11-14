@@ -282,7 +282,7 @@ def test_agregar_persona_con_cargo_desde_la_organizacion(cg, universidad, person
     r = cg.post(f"/organizaciones/{universidad.pk}/personas/nuevo", {"persona": persona.pk, "cargo": "Presidenta", "tipo_cargo": "directorio", "fecha_inicio": "2025-01-01"})
     assert r.status_code == 302 and persona.vinculos.get().cargo == "Presidenta"
     html = cg.get(f"/organizaciones/{universidad.pk}?tab=personas").content.decode()
-    assert "Presidenta" in html and "Agregar persona con cargo" in html
+    assert "Presidenta" in html and "+ Vincular persona" in html  # F27 B: antes «Agregar persona con cargo»
     v = persona.vinculos.get()
     assert cg.post(f"/organizaciones/{universidad.pk}/personas/{v.pk}/alternar").status_code == 404  # no hay «vigente» real: se cierra con fecha
 
@@ -350,7 +350,10 @@ def test_formulario_documento_y_edad_cambian_segun_lo_escrito(cg):
 def test_persona_se_vincula_a_un_lugar_y_el_lugar_la_muestra(cg, lugar):
     """«+ Vincular a un lugar» deja a la persona en la pestaña Personas del lugar; el formulario de lugar ya no pide dueño."""
     p = Persona.objects.create(nombres="Elena", apellido_paterno="Inventada")
-    r = cg.post(f"/personas/{p.pk}/lugares/nuevo", {"lugar": lugar.pk, "relacion": "estudia"})
+    from apps.nucleo.models import RelacionLugar
+
+    # F27: la relación sale del catálogo «Relación con un lugar» (campo tipo_relacion)
+    r = cg.post(f"/personas/{p.pk}/lugares/nuevo", {"lugar": lugar.pk, "tipo_relacion": RelacionLugar.objects.get(codigo="estudia").pk})
     assert r.status_code == 302
     assert f'href="{p.get_absolute_url()}"' in cg.get(f"/lugares/{lugar.pk}?tab=personas").content.decode()
     assert "Estudia ahí" in cg.get(f"/personas/{p.pk}?tab=vinculos").content.decode()
