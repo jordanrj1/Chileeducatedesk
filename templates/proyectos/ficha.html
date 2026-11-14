@@ -4,7 +4,7 @@
 {% load fche %}
 {% block estado %}{% estado object.estado object.get_estado_display %}{% endblock %}
 {% block subtitulo %}
-  {% with zona=object.zona_resumen %}{% if zona %}<li>{{ zona }}</li>{% endif %}{% endwith %}
-  {% if object.fecha_inicio or object.fecha_termino %}<li>{{ object.fecha_inicio|date:"d-m-Y"|default:"?" }} a {{ object.fecha_termino|date:"d-m-Y"|default:"?" }}</li>{% endif %}
-  {% if object.responsable %}<li>Responsable: <a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a></li>{% endif %}
+  {% with zona=object.zona_resumen %}{% if zona %}<li>{% icono "territorio" 15 %}<span>{{ zona }}</span></li>{% endif %}{% endwith %}
+  {% if object.fecha_inicio or object.fecha_termino %}<li>{% icono "calendario" 15 %}<span>{{ object.fecha_inicio|date:"d-m-Y"|default:"?" }} a {{ object.fecha_termino|date:"d-m-Y"|default:"?" }}</span></li>{% endif %}
+  {% if object.responsable %}<li>{% icono "persona" 15 %}<span>Responsable: <a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a></span></li>{% endif %}
 {% endblock %}

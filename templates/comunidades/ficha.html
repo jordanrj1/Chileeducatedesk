@@ -4,10 +4,10 @@
 {% load fche %}
 {% block estado %}{% if not object.activo %}{% estado "inactiva" "Inactiva" %}{% endif %}{% endblock %}
 {% block subtitulo %}
-  <li>{{ object.get_tipo_display }}</li>
-  <li><a href="{{ object.comuna.get_absolute_url }}">{{ object.territorio }}</a></li>
-  <li>{{ n_integrantes }} integrante{{ n_integrantes|pluralize }} registrado{{ n_integrantes|pluralize }}{% if object.poblacion_estimada %} de ~{{ object.poblacion_estimada }}{% endif %}</li>
-  {% if object.organizacion %}<li><a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a></li>{% endif %}
+  <li>{% icono "comunidades" 15 %}<span>{{ object.get_tipo_display }}</span></li>
+  <li>{% icono "lugares" 15 %}<a href="{{ object.comuna.get_absolute_url }}">{{ object.territorio }}</a></li>
+  <li>{% icono "personas" 15 %}<span>{{ n_integrantes }} integrante{{ n_integrantes|pluralize }} registrado{{ n_integrantes|pluralize }}{% if object.poblacion_estimada %} de ~{{ object.poblacion_estimada }}{% endif %}</span></li>
+  {% if object.organizacion %}<li>{% icono "organizaciones" 15 %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a></li>{% endif %}
 {% endblock %}
 {% block menu %}
 {% if perms.actividades.add_actividad %}<a class="fche-menu__item" href="/actividades/nueva?comunidad={{ object.pk }}">+ Actividad para esta comunidad</a>{% endif %}

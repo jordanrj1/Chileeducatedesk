@@ -1,10 +1,32 @@
-{# Qué es: Pestaña Tareas del proyecto: sus tareas con fecha, lugar o comunidad, estado, participantes y asistencia, y «+ Nueva tarea». #}
+{# Qué es: Pestaña Tareas del proyecto como tarjetas en rejilla (F27 B): nombre (enlace) y estado; fecha y hora, lugar y comunidades con icono; quién está a cargo; cifras de participantes y asistentes; Ver y Editar. Vacío: «+ Nueva tarea». En el celular, una columna. #}
 {# Dónde se usa: /proyectos/<int:pk>?tab=tareas (también ?tab=actividades, nombre antiguo) · Proceso: P11 #}
-{% load fche %}<div class="fche-seccion"><h2 class="h6">Tareas del proyecto{% if actividades %} <span class="fche-contador">{{ actividades|length }}</span>{% endif %}</h2>
-{% if puede_agregar and perms.actividades.add_actividad %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_tarea }}">+ Nueva tarea</a></div>{% endif %}</div>
-{% if actividades %}<div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Tarea</th><th>Fecha</th><th>Lugar o comunidad</th><th>Estado</th><th class="text-end">Participantes</th><th class="text-end">Asistieron</th></tr></thead>
-<tbody>{% for a in actividades %}{% with ag=a.agenda_v.0 %}<tr><td><a href="{{ a.get_absolute_url }}">{{ a.nombre }}</a>{% if a.responsable %}<div class="small text-muted">A cargo: <a href="{{ a.responsable.get_absolute_url }}">{{ a.responsable }}</a></div>{% endif %}</td>
-<td class="text-nowrap">{% if ag %}{{ ag.fecha|date:"d-m-Y" }}{% if ag.hora_inicio %} {{ ag.hora_inicio|time:"H:i" }}{% endif %}{% else %}<span class="text-muted">Sin programar</span>{% endif %}</td>
-<td>{% if ag.lugar %}<a href="{{ ag.lugar.get_absolute_url }}">{{ ag.lugar }}</a>{% endif %}{% for c in a.comunidades_v %}{% if ag.lugar or not forloop.first %}<br>{% endif %}<a href="{{ c.comunidad.get_absolute_url }}">{{ c.comunidad }}</a>{% endfor %}{% if not ag.lugar and not a.comunidades_v %}<span class="text-muted">—</span>{% endif %}</td>
-<td>{% estado a.estado %}</td><td class="text-end"><a href="{{ a.get_absolute_url }}?tab=participantes">{{ a.n_participantes }}</a></td><td class="text-end"><a href="{{ a.get_absolute_url }}?tab=asistencia">{{ a.n_asistieron }}</a></td></tr>{% endwith %}{% endfor %}</tbody></table></div>
-{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "actividades" 18 %}</span><p class="fche-vacio__texto">El proyecto aún no tiene tareas.</p>{% if puede_agregar and perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="{{ url_nueva_tarea }}">+ Nueva tarea</a>{% endif %}</div>{% endif %}
+{% load fche %}<div class="fche-seccion"><h2 class="h6" id="titulo-tareas">Tareas del proyecto{% if actividades %} <span class="fche-contador">{{ actividades|length }}</span>{% endif %}</h2>
+{% if actividades and puede_agregar and perms.actividades.add_actividad %}<div class="fche-seccion__acciones"><a class="btn btn-primary btn-sm" href="{{ url_nueva_tarea }}">+ Nueva tarea</a></div>{% endif %}</div>
+{% if actividades %}
+<ul class="fche-tarjetas" aria-labelledby="titulo-tareas">
+  {% for a in actividades %}{% with ag=a.agenda_v.0 %}
+  <li><article class="fche-tarjeta-item" aria-labelledby="tarea-{{ a.pk }}">
+    <div class="fche-tarjeta-item__cabeza">
+      <h3 class="fche-tarjeta-item__titulo" id="tarea-{{ a.pk }}"><a href="{{ a.get_absolute_url }}">{{ a.nombre }}</a></h3>
+      {% estado a.estado %}
+    </div>
+    <ul class="fche-tarjeta-item__datos">
+      <li>{% icono "calendario" 15 %}{% if ag %}<span>{{ ag.fecha|date:"D d-m-Y" }}{% if ag.hora_inicio %}, {{ ag.hora_inicio|time:"H:i" }}{% if ag.hora_fin %}–{{ ag.hora_fin|time:"H:i" }}{% endif %}{% endif %}</span>{% else %}<span class="text-muted">Sin programar</span>{% endif %}</li>
+      <li>{% icono "lugares" 15 %}{% if ag.lugar %}<a href="{{ ag.lugar.get_absolute_url }}">{{ ag.lugar }}</a>{% elif ag.enlace %}<span>Virtual</span>{% else %}<span class="text-muted">Sin lugar</span>{% endif %}</li>
+      {% if a.comunidades_v %}<li>{% icono "comunidades" 15 %}<span>{% for c in a.comunidades_v %}<a href="{{ c.comunidad.get_absolute_url }}">{{ c.comunidad }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</span></li>{% endif %}
+      <li>{% icono "persona" 15 %}{% if a.responsable %}<span>A cargo: <a href="{{ a.responsable.get_absolute_url }}">{{ a.responsable }}</a></span>{% else %}<span class="text-muted">Sin responsable</span>{% endif %}</li>
+    </ul>
+    <div class="fche-tarjeta-item__pie">
+      <dl class="fche-tarjeta-item__cifras">
+        <div><dt>Participantes</dt><dd><a href="{{ a.get_absolute_url }}?tab=participantes" aria-label="{{ a.n_participantes }} participante{{ a.n_participantes|pluralize }} en {{ a.nombre }}">{{ a.n_participantes }}</a></dd></div>
+        <div><dt>Asistieron</dt><dd><a href="{{ a.get_absolute_url }}?tab=asistencia" aria-label="{{ a.n_asistieron }} asistieron a {{ a.nombre }}">{{ a.n_asistieron }}</a></dd></div>
+      </dl>
+      <div class="fche-tarjeta-item__acciones">
+        <a class="btn btn-outline-secondary btn-sm" href="{{ a.get_absolute_url }}" aria-label="Ver {{ a.nombre }}">Ver</a>
+        {% if perms.actividades.change_actividad and a.estado.codigo != "realizada" %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:editar' a.pk %}" aria-label="Editar {{ a.nombre }}">{% icono "editar" 14 %}Editar</a>{% endif %}
+      </div>
+    </div>
+  </article></li>
+  {% endwith %}{% endfor %}
+</ul>
+{% else %}<div class="fche-vacio"><span class="fche-vacio__icono">{% icono "tareas" 22 %}</span><p class="fche-vacio__titulo">El proyecto aún no tiene tareas</p><p class="fche-vacio__texto">Cada tarea es un taller, charla o salida a terreno del proyecto, con su fecha, lugar y participantes.</p>{% if puede_agregar and perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="{{ url_nueva_tarea }}">+ Nueva tarea</a>{% endif %}</div>{% endif %}

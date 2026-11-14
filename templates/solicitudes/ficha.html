@@ -4,9 +4,9 @@
 {% load fche %}
 {% block estado %}{% estado object.estado %}{% endblock %}
 {% block subtitulo %}
-  <li>{{ object.get_origen_display }}</li>
-  <li>{{ object.fecha|date:"d-m-Y" }}</li>
-  {% if object.dias_abierta is not None %}<li>Abierta hace {{ object.dias_abierta }} días</li>{% endif %}
-  {% if object.persona %}<li><a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a></li>{% elif object.organizacion %}<li><a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a></li>{% endif %}
+  <li>{% icono "solicitudes" 15 %}<span>{{ object.get_origen_display }}</span></li>
+  <li>{% icono "calendario" 15 %}<span>{{ object.fecha|date:"d-m-Y" }}</span></li>
+  {% if object.dias_abierta is not None %}<li>{% icono "reloj" 15 %}<span>Abierta hace {{ object.dias_abierta }} días</span></li>{% endif %}
+  {% if object.persona %}<li>{% icono "persona" 15 %}<a href="{{ object.persona.get_absolute_url }}">{{ object.persona }}</a></li>{% elif object.organizacion %}<li>{% icono "organizaciones" 15 %}<a href="{{ object.organizacion.get_absolute_url }}">{{ object.organizacion }}</a></li>{% endif %}
 {% endblock %}
-{% block avisos %}{% if object.dias_abierta is not None and object.dias_abierta > 7 %}<li>Lleva más de una semana abierta.</li>{% endif %}{% endblock %}
+{% block avisos %}{% if object.dias_abierta is not None and object.dias_abierta > 7 %}{% include "generico/_aviso.html" with tono="advertencia" simbolo="reloj" titulo="Lleva más de una semana abierta." texto=None lista=None url=None %}{% endif %}{% endblock %}

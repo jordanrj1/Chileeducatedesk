@@ -30,3 +30,21 @@ class LugarForm(BootstrapMixin, forms.ModelForm):
         if c is not None and c < 1:
             raise forms.ValidationError("La capacidad debe ser al menos 1.")
         return c
+
+
+class LugarRapidoForm(BootstrapMixin, forms.Form):
+    """F27: ventana «+ Crear lugar» de los buscadores: nombre, tipo y comuna; el resto se completa en su ficha."""
+
+    nombre = forms.CharField(max_length=200, label="Nombre del lugar", help_text="Ej.: Sede vecinal Villa Los Aromos.")
+    tipo = forms.ModelChoiceField(TipoLugar.objects.filter(activo=True), label="Tipo de lugar")
+    comuna = forms.ModelChoiceField(None, label="Comuna")
+    capacidad = forms.IntegerField(min_value=1, required=False, label="Capacidad (personas)", help_text="Opcional. Ej.: 40.")
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        from apps.territorio.models import Comuna
+
+        self.fields["comuna"].queryset = Comuna.objects.order_by("nombre")
+
+    def clean_nombre(self):
+        return self.cleaned_data["nombre"].strip()

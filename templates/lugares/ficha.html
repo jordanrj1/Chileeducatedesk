@@ -4,9 +4,9 @@
 {% load fche %}
 {% block estado %}{% if not object.activo %}{% estado "inactivo" "Inactivo" %}{% endif %}{% endblock %}
 {% block subtitulo %}
-  {% if object.tipo %}<li>{{ object.tipo }}</li>{% endif %}
-  {% if comuna_ficha %}<li><a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></li>{% endif %}
-  <li>{% if object.capacidad %}Capacidad {{ object.capacidad }}{% else %}Capacidad no registrada{% endif %}</li>
+  {% if object.tipo %}<li>{% icono "lugares" 15 %}<span>{{ object.tipo }}</span></li>{% endif %}
+  {% if comuna_ficha %}<li>{% icono "territorio" 15 %}<a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a></li>{% endif %}
+  <li>{% icono "personas" 15 %}<span>{% if object.capacidad %}Capacidad {{ object.capacidad }}{% else %}Capacidad no registrada{% endif %}</span></li>
 {% endblock %}
 {% block menu %}
 {% if puede_agregar %}<form method="post" action="{% url 'lugares:alternar' object.pk %}">{% csrf_token %}<button class="fche-menu__item">{% if object.activo %}Desactivar lugar{% else %}Reactivar lugar{% endif %}</button></form>{% endif %}

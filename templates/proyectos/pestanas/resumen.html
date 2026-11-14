@@ -1,26 +1,26 @@
-{# Qué es: Pestaña Resumen del proyecto: estado, zona (sus territorios y el texto anterior, si lo hay), área, fechas, responsable, la conclusión (al finalizar, F26 P3a) y los resultados de sus tareas. #}
+{# Qué es: Pestaña Resumen del proyecto: zona (sus territorios y el texto anterior, si lo hay), área, cifra de tareas, textos del proyecto, la conclusión (al finalizar, F26 P3a) y los resultados de sus tareas. F27 B: en tarjetas suaves; el estado, las fechas y el responsable ya están en la cabecera y no se repiten. #}
 {# Dónde se usa: /proyectos/<int:pk> · Proceso: P11 #}
-{% load fche %}<dl class="fche-datos">
-  <div><dt>Estado</dt><dd>{% estado object.estado object.get_estado_display %}</dd></div>
-  <div><dt>Zona</dt><dd>{% for t in territorios %}<span class="d-block">{% if t.url %}<a href="{{ t.url }}">{{ t.texto }}</a>{% else %}{{ t.texto }}{% endif %}</span>{% empty %}{% if not object.zona %}—{% endif %}{% endfor %}
+{% load fche %}<section class="fche-apartado" aria-labelledby="titulo-datos-proyecto">
+<div class="fche-seccion"><h2 class="h6" id="titulo-datos-proyecto">Datos del proyecto</h2></div>
+<dl class="fche-datos">
+  <div><dt>Zona</dt><dd>{% for t in territorios %}<span class="d-block">{% if t.url %}<a href="{{ t.url }}">{{ t.texto }}</a>{% else %}{{ t.texto }}{% endif %}</span>{% empty %}{% if not object.zona %}<span class="text-muted">Sin zona indicada</span>{% endif %}{% endfor %}
     {% if object.zona %}<span class="d-block small mt-1">Antes decía: «{{ object.zona }}» {% estado "Por revisar" codigo="en_revision" %}{% if perms.proyectos.change_proyecto %} <form class="d-inline" method="post" action="{% url 'texto_revisado' 'proyecto-zona' object.pk %}">{% csrf_token %}<button class="btn btn-link btn-sm p-0 align-baseline">Ya lo revisé</button></form>{% endif %}</span>{% endif %}</dd></div>
-  <div><dt>Área temática</dt><dd>{{ object.area_tematica|default:"—" }}</dd></div>
-  <div><dt>Fechas</dt><dd>{{ object.fecha_inicio|date:"d-m-Y"|default:"?" }} a {{ object.fecha_termino|date:"d-m-Y"|default:"?" }}</dd></div>
-  <div><dt>Responsable</dt><dd>{% if object.responsable %}<a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a>{% else %}—{% endif %}</dd></div>
+  <div><dt>Área temática</dt><dd>{% if object.area_tematica %}{{ object.area_tematica }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
   <div class="fche-datos__ancho"><dt>Tareas</dt><dd><strong class="fche-num">{{ total_actividades }}</strong>{% for n, c in por_estado.items %} · {{ n }}: {{ c }}{% endfor %}</dd></div>
-  <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
-  <div class="fche-datos__ancho"><dt>Objetivo general</dt><dd>{{ object.objetivo_general|default:"—"|linebreaksbr }}</dd></div>
-  <div class="fche-datos__ancho"><dt>Objetivos específicos</dt><dd>{{ object.objetivos_especificos|default:"—"|linebreaksbr }}</dd></div>
-  <div class="fche-datos__ancho"><dt>Diagnóstico</dt><dd>{{ object.diagnostico|default:"—"|linebreaksbr }}</dd></div>
-  <div class="fche-datos__ancho"><dt>Población objetivo</dt><dd>{{ object.poblacion_objetivo|default:"—"|linebreaksbr }}</dd></div>
+  <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{% if object.descripcion %}{{ object.descripcion|linebreaksbr }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Objetivo general</dt><dd>{% if object.objetivo_general %}{{ object.objetivo_general|linebreaksbr }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Objetivos específicos</dt><dd>{% if object.objetivos_especificos %}{{ object.objetivos_especificos|linebreaksbr }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Diagnóstico</dt><dd>{% if object.diagnostico %}{{ object.diagnostico|linebreaksbr }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Población objetivo</dt><dd>{% if object.poblacion_objetivo %}{{ object.poblacion_objetivo|linebreaksbr }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
   {% if object.conclusion %}<div class="fche-datos__ancho"><dt>Conclusión</dt><dd>{{ object.conclusion|linebreaksbr }}</dd></div>{% endif %}
 </dl>
-<section class="mt-4" aria-labelledby="titulo-resultados-tareas">
-<h2 class="h6 mb-2" id="titulo-resultados-tareas">Resultados de las tareas{% if tareas_resultado %} <span class="fche-contador">{{ tareas_resultado|length }}</span>{% endif %}</h2>
+</section>
+<section class="fche-apartado" aria-labelledby="titulo-resultados-tareas">
+<div class="fche-seccion"><h2 class="h6" id="titulo-resultados-tareas">Resultados de las tareas{% if tareas_resultado %} <span class="fche-contador">{{ tareas_resultado|length }}</span>{% endif %}</h2></div>
 {% if tareas_resultado %}<div class="table-responsive"><table class="table table-sm align-middle">
 <thead><tr><th>Tarea</th><th>Fecha</th><th>Estado</th><th>Resultado</th></tr></thead>
 <tbody>{% for t in tareas_resultado %}<tr><td><a href="{{ t.tarea.get_absolute_url }}">{{ t.tarea.nombre }}</a></td>
 <td class="text-nowrap">{{ t.fecha|date:"d-m-Y"|default:"Sin programar" }}</td><td>{% estado t.tarea.estado %}</td>
 <td class="small">{% if t.tarea.resultado %}{{ t.tarea.resultado|truncatechars:160 }} <a href="{{ t.tarea.get_absolute_url }}?tab=resultados" aria-label="Ver el cierre de {{ t.tarea.nombre }}">Ver cierre</a>{% else %}<span class="text-muted">Sin resultado registrado</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
-{% else %}<p class="text-muted small">El proyecto aún no tiene tareas.</p>{% endif %}
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "tareas" 16 %}</span><p class="fche-vacio__texto mb-0">El proyecto aún no tiene tareas. <a href="?tab=tareas">Ir a Tareas</a></p></div>{% endif %}
 </section>
