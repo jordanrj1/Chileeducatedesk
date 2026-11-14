@@ -45,8 +45,10 @@ class Command(BaseCommand):
             archivo_bd.unlink(missing_ok=True)
             raise CommandError(f"pg_dump falló: {r.stderr.strip()}")
         env = Path(settings.BASE_DIR) / ".env"
+        archivo_config = destino / f"fche_config_{sello}.env"
         if env.exists():  # OP-E8: sin la configuración no se puede volver a levantar el sistema
-            shutil.copy2(env, destino / f"fche_config_{sello}.env")
+            # copy (no copy2): la copia lleva la fecha de hoy; con la fecha del .env la limpieza la borraba al instante
+            shutil.copy(env, archivo_config)
         archivo_media = destino / f"fche_documentos_{sello}.zip"
         n = 0
         media = Path(settings.MEDIA_ROOT)
@@ -59,7 +61,7 @@ class Command(BaseCommand):
         limite = datetime.now() - timedelta(days=dias)
         borrados = 0
         for f in destino.glob("fche_*"):
-            if f.stat().st_mtime < limite.timestamp() and f not in (archivo_bd, archivo_media):
+            if f.stat().st_mtime < limite.timestamp() and f not in (archivo_bd, archivo_media, archivo_config):
                 f.unlink()
                 borrados += 1
         registrar(None, "respaldo", str(destino), f"bd={archivo_bd.name} documentos={n}")
