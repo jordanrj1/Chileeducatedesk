@@ -75,6 +75,58 @@ def es_parentesco_apoderado(texto):
     return bool(PALABRAS_APODERADO & set(plano.replace("/", " ").replace(",", " ").replace("(", " ").replace(")", " ").split()))
 
 
+# ── Foto de la persona (F27) ─────────────────────────────────────────────────────────────────────────────────────
+# Sin librería de imágenes: se valida la extensión, el tamaño y los primeros bytes del archivo (su «firma»).
+FOTO_TAMANO_MAXIMO_MB = 3
+FOTO_FORMATOS = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+AYUDA_FOTO = "Solo para reconocer a la persona dentro del sistema; no se publica. JPG, PNG o WEBP de hasta 3 MB."
+
+
+def formato_imagen(cabecera):
+    """Tipo real de la imagen según sus primeros bytes: «image/jpeg», «image/png», «image/webp» o None."""
+    if cabecera[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if cabecera[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if cabecera[:4] == b"RIFF" and cabecera[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def leer_cabecera(archivo, n=16):
+    pos = archivo.tell() if hasattr(archivo, "tell") else 0
+    archivo.seek(0)
+    cabecera = archivo.read(n)
+    archivo.seek(pos)
+    return cabecera
+
+
+def validar_foto(archivo):
+    import os
+
+    if getattr(archivo, "_committed", False):
+        return  # ya guardada y validada al subirla
+    ext = os.path.splitext(archivo.name)[1].lower().lstrip(".")
+    if ext not in FOTO_FORMATOS:
+        raise ValidationError("La foto debe ser JPG, PNG o WEBP.")
+    if not archivo.size:
+        raise ValidationError("El archivo está vacío.")
+    if archivo.size > FOTO_TAMANO_MAXIMO_MB * 1024 * 1024:
+        raise ValidationError(f"La foto supera el máximo de {FOTO_TAMANO_MAXIMO_MB} MB.")
+    real = formato_imagen(leer_cabecera(archivo))
+    if real is None or real != FOTO_FORMATOS[ext]:
+        raise ValidationError("El archivo no es una imagen JPG, PNG o WEBP válida (su contenido no coincide con la extensión).")
+
+
+def ruta_foto(instancia, nombre):
+    """personas/fotos/<aleatorio>.<ext>: el nombre original (que puede traer el nombre de la persona) no se conserva."""
+    import os
+    import uuid
+
+    ext = os.path.splitext(nombre)[1].lower()
+    return f"personas/fotos/{uuid.uuid4().hex}{ext}"
+
+
 class Persona(models.Model):
     nombres = models.CharField(max_length=150)
     apellido_paterno = models.CharField(max_length=100, blank=True)
@@ -117,6 +169,10 @@ class Persona(models.Model):
     idiomas = models.CharField(max_length=150, blank=True)
     canal_preferido = models.ForeignKey(Canal, null=True, blank=True, on_delete=models.PROTECT, related_name="+", verbose_name="canal de contacto preferido")
     observaciones = models.TextField(blank=True)
+    # F27: solo para reconocerla dentro del sistema. Se guarda en MEDIA_ROOT (fuera del código) y se sirve por la vista
+    # protegida `personas:foto`, nunca como archivo estático. Menores: solo con el consentimiento de imagen vigente [V].
+    foto = models.FileField("foto", upload_to=ruta_foto, blank=True, max_length=200, validators=[validar_foto],
+                            help_text=AYUDA_FOTO)
     activo = models.BooleanField(default=True)
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -255,6 +311,13 @@ class Contacto(models.Model):
     persona = models.ForeignKey(Persona, null=True, blank=True, on_delete=models.PROTECT, related_name="contactos")
     organizacion = models.ForeignKey("organizaciones.Organizacion", null=True, blank=True, on_delete=models.PROTECT, related_name="contactos")
     cargo = models.ForeignKey("PersonaOrganizacion", null=True, blank=True, on_delete=models.PROTECT, related_name="contactos")
+    # F27: un correo o teléfono que ya tiene otra persona se guarda solo si se decide que es otra persona que lo comparte.
+    # La decisión (quién y cuándo) queda en la auditoría (acción «contacto_compartido»): Contacto no tiene historial propio.
+    MOTIVOS_COMPARTIDO = [("familiar", "Familiar"), ("apoderado", "Apoderado o apoderada"), ("institucion", "Teléfono o correo de la institución"),
+                          ("otro", "Otro")]
+    compartido = models.BooleanField("compartido con otra persona", default=False)
+    motivo_compartido = models.CharField("motivo", max_length=12, choices=MOTIVOS_COMPARTIDO, blank=True)
+    nota_compartido = models.CharField("nota", max_length=150, blank=True)
 
     class Meta:
         ordering = ["-principal", "-vigente", "tipo__orden", "id"]
@@ -286,6 +349,18 @@ class Contacto(models.Model):
     def save(self, *args, **kwargs):
         self.valor_normalizado = self.normalizar(self.tipo, self.valor)
         super().save(*args, **kwargs)
+
+    TIPOS_REPETIBLES = ("correo", "telefono_movil", "telefono_fijo")
+
+    @classmethod
+    def repetidos(cls, valor_normalizado, excluir_persona=None):
+        """Contactos vigentes de OTRAS personas con el mismo valor normalizado (solo correo y teléfono)."""
+        if not valor_normalizado:
+            return cls.objects.none()
+        qs = cls.objects.filter(persona__isnull=False, vigente=True, valor_normalizado=valor_normalizado, tipo__codigo__in=cls.TIPOS_REPETIBLES)
+        if excluir_persona:
+            qs = qs.exclude(persona_id=excluir_persona)
+        return qs.select_related("persona")
 
 
 class PersonaDireccion(models.Model):
@@ -362,7 +437,8 @@ class PersonaOrganizacion(models.Model):
     # F26 P2: el rol del catálogo (estudiante, docente, dirigente…); el cargo libre queda como detalle
     rol = models.ForeignKey("nucleo.RolOrganizacion", null=True, blank=True, on_delete=models.PROTECT, related_name="+",
                             verbose_name="rol en la organización", help_text="Ej.: Docente. El detalle va en el cargo (Profesora de Lenguaje).")
-    tipo_cargo = models.CharField("tipo de cargo", max_length=12, choices=TIPOS_CARGO, default="funcional")
+    # F27: opcional y sin «Funcional» por defecto; con un rol sin cargo y sin cargo escrito queda vacío (ver save)
+    tipo_cargo = models.CharField("tipo de cargo", max_length=12, choices=TIPOS_CARGO, blank=True, default="")
     fecha_inicio = models.DateField("desde", null=True, blank=True)
     fecha_termino = models.DateField("hasta", null=True, blank=True)
 
@@ -382,6 +458,18 @@ class PersonaOrganizacion(models.Model):
         if self.fecha_inicio and self.fecha_termino and self.fecha_termino < self.fecha_inicio:
             raise ValidationError({"fecha_termino": "El término no puede ser anterior al inicio."})
 
+    @property
+    def admite_tipo_cargo(self):
+        """F27: el tipo de cargo aplica si hay un cargo escrito o si el rol admite cargo (sin rol, solo con cargo)."""
+        return bool((self.cargo or "").strip()) or (self.rol_id is not None and self.rol.con_cargo)
+
+    def save(self, *args, **kwargs):
+        if self.tipo_cargo and not self.admite_tipo_cargo:  # F27: la regla vale para todo lo que crea vínculos
+            self.tipo_cargo = ""
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = {*kwargs["update_fields"], "tipo_cargo"}
+        super().save(*args, **kwargs)
+
 
 class PersonaLugar(models.Model):
     """Una persona vinculada a un lugar registrado: estudia, trabaja o participa ahí (un colegio, una sede, un centro).
@@ -390,7 +478,11 @@ class PersonaLugar(models.Model):
     RELACIONES = [("estudia", "Estudia ahí"), ("trabaja", "Trabaja ahí"), ("participa", "Participa o asiste ahí"), ("vive", "Vive ahí o al lado"), ("otra", "Otra")]
     persona = models.ForeignKey(Persona, on_delete=models.PROTECT, related_name="lugares_vinculados")
     lugar = models.ForeignKey("lugares.Lugar", on_delete=models.PROTECT, related_name="personas_vinculadas")
-    relacion = models.CharField("qué hace ahí", max_length=12, choices=RELACIONES, default="participa")
+    # F27: la relación sale del catálogo «Relación con un lugar»; el campo antiguo se conserva sin mostrarse y se
+    # mantiene al día según el ámbito (estudio → estudia, trabajo → trabaja…)
+    tipo_relacion = models.ForeignKey("nucleo.RelacionLugar", null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                                      verbose_name="qué hace ahí")
+    relacion = models.CharField("qué hace ahí (anterior)", max_length=12, choices=RELACIONES, default="participa")
     desde = models.DateField(null=True, blank=True)
     hasta = models.DateField(null=True, blank=True)
     observaciones = models.CharField(max_length=250, blank=True)
@@ -400,10 +492,22 @@ class PersonaLugar(models.Model):
     class Meta:
         verbose_name = "vínculo con un lugar"
         verbose_name_plural = "vínculos con lugares"
-        constraints = [models.UniqueConstraint(fields=["persona", "lugar", "relacion"], name="persona_lugar_unico")]
+        constraints = [models.UniqueConstraint(fields=["persona", "lugar", "tipo_relacion"], name="persona_lugar_relacion_unico")]
 
     def __str__(self):
-        return f"{self.persona} · {self.get_relacion_display()} · {self.lugar}"
+        return f"{self.persona} · {self.relacion_texto} · {self.lugar}"
+
+    @property
+    def relacion_texto(self):
+        """La relación del catálogo; si aún no la tiene, la del campo antiguo."""
+        return self.tipo_relacion.nombre if self.tipo_relacion_id else self.get_relacion_display()
+
+    def save(self, *args, **kwargs):
+        if self.tipo_relacion_id:
+            from .relacion_lugar import ANTIGUA_POR_AMBITO
+
+            self.relacion = ANTIGUA_POR_AMBITO.get(self.tipo_relacion.ambito, "otra")
+        super().save(*args, **kwargs)
 
 
 class Experiencia(models.Model):

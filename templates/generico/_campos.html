@@ -1,4 +1,4 @@
-{# Qué es: Trozo que dibuja un formulario completo, agrupado por secciones (las plegadas van en un bloque que se abre con un clic). #}
+{# Qué es: Trozo que dibuja un formulario completo, agrupado por secciones (las plegadas van en un bloque que se abre con un clic). Sin secciones, un campo por fila salvo las fechas y horas seguidas («Desde» y «Hasta»), que van de a dos en escritorio (F27 B). #}
 {# Dónde se usa: se incluye en generico/formulario.html (Personas → Nueva y Editar usan personas/_formulario_persona.html) · Proceso: Todos #}
 {% with secciones=form.secciones_ui %}{% if secciones %}
 {% for s in secciones %}
@@ -18,5 +18,5 @@
 </fieldset>
 {% endif %}
 {% endfor %}
-{% else %}{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}{% endif %}{% endwith %}
+{% else %}<div class="fche-form__lista">{% for campo in form %}{% include "generico/_campo.html" %}{% endfor %}</div>{% endif %}{% endwith %}
 {% if form.fields.nacionalidad %}<datalist id="nacionalidades"><option value="Chilena"><option value="Venezolana"><option value="Peruana"><option value="Colombiana"><option value="Haitiana"><option value="Boliviana"><option value="Argentina"><option value="Ecuatoriana"></datalist>{% endif %}

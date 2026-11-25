@@ -446,29 +446,64 @@ dl.row > dd { margin-bottom: .75rem; }
 /* Paginación con resumen */
 .fche-paginacion { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem; font-size: .8125rem; color: var(--fche-texto-suave); }
 
-/* Ficha: cabecera. Arriba título + estado; una línea de datos clave separados por «·»; una acción principal
-   y el resto en «Más acciones» (un <details>: funciona sin JavaScript); los avisos juntos en una caja suave. */
+/* Ficha: cabecera como tarjeta de identidad (F27 B). A la izquierda el retrato (foto, iniciales o icono del tipo); al
+   centro el nombre grande con su estado, las etiquetas, los datos clave con icono y una línea extra (p. ej., organización
+   y cargo vigentes); a la derecha una acción principal y el resto en «Más acciones» (un <details>: funciona sin
+   JavaScript). Debajo, los avisos accionables, uno por caja. En el celular el retrato queda junto al nombre y las acciones bajan. */
 .fche-ficha-cabecera { padding: 1.75rem 2rem 0; background: var(--fche-superficie); border: 1px solid var(--fche-borde); border-radius: var(--fche-radio-lg) var(--fche-radio-lg) 0 0; box-shadow: var(--fche-sombra-sm); }
 .fche-ficha-cabecera__fila { display: flex; flex-wrap: wrap; gap: 1.25rem 2rem; align-items: flex-start; justify-content: space-between; }
-.fche-ficha-cabecera__identidad { display: flex; gap: 1.1rem; align-items: flex-start; min-width: 0; flex: 1 1 24rem; }
+.fche-ficha-cabecera__identidad { display: flex; gap: 1.25rem; align-items: flex-start; min-width: 0; flex: 1 1 26rem; }
+.fche-ficha-cabecera__cuerpo { flex: 1 1 auto; min-width: 0; padding-top: .1rem; }
 .fche-ficha-cabecera__linea-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; }
 .fche-ficha-cabecera__titulo { margin: 0; font-size: 1.6rem; font-weight: 750; line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
+/* Retrato: 72 px; las personas en círculo (foto o iniciales) y los demás registros en cuadrado redondeado con su icono */
+.fche-retrato { display: grid; place-items: center; flex-shrink: 0; width: 4.5rem; height: 4.5rem; border-radius: 1.1rem; font-size: 1.4rem; font-weight: 700; letter-spacing: .02em; color: #fff; background-color: var(--fche-primario); box-shadow: 0 0 0 1px rgba(16, 24, 40, .06), var(--fche-sombra-sm); }  /* background-color: deja ver el degradado .tono-N */
+.fche-retrato--persona { border-radius: 50%; }
+img.fche-retrato { object-fit: cover; background: var(--fche-superficie-2); }
+.fche-retrato--icono { background: var(--fche-primario-suave); color: var(--fche-primario); box-shadow: inset 0 0 0 1px var(--fche-primario-borde); }
+/* Etiquetas (perfiles de la persona): pastillas neutras bajo el nombre */
+.fche-etiquetas { display: flex; flex-wrap: wrap; gap: .35rem; margin: .55rem 0 0; padding: 0; list-style: none; }
+.fche-etiquetas:not(:has(li)) { display: none; }
+.fche-etiquetas > li { max-width: 100%; padding: .12rem .6rem; border-radius: 2rem; background: var(--fche-superficie-2); border: 1px solid var(--fche-borde); font-size: .76rem; font-weight: 600; color: var(--fche-texto-2); overflow-wrap: anywhere; }
+/* Organización y cargo vigentes (persona): uno por línea, con icono; el rol largo se acorta (completo al pasar el mouse) */
+.fche-ficha-cabecera__vinculos { display: grid; gap: .25rem; margin: .5rem 0 0; padding: 0; list-style: none; font-size: .875rem; color: var(--fche-texto-2); }
+.fche-ficha-cabecera__vinculos > li { display: flex; align-items: flex-start; gap: .4rem; min-width: 0; }
+.fche-ficha-cabecera__vinculos > li > .fche-icono { flex-shrink: 0; margin-top: .15rem; color: var(--fche-texto-suave); }
+.fche-ficha-cabecera__vinculos > li > span { min-width: 0; overflow-wrap: anywhere; }
+.fche-ficha-cabecera__rol { color: var(--fche-texto-suave); }
+.fche-ficha-cabecera__mas { padding-left: 1.35rem; font-size: .8125rem; }
 .fche-ficha-cabecera__contexto { margin: 0 0 .3rem; font-size: .85rem; font-weight: 600; }
-.fche-ficha-cabecera__acciones { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.fche-ficha-cabecera__acciones { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; padding-top: .1rem; }
 .fche-ficha-cabecera__acciones .volver { color: var(--fche-texto-2); text-decoration: none; }
 .fche-ficha-cabecera__acciones .volver:hover { color: var(--fche-texto); background: var(--fche-superficie-2); }
-/* Línea de datos clave: cada dato es un <li>; el «·» lo pone la hoja de estilos */
-.fche-meta-marco { overflow: hidden; }  /* el «·» que queda al comienzo de una línea se recorta */
-.fche-meta { display: flex; flex-wrap: wrap; align-items: center; row-gap: .3rem; margin: .55rem 0 0 -1.3rem; padding: 0; list-style: none; color: var(--fche-texto-2); font-size: .9rem; }
-.fche-meta > li { position: relative; display: inline-flex; align-items: center; gap: .3rem; min-width: 0; padding-left: 1.3rem; overflow-wrap: anywhere; }
-.fche-meta > li::before { content: "·"; position: absolute; left: .5rem; color: var(--fche-texto-suave); font-weight: 700; }
+/* Datos clave: cada dato es un <li> con su icono en gris al inicio (sin «·» entre ellos); los textos largos (correos) se cortan */
+.fche-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem 1.25rem; margin: .6rem 0 0; padding: 0; list-style: none; color: var(--fche-texto-2); font-size: .875rem; }
+.fche-meta > li { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.fche-meta > li > .fche-icono { flex-shrink: 0; color: var(--fche-texto-suave); }
+.fche-meta > li > :not(.fche-icono) { min-width: 0; overflow-wrap: anywhere; }
 .fche-meta:not(:has(li)) { display: none; }
-/* Avisos de la ficha: una sola caja suave, un aviso por línea */
-.fche-ficha-avisos { display: grid; gap: .3rem; margin: 1.25rem 0 0; padding: .75rem 1rem .75rem 2.1rem; list-style: none; position: relative;
-  background: #fff8e6; border: 1px solid #f5dc9a; border-radius: var(--fche-radio); color: #6e4800; font-size: .875rem; }
-.fche-ficha-avisos::before { content: "!"; position: absolute; left: .8rem; top: .78rem; display: grid; place-items: center; width: 1rem; height: 1rem; border-radius: 50%; background: #e9a800; color: #fff; font-size: .7rem; font-weight: 800; }
-.fche-ficha-avisos a { color: inherit; text-decoration: underline; }
+/* Avisos de la ficha (generico/_aviso.html): uno por caja, uno debajo del otro, con icono, título, lista corta y botón */
+.fche-ficha-avisos { display: grid; gap: .5rem; margin: 1.25rem 0 0; padding: 0; list-style: none; }
 .fche-ficha-avisos:not(:has(li)) { display: none; }
+.fche-aviso { --fa-fondo: #fff8e6; --fa-borde: #f5dc9a; --fa-texto: #6e4800; --fa-icono-fondo: #fbe7a6;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: .5rem .75rem; padding: .65rem .75rem .65rem .65rem; border: 1px solid var(--fa-borde); border-radius: var(--fche-radio);
+  background: var(--fa-fondo); color: var(--fa-texto); font-size: .875rem; line-height: 1.45; }
+.fche-aviso--info { --fa-fondo: #edf3ff; --fa-borde: #c9d8fb; --fa-texto: #1b3d93; --fa-icono-fondo: #d3e1fd; }
+.fche-aviso--neutro { --fa-fondo: var(--fche-superficie-2); --fa-borde: var(--fche-borde); --fa-texto: var(--fche-texto-2); --fa-icono-fondo: #eaedf3; }
+.fche-aviso__icono { display: grid; place-items: center; flex-shrink: 0; width: 2rem; height: 2rem; border-radius: .6rem; background: var(--fa-icono-fondo); color: var(--fa-texto); }
+.fche-aviso__cuerpo { min-width: 0; padding-top: .3rem; }
+.fche-aviso__titulo { font-weight: 650; margin-right: .3rem; }
+.fche-aviso__lista { display: flex; flex-wrap: wrap; gap: .3rem; margin: .4rem 0 .1rem; padding: 0; list-style: none; }
+.fche-aviso__lista > li { max-width: 100%; padding: .08rem .55rem; border-radius: 2rem; background: rgba(255, 255, 255, .75); border: 1px solid var(--fa-borde); font-size: .8rem; font-weight: 600; overflow-wrap: anywhere; }
+.fche-aviso__lista--suave > li { font-weight: 500; color: var(--fche-texto-2); }
+.fche-aviso__lineas { margin: .15rem 0 0; padding-left: 1rem; }
+.fche-aviso__lineas:has(> li:only-child) { padding-left: 0; list-style: none; }
+.fche-aviso__mas { margin-top: .2rem; }
+.fche-aviso__mas > summary { width: fit-content; font-size: .8125rem; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.fche-aviso__accion { align-self: center; background: var(--fche-superficie); }
+.fche-aviso__accion.btn-primary { background: var(--fche-primario); }
+.fche-aviso a:not(.btn) { color: inherit; text-decoration: underline; }
+.fche-ficha-avisos > li:not(.fche-aviso) { padding: .65rem .9rem; border: 1px solid #f5dc9a; border-radius: var(--fche-radio); background: #fff8e6; color: #6e4800; font-size: .875rem; }
 /* «Más acciones»: menú plegable; se oculta si no tiene ninguna acción */
 .fche-menu { position: relative; }
 .fche-menu:not(:has(.fche-menu__item)) { display: none; }
@@ -513,7 +548,20 @@ a.fche-menu__item:hover, button.fche-menu__item:hover, summary.fche-menu__item:h
   .fche-ficha-cuerpo { padding: 1rem; }
   .fche-apartado { padding: 1rem; }
   .fche-ficha-cabecera__titulo { font-size: 1.3rem; }
+  /* el retrato queda junto al nombre y lo demás usa todo el ancho (el cuerpo se «disuelve» en la rejilla) */
+  .fche-ficha-cabecera__identidad { flex-basis: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 .9rem; align-items: center; }
+  .fche-ficha-cabecera__cuerpo { display: contents; }
+  .fche-ficha-cabecera__identidad > .fche-retrato { grid-row: 1 / span 2; }
+  .fche-ficha-cabecera__cuerpo > * { grid-column: 1 / -1; }
+  .fche-ficha-cabecera__cuerpo > .fche-pagina__antetitulo, .fche-ficha-cabecera__cuerpo > .fche-ficha-cabecera__contexto, .fche-ficha-cabecera__cuerpo > .fche-ficha-cabecera__linea-titulo { grid-column: 2; }
+  .fche-ficha-cabecera__cuerpo > .fche-pagina__antetitulo, .fche-ficha-cabecera__cuerpo > .fche-ficha-cabecera__contexto { align-self: end; }
+  .fche-ficha-cabecera__cuerpo > .fche-ficha-cabecera__linea-titulo { align-self: start; }
+  .fche-retrato { width: 3.5rem; height: 3.5rem; font-size: 1.1rem; border-radius: .9rem; }
+  .fche-retrato--persona { border-radius: 50%; }
   .fche-ficha-cabecera__acciones { width: 100%; }
+  .fche-ficha-cabecera__acciones > .btn, .fche-ficha-cabecera__acciones .fche-menu > summary { min-height: 2.5rem; }
+  .fche-aviso { grid-template-columns: auto minmax(0, 1fr); }
+  .fche-aviso__accion { grid-column: 2; justify-self: start; min-height: 2.5rem; }
   .fche-menu__panel { right: auto; left: 0; }
 }
 
@@ -544,6 +592,13 @@ a.fche-menu__item:hover, button.fche-menu__item:hover, summary.fche-menu__item:h
 .fche-campo { margin-bottom: 1.25rem; }
 .fche-campo .fche-requerido { color: #c8322a; margin-left: .15rem; }
 .fche-campo__error { display: flex; align-items: center; gap: .3rem; margin-top: .3rem; font-size: .8rem; color: #b42318; }
+/* F27: descripción del valor elegido en una lista de catálogo; sin JavaScript, todas en una ayuda plegable */
+.fche-descripcion { margin-top: .3rem; padding: .35rem .6rem; border-left: 3px solid var(--fche-primario-borde); background: var(--fche-primario-suave); border-radius: 0 var(--fche-radio-sm) var(--fche-radio-sm) 0; color: var(--fche-texto); }
+.fche-descripciones { margin-top: .3rem; font-size: .8rem; color: var(--fche-texto-suave); }
+.fche-descripciones summary { cursor: pointer; width: fit-content; }
+.fche-descripciones dl { margin: .35rem 0 0; }
+.fche-descripciones dt { font-weight: 600; color: var(--fche-texto); }
+.fche-descripciones dd { margin: 0 0 .3rem; }
 /* Buscador para elegir un registro (static/js/selector.js). Sin JavaScript queda el <select> normal. */
 .fche-selector { position: relative; }
 .fche-selector__icono { position: absolute; left: .7rem; top: 1.2rem; transform: translateY(-50%); display: inline-flex; color: var(--fche-texto-suave); pointer-events: none; }
@@ -948,3 +1003,50 @@ body.htmx-request #cargando { display: inline-block; }
 .fche-guardando { width: .85rem; height: .85rem; border-width: .14em; vertical-align: -.1em; margin-right: .2rem; }
 button[aria-busy="true"] { cursor: progress; }
 .fche-duplicados ul { padding-left: 1.1rem; }
+
+/* F27 B · Tarjetas en rejilla para pocas entidades ricas (tareas de un proyecto): nombre y estado arriba, datos con icono,
+   y al pie las cifras (a la izquierda) y las acciones (a la derecha), alineadas entre tarjetas de la misma fila.
+   Una columna en el celular. */
+.fche-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+.fche-tarjetas > li { display: flex; min-width: 0; }
+.fche-tarjeta-item { flex: 1 1 auto; display: flex; flex-direction: column; gap: .8rem; min-width: 0; padding: 1rem 1.1rem; background: var(--fche-superficie);
+  border: 1px solid var(--fche-borde); border-radius: var(--fche-radio-lg); box-shadow: var(--fche-sombra-sm); transition: border-color var(--fche-transicion), box-shadow var(--fche-transicion); }
+.fche-tarjeta-item:hover { border-color: var(--fche-borde-fuerte); box-shadow: var(--fche-sombra); }
+.fche-tarjeta-item__cabeza { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+.fche-tarjeta-item__cabeza > .fche-estado { flex-shrink: 0; margin-top: .1rem; }
+.fche-tarjeta-item__titulo { margin: 0; min-width: 0; font-size: 1rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.fche-tarjeta-item__titulo a { color: var(--fche-texto); }
+.fche-tarjeta-item__titulo a:hover { color: var(--fche-primario); }
+.fche-tarjeta-item__datos { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; font-size: .85rem; color: var(--fche-texto-2); }
+.fche-tarjeta-item__datos > li { display: flex; align-items: flex-start; gap: .5rem; min-width: 0; }
+.fche-tarjeta-item__datos > li > .fche-icono { flex-shrink: 0; margin-top: .15rem; color: var(--fche-texto-suave); }
+.fche-tarjeta-item__datos > li > :not(.fche-icono) { min-width: 0; overflow-wrap: anywhere; }
+.fche-tarjeta-item__pie { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .75rem; margin-top: auto; padding-top: .8rem; border-top: 1px solid var(--fche-borde); }
+.fche-tarjeta-item__cifras { display: flex; gap: 1.5rem; margin: 0; }
+.fche-tarjeta-item__cifras dt { font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fche-texto-suave); }
+.fche-tarjeta-item__cifras dd { margin: .1rem 0 0; font-size: 1.25rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.fche-tarjeta-item__cifras dd a { color: var(--fche-texto); text-decoration: none; }
+.fche-tarjeta-item__cifras dd a:hover { color: var(--fche-primario); text-decoration: underline; }
+.fche-tarjeta-item__acciones { display: flex; flex-wrap: wrap; gap: .4rem; margin-left: auto; }
+@media (max-width: 575.98px) { .fche-tarjeta-item__acciones .btn { min-height: 2.5rem; } }
+/* F27 B · Formulario sin secciones: un campo por fila, salvo fechas y horas, que van de a dos en escritorio («Desde | Hasta») */
+@media (min-width: 768px) {
+  .fche-form__lista { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1.25rem; }
+  .fche-form__lista > * { grid-column: 1 / -1; }
+  .fche-form__lista > .fche-campo--fecha { grid-column: auto; }
+}
+/* F27 B · Secciones hermanas lado a lado si caben (invitaciones, reuniones, tareas); una sola ocupa todo el ancho */
+.fche-columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 0 1.5rem; margin-top: 2rem; }
+.fche-columnas > * { min-width: 0; }
+/* F27 B · En el celular, los registros de una lista con acciones ponen las acciones debajo del texto (no lo aplastan palabra por palabra) */
+@media (max-width: 575.98px) {
+  .fche-items > li { flex-wrap: wrap; row-gap: .6rem; }
+  .fche-items > li > .fche-items__texto { flex: 1 1 100%; }
+}
+/* F27 B · Mosaico de estados (autorizaciones de la persona): las 4 en una fila si caben, y el color del estado con clase, no en línea */
+.fche-mosaico--compacto { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .75rem; }
+.fche-mosaico--compacto .fche-mosaico__item { padding: .9rem 1rem; }
+.fche-mosaico__icono--ok { background: #e7f6ec; color: #13703a; }
+.fche-mosaico__icono--error { background: #fdecec; color: #b42318; }
+.fche-mosaico__icono--alerta { background: #fff3d1; color: #7a4f00; }
+.fche-mosaico--compacto + * { margin-top: 1.5rem; }

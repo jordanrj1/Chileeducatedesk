@@ -271,11 +271,12 @@ class OrganizacionFicha(FichaBase):
         pk = self.object.pk
         hijos = [{
             "texto": f"{v.persona} · {v.cargo or 'Vínculo'}", "url": v.persona.get_absolute_url(), "vigente": v.vigente,
-            "detalle": f"{v.get_tipo_cargo_display()} · {v.fecha_inicio or '?'} a {v.fecha_termino or 'actualidad'}",
+            "detalle": " · ".join(x for x in [str(v.rol) if v.rol_id else "", v.get_tipo_cargo_display(),
+                                               f"{v.fecha_inicio or '?'} a {v.fecha_termino or 'actualidad'}"] if x),
             "url_editar": reverse("organizaciones:personas_editar", args=[pk, v.pk]),
-        } for v in self.object.vinculos.select_related("persona")]
+        } for v in self.object.vinculos.select_related("persona", "rol")]
         return {
-            "titulo_pestana": "Personas relacionadas", "hijos": hijos, "etiqueta_nuevo": "Agregar persona con cargo",
+            "titulo_pestana": "Personas relacionadas", "hijos": hijos, "etiqueta_nuevo": "Vincular persona",
             "url_nuevo": reverse("organizaciones:personas_nuevo", args=[pk]), "vacio": "Aún no hay personas vinculadas.",
             "hay_autoridades": self.object.vinculos.filter(tipo_cargo="autoridad", fecha_termino__isnull=True).exists(),
             **self._estudiantes(),
@@ -312,7 +313,7 @@ class CerrarCargosAutoridad(Permiso403Mixin, __import__("django.views", fromlist
             v.save()
             n += 1
         registrar(request.user, "cargos_autoridad_cerrados", org, f"{n} cargos al {hasta:%d-%m-%Y}")
-        messages.success(request, f"{plural(n, 'cargo de autoridad cerrado', 'cargos de autoridad cerrados')} al {hasta:%d-%m-%Y}. Los nuevos se agregan con «Agregar persona con cargo».")
+        messages.success(request, f"{plural(n, 'cargo de autoridad cerrado', 'cargos de autoridad cerrados')} al {hasta:%d-%m-%Y}. Los nuevos se agregan con «Vincular persona».")
         return HttpResponseRedirect(f"{org.get_absolute_url()}?tab=personas")
 
 

@@ -14,14 +14,32 @@ def estado_incompleto():
     return EstadoRegistro.objects.filter(codigo="incompleto").first()
 
 
-def completar_ficha_rapida(persona, datos):
+def _crear_contacto(persona, tipo, valor, principal, nota, usuario):
+    """F27: si otra persona ya tiene vigente ese correo o teléfono, quien crea la ficha ya vio el aviso de posible
+    duplicado y decidió crearla igual: el contacto queda compartido (motivo «otro», con lo escrito) y la decisión, en la auditoría."""
+    contacto = Contacto(persona=persona, tipo=tipo, valor=valor, principal=principal)
+    otros = list(Contacto.repetidos(Contacto.normalizar(tipo, valor), excluir_persona=persona.pk))
+    if otros:
+        contacto.compartido, contacto.motivo_compartido = True, "otro"
+        contacto.nota_compartido = ((nota or "").strip() or "Se decidió crear la persona igual, tras el aviso de posible duplicado.")[:150]
+    contacto.save()
+    if otros:
+        from apps.nucleo.auditoria import registrar
+
+        con = ", ".join(sorted({f"{c.persona.nombre_completo} (#{c.persona_id})" for c in otros}))
+        registrar(usuario, "contacto_compartido", f"{persona} · {contacto}", f"Motivo: Otro ({contacto.nota_compartido}). Compartido con: {con}.")
+    return contacto
+
+
+def completar_ficha_rapida(persona, datos, nota="", usuario=None):
     """Contactos (correo principal; si no hay, el teléfono) y la comuna donde vive, como dirección de residencia."""
     correo = (datos.get("correo") or "").strip()
     telefono = (datos.get("telefono") or "").strip()
+    usuario = usuario or getattr(persona, "creado_por", None)
     if correo:
-        Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="correo"), valor=correo, principal=True)
+        _crear_contacto(persona, TipoContacto.objects.get(codigo="correo"), correo, True, nota, usuario)
     if telefono:
-        Contacto.objects.create(persona=persona, tipo=TipoContacto.objects.get(codigo="telefono_movil"), valor=telefono, principal=not correo)
+        _crear_contacto(persona, TipoContacto.objects.get(codigo="telefono_movil"), telefono, not correo, nota, usuario)
     if datos.get("comuna") and not persona.direcciones.filter(tipo="residencia").exists():  # solo la comuna: basta para el territorio
         from apps.territorio.models import Direccion
 
@@ -38,7 +56,7 @@ def crear_persona_rapida(form, usuario, nota=""):
             persona.observaciones = f"Se distingue de otra ficha parecida: {nota}"
         persona.estado_registro = estado_incompleto()
         persona.save()
-        completar_ficha_rapida(persona, form.cleaned_data)
+        completar_ficha_rapida(persona, form.cleaned_data, nota, usuario)
         registrar_origen(persona, usuario)
     return persona
 

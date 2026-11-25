@@ -18,6 +18,7 @@ class _HijoBase:
     campo_padre = None
     tab = ""
     etiqueta = ""
+    titulo_crear = ""  # F27 B: título propio al agregar (p. ej., «Vincular persona»); si no, «Agregar <etiqueta>»
     permiso_extra = None  # permiso adicional (datos sensibles)
     campo_vigente = "vigente"
     template_name = "generico/formulario.html"
@@ -50,7 +51,7 @@ class HijoCrear(_HijoBase, Permiso403Mixin, CreateView):
         return super().dispatch(request, *a, **kw)
 
     def titulo(self):
-        return f"Agregar {self.etiqueta}"
+        return self.titulo_crear or f"Agregar {self.etiqueta}"
 
     def get_form_kwargs(self):
         kw = super().get_form_kwargs()
@@ -119,10 +120,11 @@ class HijoAlternar(_HijoBase, Permiso403Mixin, View):
         return HttpResponseRedirect(self.url_padre())
 
 
-def urls_hijo(base, slug, nombre, **attrs):
-    """Genera las tres rutas de un hijo bajo `base/<pk>/<slug>/…`."""
-    crear = type(f"Crear{nombre}", (HijoCrear,), attrs)
-    editar = type(f"Editar{nombre}", (HijoEditar,), attrs)
+def urls_hijo(base, slug, nombre, mixin=None, **attrs):
+    """Genera las tres rutas de un hijo bajo `base/<pk>/<slug>/…`. `mixin` (opcional) se antepone a crear y editar."""
+    previas = (mixin,) if mixin else ()
+    crear = type(f"Crear{nombre}", (*previas, HijoCrear), attrs)
+    editar = type(f"Editar{nombre}", (*previas, HijoEditar), attrs)
     res = [
         path(f"{base}/<int:pk>/{slug}/nuevo", crear.as_view(), name=f"{slug}_nuevo"),
         path(f"{base}/<int:pk>/{slug}/<int:hijo_pk>/editar", editar.as_view(), name=f"{slug}_editar"),

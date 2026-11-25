@@ -13,10 +13,12 @@ from apps.nucleo.rut import CampoRut
 from apps.nucleo.selector import pk_seguro
 from apps.nucleo.utilidades import normalizar_telefono, telefono_normalizado_valido
 from apps.organizaciones.models import Carrera, Organizacion
+from apps.lugares.selector import LUGARES
 from apps.organizaciones.selector import ORGANIZACIONES
 from apps.territorio.forms import DireccionForm
 from apps.territorio.models import Comuna
 
+from .rol_organizacion import DESCRIPCIONES_TIPO_CARGO
 from .selector import PERSONAS
 from .models import (
     PersonaLugar,
@@ -273,7 +275,19 @@ def inicial_desde_texto(texto):
     return {"nombres": nombres, "apellido_paterno": paterno, "apellido_materno": materno}
 
 
+class CompartirContactoForm(BootstrapMixin, forms.Form):
+    """F27: «Es otra persona que comparte este contacto»: el motivo (y una nota corta opcional)."""
+
+    motivo = forms.ChoiceField(choices=[("", "Elige el motivo")] + Contacto.MOTIVOS_COMPARTIDO, required=False, label="¿Por qué lo comparten?",
+                               help_text="Ej.: Familiar (el teléfono de la casa).")
+    nota = forms.CharField(max_length=150, required=False, label="Nota (opcional)", help_text="Ej.: es el teléfono de su madre.")
+
+
 class ContactoForm(BootstrapMixin, forms.ModelForm):
+    """Contacto de una persona, organización o cargo. F27: en una persona, un correo o teléfono que ya tiene vigente OTRA
+    persona no se guarda hasta decidir: es la misma persona (ir a su ficha o unir fichas), es otra que lo comparte (con
+    motivo: queda `compartido`) o cancelar. `repetidos` trae esos contactos para el aviso."""
+
     class Meta:
         model = Contacto
         fields = ["tipo", "valor", "proposito", "principal", "vigente"]
@@ -285,6 +299,9 @@ class ContactoForm(BootstrapMixin, forms.ModelForm):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.fields["tipo"].queryset = TipoContacto.objects.filter(activo=True)
+        self.repetidos = []
+        self.compartir = CompartirContactoForm(self.data or None, prefix="compartir")
+        self.decision_compartir = False  # True al guardar como compartido en este envío (la vista lo anota en la auditoría)
 
     def clean(self):
         d = super().clean()
@@ -298,7 +315,30 @@ class ContactoForm(BootstrapMixin, forms.ModelForm):
                     forms.EmailField().clean(valor)
                 except forms.ValidationError:
                     self.add_error("valor", "Correo no válido.")
+            if not self.errors and self.instance.persona_id:
+                self._revisar_repetido(norm)
         return d
+
+    def _revisar_repetido(self, norm):
+        inst = self.instance
+        if inst.vigente is False and "vigente" in self.fields and not self.cleaned_data.get("vigente"):
+            return  # un contacto dado de baja no compite con nadie
+        self.repetidos = list(Contacto.repetidos(norm, excluir_persona=inst.persona_id).order_by("persona__nombres", "pk"))
+        if not self.repetidos:
+            inst.compartido, inst.motivo_compartido, inst.nota_compartido = False, "", ""
+            return
+        if inst.pk and inst.compartido and inst.valor_normalizado == norm:
+            return  # ya se decidió que lo comparten: no se vuelve a preguntar
+        if self.data.get("compartir"):
+            if self.compartir.is_valid() and self.compartir.cleaned_data["motivo"]:
+                inst.compartido = True
+                inst.motivo_compartido = self.compartir.cleaned_data["motivo"]
+                inst.nota_compartido = self.compartir.cleaned_data["nota"].strip()
+                self.decision_compartir = True
+                return
+            self.compartir.add_error("motivo", "Elige por qué lo comparten.")
+        nombres = ", ".join(sorted({c.persona.nombre_completo for c in self.repetidos}))
+        raise forms.ValidationError(f"Este contacto ya lo tiene: {nombres}. Elige qué hacer antes de guardar.", code="contacto_repetido")
 
 
 class PersonaDireccionForm(DireccionForm):
@@ -497,8 +537,8 @@ class EstudianteForm(FormacionForm):
 ETIQUETAS_VINCULO = {"organizacion": "Organización", "rol": "Rol en la organización", "cargo": "Cargo", "fecha_inicio": "Desde", "fecha_termino": "Hasta (si ya dejó el cargo)"}
 AYUDAS_VINCULO = {
     "rol": "Qué es en la organización: estudiante, docente, dirigente… El detalle va en el cargo.",
-    "cargo": "Ej.: Presidenta; Encargado de vinculación con el medio.",
-    "tipo_cargo": "Directorio: presidencia, secretaría o tesorería. Funcional: quien trabaja o coordina. Autoridad: alcalde o director de liceo.",
+    "cargo": "Solo si ocupa un cargo. Ej.: Presidenta; Encargado de vinculación con el medio.",
+    "tipo_cargo": "Solo si tiene un cargo. Elige «Sin cargo» si no lo tiene.",
     "fecha_termino": "Los cargos no se borran: al dejarlo, se indica hasta cuándo y queda en la historia.",
 }
 
@@ -512,7 +552,29 @@ def _roles_vinculo(form):
     form.fields["rol"].queryset = RolOrganizacion.objects.filter(Q(activo=True) | Q(pk=form.instance.rol_id or 0))
 
 
-class VinculoForm(BootstrapMixin, forms.ModelForm):
+class TipoCargoMixin:
+    """F27: el tipo de cargo es opcional («Sin cargo») y se explica bajo la lista. Se muestra solo si el rol admite cargo o
+    si se escribió un cargo (static/js/fche.js); si no aplica, el servidor lo deja vacío aunque llegue un valor."""
+
+    descripciones_opciones = {"tipo_cargo": DESCRIPCIONES_TIPO_CARGO}
+
+    def preparar_tipo_cargo(self):
+        campo = self.fields["tipo_cargo"]
+        campo.required = False
+        campo.choices = [("", "Sin cargo"), *PersonaOrganizacion.TIPOS_CARGO]
+        con_cargo = self.fields["rol"].queryset.filter(con_cargo=True).values_list("pk", flat=True)
+        campo.widget.attrs.update({"data-mostrar-si-campo": self.add_prefix("rol"), "data-mostrar-si-valor": " ".join(str(pk) for pk in con_cargo),
+                                   "data-mostrar-si-con-dato": self.add_prefix("cargo")})
+
+    def clean(self):
+        d = super().clean()
+        rol, cargo = d.get("rol"), (d.get("cargo") or "").strip()
+        if d.get("tipo_cargo") and not cargo and not (rol is not None and rol.con_cargo):
+            d["tipo_cargo"] = ""
+        return d
+
+
+class VinculoForm(TipoCargoMixin, BootstrapMixin, forms.ModelForm):
     class Meta:
         model = PersonaOrganizacion
         fields = ["organizacion", "rol", "cargo", "tipo_cargo", "fecha_inicio", "fecha_termino"]
@@ -523,10 +585,11 @@ class VinculoForm(BootstrapMixin, forms.ModelForm):
         super().__init__(*args, **kw)
         self.fields["organizacion"].queryset = Organizacion.objects.filter(activo=True)
         _roles_vinculo(self)
+        self.preparar_tipo_cargo()
 
 
-class VinculoDesdeOrganizacionForm(BootstrapMixin, forms.ModelForm):
-    """Agregar persona con cargo desde la ficha de la organización. Los cargos son históricos: se cierran con «hasta»."""
+class VinculoDesdeOrganizacionForm(TipoCargoMixin, BootstrapMixin, forms.ModelForm):
+    """Vincular persona (con o sin cargo) desde la ficha de la organización. Los cargos son históricos: se cierran con «hasta»."""
 
     persona = forms.ModelChoiceField(Persona.objects.none())
 
@@ -544,6 +607,7 @@ class VinculoDesdeOrganizacionForm(BootstrapMixin, forms.ModelForm):
         self.fields["persona"] = SelectorField(PERSONAS, label="Persona")
         self.fields["persona"].widget.attrs["class"] = "form-select"
         fijar_valores_selectores(self)
+        self.preparar_tipo_cargo()
 
 
 class ExperienciaForm(BootstrapMixin, forms.ModelForm):
@@ -638,6 +702,110 @@ class ConsentimientoForm(BootstrapMixin, forms.ModelForm):
         self.fields["documento"].help_text = "Documentos ya subidos a la ficha de esta persona (pestaña Documentos)."
 
 
+# F27: las 4 autorizaciones que trae el formulario de consentimiento firmado (y la del apoderado si es menor de edad)
+AUTORIZACIONES_FIRMADO = ["datos", "sensibles", "imagen", "contacto"]
+
+
+class ConsentimientoFirmadoForm(BootstrapMixin, forms.Form):
+    """F27: un solo documento firmado con varias autorizaciones. Se sube el archivo o se elige uno ya subido a la ficha;
+    se marcan las autorizaciones que contiene (las no marcadas quedan «no otorgado»), la fecha, el medio y quién lo
+    otorga. La vista crea un consentimiento por autorización, todos con el mismo documento, en una transacción."""
+
+    OTORGANTES = [("persona", "La propia persona"), ("apoderado", "Su apoderado o apoderada")]
+    archivo = forms.FileField(required=False, label="Subir el documento firmado",
+                              help_text="PDF o imagen del formulario firmado. Queda como documento restringido 🔒 en la ficha de la persona.")
+    documento = forms.ModelChoiceField(queryset=None, required=False, label="…o elegir uno ya subido",
+                                       help_text="Documentos de la pestaña Documentos de esta persona.")
+    fecha = forms.DateField(label="Fecha de la firma", widget=forms.DateInput)
+    medio = forms.ChoiceField(choices=Consentimiento.MEDIOS, initial="papel", label="¿Cómo lo dio?")
+    otorga = forms.ChoiceField(choices=OTORGANTES, initial="persona", label="¿Quién lo otorga?")
+    otorgado_por = selector_persona(required=False, label="Apoderado o apoderada", help_text="Quien firmó por la persona.")
+    observaciones = forms.CharField(max_length=250, required=False, label="Observaciones", help_text="Ej.: firmado en la jornada de inscripción.")
+    secciones = [
+        ("Documento firmado", "Sube el archivo o elige uno que ya esté en la ficha.", ["archivo", "documento"]),
+        ("Autorizaciones que contiene", "Marca las que la persona aceptó. Las no marcadas quedan como «no otorgado».", []),
+        ("Firma", "", ["fecha", "medio", "otorga", "otorgado_por", "observaciones"]),
+    ]
+
+    def __init__(self, *a, persona=None, puede_subir=True, **kw):
+        from django.conf import settings
+        from django.utils import timezone
+
+        from apps.documentos.models import Documento
+
+        self.persona = persona
+        super().__init__(*a, **kw)
+        self.initial.setdefault("fecha", timezone.localdate())
+        tipos = [t for t in AUTORIZACIONES_FIRMADO if t != "sensibles" or getattr(settings, "DATOS_SENSIBLES", True)]
+        if persona is not None and persona.es_menor:
+            tipos.append("apoderado")
+        nombres = dict(Consentimiento.TIPOS)
+        self.tipos = tipos  # una casilla por autorización: aut_datos, aut_sensibles, aut_imagen, aut_contacto (y aut_apoderado)
+        for t in tipos:
+            self.fields[f"aut_{t}"] = forms.BooleanField(required=False, label=nombres[t])
+            self.fields[f"aut_{t}"].widget.attrs["class"] = "form-check-input"
+        self.secciones = [(titulo, ayuda, campos or [f"aut_{t}" for t in tipos]) for titulo, ayuda, campos in self.secciones]
+        self.fields["documento"].queryset = Documento.objects.filter(activo=True, persona=persona) if persona else Documento.objects.none()
+        if not puede_subir:
+            del self.fields["archivo"]
+        self.fields["otorgado_por"].widget.attrs.update({"data-mostrar-si-campo": self.add_prefix("otorga"), "data-mostrar-si-valor": "apoderado"})
+
+    def clean_archivo(self):
+        from apps.documentos.models import validar_archivo
+
+        a = self.cleaned_data.get("archivo")
+        if a:
+            from django.core.exceptions import ValidationError
+
+            try:
+                validar_archivo(a)
+            except ValidationError as e:
+                raise forms.ValidationError(e.messages)
+        return a
+
+    def autorizaciones(self):
+        """[(tipo, otorgada)] de este envío, en el orden del formulario."""
+        return [(t, bool(self.cleaned_data.get(f"aut_{t}"))) for t in self.tipos]
+
+    def clean(self):
+        d = super().clean()
+        if not d.get("archivo") and not d.get("documento"):
+            raise forms.ValidationError("Sube el documento firmado o elige uno ya subido.")
+        if d.get("archivo") and d.get("documento"):
+            raise forms.ValidationError("Sube un documento o elige uno existente, no los dos.")
+        if d.get("otorga") == "apoderado":
+            if not d.get("otorgado_por"):
+                self.add_error("otorgado_por", "Indica quién lo firmó.")
+            elif self.persona and d["otorgado_por"].pk == self.persona.pk:
+                self.add_error("otorgado_por", "Si lo firma la misma persona, elige «La propia persona».")
+        else:
+            d["otorgado_por"] = None
+        return d
+
+
+class PersonaFotoForm(BootstrapMixin, forms.ModelForm):
+    """F27: subir o cambiar la foto. Se valida el tipo real del archivo (sin librería de imágenes). Menores de edad:
+    solo con el consentimiento de uso de imagen otorgado y vigente [V]."""
+
+    class Meta:
+        model = Persona
+        fields = ["foto"]
+        widgets = {"foto": forms.FileInput(attrs={"accept": ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"})}
+        labels = {"foto": "Foto"}
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.fields["foto"].required = True
+
+    def clean_foto(self):
+        foto = self.cleaned_data.get("foto")
+        p = self.instance
+        if foto and p.es_menor and not p.consentimiento_vigente("imagen"):
+            raise forms.ValidationError("Es menor de edad: para subir su foto, primero registra el consentimiento de uso de imagen otorgado "
+                                        "(pestaña Privacidad).")
+        return foto
+
+
 class ApoderadoForm(BootstrapMixin, forms.ModelForm):
     apoderado = selector_persona(label="Apoderado o apoderada")
 
@@ -658,22 +826,45 @@ class ApoderadoForm(BootstrapMixin, forms.ModelForm):
         pass
 
 
+class _IteradorPorAmbito(forms.models.ModelChoiceIterator):
+    """F27: las relaciones con un lugar agrupadas por ámbito (Estudio, Trabajo, Comunidad, Residencia, Otra)."""
+
+    def __iter__(self):
+        from apps.nucleo.models import RelacionLugar
+
+        if self.field.empty_label is not None:
+            yield ("", self.field.empty_label)
+        grupos = {}
+        for obj in self.queryset:
+            grupos.setdefault(obj.ambito, []).append(self.choice(obj))
+        for codigo, nombre in RelacionLugar.AMBITOS:
+            if codigo in grupos:
+                yield (nombre, grupos[codigo])
+
+
 class PersonaLugarForm(BootstrapMixin, forms.ModelForm):
-    """Vincula a la persona con un lugar ya registrado (un colegio, una sede, un centro comunitario)."""
+    """Vincula a la persona con un lugar registrado (un colegio, una sede, un centro comunitario). F27: el lugar se elige
+    con el buscador común («+ Crear lugar» sin salir) y la relación sale del catálogo «Relación con un lugar»."""
+
+    lugar = SelectorField(LUGARES, label="Lugar",
+                          help_text="Escribe para buscar. Si no está, elige «+ Crear lugar»: queda elegido sin salir de aquí. Ej.: Colegio Santa María, Hualpén.")
 
     class Meta:
         model = PersonaLugar
-        fields = ["lugar", "relacion", "desde", "hasta", "observaciones"]
+        fields = ["lugar", "tipo_relacion", "desde", "hasta", "observaciones"]
         widgets = {"desde": forms.DateInput, "hasta": forms.DateInput}
-        labels = {"lugar": "Lugar", "relacion": "¿Qué hace ahí?"}
+        labels = {"tipo_relacion": "¿Qué hace ahí?"}
         help_texts = {
-            "lugar": "Un lugar ya registrado. Si no está, regístralo primero en Lugares. Ej.: Colegio Santa María, Hualpén.",
+            "tipo_relacion": "Bajo la lista se explica cada opción. Si ninguna calza, elige «Otra relación» y detállala en observaciones.",
             "hasta": "Solo si ya no tiene ese vínculo: el registro se conserva.",
             "observaciones": "Ej.: apoderado del curso 3.º B.",
         }
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
-        from apps.lugares.campos import LugarChoiceField
+        from apps.nucleo.models import RelacionLugar
 
-        self.fields["lugar"] = LugarChoiceField(label="Lugar", help_text=self.fields["lugar"].help_text)
+        campo = self.fields["tipo_relacion"]
+        campo.required = True
+        campo.iterator = _IteradorPorAmbito
+        campo.queryset = RelacionLugar.objects.filter(Q(activo=True) | Q(pk=self.instance.tipo_relacion_id or 0)).order_by("orden", "nombre")

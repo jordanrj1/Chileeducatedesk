@@ -11,6 +11,9 @@ class Catalogo(models.Model):
 
     codigo = models.SlugField("código", max_length=60, unique=True, help_text="Identificador interno; no cambia.")
     nombre = models.CharField(max_length=100)
+    # F27: qué significa el valor; se muestra bajo la lista en los formularios y se edita en Catálogos
+    descripcion = models.CharField("descripción", max_length=300, blank=True,
+                                   help_text="Opcional. Explica cuándo usar este valor; se muestra bajo la lista al elegirlo.")
     orden = models.PositiveSmallIntegerField(default=0)
     activo = models.BooleanField(default=True)
 
@@ -144,8 +147,38 @@ TipoInvitado = _catalogo("TipoInvitado", "tipo de invitado", "tipos de invitado"
 EstadoVoluntario = _catalogo("EstadoVoluntario", "estado del voluntariado", "estados del voluntariado")
 # Forma legal con que se constituyó una organización (figura en su certificado de vigencia o en sus estatutos)
 NaturalezaJuridica = _catalogo("NaturalezaJuridica", "naturaleza jurídica", "naturalezas jurídicas")
-# F26 P2: qué es la persona en una organización (estudiante, docente, dirigente…); el cargo libre da el detalle
-RolOrganizacion = _catalogo("RolOrganizacion", "rol en la organización", "roles en la organización")
+
+
+class RolOrganizacion(Catalogo):
+    """F26 P2: qué es la persona en una organización (estudiante, docente, dirigente…); el cargo libre da el detalle.
+    F27: `con_cargo` dice si el rol admite un cargo (dirigente, autoridad) o puede tenerlo (docente, funcionaria); con un
+    rol sin cargo (estudiante, vecina) y sin cargo escrito, el vínculo queda sin tipo de cargo."""
+
+    con_cargo = models.BooleanField("admite cargo", default=True,
+                                    help_text="Márcalo si quien tiene este rol puede ocupar un cargo (presidenta, encargado, director). "
+                                              "Si no, el tipo de cargo no se pide.")
+    campos_extra = ["con_cargo"]
+
+    class Meta(Catalogo.Meta):
+        verbose_name = "rol en la organización"
+        verbose_name_plural = "roles en la organización"
+        permissions = [("desactivar_rolorganizacion", "Puede desactivar valores de roles en la organización")]
+
+
+class RelacionLugar(Catalogo):
+    """F27: qué hace una persona en un lugar (estudia ahí, trabaja ahí, vive cerca…), agrupado por ámbito.
+    El ámbito también da el valor del campo antiguo `PersonaLugar.relacion`, que se conserva sin mostrarse."""
+
+    AMBITOS = [("estudio", "Estudio"), ("trabajo", "Trabajo"), ("comunidad", "Comunidad"), ("residencia", "Residencia"), ("otra", "Otra")]
+    ambito = models.CharField("ámbito", max_length=12, choices=AMBITOS, default="otra",
+                              help_text="Agrupa las opciones en la lista. Ej.: «Hace su práctica ahí» va en Estudio.")
+    campos_extra = ["ambito"]
+
+    class Meta(Catalogo.Meta):
+        verbose_name = "relación con un lugar"
+        verbose_name_plural = "relaciones con un lugar"
+        permissions = [("desactivar_relacionlugar", "Puede desactivar valores de relaciones con un lugar")]
+
 
 CATALOGOS = {
     "estado-actividad": EstadoActividad,
@@ -170,6 +203,7 @@ CATALOGOS = {
     "estado-voluntario": EstadoVoluntario,
     "naturaleza-juridica": NaturalezaJuridica,
     "rol-organizacion": RolOrganizacion,
+    "relacion-lugar": RelacionLugar,
 }
 
 

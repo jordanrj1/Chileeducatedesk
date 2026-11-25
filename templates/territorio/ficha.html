@@ -5,18 +5,18 @@
 {% block estado %}{% if es_sector and not object.activo %}{% estado "desactivado" "Desactivado" %}{% elif not es_sector and not object.es_oficial %}{% estado "demostracion" "De demostración" %}{% endif %}{% endblock %}
 {% block subtitulo %}
   {% if es_sector %}
-  <li>{{ object.get_tipo_display }}</li>
-  <li><a href="{{ comuna_contenedor.get_absolute_url }}">{{ comuna_contenedor }}</a>{% if object.sector_padre %} › <a href="{{ object.sector_padre.get_absolute_url }}">{{ object.sector_padre }}</a>{% endif %}</li>
+  <li>{% icono "territorio" 15 %}<span>{{ object.get_tipo_display }}</span></li>
+  <li>{% icono "lugares" 15 %}<span><a href="{{ comuna_contenedor.get_absolute_url }}">{{ comuna_contenedor }}</a>{% if object.sector_padre %} › <a href="{{ object.sector_padre.get_absolute_url }}">{{ object.sector_padre }}</a>{% endif %}</span></li>
   {% else %}
-  <li><a href="{{ object.provincia.region.get_absolute_url }}">{{ object.provincia.region }}</a> › {{ object.provincia }}</li>
-  <li>Código {{ object.codigo }}</li>
-  <li>Municipalidad:
+  <li>{% icono "territorio" 15 %}<span><a href="{{ object.provincia.region.get_absolute_url }}">{{ object.provincia.region }}</a> › {{ object.provincia }}</span></li>
+  <li>{% icono "lista" 15 %}<span>Código {{ object.codigo }}</span></li>
+  <li>{% icono "organizaciones" 15 %}<span>Municipalidad:
     {% if municipalidad %}<a href="{{ municipalidad.get_absolute_url }}">{{ municipalidad }}</a>{% if not municipalidad.activo %} {% estado "inactiva" "Inactiva" %}{% endif %}
     {% elif perms.organizaciones.add_organizacion %}<a href="/organizaciones/nueva?comuna={{ object.pk }}&amp;tipo=municipalidad">+ Registrar municipalidad</a>
-    {% else %}sin registrar{% endif %}</li>
+    {% else %}sin registrar{% endif %}</span></li>
   {% endif %}
 {% endblock %}
-{% block avisos %}{% if es_sector and not object.activo %}<li>Ya no se ofrece para elegir ni para crear registros en él. Lo registrado aquí se conserva.</li>{% endif %}{% endblock %}
+{% block avisos %}{% if es_sector and not object.activo %}{% include "generico/_aviso.html" with tono="neutro" simbolo="archivar" titulo="Sector desactivado." texto="Ya no se ofrece para elegir ni para crear registros en él. Lo registrado aquí se conserva." lista=None url=None %}{% endif %}{% endblock %}
 {% block accion_principal %}{% if puede_editar and url_editar %}{{ block.super }}{% elif crear_aqui and perms.actividades.add_actividad %}<a class="btn btn-primary btn-sm" href="/actividades/nueva?{{ parametros_nuevo }}">+ Actividad</a>{% endif %}{% endblock %}
 {% block menu %}
 {% if crear_aqui %}

@@ -52,8 +52,62 @@ def compartir_opciones(campo):
             campo.widget.choices = campo.choices
 
 
+class SelectConDescripcion(forms.Select):
+    """F27: lista que explica sus opciones. Cada opción lleva su descripción (data-descripcion): la del valor del catálogo
+    o, en una lista fija, la de `descripciones` ({valor: texto}). generico/_campo.html dibuja bajo la lista la descripción
+    del valor elegido (static/js/fche.js la cambia al elegir otro) y, sin JavaScript, una ayuda plegable con todas."""
+
+    descripciones = None
+
+    def descripcion_de(self, valor):
+        obj = getattr(valor, "instance", None)
+        if obj is not None:
+            return getattr(obj, "descripcion", "") or ""
+        return (self.descripciones or {}).get(str(valor), "")
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        opcion = super().create_option(name, value, label, selected, index, subindex, attrs)
+        texto = self.descripcion_de(value)
+        if texto:
+            opcion["attrs"]["data-descripcion"] = texto
+        return opcion
+
+    def lista_descripciones(self):
+        """[(etiqueta, descripción)] de las opciones que tienen descripción (también dentro de grupos)."""
+        res = []
+        for valor, etiqueta in self.choices:
+            pares = etiqueta if isinstance(etiqueta, (list, tuple)) else [(valor, etiqueta)]
+            for v, e in pares:
+                texto = self.descripcion_de(v) if v not in (None, "") else ""
+                if texto:
+                    res.append((e, texto))
+        return res
+
+
+def con_descripciones(campo, descripciones=None):
+    """Una lista simple de un catálogo (o con `descripciones` dadas) pasa a SelectConDescripcion. Los buscadores, las
+    selecciones múltiples y los botones de opción no cambian."""
+    from .models import Catalogo
+
+    w = campo.widget
+    if type(w) is not forms.Select:
+        return
+    if descripciones is None:
+        modelo = getattr(getattr(campo, "queryset", None), "model", None)
+        if not (isinstance(modelo, type) and issubclass(modelo, Catalogo)):
+            return
+    nuevo = SelectConDescripcion(attrs=dict(w.attrs))
+    nuevo.choices = w.choices
+    nuevo.is_required, nuevo.is_localized = w.is_required, w.is_localized
+    nuevo.descripciones = descripciones
+    campo.widget = nuevo
+
+
 class BootstrapMixin:
-    """Aplica clases de Bootstrap a todos los campos. Toda selección múltiple pasa a ser desplegable (SelectorMultiple)."""
+    """Aplica clases de Bootstrap a todos los campos. Toda selección múltiple pasa a ser desplegable (SelectorMultiple).
+    F27: las listas de catálogos (y las de `descripciones_opciones`) muestran la descripción del valor elegido."""
+
+    descripciones_opciones = {}  # {campo: {valor: descripción}} para listas fijas (p. ej. el tipo de cargo)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -65,9 +119,10 @@ class BootstrapMixin:
         elif "vigente" in self.fields and not self.fields["vigente"].help_text:
             self.fields["vigente"].help_text = "Desmárcala para dar de baja este dato sin borrarlo: queda en el historial."
         fijar_valores_selectores(self)
-        for campo in self.fields.values():
+        for nombre, campo in self.fields.items():
             compartir_opciones(campo)
             a_desplegable(campo)
+            con_descripciones(campo, self.descripciones_opciones.get(nombre))
             w = campo.widget
             if isinstance(w, forms.CheckboxSelectMultiple):
                 continue  # la clase de cada casilla la pone a_desplegable (Django la pondría también en el contenedor)

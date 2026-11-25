@@ -360,16 +360,20 @@
       var caja = el.closest(".fche-campo") || el.parentNode;
       if (!origen || !caja) return;
       var valores = (el.dataset.mostrarSiValor || "").split(" ");
+      // F27: data-mostrar-si-con-dato nombra otro campo que, si tiene algo escrito, también lo muestra (p. ej. el tipo de
+      // cargo se ve si el rol admite cargo o si se escribió un cargo)
+      var otro = el.dataset.mostrarSiConDato ? form.querySelector("[name='" + el.dataset.mostrarSiConDato + "']") : null;
       function aplicar() {
         var cajaOrigen = origen.closest(".fche-campo");
         var conDato = el.type === "checkbox" ? el.checked : !!el.value;
-        var ver = valores.indexOf(origen.value) !== -1 || conDato && origen.value === "";
+        var ver = valores.indexOf(origen.value) !== -1 || conDato && origen.value === "" || !!(otro && otro.value.trim());
         caja.hidden = !ver || !!(cajaOrigen && cajaOrigen.hidden);
         // Si todos los campos de una sección quedan ocultos, también su título (p. ej. «Si es menor de edad»).
         var bloque = caja.closest("fieldset.fche-bloque");
         if (bloque) bloque.hidden = !Array.prototype.some.call(bloque.querySelectorAll(".fche-campo"), function (c) { return !c.hidden; });
       }
       (el.form || origen).addEventListener("change", aplicar);
+      if (otro) otro.addEventListener("input", aplicar);
       aplicar();
     });
   }
@@ -401,9 +405,31 @@
       el.addEventListener("change", calcular); el.addEventListener("input", calcular); calcular();
     });
   }
-  document.addEventListener("DOMContentLoaded", function () { campoCondicional(document); camposSegun(document); });
+  // F27: bajo una lista de catálogo, la descripción del valor elegido (cambia al elegir otro). La ayuda plegable con todas
+  // las descripciones queda para quien no tiene JavaScript.
+  function descripcionesDeOpciones(raiz) {
+    Array.prototype.forEach.call((raiz || document).querySelectorAll("[data-descripcion-de]"), function (caja) {
+      var sel = document.getElementById(caja.getAttribute("data-descripcion-de"));
+      if (!sel || caja.getAttribute("data-enlazada")) return;
+      caja.setAttribute("data-enlazada", "1");
+      var lista = caja.nextElementSibling;
+      if (lista && lista.classList.contains("fche-descripciones")) lista.hidden = true;
+      var descrita = (sel.getAttribute("aria-describedby") || "").split(" ").filter(Boolean);
+      if (descrita.indexOf(caja.id) === -1) { descrita.push(caja.id); sel.setAttribute("aria-describedby", descrita.join(" ")); }
+      function aplicar() {
+        var o = sel.options[sel.selectedIndex], texto = o ? o.getAttribute("data-descripcion") : "";
+        caja.textContent = texto || "";
+        caja.hidden = !texto;
+      }
+      sel.addEventListener("change", aplicar);
+      aplicar();
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () { campoCondicional(document); camposSegun(document); descripcionesDeOpciones(document); });
   // La ventana «+ Crear…» llega por HTMX: sus campos condicionales (RUT o documento extranjero) se enlazan al llegar
-  document.addEventListener("htmx:afterSwap", function (e) { if (e.target.id === "modal-rapido-contenido") camposSegun(e.target); });
+  document.addEventListener("htmx:afterSwap", function (e) {
+    if (e.target.id === "modal-rapido-contenido") { camposSegun(e.target); descripcionesDeOpciones(e.target); }
+  });
 })();
 
 // F25 E5: panel lateral de un participante. Mientras llega el resumen se avisa «Cargando…» (no queda el de otra persona);

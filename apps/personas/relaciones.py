@@ -155,8 +155,7 @@ def guardar_organizacion_comunidad(form, persona, usuario):
                 f.asignatura = detalle[:200]
                 f.save(update_fields=["asignatura"])
         else:
-            vincular(persona, organizacion=org, cargo=detalle, rol=rol, desde=desde,
-                     tipo_cargo="directorio" if rol and rol.codigo == "dirigente" else ("autoridad" if rol and rol.codigo == "autoridad" else "funcional"))
+            vincular(persona, organizacion=org, cargo=detalle, rol=rol, desde=desde)  # F27: el tipo de cargo lo deduce vincular()
     if rol and rol.codigo == "practicante":
         practicante = _rol("practicante")
         if d.get("viene_actividad") and practicante:

@@ -55,8 +55,10 @@ def test_resumen_muestra_solo_lo_completado_y_agrupa_lo_vacio(cg, persona):
     cuerpo = _cuerpo(cg.get(persona.get_absolute_url()).content.decode())
     assert "Profesora ficticia" in cuerpo
     assert "<dd>—</dd>" not in cuerpo  # nada de campos vacíos con guion
-    sin_completar = cuerpo.split("Sin completar (")[1]
-    assert "Nacionalidad" in sin_completar and "Completar ficha" in sin_completar
+    # F27 B: lo vacío ya no va al final («Sin completar»): va plegado en el aviso «Le falta» de arriba, con «Completar»
+    html = cg.get(persona.get_absolute_url()).content.decode()
+    aviso = html.split('id="aviso-le-falta"')[1].split('id="pestana"')[0]
+    assert "Sin completar" not in cuerpo and "Nacionalidad" in aviso and "Completar" in aviso
 
 
 def test_sin_ver_sensibles_no_hay_privacidad_ni_contacto_de_emergencia(gestor, persona):

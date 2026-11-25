@@ -9,7 +9,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
-from .rol_organizacion import codigo_desde_cargo
+from .rol_organizacion import codigo_desde_cargo, tipo_cargo_sugerido
 
 
 def _vigente(activo, hasta):
@@ -86,7 +86,9 @@ def _vinculo(persona, organizacion, cargo, rol, tipo_cargo, desde, hasta):
         v = candidatos[0]
         _completar(v, {"cargo": cargo, "rol_id": rol.pk if rol is not None else None, "fecha_inicio": desde})
         return v, False
-    tipo = tipo_cargo or ("autoridad" if rol is not None and rol.codigo == "autoridad" else "funcional")
+    # F27: sin «Funcional» por defecto; se deduce del rol (dirigente → directorio, autoridad → autoridad) o queda vacío.
+    # Con un rol sin cargo y sin cargo escrito, el modelo lo deja vacío aunque se indique.
+    tipo = tipo_cargo or tipo_cargo_sugerido(rol.codigo if rol is not None else "")
     return PersonaOrganizacion.objects.create(persona=persona, organizacion=organizacion, cargo=cargo[:120], rol=rol, tipo_cargo=tipo,
                                               fecha_inicio=desde, fecha_termino=hasta), True
 
@@ -139,7 +141,7 @@ def cargos_y_vinculos(persona):
     grupos = []
     # F26 P2: el rol del catálogo si lo tiene (con el cargo como detalle); si no, el cargo o el tipo de cargo, como antes
     filas = [{"nombre": str(v.organizacion), "url": v.organizacion.get_absolute_url(),
-              "rol": str(v.rol) if v.rol_id else (v.cargo or v.get_tipo_cargo_display()),
+              "rol": str(v.rol) if v.rol_id else (v.cargo or v.get_tipo_cargo_display() or "Vínculo"),
               "detalle": " · ".join(x for x in [v.cargo if v.rol_id and v.cargo.lower() != v.rol.nombre.lower() else "",
                                                  v.get_tipo_cargo_display() if v.cargo or v.rol_id else ""] if x),
               "periodo": _periodo(v.fecha_inicio, v.fecha_termino),
@@ -152,10 +154,11 @@ def cargos_y_vinculos(persona):
               "periodo": " a ".join(str(a) for a in [f.anio_inicio, f.anio_termino] if a), "vigente": f.vigente}
              for f in persona.formaciones.select_related("organizacion", "carrera", "sede_institucion")]
     grupos.append(("Estudios", filas))
-    filas = [{"nombre": str(l.lugar), "url": l.lugar.get_absolute_url(), "rol": l.get_relacion_display(), "detalle": l.observaciones,
+    # F27: la relación del catálogo («Hace su práctica ahí»); si aún no la tiene, la del texto anterior
+    filas = [{"nombre": str(l.lugar), "url": l.lugar.get_absolute_url(), "rol": l.relacion_texto, "detalle": l.observaciones,
               "periodo": _periodo(l.desde, l.hasta), "vigente": _vigente(l.vigente, l.hasta),
               "url_editar": reverse("personas:lugares_editar", args=[persona.pk, l.pk])}
-             for l in persona.lugares_vinculados.select_related("lugar")]
+             for l in persona.lugares_vinculados.select_related("lugar", "tipo_relacion")]
     grupos.append(("Lugares", filas))
     filas = [{"nombre": str(m.comunidad), "url": m.comunidad.get_absolute_url(), "rol": m.get_rol_display(), "detalle": str(m.comunidad.territorio),
               "periodo": _periodo(m.desde, m.hasta), "vigente": _vigente(m.vigente, m.hasta)}

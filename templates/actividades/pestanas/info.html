@@ -1,12 +1,16 @@
 {# Qué es: Pestaña Información de la actividad: objetivo, descripción, modalidad, responsable, territorios y actividades hijas. #}
 {# Dónde se usa: /actividades/<int:pk>; reúne además Público y comunidades, «Fecha y reprogramaciones» y, solo en la actividad suelta, Coordinación (F26 P3a) · Proceso: P2 #}
-{% load fche %}<dl class="fche-datos mb-4">
-  <div class="fche-datos__ancho"><dt>Objetivo</dt><dd>{{ object.objetivo|default:"—"|linebreaksbr }}</dd></div>
-  <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{{ object.descripcion|default:"—"|linebreaksbr }}</dd></div>
-  <div><dt>Modalidad</dt><dd>{{ object.modalidad|default:"—" }}</dd></div>
-  <div><dt>Responsable</dt><dd>{% if object.responsable %}<a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a>{% else %}—{% endif %}</dd></div>
-  <div class="fche-datos__ancho"><dt>Condiciones</dt><dd>{{ object.condiciones|default:"—"|linebreaksbr }}</dd></div>
+{% load fche %}<section class="fche-apartado" aria-labelledby="titulo-datos-actividad">
+<div class="fche-seccion"><h2 class="h6" id="titulo-datos-actividad">Datos de la {% if object.proyecto_id %}tarea{% else %}actividad{% endif %}</h2></div>
+<dl class="fche-datos">
+  <div class="fche-datos__ancho"><dt>Objetivo</dt><dd>{% if object.objetivo %}{{ object.objetivo|linebreaksbr }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Descripción</dt><dd>{% if object.descripcion %}{{ object.descripcion|linebreaksbr }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
+  <div><dt>Modalidad</dt><dd>{% if object.modalidad %}{{ object.modalidad }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
+  <div><dt>Responsable</dt><dd>{% if object.responsable %}<a href="{{ object.responsable.get_absolute_url }}">{{ object.responsable }}</a>{% else %}<span class="text-muted">Sin responsable</span>{% endif %}</dd></div>
+  <div class="fche-datos__ancho"><dt>Condiciones</dt><dd>{% if object.condiciones %}{{ object.condiciones|linebreaksbr }}{% else %}<span class="text-muted">Sin registrar</span>{% endif %}</dd></div>
 </dl>
+</section>
+<section class="fche-apartado">
 <div class="fche-seccion"><h2 class="h6">Zona de la {% if object.proyecto_id %}tarea{% else %}actividad{% endif %}</h2>
 {% if puede_agregar %}<div class="fche-seccion__acciones"><a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:editar' object.pk %}#donde">+ Territorio</a></div>{% endif %}</div>
 {% if not territorios and comuna_ficha %}<p class="small mb-0">Según el lugar programado: <a href="{{ comuna_ficha.get_absolute_url }}">{{ comuna_ficha }}</a>. Agrega un territorio solo si va dirigida a otra zona.</p>{% else %}{% include "generico/_hijos.html" with hijos=territorios titulo_pestana="" etiqueta_nuevo="Territorio" url_nuevo="" vacio="Sin territorio indicado." %}{% endif %}
@@ -16,13 +20,15 @@
 {% if puede_programar and object.actividad_padre is None %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:serie' object.pk %}">Crear serie (repetir)</a>{% endif %}
 {% if puede_agregar %}<a class="btn btn-outline-primary btn-sm" href="{% url 'actividades:nueva' %}?padre={{ object.pk }}{% if object.proyecto_id %}&proyecto={{ object.proyecto_id }}{% endif %}">+ Actividad dentro de esta jornada</a>{% endif %}
 </div></div>
-<ul class="fche-items">{% for h in hijas %}<li><a class="fche-items__titulo" href="{{ h.get_absolute_url }}">{{ h.nombre }}</a> {% estado h.estado %}</li>{% empty %}<li class="text-muted">Ninguna.</li>{% endfor %}</ul>
+{% if hijas %}<ul class="fche-items">{% for h in hijas %}<li><a class="fche-items__titulo" href="{{ h.get_absolute_url }}">{{ h.nombre }}</a> {% estado h.estado %}</li>{% endfor %}</ul>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "actividades" 16 %}</span><p class="fche-vacio__texto mb-0">Esta jornada aún no tiene charlas ni talleres.</p></div>{% endif %}
 {% endif %}
-<section class="mt-4" aria-labelledby="titulo-publico"><h2 class="h6 mb-3" id="titulo-publico">Público y comunidades</h2>
+</section>
+<section class="fche-apartado" aria-labelledby="titulo-publico"><div class="fche-seccion"><h2 class="h6" id="titulo-publico">Público y comunidades</h2></div>
 {% include "actividades/pestanas/publico.html" %}</section>
-<section class="mt-4" id="agenda">
+<section class="fche-apartado" id="agenda">
 {% include "actividades/pestanas/agenda.html" with titulo_agenda="Fecha y reprogramaciones" %}</section>
 {% if mostrar_coordinacion %}
-<section class="mt-4" id="coordinacion" aria-labelledby="titulo-coordinacion"><h2 class="h6 mb-3" id="titulo-coordinacion">Coordinación</h2>
+<section class="fche-apartado" id="coordinacion" aria-labelledby="titulo-coordinacion"><div class="fche-seccion"><h2 class="h6" id="titulo-coordinacion">Coordinación</h2></div>
 {% include "actividades/pestanas/coordinacion.html" %}</section>
 {% endif %}

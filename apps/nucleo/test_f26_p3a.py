@@ -74,11 +74,14 @@ def test_resumen_360_muestra_vinculos_participaciones_proxima_y_faltantes(cg, pe
     servicios.programar(proxima, gestor, HOY + timedelta(days=3), time(10), time(12), lugar, None)
     html = cg.get(persona.get_absolute_url()).content.decode()
     bloque = html[html.index('id="resumen-360"'):html.index('id="resumen-datos"')]
-    assert universidad.nombre in bloque and "Encargada ficticia" in bloque
+    # F27 B: la organización y el cargo vigentes van en la tarjeta de identidad; lo que falta, en el aviso «Le falta» de arriba
+    cabecera = html[:html.index('id="pestana"')]
+    assert universidad.nombre in cabecera and "Encargada ficticia" in cabecera
     assert "Junta Ficticia 0" in bloque and "Junta Ficticia 3" in bloque
     assert "Feria futura" in bloque and proxima.get_absolute_url() in bloque
     assert bloque.count("Taller ficticio") + bloque.count("Feria futura") >= 3 and "Últimas participaciones" in bloque
-    assert "Le falta" in bloque and "un contacto" in bloque and "comuna de residencia" in bloque
+    aviso = html[html.index('id="aviso-le-falta"'):html.index('id="resumen-360"')]
+    assert "Le falta" in aviso and "un contacto" in aviso and "comuna de residencia" in aviso
 
 
 def test_resumen_360_con_consultas_fijas(cg, crear_persona, universidad, comuna, crear_actividad, rol, estado_part):

@@ -31,7 +31,8 @@ def comunidad(comuna):
 # --- Catálogo ---------------------------------------------------------------------------------------
 def test_catalogo_rol_en_la_organizacion_sembrado_y_editable():
     assert CATALOGOS["rol-organizacion"] is RolOrganizacion
-    assert list(RolOrganizacion.objects.values_list("codigo", flat=True)) == [
+    # F27 amplió el catálogo: los 8 valores de F26 siguen primero y en su orden; los nuevos van después
+    assert list(RolOrganizacion.objects.values_list("codigo", flat=True))[:8] == [
         "estudiante", "docente", "funcionario", "dirigente", "socio", "practicante", "autoridad", "otro"]
 
 

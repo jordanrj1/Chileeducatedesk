@@ -10,6 +10,7 @@ from django.views.generic import CreateView, UpdateView
 
 from apps.nucleo.direccion_mixin import ComunaInicialMixin, ConDireccionMixin
 from apps.nucleo.models import TipoLugar
+from apps.nucleo.selector import OpcionesVista, campo_seguro, respuesta_elegido
 from apps.nucleo.vistas_base import (
     AvisoDuplicadosMixin, ControlVersionMixin, AlternarActivoBase, FichaBase, Filtro, ListaBase, Permiso403Mixin, filtro_activo, nombre_comuna, opciones_comunas, opciones_modelo,
 )
@@ -17,6 +18,7 @@ from apps.territorio.models import Comuna
 
 from .forms import LugarForm
 from .models import Lugar
+from .selector import LUGARES
 
 
 class LugarLista(ListaBase):
@@ -149,6 +151,60 @@ class LugarCrearRapido(Permiso403Mixin, __import__("django.views", fromlist=["Vi
         return HttpResponse(html + format_html('<div id="aviso-lugar" hx-swap-oob="true" class="small text-{}">{}</div>', nivel, mensaje))
 
 
+class LugarOpciones(OpcionesVista):
+    """F27: lista de lugares para los buscadores de los formularios (ver apps/lugares/selector.py)."""
+
+    fuente = LUGARES
+
+
+class LugarCrearDesdeBuscador(Permiso403Mixin, __import__("django.views", fromlist=["View"]).View):
+    """F27: ventana «+ Crear lugar» de los buscadores (p. ej. «Vincular a un lugar»): nombre, tipo y comuna. Si ya hay un
+    lugar con ese nombre en la comuna, se ofrece «Usar este lugar» o «Es otro: crear»; el lugar queda elegido en el
+    formulario de origen, sin salir de él."""
+
+    permission_required = "lugares.add_lugar"
+    plantilla = "generico/_crear_rapida.html"
+
+    def _ctx(self, datos, form, **extra):
+        return {
+            "form": form, "campo_id": campo_seguro(datos.get("campo")), "filtros": LUGARES.limpiar_filtros(datos),
+            "accion": reverse("lugares:crear_desde_buscador"), "titulo": "Crear lugar", "aviso_parecido": "Este lugar podría ya existir.",
+            "texto_usar": "Usar este lugar", "texto_crear_igual": "Es otro: crear", "pide_nota": False, **extra,
+        }
+
+    def get(self, request):
+        from django.shortcuts import render
+
+        from .forms import LugarRapidoForm
+
+        return render(request, self.plantilla, self._ctx(request.GET, LugarRapidoForm(prefix="rapida", initial={"nombre": request.GET.get("q", "")[:200]})))
+
+    def post(self, request):
+        from django.db import transaction
+        from django.shortcuts import render
+
+        from apps.documentos.origen import registrar_origen
+        from apps.territorio.models import Direccion
+
+        from .forms import LugarRapidoForm
+
+        form = LugarRapidoForm(request.POST, prefix="rapida")
+        if not form.is_valid():
+            return render(request, self.plantilla, self._ctx(request.POST, form))
+        d = form.cleaned_data
+        if not request.POST.get("confirmar_duplicado"):
+            parecidos = list(Lugar.objects.filter(nombre__unaccent__iexact=d["nombre"], direccion__comuna=d["comuna"]))
+            if parecidos:
+                elegibles = set(LUGARES.base(**LUGARES.limpiar_filtros(request.POST)).filter(pk__in=[l.pk for l in parecidos]).values_list("pk", flat=True))
+                lista = [(l, [f"mismo nombre en {d['comuna']}"], l.pk in elegibles) for l in parecidos]
+                return render(request, self.plantilla, self._ctx(request.POST, form, candidatos=lista))
+        with transaction.atomic():
+            direccion = Direccion.objects.create(comuna=d["comuna"])
+            lugar = Lugar.objects.create(nombre=d["nombre"], tipo=d["tipo"], direccion=direccion, capacidad=d.get("capacidad"), creado_por=request.user)
+            registrar_origen(lugar, request.user)
+        return respuesta_elegido(request.POST.get("campo"), lugar.pk, LUGARES.texto(lugar), "Lugar creado y elegido. Completa su dirección y condiciones en su ficha cuando puedas.")
+
+
 class LugarAlternar(AlternarActivoBase):
     modelo = Lugar
     permission_required = "lugares.change_lugar"
@@ -205,7 +261,7 @@ class LugarFicha(FichaBase):
 
     def ctx_personas(self):
         """Personas vinculadas a este lugar (estudian, trabajan o participan ahí) y estudiantes de esta sede."""
-        vinculadas = self.object.personas_vinculadas.select_related("persona").order_by("-vigente", "persona__apellido_paterno")
+        vinculadas = self.object.personas_vinculadas.select_related("persona", "tipo_relacion").order_by("-vigente", "persona__apellido_paterno")
         estudiantes = self.object.estudiantes.select_related("persona", "carrera", "organizacion").order_by("carrera__nombre", "persona__apellido_paterno")
         return {"vinculadas": vinculadas, "estudiantes_sede": estudiantes}
 

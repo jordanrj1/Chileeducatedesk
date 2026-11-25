@@ -1,4 +1,5 @@
-"""Direcciones (rutas) de lugares: listado, nuevo, crear rápido desde la agenda, ficha, editar, desactivar y exportar."""
+"""Direcciones (rutas) de lugares: listado, nuevo, crear rápido desde la agenda o desde un buscador, opciones del buscador,
+ficha, editar, desactivar y exportar."""
 from django.urls import path
 
 from . import views
@@ -9,6 +10,8 @@ urlpatterns = [
     path("lugares/exportar", views.LugarExportar.as_view(), name="exportar"),
     path("lugares/nuevo", views.LugarNuevo.as_view(), name="nuevo"),
     path("lugares/crear-rapido", views.LugarCrearRapido.as_view(), name="crear_rapido"),
+    path("lugares/opciones", views.LugarOpciones.as_view(), name="opciones"),
+    path("lugares/crear-desde-buscador", views.LugarCrearDesdeBuscador.as_view(), name="crear_desde_buscador"),
     path("lugares/<int:pk>", views.LugarFicha.as_view(), name="ficha"),
     path("lugares/<int:pk>/editar", views.LugarEditar.as_view(), name="editar"),
     path("lugares/<int:pk>/alternar", views.LugarAlternar.as_view(), name="alternar"),

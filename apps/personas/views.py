@@ -271,7 +271,7 @@ class PersonaNueva(Permiso403Mixin, CreateView):
             self.fichas.guardar(persona)  # las secciones de los tipos marcados
             from .servicios import completar_ficha_rapida
 
-            completar_ficha_rapida(persona, d)  # contactos y, en la ficha rápida, la comuna donde vive (si la ficha de vecino no dio la dirección)
+            completar_ficha_rapida(persona, d, nota, self.request.user)  # contactos y, en la ficha rápida, la comuna donde vive (si la ficha de vecino no dio la dirección)
             from .relaciones import guardar_organizacion_comunidad, guardar_relaciones
 
             guardar_organizacion_comunidad(self.procedencia, persona, self.request.user)
@@ -505,19 +505,45 @@ class PersonaFicha(FichaBase):
                 res.append(("Reasignar sus actividades", f"/personas/{self.object.pk}/reasignar"))
         if self.request.user.has_perm("personas.fusionar_persona") and self.object.activo:
             res.append(("Fusionar con otra ficha", f"/personas/{self.object.pk}/fusionar"))
+        if self.request.user.has_perm("personas.change_persona"):  # F27: subir, cambiar o quitar la foto
+            res.append(("Cambiar o quitar la foto" if self.object.foto else "Agregar foto", reverse("personas:foto_editar", args=[self.object.pk])))
         return res
 
     def contexto_ficha(self):
         p = self.object
+        u = self.request.user
+        vacios = [{"etiqueta": e, "restringido": r} for e, v, f, r, a in self._campos_resumen() if not v and e != "Otro documento"]
         return {
             "url_editar": reverse("personas:editar", args=[p.pk]),
             "url_volver": "/personas",
             "correo_principal": _principal(p, ["correo"]),
             "telefono_principal": _principal(p, ["telefono_movil", "telefono_fijo"]),
-            "avisos_consentimiento": p.avisos_consentimiento() if self.request.user.has_perm("personas.view_consentimiento") else [],
-            "puede_agregar": self.request.user.has_perm("personas.change_persona"),
+            "avisos_consentimiento": p.avisos_consentimiento() if u.has_perm("personas.view_consentimiento") else [],
+            "url_consentimiento": reverse("personas:consentimientos_firmado", args=[p.pk]) if u.has_perm("personas.add_consentimiento") else "",
+            "puede_agregar": u.has_perm("personas.change_persona"),
             "comuna_residencia": self.comuna_residencia(),
+            # F27: la foto solo por la vista protegida (la tarjeta de la cabecera la usa; sin foto, las iniciales)
+            "foto_url": reverse("personas:foto", args=[p.pk]) if p.foto else None,
+            # F27 B: tarjeta de identidad (organización y cargo vigentes) y aviso «Le falta» arriba, en lugar de «Sin completar» al final
+            **self.vinculos_cabecera(),
+            "faltantes": p.faltantes(),
+            "datos_vacios": vacios,
         }
+
+    def vinculos_cabecera(self):
+        """F27 B: organización y cargo vigentes para la tarjeta de la persona (los 2 primeros y cuántos más). Una consulta."""
+        from django.db.models import Q
+        from django.utils import timezone
+
+        hoy = timezone.localdate()
+        vigentes = list(self.object.vinculos.filter(Q(fecha_termino__isnull=True) | Q(fecha_termino__gte=hoy))
+                        .select_related("organizacion", "rol").order_by("-organizacion__es_propia", "-fecha_inicio", "pk"))
+        filas = []
+        for v in vigentes[:2]:
+            rol = str(v.rol) if v.rol_id else ""
+            cargo = v.cargo if v.cargo and v.cargo.lower() != rol.lower() else ""
+            filas.append({"organizacion": v.organizacion, "rol": " · ".join(x for x in [rol, cargo] if x) or v.get_tipo_cargo_display() or "Vinculada"})
+        return {"vinculos_cabecera": filas, "vinculos_mas": max(len(vigentes) - 2, 0)}
 
     def comuna_residencia(self):
         """Comuna de la residencia vigente (la primera si hay varias): enlaza la cabecera con su ficha en Territorio. Una sola consulta."""
@@ -532,7 +558,7 @@ class PersonaFicha(FichaBase):
     def _hijo_ctx(self, titulo, slug, etiqueta, objs, **kw):
         return {
             "titulo_pestana": titulo, "etiqueta_nuevo": etiqueta, "url_nuevo": reverse(f"personas:{slug}_nuevo", args=[self.object.pk]),
-            "hijos": _hijos(objs, pk=self.object.pk, slug=slug, **kw), "vacio": f"Sin {titulo.lower()} registrados.",
+            "hijos": _hijos(objs, pk=self.object.pk, slug=slug, **kw), "vacio": f"Aún no hay registros de {titulo[:1].lower() + titulo[1:]}.",
             "puede_agregar": self.request.user.has_perm("personas.change_persona"),
         }
 
@@ -544,10 +570,25 @@ class PersonaFicha(FichaBase):
         return ctx
 
     def ctx_resumen(self):
-        """Solo los datos con valor; los vacíos se cuentan aparte («Sin completar (N)»). Más las tarjetas por tipo de registro,
-        el contacto principal y la dirección vigente."""
+        """Solo los datos con valor; los vacíos van arriba, en el aviso «Le falta» de la cabecera (F27 B). Más las tarjetas
+        por tipo de registro y la dirección vigente (el contacto principal ya está en la tarjeta de identidad)."""
         from .fichas import tarjetas
 
+        p = self.object
+        campos = self._campos_resumen()
+        en_cabecera = {"Perfil en la Fundación", "Nombre social"}  # ya están en la tarjeta de identidad
+        llenos = [{"etiqueta": e, "valor": v, "forma": f, "restringido": r, "ancho": a} for e, v, f, r, a in campos if v and e not in en_cabecera]
+        residencia = p.direcciones.filter(vigente=True).select_related("direccion__comuna", "direccion__sector").order_by("tipo", "pk").first()
+        return {
+            "datos_llenos": llenos, "tarjetas_fichas": self._tarjetas_sin_repetir(tarjetas(p, self.request.user)),
+            "direccion_vigente": residencia, "resumen_360": self.resumen_360(),
+        }
+
+    def _campos_resumen(self):
+        """[(etiqueta, valor, forma, restringido, ancho)] de los datos propios de la persona. forma: texto, parrafo, etiquetas, enlace.
+        Se calcula una vez por petición (lo usan la cabecera y el Resumen)."""
+        if hasattr(self, "_campos_cache"):
+            return self._campos_cache
         p = self.object
         nacimiento = ""
         if p.fecha_nacimiento:
@@ -574,14 +615,8 @@ class PersonaFicha(FichaBase):
             ("Origen", str(p.origen or ""), "texto", False, False),
             ("Observaciones", p.observaciones, "parrafo", False, True),
         ]
-        llenos = [{"etiqueta": e, "valor": v, "forma": f, "restringido": r, "ancho": a} for e, v, f, r, a in campos if v]
-        vacios = [{"etiqueta": e, "restringido": r} for e, v, f, r, a in campos if not v and e != "Otro documento"]
-        residencia = p.direcciones.filter(vigente=True).select_related("direccion__comuna", "direccion__sector").order_by("tipo", "pk").first()
-        return {
-            "datos_llenos": llenos, "datos_vacios": vacios, "tarjetas_fichas": self._tarjetas_sin_repetir(tarjetas(p, self.request.user)),
-            "direccion_vigente": residencia, "resumen_360": self.resumen_360(),
-            "pie_vistazo": ("Ver todos los cargos y vínculos", "?tab=vinculos"),
-        }
+        self._campos_cache = campos
+        return campos
 
     @staticmethod
     def _tarjetas_sin_repetir(lista):
@@ -594,9 +629,9 @@ class PersonaFicha(FichaBase):
         return lista
 
     def resumen_360(self):
-        """F26 P3a: la persona de un vistazo: organización y cargo vigentes (con el rol del catálogo), formación vigente,
-        comunidades vigentes, sus últimas 3 participaciones, la próxima actividad programada y lo que le falta a la ficha.
-        Todo con enlaces. Número fijo de consultas, sin importar cuántos registros tenga."""
+        """F26 P3a: la persona de un vistazo: formación vigente, comunidades vigentes, sus últimas 3 participaciones y la
+        próxima actividad programada, con enlaces (F27 B: la organización y el cargo vigentes van en la tarjeta de identidad
+        y lo que le falta, en el aviso de arriba). Número fijo de consultas, sin importar cuántos registros tenga."""
         from django.utils import timezone
 
         from apps.actividades.models import AgendaActividad
@@ -606,7 +641,7 @@ class PersonaFicha(FichaBase):
         p = self.object
         grupos = dict(cargos_y_vinculos(p))
         vigentes = {clave: [f for f in grupos.get(titulo, []) if f["vigente"]]
-                    for clave, titulo in (("cargos", "Organizaciones y cargos"), ("estudios", "Estudios"), ("comunidades", "Comunidades"))}
+                    for clave, titulo in (("estudios", "Estudios"), ("comunidades", "Comunidades"))}
         ultimas = grupos.get("Actividades y tareas", [])[:3] if self.request.user.has_perm("actividades.view_participacion") else None
         proxima, ver_actividades = None, self.request.user.has_perm("actividades.view_actividad")
         if ver_actividades:
@@ -615,7 +650,7 @@ class PersonaFicha(FichaBase):
                 vigente=True, fecha__gte=timezone.localdate(), actividad__estado__codigo__in=["planificada", "confirmada", "reprogramada"],
                 actividad_id__in=suyas)
                 .select_related("actividad__proyecto", "lugar").order_by("fecha", "hora_inicio", "pk").first())
-        return self._filas_vistazo({**vigentes, "ultimas": ultimas, "proxima": proxima, "ver_actividades": ver_actividades, "faltantes": p.faltantes()})
+        return self._filas_vistazo({**vigentes, "ultimas": ultimas, "proxima": proxima, "ver_actividades": ver_actividades})
 
     def _filas_vistazo(self, r):
         """F26 Ib: el mismo «De un vistazo» de siempre, en filas para el parcial común (generico/_de_un_vistazo.html)."""
@@ -625,8 +660,8 @@ class PersonaFicha(FichaBase):
             return [item((f["nombre"], f["url"]), (f["rol"], ""), nota=(f"({f['detalle']})" if entre_parentesis else f"· {f['detalle']}") if f.get("detalle") else "")
                     for f in filas]
 
+        # F27 B: la organización y el cargo vigentes están en la tarjeta de identidad y lo que falta, en el aviso de arriba
         filas = [
-            fila("Organización y cargo", renglones(r["cargos"]), "Sin cargos vigentes"),
             fila("Formación vigente", renglones(r["estudios"]), "Sin formación vigente"),
             fila("Comunidades", [item((f["nombre"], f["url"]), (f["rol"], "")) for f in r["comunidades"]], "Sin comunidades vigentes"),
         ]
@@ -635,11 +670,6 @@ class PersonaFicha(FichaBase):
         if r["ultimas"] is not None:
             filas.append(fila("Últimas participaciones", renglones(r["ultimas"], entre_parentesis=False), "Aún no participa en actividades",
                               ancho=True, lista=True, pie=("Ver todas", "?tab=participaciones") if r["ultimas"] else None))
-        completar = None
-        if r["faltantes"] and self.request.user.has_perm(self.permiso_editar):
-            completar = ("Completar ficha", reverse("personas:editar", args=[self.object.pk]))
-        filas.append(fila("Le falta", [item((", ".join(r["faltantes"]), ""))] if r["faltantes"] else [], "Nada: la ficha tiene lo mínimo",
-                          ancho=True, pie=completar, pie_en_linea=True))
         return {**r, "filas": filas}
 
     def ctx_contacto(self):
@@ -697,8 +727,26 @@ class PersonaFicha(FichaBase):
         return contexto_origen(self.object, self.request.user)
 
     def ctx_contactos(self):
-        return self._hijo_ctx("Contactos", "contactos", "Contacto", self.object.contactos.select_related("tipo"),
-                              texto=lambda c: f"{c.tipo}: {c.valor}", detalle=lambda c: " · ".join(x for x in [c.proposito, "Principal" if c.principal else ""] if x))
+        """F27: cada contacto que también tiene otra persona dice «Compartido con: …» (con enlace) y el motivo, si se
+        aprobó como compartido. Una sola consulta para todos los contactos, sin consultas en bucle."""
+        from .models import Contacto
+
+        contactos = list(self.object.contactos.select_related("tipo"))
+        valores = {c.valor_normalizado for c in contactos if c.valor_normalizado and c.tipo.codigo in Contacto.TIPOS_REPETIBLES}
+        otros = {}
+        if valores:
+            for o in (Contacto.objects.filter(persona__isnull=False, vigente=True, valor_normalizado__in=valores, tipo__codigo__in=Contacto.TIPOS_REPETIBLES)
+                      .exclude(persona_id=self.object.pk).select_related("persona").order_by("persona__nombres", "pk")):
+                lista = otros.setdefault(o.valor_normalizado, [])
+                if all(x[1] != o.persona.get_absolute_url() for x in lista):
+                    lista.append((o.persona.nombre_completo, o.persona.get_absolute_url()))
+        ctx = self._hijo_ctx("Contactos", "contactos", "Contacto", contactos,
+                             texto=lambda c: f"{c.tipo}: {c.valor}", detalle=lambda c: " · ".join(x for x in [c.proposito, "Principal" if c.principal else ""] if x))
+        for h, c in zip(ctx["hijos"], contactos):
+            h["compartido_con"] = otros.get(c.valor_normalizado, []) if c.tipo.codigo in Contacto.TIPOS_REPETIBLES else []
+            if c.compartido:
+                h["motivo_compartido"] = c.get_motivo_compartido_display() + (f" ({c.nota_compartido})" if c.nota_compartido else "")
+        return ctx
 
     def ctx_direcciones(self):
         ctx = self._hijo_ctx("Direcciones", "direcciones", "Dirección", self.object.direcciones.select_related("direccion__comuna", "direccion__sector"),
@@ -764,11 +812,34 @@ class PersonaFicha(FichaBase):
                 continue
             ultimo = p.ultimo_consentimiento(codigo)
             estado.append({"nombre": nombre, "ultimo": ultimo, "vigente": bool(ultimo and ultimo.vigente)})
+        consentimientos = list(p.consentimientos.select_related("otorgado_por", "documento", "registrado_por"))
         return {
             "estado_consentimientos": estado,
-            "consentimientos": p.consentimientos.select_related("otorgado_por", "documento", "registrado_por"),
+            "consentimientos": consentimientos,
+            "documentos_firmados": self._documentos_firmados(consentimientos),
             "puede_agregar_consentimiento": self.request.user.has_perm("personas.add_consentimiento"),
         }
+
+    def _documentos_firmados(self, consentimientos):
+        """F27: cada documento que respalda varios consentimientos, con el estado de cada autorización que contiene.
+        El enlace al archivo pasa por la vista protegida de documentos y solo se ofrece a quien puede abrirlo."""
+        u = self.request.user
+        puede_ver = u.has_perm("documentos.view_documento")
+        grupos = {}
+        for c in sorted(consentimientos, key=lambda c: (c.fecha, c.pk)):
+            if c.documento_id:
+                g = grupos.setdefault(c.documento_id, {"documento": c.documento, "autorizaciones": {}})
+                g["autorizaciones"][c.tipo] = c  # el más reciente de cada tipo con ese documento
+        res = []
+        for g in grupos.values():
+            d = g["documento"]
+            if len(g["autorizaciones"]) < 2:
+                continue  # un respaldo de una sola autorización ya se ve en la tabla
+            g["autorizaciones"] = list(g["autorizaciones"].values())
+            g["url_archivo"] = (reverse("documentos:archivo", args=[d.pk]) if puede_ver and (not d.restringido or u.has_perm("documentos.ver_restringido"))
+                                else "")
+            res.append(g)
+        return res
 
     def ctx_verificaciones(self):
         return self._hijo_ctx("Verificaciones", "verificaciones", "Verificación", self.object.verificaciones.all(),
@@ -804,8 +875,10 @@ class PersonaDatosPersonales(Permiso403Mixin, View):
             ("Habilidades", p.habilidades), ("Idiomas", p.idiomas), ("Canal preferido", p.canal_preferido or ""),
             ("Profesión u oficio", p.profesion), ("Sitio web", p.sitio_web), ("Origen", p.origen or ""), ("Estado del registro", p.estado_registro or ""),
             ("Observaciones", p.observaciones), ("Registrada el", f"{p.creado_en:%d-%m-%Y}"),
+            ("Foto", "Sí (se entrega aparte si la pide)" if p.foto else "No"),  # F27
         ])]
-        hojas.append(("Contactos", ["Tipo", "Valor", "Vigente"], [(c.tipo, c.valor, "Sí" if c.vigente else "No") for c in p.contactos.select_related("tipo")]))
+        hojas.append(("Contactos", ["Tipo", "Valor", "Vigente", "Compartido"], [
+            (c.tipo, c.valor, "Sí" if c.vigente else "No", c.get_motivo_compartido_display() if c.compartido else "") for c in p.contactos.select_related("tipo")]))
         hojas.append(("Direcciones", ["Tipo", "Dirección", "Vigente"], [(d.get_tipo_display(), d.direccion, "Sí" if d.vigente else "No") for d in p.direcciones.select_related("direccion__comuna")]))
         hojas.append(("Formación", ["Institución", "Carrera", "Estado", "Sede", "Jornada", "Año que cursa", "Asignatura", "Horas comprometidas"], [
             (f.organizacion, f.carrera or "", f.get_estado_display(), f.sede_institucion or f.sede, f.get_jornada_display(), f.nivel_actual or "", f.asignatura, f.horas_comprometidas or "")
@@ -1120,3 +1193,186 @@ class PersonaResumen(Permiso403Mixin, View):
             "participaciones": participaciones,
             "puede_editar": u.has_perm("personas.change_persona"),
         })
+
+
+# ── F27 A2: contacto repetido, consentimiento firmado y foto ─────────────────────────────────────────────────────
+
+
+class ContactoPersonaMixin:
+    """Agregar o editar un contacto de una persona: si el correo o teléfono ya lo tiene vigente otra persona, el formulario
+    no guarda y ofrece tres salidas (misma persona → su ficha y «Unir fichas»; otra persona que lo comparte → con motivo;
+    cancelar). La decisión de compartirlo queda en la auditoría con usuario y fecha."""
+
+    template_name = "personas/contacto_form.html"
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        ctx["puede_fusionar"] = self.request.user.has_perm("personas.fusionar_persona") and self.padre.activo
+        ctx["url_fusionar"] = reverse("personas:fusionar", args=[self.padre.pk])
+        return ctx
+
+    def form_valid(self, form):
+        respuesta = super().form_valid(form)
+        if form.decision_compartir and respuesta.status_code == 302:
+            from apps.nucleo.auditoria import registrar
+
+            c = form.instance
+            con = ", ".join(sorted({f"{x.persona.nombre_completo} (#{x.persona_id})" for x in form.repetidos}))
+            registrar(self.request.user, "contacto_compartido", f"{self.padre} · {c}",
+                      f"Motivo: {c.get_motivo_compartido_display()}" + (f" ({c.nota_compartido})" if c.nota_compartido else "") + f". Compartido con: {con}.")
+        return respuesta
+
+
+class ConsentimientoFirmado(Permiso403Mixin, View):
+    """F27: «Registrar consentimiento firmado». Un solo documento (subido aquí o ya en la ficha) respalda varias
+    autorizaciones: se crea un consentimiento por cada una (otorgado si se marcó, no otorgado si no), todos con el mismo
+    documento, en una transacción. Revocar sigue siendo por autorización (Editar o revocar)."""
+
+    permission_required = "personas.add_consentimiento"
+    plantilla = "generico/formulario.html"
+
+    def dispatch(self, request, *a, **kw):
+        self.persona = get_object_or_404(Persona, pk=kw["pk"])
+        return super().dispatch(request, *a, **kw)
+
+    def _form(self, data=None, files=None):
+        from .forms import ConsentimientoFirmadoForm
+
+        return ConsentimientoFirmadoForm(data, files, persona=self.persona, puede_subir=self.request.user.has_perm("documentos.add_documento"))
+
+    def _render(self, form, status=200):
+        p = self.persona
+        volver = f"{p.get_absolute_url()}?tab=consentimientos"
+        return render(self.request, self.plantilla, {
+            "form": form, "object": p, "titulo": "Registrar consentimiento firmado", "volver_url": volver,
+            "breadcrumb": [("Personas", "/personas"), (str(p), p.get_absolute_url())],
+            "bajada": "Un solo documento con varias autorizaciones: se registra cada una con el mismo respaldo. Las no marcadas quedan como «no otorgado».",
+        }, status=status)
+
+    def get(self, request, pk):
+        return self._render(self._form())
+
+    def post(self, request, pk):
+        form = self._form(request.POST, request.FILES)
+        if not form.is_valid():
+            return self._render(form, status=200)
+        documento = self.guardar(form)
+        messages.success(request, f"Consentimiento firmado registrado: {plural(len(form.tipos), 'autorización', 'autorizaciones')} con el documento «{documento}».")
+        return HttpResponseRedirect(f"{self.persona.get_absolute_url()}?tab=consentimientos")
+
+    def guardar(self, form):
+        from apps.documentos.models import Documento
+        from apps.nucleo.auditoria import registrar
+        from apps.nucleo.models import TipoDocumento
+
+        d, u, p = form.cleaned_data, self.request.user, self.persona
+        marcadas = [t for t, otorgada in form.autorizaciones() if otorgada]
+        with transaction.atomic():
+            documento = d.get("documento")
+            if documento is None:
+                tipo, _ = TipoDocumento.objects.get_or_create(codigo="consentimiento", defaults={"nombre": "Consentimiento firmado", "orden": 90})
+                documento = Documento(nombre=f"Consentimiento firmado de {p.nombre_completo} ({d['fecha']:%d-%m-%Y})"[:200], archivo=d["archivo"],
+                                      tipo=tipo, fecha=d["fecha"], persona=p, restringido=True, subido_por=u)
+                documento.huella = Documento.calcular_huella(d["archivo"])
+                documento.save()
+                registrar(u, "documento_subido", documento, "restringido")
+            for codigo, otorgada in form.autorizaciones():
+                Consentimiento.objects.create(persona=p, tipo=codigo, otorgado=otorgada, fecha=d["fecha"], medio=d["medio"],
+                                              otorgado_por=d.get("otorgado_por"), documento=documento, observaciones=d.get("observaciones", ""),
+                                              registrado_por=u)
+            registrar(u, "consentimiento_firmado", p, f"Documento #{documento.pk}. Otorgadas: {', '.join(marcadas) or 'ninguna'}.")
+        return documento
+
+
+def borrar_foto_si_huerfana(nombre, excluir_pk=None):
+    """Borra el archivo físico de una foto solo si ninguna otra persona lo usa (tras una fusión pueden compartirlo)."""
+    from django.core.files.storage import default_storage
+
+    if not nombre or Persona.objects.filter(foto=nombre).exclude(pk=excluir_pk).exists():
+        return False
+    try:
+        default_storage.delete(nombre)
+    except OSError:
+        return False
+    return True
+
+
+class PersonaFoto(Permiso403Mixin, View):
+    """F27: la foto se sirve solo por aquí (permiso para ver personas), nunca como archivo estático; con su tipo real y
+    `nosniff`. Sin foto o sin archivo: 404."""
+
+    permission_required = "personas.view_persona"
+
+    def get(self, request, pk):
+        from django.http import FileResponse, Http404
+
+        from .models import formato_imagen, leer_cabecera
+
+        p = get_object_or_404(Persona, pk=pk)
+        if not p.foto:
+            raise Http404("Esta persona no tiene foto.")
+        try:
+            f = p.foto.open("rb")
+        except (FileNotFoundError, ValueError, OSError):
+            raise Http404("La foto no está disponible en el servidor.")
+        tipo = formato_imagen(leer_cabecera(f))
+        if tipo is None:
+            f.close()
+            raise Http404("La foto no es una imagen válida.")
+        r = FileResponse(f, content_type=tipo)
+        r["Content-Disposition"] = "inline"
+        r["X-Content-Type-Options"] = "nosniff"
+        r["Cache-Control"] = "private, max-age=300"
+        r["Content-Security-Policy"] = "sandbox"
+        return r
+
+
+class PersonaFotoEditar(Permiso403Mixin, View):
+    """F27: subir, cambiar o quitar la foto (permiso para editar personas). Quitarla la desvincula y borra el archivo
+    si no lo usa otra persona. Queda en la auditoría."""
+
+    permission_required = "personas.change_persona"
+    plantilla = "personas/foto.html"
+
+    def dispatch(self, request, *a, **kw):
+        self.persona = get_object_or_404(Persona, pk=kw["pk"])
+        return super().dispatch(request, *a, **kw)
+
+    def _render(self, form):
+        p = self.persona
+        return render(self.request, self.plantilla, {
+            "form": form, "object": p, "titulo": "Foto de la persona", "volver_url": p.get_absolute_url(),
+            "breadcrumb": [("Personas", "/personas"), (str(p), p.get_absolute_url())],
+            "foto_url": reverse("personas:foto", args=[p.pk]) if p.foto else None,
+            "bajada": "Solo para reconocer a la persona dentro del sistema; no se publica.",
+        })
+
+    def get(self, request, pk):
+        from .forms import PersonaFotoForm
+
+        return self._render(PersonaFotoForm(instance=self.persona))
+
+    def post(self, request, pk):
+        from apps.nucleo.auditoria import registrar
+
+        from .forms import PersonaFotoForm
+
+        p = self.persona
+        anterior = p.foto.name if p.foto else ""
+        if request.POST.get("quitar"):
+            if anterior:
+                p.foto = None
+                p.save(update_fields=["foto"])
+                borrar_foto_si_huerfana(anterior, excluir_pk=p.pk)
+                registrar(request.user, "foto_quitada", p)
+                messages.success(request, "Foto quitada.")
+            return HttpResponseRedirect(p.get_absolute_url())
+        form = PersonaFotoForm(request.POST, request.FILES, instance=p)
+        if not form.is_valid():
+            return self._render(form)
+        form.save()
+        if anterior and anterior != p.foto.name:
+            borrar_foto_si_huerfana(anterior, excluir_pk=p.pk)
+        registrar(request.user, "foto_subida", p)
+        messages.success(request, "Foto guardada.")
+        return HttpResponseRedirect(p.get_absolute_url())
