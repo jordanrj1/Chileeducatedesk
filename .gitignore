@@ -10,3 +10,5 @@ docs/reales/
 staticfiles/
 .pytest_cache/
 logs/
+.env.docker
+respaldos/

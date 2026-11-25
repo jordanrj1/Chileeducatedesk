@@ -36,5 +36,5 @@ python manage.py vincular_zonas_proyectos
 if errorlevel 1 echo No se pudieron enlazar las zonas de los proyectos; el sistema arranca igual.
 python manage.py collectstatic --noinput -v0
 REM Solo este equipo. Para la red de la Fundacion [V#5] cambiar 127.0.0.1 por 0.0.0.0.
-waitress-serve --listen=127.0.0.1:8000 config.wsgi:application
+waitress-serve --listen=127.0.0.1:8000 --threads=8 config.wsgi:application
 pause

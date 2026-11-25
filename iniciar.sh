@@ -29,4 +29,4 @@ fi
 .venv/bin/python manage.py vincular_zonas_proyectos || echo "No se pudieron enlazar las zonas de los proyectos; el sistema arranca igual."
 .venv/bin/python manage.py collectstatic --noinput -v0
 # Solo este equipo. Para la red de la Fundación [V#5] cambiar 127.0.0.1 por 0.0.0.0.
-exec .venv/bin/waitress-serve --listen=127.0.0.1:8000 config.wsgi:application
+exec .venv/bin/waitress-serve --listen=127.0.0.1:8000 --threads=8 config.wsgi:application

@@ -1,0 +1,47 @@
+# FCHE con Docker: la aplicación y su base PostgreSQL 17. Guía: docs/DESPLIEGUE_DOCKER.md
+# Se levanta con levantar.sh (Mac) o levantar.bat (Windows), que crean .env.docker la primera vez.
+name: fche
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-fche}
+      POSTGRES_USER: ${DB_USER:-fche}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env.docker}
+    volumes:
+      - fche_bd:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env.docker
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      MEDIA_ROOT: /datos/media
+      LOG_DIR: /datos/logs
+      RESPALDO_DIR: /datos/respaldos
+      PG_DUMP: /usr/lib/postgresql/17/bin/pg_dump
+    # Por privacidad solo responde en este mismo equipo. Para abrirlo a la red local,
+    # cambia ACCESO=0.0.0.0 en .env.docker (ver la guía, «Acceso desde otros equipos»).
+    ports:
+      - "${ACCESO:-127.0.0.1}:${PUERTO:-8000}:8000"
+    volumes:
+      - fche_media:/datos/media
+      - fche_logs:/datos/logs
+      - ./respaldos:/datos/respaldos
+
+volumes:
+  fche_bd:
+  fche_media:
+  fche_logs:

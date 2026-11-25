@@ -1,2 +1,5 @@
-*.bat text eol=crlf
+# Saltos de línea fijos: los scripts .sh corren dentro de Linux (Docker) aunque el repositorio
+# se clone en Windows; los .bat los ejecuta Windows.
 *.sh text eol=lf
+docker/entrypoint.sh text eol=lf
+*.bat text eol=crlf
