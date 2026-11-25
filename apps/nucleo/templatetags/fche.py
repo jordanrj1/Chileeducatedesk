@@ -91,7 +91,10 @@ TONOS = {
     "cancelada": "rojo", "realizada": "morado",
     "en_seguimiento": "azul", "convertida": "verde", "descartada": "rojo",
     "invitado": "gris", "interesado": "azul", "disponible": "azul", "confirmado": "verde", "asistio": "verde", "no_asistio": "rojo",
-    "rechazo": "rojo", "cancelo": "rojo", "lista_espera": "amarillo", "registro_erroneo": "gris",
+    "rechazo": "rojo", "cancelo": "rojo", "lista_espera": "amarillo", "registro_erroneo": "gris", "retirado": "gris",
+    # F28: marcas de la lista del día y estado de la lista de una jornada
+    "presente": "verde", "atrasado": "amarillo", "retiro_anticipado": "naranja", "justificado": "azul", "ausente": "rojo",
+    "abierta": "azul", "cerrada": "morado",
     "activo": "verde", "incompleto": "amarillo", "por_verificar": "naranja", "desactualizado": "gris", "fallecida": "gris", "fusionada": "gris",
     "en_curso": "azul", "hecha": "verde",
     "enviada": "gris", "respondio": "azul", "aceptada": "verde", "rechazada": "rojo", "sin_respuesta": "amarillo", "cumplida": "verde",

@@ -1,0 +1,22 @@
+# F28 — Tareas
+1. [ ] **A. Asistencia por jornada:**
+   - modelo;
+   - lista abierta, cerrada y reabrir;
+   - retiro y reincorporación;
+   - persona que llegó;
+   - matriz y panel del proyecto;
+   - jornadas;
+   - Finalizar;
+   - migración de datos (AS-E1…E17).
+2. [ ] **B. Gastos de la actividad:**
+   - modelo;
+   - comprobante;
+   - estados;
+   - pestañas;
+   - proyecto frente al presupuesto;
+   - gasto al cerrar la lista (GA-E1…E10).
+3. [ ] **C. Interfaz:**
+   - pulido;
+   - escenarios en `docs/escenarios_estado.md`;
+   - manual de uso.
+4. [ ] **Revisión completa y commits con referencias.**

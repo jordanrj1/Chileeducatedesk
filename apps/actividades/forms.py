@@ -220,28 +220,31 @@ AYUDA_CARGO = "Ej.: Alcalde de Hualpén, Prevencionista de obras públicas."
 AYUDAS_PARTICIPACION = {
     "cargo": AYUDA_CARGO,
     "rol": "Ej.: Tallerista (parte del equipo) o Participante (asiste).",
-    "estado": "Inscrito al agregarla; después, Asistió o No asistió. Si no puede venir: Canceló. Si no hay cupo: En lista de espera.",
+    "estado": "Inscrito al agregarla. Si no puede venir: Canceló. Si no hay cupo: En lista de espera. La asistencia de cada día se marca en «Pasar lista».",
+    "inscrito_en": "Aparece en las listas de las jornadas desde esta fecha. Si ya venía desde el inicio, pon la fecha de la primera jornada.",
     "observaciones": "Ej.: llega 15 minutos tarde por su trabajo.",
     "comunidad": "La comunidad de la que viene, si corresponde. Ej.: Vecinos de la Etapa 2.",
     "horas": "Si se deja vacío, se usa la duración de la programación. Ej.: 4.",
 }
 
 
-# F25 E2: al agregar o editar una participación se elige entre estos cinco. Invitado, interesado, disponible y rechazó
-# los ponen las invitaciones; «Registro erróneo», «Quitar». Un registro antiguo conserva el suyo.
-ESTADOS_PARA_ELEGIR = ("confirmado", "asistio", "no_asistio", "cancelo", "lista_espera")
+# F25 E2: al agregar o editar una participación se elige entre estos estados de inscripción. Invitado, interesado,
+# disponible y rechazó los ponen las invitaciones; «Registro erróneo», «Quitar»; «Retirado», «Quitar de la tarea».
+# F28: «Asistió» y «No asistió» ya no se eligen (la asistencia es por jornada); un registro antiguo conserva el suyo.
+ESTADOS_PARA_ELEGIR = ("confirmado", "cancelo", "lista_espera")
 
 
 def estados_para_elegir(actual_id=None):
-    """Los cinco estados que se eligen a mano (activos) y, si un registro antiguo tiene otro, también ese."""
+    """Los estados que se eligen a mano (activos) y, si un registro antiguo tiene otro, también ese."""
     from django.db.models import Q
 
     return EstadoParticipacion.objects.filter(Q(activo=True, codigo__in=ESTADOS_PARA_ELEGIR) | Q(pk=actual_id or 0))
 
 
 def estado_inicial(llego=False):
-    """Estado de toda participación nueva: «Inscrito» (código confirmado), o «Asistió» si se marca que llegó."""
-    return EstadoParticipacion.objects.get(codigo="asistio" if llego else "confirmado")
+    """Estado de toda participación nueva: «Inscrito» (código confirmado). F28: quien llegó también queda inscrito; su
+    marca «Presente» va en la jornada del día (asistencia.marcar_llegada). `llego` se conserva por compatibilidad."""
+    return EstadoParticipacion.objects.get(codigo="confirmado")
 
 
 def roles_en_actividad(actividad, persona, sin_rol=None):
@@ -314,7 +317,7 @@ class ParticipanteNuevoForm(MenorMixin, GrupoMixin, BootstrapMixin, forms.ModelF
 
     persona = selector_persona(help_text="Escribe para buscar. Si no está, elige «+ Crear persona»: abre la ficha rápida y queda elegida.")
     otro_rol = forms.BooleanField(required=False, label="Sí, agregarla también con este rol")
-    llego = forms.BooleanField(required=False, label="Llegó / asistió", help_text="Márcala si ya está aquí: queda «Asistió».")
+    llego = forms.BooleanField(required=False, label="Llegó / asistió", help_text="Márcala si ya está aquí: queda «Presente» en la lista del día.")
 
     class Meta:
         model = Participacion
@@ -322,10 +325,14 @@ class ParticipanteNuevoForm(MenorMixin, GrupoMixin, BootstrapMixin, forms.ModelF
         labels = ETIQUETAS_PARTICIPACION
         help_texts = AYUDAS_PARTICIPACION
 
-    def __init__(self, *a, actividad=None, puede_sensibles=False, permitir_llego=True, **kw):
+    def __init__(self, *a, actividad=None, puede_sensibles=False, permitir_llego=True, llego_existente=False, **kw):
         super().__init__(*a, **kw)
         self.actividad = actividad
         self.puede_sensibles = puede_sensibles
+        # F28: desde la lista de una jornada, quien ya está inscrita con ese rol (retirada, inscrita después…) no es un
+        # error: se marca «Presente» en esa jornada y su inscripción vuelve a estar activa
+        self.llego_existente = llego_existente
+        self.existente = None
         self.fields["rol"].queryset = RolParticipacion.objects.filter(activo=True)
         self.fields["estado"].queryset = estados_para_elegir()
         if "estado" not in self.initial:
@@ -357,6 +364,11 @@ class ParticipanteNuevoForm(MenorMixin, GrupoMixin, BootstrapMixin, forms.ModelF
     def clean(self):
         d = super().clean()
         persona, rol = d.get("persona"), d.get("rol")
+        ya = (Participacion.objects.filter(actividad=self.actividad, persona=persona, rol=rol).exclude(estado__codigo="registro_erroneo").first()
+              if persona and rol else None)
+        if ya is not None and self.llego_existente and d.get("llego"):
+            self.existente = ya
+            return d
         if persona and rol and Participacion.objects.filter(actividad=self.actividad, persona=persona, rol=rol).exists():
             raise forms.ValidationError("Esa persona ya participa en la actividad con ese rol.")
         roles = roles_en_actividad(self.actividad, persona, rol) if persona and rol else []
@@ -401,14 +413,14 @@ class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
                                             help_text="Si cambias la institución o la comunidad, queda también en la ficha de la persona "
                                                       "(su vínculo con la organización o su lugar en el padrón), sin duplicar.")
     secciones = [
-        ("Participación", "", ["rol", "cargo", "estado", "observaciones"]),
+        ("Participación", "", ["rol", "cargo", "estado", "inscrito_en", "observaciones"]),
         ("Procedencia y horas", "Para los informes: de qué institución y comunidad viene, y cuántas horas aportó o recibió.",
          ["institucion", "comunidad", "actualizar_vinculo", "horas"]),
     ]
 
     class Meta:
         model = Participacion
-        fields = ["rol", "cargo", "estado", "observaciones", "institucion", "comunidad", "horas"]
+        fields = ["rol", "cargo", "estado", "inscrito_en", "observaciones", "institucion", "comunidad", "horas"]
         labels = ETIQUETAS_PARTICIPACION
         help_texts = AYUDAS_PARTICIPACION
 
@@ -428,6 +440,12 @@ class ParticipacionEditarForm(BootstrapMixin, forms.ModelForm):
         if Participacion.objects.filter(actividad=self.instance.actividad, persona=self.instance.persona, rol=rol).exclude(pk=self.instance.pk).exists():
             raise forms.ValidationError("Esa persona ya participa con ese rol.")
         return rol
+
+    def clean_inscrito_en(self):
+        f = self.cleaned_data.get("inscrito_en")
+        if f and self.instance.retirado_en and f > self.instance.retirado_en:
+            raise forms.ValidationError(f"Se retiró el {self.instance.retirado_en:%d-%m-%Y}: la inscripción no puede ser posterior.")
+        return f
 
     def validate_unique(self):
         pass
@@ -637,3 +655,27 @@ class ResultadoForm(BootstrapMixin, forms.ModelForm):
             "observaciones": "Lo que convenga recordar para la próxima vez.",
             "asistencia_sin_registro": "Márcalo si no hubo lista; así igual se puede finalizar la actividad.",
         }
+
+
+class JornadaForm(BootstrapMixin, forms.Form):
+    """F28 «+ Nueva jornada»: otro día o bloque de la tarea (p. ej. la tarde del mismo día). La minuta se escribe después."""
+
+    fecha = forms.DateField(label="Fecha", widget=forms.DateInput)
+    hora_inicio = forms.TimeField(label="Desde", widget=forms.TimeInput, required=False, help_text="Ej.: 15:00.")
+    hora_fin = forms.TimeField(label="Hasta", widget=forms.TimeInput, required=False, help_text="Ej.: 17:30.")
+    lugar = LugarChoiceField(required=False, help_text="Si es el mismo de la tarea, puedes dejarlo vacío.")
+    nombre = forms.CharField(label="Nombre", max_length=150, required=False, help_text="Opcional. Ej.: Jornada de la tarde.")
+
+    def clean(self):
+        d = super().clean()
+        if d.get("hora_inicio") and d.get("hora_fin") and d["hora_fin"] <= d["hora_inicio"]:
+            self.add_error("hora_fin", "La hora de término debe ser posterior a la de inicio.")
+        return d
+
+
+class RetiroForm(BootstrapMixin, forms.Form):
+    """F28 «Quitar de la tarea»: la inscripción queda «Retirado», con fecha y motivo; conserva sus asistencias."""
+
+    fecha = forms.DateField(label="Fecha del retiro", widget=forms.DateInput,
+                            help_text="Aparece en las listas hasta este día; desde el siguiente, ya no.")
+    motivo = forms.CharField(label="Motivo", max_length=250, help_text="Ej.: se cambió de colegio.")

@@ -4,7 +4,7 @@ from django.urls import path
 
 from apps.nucleo.hijos import urls_hijo
 
-from . import forms, models, views
+from . import forms, models, views, vistas_asistencia
 
 app_name = "actividades"
 A = dict(padre_modelo=models.Actividad, campo_padre="actividad")
@@ -24,7 +24,17 @@ urlpatterns = [
     path("actividades/<int:pk>/resultados", views.ResultadosVista.as_view(), name="resultados"),
     path("actividades/<int:pk>/finalizar", views.FinalizarVista.as_view(), name="finalizar"),
     path("actividades/<int:pk>/reabrir", views.ReabrirVista.as_view(), name="reabrir"),
-    path("actividades/<int:pk>/asistencia", views.AsistenciaVista.as_view(), name="asistencia"),
+    path("actividades/<int:pk>/asistencia", views.AsistenciaVista.as_view(), name="asistencia"),  # F26 P1a: sigue, contra la jornada de hoy
+    # F28: asistencia por jornada (<jid>: el número de la jornada, «programada» o «hoy»)
+    path("actividades/<int:pk>/asistencia/exportar", vistas_asistencia.AsistenciaExportar.as_view(), name="asistencia_exportar"),
+    path("actividades/<int:pk>/jornadas/nueva", vistas_asistencia.JornadaNueva.as_view(), name="jornada_nueva"),
+    path("actividades/<int:pk>/jornadas/<str:jid>/lista", vistas_asistencia.ListaGuardar.as_view(), name="lista_guardar"),
+    path("actividades/<int:pk>/jornadas/<str:jid>/reabrir", vistas_asistencia.ListaReabrir.as_view(), name="lista_reabrir"),
+    path("actividades/<int:pk>/jornadas/<str:jid>/suspender", vistas_asistencia.JornadaSuspender.as_view(), name="jornada_suspender"),
+    path("actividades/<int:pk>/jornadas/<str:jid>/incluir", vistas_asistencia.ListaIncluir.as_view(), name="lista_incluir"),
+    path("actividades/<int:pk>/jornadas/<str:jid>/conteo", vistas_asistencia.JornadaConteo.as_view(), name="jornada_conteo"),
+    path("actividades/<int:pk>/participantes/<int:part_pk>/retirar", vistas_asistencia.ParticipanteRetirar.as_view(), name="participante_retirar"),
+    path("actividades/<int:pk>/participantes/<int:part_pk>/reincorporar", vistas_asistencia.ParticipanteReincorporar.as_view(), name="participante_reincorporar"),
     path("actividades/<int:pk>/participantes/nuevo", views.ParticipanteNuevo.as_view(), name="participante_nuevo"),
     path("actividades/<int:pk>/participantes/rapido", views.ParticipanteRapido.as_view(), name="participante_rapido"),
     path("actividades/<int:pk>/participantes/usar/<int:persona_pk>", views.ParticipanteUsar.as_view(), name="participante_usar"),

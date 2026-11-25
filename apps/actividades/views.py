@@ -37,7 +37,7 @@ from .forms import (
     SerieForm, ActividadDesdeSolicitudForm, ActividadForm, BeneficiarioForm, EstadoForm, ParticipacionEditarForm, ParticipanteNuevoForm, PersonaRapidaForm, ProgramarForm, ResultadoForm, TareaForm,
     aviso_otro_rol, estado_inicial, roles_en_actividad,
 )
-from .models import Actividad, ActividadComunidad, ActividadTerritorio, AgendaActividad, Participacion, SesionActividad, SesionAsistencia
+from .models import Actividad, ActividadComunidad, ActividadTerritorio, AgendaActividad, Participacion, SesionActividad
 from .selector import ACTIVIDADES
 from .reglas import TRANSICIONES, ReglaNegocio, antes_de_la_fecha, personas_que_ocupan, revisar
 
@@ -459,7 +459,6 @@ GRUPOS_EQUIPO_TAREA = [
     ("ejecutor", "Equipo ejecutor", "Quienes realizan la tarea (tallerista, voluntario, estudiante, coordinador…). Se separan por el rol."),
     ("contacto", "Invitados y contactos", "Autoridades, invitados y contactos de las organizaciones."),
 ]
-GRUPOS_PASAR_LISTA = [("ejecutor", "Equipo ejecutor"), ("contacto", "Invitados y contactos"), ("asistente", "Beneficiarios")]  # F26 P1a
 
 
 class ActividadFicha(FichaBase):
@@ -589,23 +588,22 @@ class ActividadFicha(FichaBase):
         return {"institucion": institucion, "comunidad": comunidad, "institucion_calculada": inst_calculada,
                 "comunidad_calculada": com_calculada, "formacion": formacion, "cargo": cargo}
 
-    def _pasar_lista(self, todas):
-        """F26 P1a: «Pasar lista», un solo formulario con todas las participaciones no erróneas, por grupo. Una consulta más
-        (quiénes tienen la asistencia calculada desde las sesiones), sin importar cuántas sean."""
-        lista = [p for p in todas if p.estado.codigo != "registro_erroneo"]
-        grupos = [(etiqueta, [p for p in lista if p.rol.grupo == clave]) for clave, etiqueta in GRUPOS_PASAR_LISTA]
-        return {"con_lista": True, "grupos_lista": [g for g in grupos if g[1]], "total_lista": len(lista),
-                "calculadas_sesiones": servicios.participaciones_con_sesiones(self.object) if lista else set()}
-
     def ctx_participantes(self):
-        """F25 F2 y F26 P3a: «Equipo y asistencia» (en la tarea y en la actividad suelta); los asistentes van en Beneficiarios."""
+        """F25 F2 y F26 P3a: «Equipo y asistencia» (en la tarea y en la actividad suelta); los asistentes van en Beneficiarios.
+        F28: arriba, la asistencia por jornada (matriz personas × jornadas y «Pasar lista» de la jornada elegida), con
+        todas las personas (también los beneficiarios). Consultas fijas."""
+        from .vistas_asistencia import contexto_asistencia
+
         todas = self._participaciones_con_procedencia()
-        lista = self._pasar_lista(todas)
         partes = [p for p in todas if p.rol.grupo != "asistente"]
         que = "la tarea" if self.es_tarea else "la actividad"
         grupos = [(etiqueta, [p for p in partes if p.rol.grupo == clave], ayuda.replace("la tarea", que)) for clave, etiqueta, ayuda in GRUPOS_EQUIPO_TAREA]
+        ctx = contexto_asistencia(self.request, self.object, [p for p in todas if p.estado.codigo != "registro_erroneo"])
+        resumen = {f["persona"].pk: f["resumen"] for f in ctx["matriz"]["filas"]}
+        for p in partes:
+            p.resumen_asistencia = resumen.get(p.persona_id)
         return {"participaciones": partes, "grupos_participacion": [g for g in grupos if g[1]], "grupo": "integrantes del equipo ni invitados",
-                "titulo_pestana": "Equipo y asistencia", "capacidad_alerta": None, **lista}
+                "titulo_pestana": "Equipo y asistencia", "capacidad_alerta": None, "con_lista": True, **ctx}
 
     def ctx_publico(self):
         a = self.object
@@ -634,7 +632,6 @@ class ActividadFicha(FichaBase):
                           to_attr="emergencias")] if sensibles else []
         partes = [p for p in self._participaciones_con_procedencia(*extra) if p.rol.grupo == "asistente"]
         return {"beneficiarios": partes, "ver_sensibles": sensibles, "capacidad_alerta": self._capacidad(),
-                "calculadas_sesiones": servicios.participaciones_con_sesiones(self.object) if partes else set(),
                 "url_registrar_beneficiario": url_agregar_persona(self.object, rol="beneficiario", volver="beneficiarios",
                                                                   llego=BeneficiarioRegistrar._llego(self.object)),
                 "puede_registrar_beneficiario": (self.request.user.has_perm("actividades.add_participacion") and self.request.user.has_perm("personas.add_persona")
@@ -741,6 +738,12 @@ class ActividadFicha(FichaBase):
         a = self.object
         sin_asistencia = [p for p in a.participaciones.select_related("estado") if p.activa and p.asistencia is None]
         ctx = {"form_resultado": ResultadoForm(instance=a), "finalizada": a.estado.codigo == "realizada", "sin_asistencia": len(sin_asistencia)}
+        if a.estado.codigo != "realizada" and not a.asistencia_sin_registro:  # F28: qué jornadas faltan para finalizar
+            from . import asistencia
+
+            js = asistencia.jornadas(a)
+            if any(j.pk for j in js):
+                ctx["jornadas_pendientes"], ctx["jornadas_por_cerrar"] = asistencia.jornadas_pendientes(a, js)
         if self.request.user.has_perm("actividades.view_participacion"):  # F26 P3a: el alcance (antes su pestaña) va en Cierre
             ctx.update(self.ctx_alcance(), mostrar_alcance=True)
         return ctx
@@ -804,11 +807,13 @@ class ProgramarVista(_AccionActividad):
         if form.is_valid():
             d = form.cleaned_data
             try:
-                servicios.programar(a, request.user, d["fecha"], d["hora_inicio"], d.get("hora_fin"), d.get("lugar"), d.get("modalidad"), d.get("motivo", ""), d.get("enlace", ""))
+                nueva = servicios.programar(a, request.user, d["fecha"], d["hora_inicio"], d.get("hora_fin"), d.get("lugar"), d.get("modalidad"), d.get("motivo", ""), d.get("enlace", ""))
             except ReglaNegocio as e:
                 _avisar(request, e)
             else:
                 messages.success(request, "Programación guardada; la anterior se conserva en el historial.")
+                for aviso in getattr(nueva, "avisos_jornadas", []):  # F28: una jornada con lista no se mueve ni se borra
+                    messages.warning(request, aviso)
                 return self.volver(a, "agenda")
         return render(request, "actividades/programar.html", self._contexto(a, form), status=400)
 
@@ -1025,6 +1030,21 @@ def _aplicar_grupo(participacion, organizacion=None, cargo="", comunidad=None, r
     servicios.asegurar_organizacion(participacion)  # F25 E4: también si la institución se completó sola con la formación
 
 
+def _marcar_llegada(request, a, persona, rol=None, jid=None):
+    """F28: quien llegó queda inscrita y «Presente» en la jornada elegida (?jornada=) o en la de hoy. Si la lista está
+    cerrada o aún no es el día, queda solo inscrita y se avisa. Devuelve (jornada, quedó marcada)."""
+    from . import asistencia
+
+    jornada = None
+    if jid and jid != "hoy":
+        js = asistencia.jornadas(a)
+        jornada = next((j for j in js if (not j.pk and jid == "programada") or (j.pk and str(j.pk) == str(jid))), None)
+    j, marcada, aviso = asistencia.marcar_llegada(a, request.user, persona, jornada, rol)
+    if aviso:
+        messages.warning(request, aviso)
+    return j, marcada
+
+
 def url_agregar_persona(a, rol=None, estado=None, organizacion=None, comunidad=None, llego=False, volver=None):
     """F26 P1a: dirección del único «+ Agregar persona», con lo que se quiere dejar prellenado. `rol` acepta el id o el código."""
     from urllib.parse import urlencode
@@ -1058,11 +1078,20 @@ class ParticipanteNuevo(_AccionActividad):
     def _ctx(self, a, form, volver):
         url = a.get_absolute_url()
         tab = "beneficiarios" if volver == "beneficiarios" else "participantes"
-        return {
+        ctx = {
             "form": form, "titulo": "Agregar persona", "actividad": a, "volver": tab,
             "volver_url": f"{url}?tab={tab}", "breadcrumb": [(a.nombre, url)],
             "bajada": "Solo la persona, el rol y el estado son obligatorios. Si la persona no está en el buscador, «+ Crear persona» abre la ficha rápida.",
         }
+        jid = self.request.POST.get("jornada") or self.request.GET.get("jornada") or ""
+        if jid == "programada" or jid.isdigit():  # F28: «+ Agregar persona que llegó» desde la lista de una jornada
+            from . import asistencia
+
+            j = next((j for j in asistencia.jornadas(a) if (not j.pk and jid == "programada") or (j.pk and str(j.pk) == jid)), None)
+            if j is not None:
+                ctx.update(jornada_llego=jid, jornada_llego_nombre=f"{j.nombre_jornada.lower()}" + (f" del {j.fecha:%d-%m-%Y}" if j.fecha else ""),
+                           titulo="Agregar persona que llegó", volver_url=f"{url}?tab=participantes&jornada={jid}#pasar-lista")
+        return ctx
 
     @staticmethod
     def _permitir_llego(a):
@@ -1070,7 +1099,8 @@ class ParticipanteNuevo(_AccionActividad):
 
     def _form(self, a, data=None, initial=None):
         return ParticipanteNuevoForm(data, actividad=a, initial=initial, puede_sensibles=self.request.user.has_perm("personas.ver_sensibles"),
-                                     permitir_llego=self._permitir_llego(a) or bool(data and data.get("llego")) or bool(initial and initial.get("llego")))
+                                     permitir_llego=self._permitir_llego(a) or bool(data and data.get("llego")) or bool(initial and initial.get("llego")),
+                                     llego_existente=bool(data and data.get("jornada")))
 
     def _inicial(self, a):
         g = self.request.GET
@@ -1078,9 +1108,9 @@ class ParticipanteNuevo(_AccionActividad):
         rol_pk = pk_seguro(rol) or (RolParticipacion.objects.filter(codigo=rol, activo=True).values_list("pk", flat=True).first() if rol else None)
         inicial = {"rol": rol_pk, "organizacion": pk_seguro(g.get("organizacion")), "comunidad": pk_seguro(g.get("comunidad"))}
         estado = pk_seguro(g.get("estado"))
-        if g.get("llego") == "1":
+        if g.get("llego") == "1":  # F28: queda «Inscrito»; la marca «Presente» va en la jornada del día
             inicial["llego"] = True
-            estado = EstadoParticipacion.objects.filter(codigo="asistio").values_list("pk", flat=True).first()
+            estado = estado_inicial().pk
         inicial["estado"] = estado
         return {k: v for k, v in inicial.items() if v}
 
@@ -1095,27 +1125,42 @@ class ParticipanteNuevo(_AccionActividad):
         if not _puede_sumar_participante(request, a, llego):
             return self.volver(a, "participantes")
         form = self._form(a, request.POST)
+        if form.is_valid() and form.existente is not None:  # F28: ya estaba inscrita con ese rol: solo se marca que llegó
+            p = form.existente
+            jornada, marcada = _marcar_llegada(request, a, p.persona, p.rol, request.POST.get("jornada"))
+            messages.success(request, f"{p.persona} ya estaba inscrita como {p.rol.nombre.lower()}" + (": quedó «Presente»." if marcada else "."))
+            jid = str(jornada.pk) if jornada is not None and jornada.pk else request.POST.get("jornada")
+            return HttpResponseRedirect(f"{a.get_absolute_url()}?tab=participantes&jornada={jid}#pasar-lista")
         if form.is_valid():
             d = form.cleaned_data
             p = form.save(commit=False)
             p.actividad = a
             p.creado_por = request.user
-            if llego:  # RE-02: llegó sin estar previsto
-                p.asistencia = True
-                p.estado = estado_inicial(llego=True)
+            if llego:  # RE-02: llegó sin estar previsto. F28: inscrita y «Presente» en la jornada (la elegida o la de hoy)
+                p.estado = estado_inicial()
+            jornada, marcada = None, False
+            jid = request.POST.get("jornada") if llego else None
             with transaction.atomic():
                 p.save()
                 _aplicar_grupo(p, d.get("organizacion"), d.get("cargo"), d.get("comunidad"), d.get("rol_organizacion"))
                 _perfil_del_rol(p.persona, p.rol)
                 if form.puede_sensibles:
                     _registrar_apoderado(request, p.persona, d, "apoderado o contacto de emergencia, al agregarla a una actividad")
-            messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}" + (" y marcada como asistente." if llego else "."))
+                if llego:
+                    jornada, marcada = _marcar_llegada(request, a, p.persona, p.rol, jid)
+            messages.success(request, f"{p.persona} agregada como {p.rol.nombre.lower()}" + (" y marcada «Presente»." if marcada else "."))
+            if jid and jornada is not None and jornada.pk:
+                jid = str(jornada.pk)  # la jornada programada ya quedó guardada
+            if jid and request.POST.get("otra") != "1":  # desde la lista de una jornada: vuelve a esa lista
+                _avisar_capacidad(request, a)
+                return HttpResponseRedirect(f"{a.get_absolute_url()}?tab=participantes&jornada={jid}#pasar-lista")
             _avisar_capacidad(request, a)
             if a.estado.codigo == "realizada":
                 registrar(request.user, "registro_tardio", p, "persona que llegó, agregada después de finalizar")
-            if request.POST.get("otra") == "1":  # «Guardar y agregar otra»: mismo rol, estado y grupo
+            if request.POST.get("otra") == "1":  # «Guardar y agregar otra»: mismo rol, estado y grupo (y la misma jornada)
                 return HttpResponseRedirect(url_agregar_persona(a, rol=p.rol_id, estado=d.get("estado"), organizacion=d.get("organizacion"),
-                                                                comunidad=d.get("comunidad"), llego=llego, volver=volver))
+                                                                comunidad=d.get("comunidad"), llego=llego, volver=volver)
+                                            + (f"&jornada={jid}" if jid else ""))
             from apps.nucleo.fases import modulo_activo
 
             return self.volver(a, _pestana_de(a, p, "beneficiarios" if p.es_beneficiario and modulo_activo("beneficiarios") and not llego else "participantes"))
@@ -1159,11 +1204,13 @@ class ParticipanteRapido(_AccionActividad):
         with transaction.atomic():
             persona = crear_persona_rapida(form, request.user)  # la ficha rápida única: queda «incompleto», con contactos y comuna
             p = Participacion.objects.create(
-                actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, asistencia=True if llego else None, estado=estado_inicial(llego),
+                actividad=a, persona=persona, rol=d["rol"], creado_por=request.user, estado=estado_inicial(),
                 cargo=(d.get("cargo") or "").strip(),
             )
             _aplicar_grupo(p, d.get("organizacion"), d.get("cargo"), d.get("comunidad"), d.get("rol_organizacion"))
             _perfil_del_rol(persona, d["rol"])
+            if llego:  # F28: «Presente» en la jornada del día
+                _marcar_llegada(request, a, persona, d["rol"])
         messages.success(request, f"{persona} creada y agregada. Completa su ficha cuando puedas.")
         _avisar_capacidad(request, a)
         return self.volver(a, _pestana_de(a, p))
@@ -1194,8 +1241,7 @@ class ParticipanteUsar(_AccionActividad):
         with transaction.atomic():
             obj, creada = Participacion.objects.get_or_create(
                 actividad=a, persona=persona, rol=rol,
-                defaults={"estado": estado_inicial(llego), "creado_por": request.user, "asistencia": True if llego else None,
-                          "cargo": request.POST.get("cargo", "").strip()[:120]},
+                defaults={"estado": estado_inicial(), "creado_por": request.user, "cargo": request.POST.get("cargo", "").strip()[:120]},
             )
             if creada:  # lo que se alcanzó a escribir en «¿De qué grupo viene?» también vale para la persona existente
                 org = Organizacion.objects.filter(pk=pk_seguro(request.POST.get("organizacion")) or 0).first()
@@ -1203,6 +1249,8 @@ class ParticipanteUsar(_AccionActividad):
                 rol_org = RolOrganizacion.objects.filter(pk=pk_seguro(request.POST.get("rol_organizacion")) or 0).first()
                 _aplicar_grupo(obj, org, request.POST.get("cargo", "")[:120], comunidad, rol_org)
             _perfil_del_rol(persona, rol)
+            if llego:  # F28: «Presente» en la jornada del día
+                _marcar_llegada(request, a, persona, rol, request.POST.get("jornada"))
         messages.success(request, f"{persona} agregada." if creada else f"{persona} ya participaba con ese rol.")
         _avisar_capacidad(request, a)
         return self.volver(a, _pestana_de(a, obj))
@@ -1212,7 +1260,8 @@ class BeneficiarioRegistrar(_AccionActividad):
     """F25 F2: «+ Registrar beneficiario» de una tarea. La ficha rápida única, el rol (Beneficiario o Participante), su grupo
     (organización con cargo, comunidad) y, si es menor de edad, su apoderado o contacto de emergencia (dato restringido:
     solo para quien tiene personas.ver_sensibles). Primero busca si la persona ya existe: «Usar esta persona» la agrega sin
-    duplicarla. Desde el día de la tarea queda «Asistió»; antes, «Inscrito». Todo se guarda junto o no se guarda."""
+    duplicarla. Queda «Inscrito»; desde el día de la tarea, además «Presente» en la lista del día (F28). Todo se guarda
+    junto o no se guarda."""
 
     permission_required = ("actividades.add_participacion", "personas.add_persona")
     CAMPOS_PARTICIPACION = {"rol", "cargo", "organizacion", "comunidad", *BeneficiarioForm.CAMPOS_MENOR}
@@ -1226,7 +1275,7 @@ class BeneficiarioRegistrar(_AccionActividad):
         return {
             "form": form, "titulo": "Registrar beneficiario", "actividad": a, "candidatos": cands, "aviso_otro_rol": aviso_otro_rol, "usar": usar,
             "volver_url": f"{url}?tab=beneficiarios", "breadcrumb": [(a.nombre, url), ("Beneficiarios", f"{url}?tab=beneficiarios")],
-            "bajada": ("Quedará como «Asistió», porque la tarea ya ocurrió o es hoy." if llega else "Quedará «Inscrito»; la asistencia se marca desde el día de la tarea.")
+            "bajada": ("Quedará «Inscrito» y «Presente» en la lista del día, porque la tarea ya ocurrió o es hoy." if llega else "Quedará «Inscrito»; la asistencia se marca desde el día de la tarea.")
                       + " Solo el nombre es obligatorio.",
         }
 
@@ -1278,13 +1327,14 @@ class BeneficiarioRegistrar(_AccionActividad):
                 persona = crear_persona_rapida(form, request.user)
             p = Participacion.objects.create(
                 actividad=a, persona=persona, rol=d["rol"], cargo=(d.get("cargo") or "").strip(), creado_por=request.user,
-                estado=estado_inicial(llego), asistencia=True if llego else None,
+                estado=estado_inicial(),
             )
             _aplicar_grupo(p, d.get("organizacion"), d.get("cargo"), d.get("comunidad"), d.get("rol_organizacion"))
             _perfil_del_rol(persona, d["rol"])
             if form.puede_sensibles and (form.es_menor_de_edad() or persona.es_menor):
                 _registrar_apoderado(request, persona, d, "apoderado o contacto de emergencia de un menor, al registrarlo como beneficiario")
-        messages.success(request, f"{persona} registrada como {d['rol'].nombre.lower()}" + (" y marcada como asistente." if llego else "."))
+            marcada = _marcar_llegada(request, a, persona, d["rol"])[1] if llego else False  # F28: «Presente» en la jornada del día
+        messages.success(request, f"{persona} registrada como {d['rol'].nombre.lower()}" + (" y marcada «Presente»." if marcada else "."))
         _avisar_capacidad(request, a)
         return self.volver(a, "beneficiarios")
 
@@ -1323,10 +1373,12 @@ class ParticipacionEditar(Permiso403Mixin, UpdateView):
 
 
 class AsistenciaVista(_AccionActividad):
-    """Guarda la asistencia. F26 P1a «Pasar lista»: cada fila del formulario envía `en_lista=<id>` y, si su casilla está
-    marcada, `asistio=<id>`: marcada → Asistió; sin marcar → No asistió (solo las filas incluidas). «Todos asistieron»
-    (`todos=1`) las marca todas. Si se marca «Sin registro de asistencia» y no hay ninguna casilla marcada, las filas no se
-    tocan. También acepta el formato anterior `asistencia_<id>` = si / no / vacío."""
+    """Ruta del «Pasar lista» de F26 P1a, que sigue funcionando contra la jornada de hoy (F28): cada fila envía
+    `en_lista=<id de participación>` y, si su casilla está marcada, `asistio=<id>`: marcada → Presente; sin marcar →
+    Ausente (solo las filas incluidas). «Todos asistieron» (`todos=1`) las marca todas. Si se marca «Sin registro de
+    asistencia» y no hay ninguna casilla marcada, las filas no se tocan. También acepta el formato anterior
+    `asistencia_<id>` = si / no / vacío. El estado de inscripción ya no cambia; quien no estaba en la lista de ese día y
+    viene marcada queda como «persona que llegó». La lista nueva está en «Equipo y asistencia» (ListaGuardar)."""
 
     permission_required = "actividades.change_participacion"
 
@@ -1355,28 +1407,30 @@ class AsistenciaVista(_AccionActividad):
         if antes_de_la_fecha(a):
             messages.error(request, f"La asistencia se registra desde el día de la actividad ({a.agenda_vigente.fecha:%d-%m-%Y}).")
             return self.volver(a, "participantes")
-        estados = {e.codigo: e for e in EstadoParticipacion.objects.filter(codigo__in=["asistio", "no_asistio"])}
+        from . import asistencia
+        from .vistas_asistencia import legado_valores
+
         n = 0
         valores = self._valores(request.POST)
-        with transaction.atomic():
-            for p in a.participaciones.select_related("estado"):
-                if p.pk not in valores:
-                    continue
-                nuevo = valores[p.pk]
-                if nuevo != p.asistencia:
-                    p.asistencia = nuevo
-                    if nuevo is True:
-                        p.estado = estados["asistio"]
-                    elif nuevo is False:
-                        p.estado = estados["no_asistio"]
-                    p.save()
-                    n += 1
-            if request.POST.get("sin_registro") is not None:
-                a.asistencia_sin_registro = request.POST.get("sin_registro") == "1"
-                a.save(update_fields=["asistencia_sin_registro"])
-        if a.estado.codigo == "realizada" and n:
-            registrar(request.user, "asistencia_tardia", a, f"{n} cambios después de finalizar")  # RE-E3
-        messages.success(request, f"Asistencia guardada ({n} cambios).")
+        jornada = asistencia.jornada_para_marcar(a) if valores else None
+        try:
+            with transaction.atomic():
+                if jornada is not None:
+                    marcas, llegaron = legado_valores(a, jornada, valores)
+                    res = asistencia.guardar_lista(a, jornada, request.user, marcas)
+                    n, jornada = res.cambios, res.jornada
+                    for persona in llegaron:
+                        n += bool(asistencia.marcar_llegada(a, request.user, persona, jornada)[1])
+                if request.POST.get("sin_registro") is not None:
+                    a.asistencia_sin_registro = request.POST.get("sin_registro") == "1"
+                    a.save(update_fields=["asistencia_sin_registro"])
+        except ReglaNegocio as e:
+            _avisar(request, e)
+            return self.volver(a, "participantes")
+        if valores and jornada is None:
+            messages.error(request, "Aún no es el día de ninguna jornada: la asistencia se marca desde ese día.")
+        else:
+            messages.success(request, f"Asistencia guardada ({n} cambios)" + (f" en la {jornada.nombre_jornada.lower()}." if jornada else "."))
         return self.volver(a, "beneficiarios" if request.POST.get("volver") == "beneficiarios" else "participantes")
 
 
@@ -1521,11 +1575,13 @@ class SesionVista(Permiso403Mixin, View):
         return get_object_or_404(SesionActividad.objects.select_related("actividad__estado", "lugar", "redactada_por"), pk=sid, actividad_id=pk)
 
     def get(self, request, pk, sid):
+        from . import asistencia
+
         s = self._sesion(pk, sid)
         a = s.actividad
-        marcadas = {x.participacion_id: x.asistio for x in s.asistencias.all()}
-        partes = [p for p in a.participaciones.select_related("persona", "rol", "estado") if p.estado.codigo != "registro_erroneo"]
-        filas = [(p, marcadas.get(p.pk)) for p in partes]
+        # F28: la lista de la jornada (una fila por persona, con su marca); se pasa en «Equipo y asistencia»
+        grupos_persona = asistencia.por_persona(asistencia.participaciones(a))
+        filas = asistencia.filas(s, grupos_persona, asistencia.marcas(a))
         docs = s.evidencias.select_related("tipo")
         if not request.user.has_perm("documentos.ver_restringido"):
             docs = docs.filter(restringido=False)
@@ -1534,33 +1590,36 @@ class SesionVista(Permiso403Mixin, View):
             "titulo": f"{s} · {a.nombre}", "breadcrumb": [("Actividades", "/actividades"), (a.nombre, f"{a.get_absolute_url()}?tab=sesiones")],
             "puede_editar": request.user.has_perm("actividades.change_sesionactividad") and a.estado.codigo != "realizada",
             "puede_asistencia": request.user.has_perm("actividades.change_participacion"),
-            "presentes": sum(1 for _, v in filas if v is True),
+            "presentes": sum(1 for f in filas if f.codigo in asistencia.CUENTAN),
+            "url_pasar_lista": f"{a.get_absolute_url()}?tab=participantes&jornada={s.pk}#pasar-lista",
         })
 
 
 class SesionAsistenciaVista(Permiso403Mixin, View):
+    """Ruta de la asistencia por sesión de F22 (`asistio_<id de participación>` = si / no / vacío), que sigue
+    funcionando (F28): se traduce a las marcas de la jornada (Presente / Ausente / sin marcar), con sus mismas reglas
+    (lista abierta, desde el día de la jornada). La lista se pasa ahora en «Equipo y asistencia»."""
+
     permission_required = "actividades.change_participacion"
 
     def post(self, request, pk, sid):
+        from . import asistencia
+        from .vistas_asistencia import legado_valores
+
         s = get_object_or_404(SesionActividad.objects.select_related("actividad__estado"), pk=sid, actividad_id=pk)
-        n = 0
-        with transaction.atomic():
-            for p in s.actividad.participaciones.all():
-                v = request.POST.get(f"asistio_{p.pk}")
-                if v not in ("si", "no", ""):
-                    continue
-                valor = {"si": True, "no": False, "": None}[v]
-                fila, creada = SesionAsistencia.objects.get_or_create(sesion=s, participacion=p, defaults={"asistio": valor})
-                if creada:
-                    n += valor is not None
-                elif fila.asistio != valor:
-                    fila.asistio = valor
-                    fila.save()
-                    n += 1
-            # F26 P1a: la asistencia de la actividad se recalcula desde las sesiones (asistió a al menos una, o ausente en todas)
-            recalculadas = servicios.asistencia_desde_sesiones(s.actividad)
-        if recalculadas and s.actividad.estado.codigo == "realizada":
-            registrar(request.user, "asistencia_tardia", s.actividad, f"{recalculadas} cambios calculados desde las sesiones después de finalizar")
-        messages.success(request, f"Asistencia de la sesión guardada ({n} cambios)."
-                         + (f" La asistencia de {recalculadas} persona{'s' if recalculadas != 1 else ''} en la actividad se actualizó desde las sesiones." if recalculadas else ""))
+        a = s.actividad
+        valores = {}
+        for p in a.participaciones.all():
+            v = request.POST.get(f"asistio_{p.pk}")
+            if v in ("si", "no", ""):
+                valores[p.pk] = {"si": True, "no": False, "": None}[v]
+        try:
+            with transaction.atomic():
+                marcas, llegaron = legado_valores(a, s, valores)
+                res = asistencia.guardar_lista(a, s, request.user, marcas)
+                n = res.cambios + sum(bool(asistencia.marcar_llegada(a, request.user, persona, s)[1]) for persona in llegaron)
+        except ReglaNegocio as e:
+            _avisar(request, e)
+            return HttpResponseRedirect(s.get_absolute_url())
+        messages.success(request, f"Asistencia de la jornada guardada ({n} cambios).")
         return HttpResponseRedirect(s.get_absolute_url())

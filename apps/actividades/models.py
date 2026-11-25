@@ -1,7 +1,9 @@
 """Tablas del centro del sistema: la actividad y todo lo que se le vincula.
 Actividad; Participacion (persona en la actividad, con rol, estado y asistencia); ActividadOrganizacion
 (cómo intervino una organización); ActividadComunidad y ActividadTerritorio (a quién y dónde va dirigida);
-SesionActividad (encuentros con minuta) y AgendaActividad (cada programación es una versión; solo una vigente)."""
+SesionActividad (cada jornada o encuentro, con su minuta y su lista del día), SesionAsistencia (la marca de cada persona
+en una jornada), CambioLista (cierres y reaperturas de la lista) y AgendaActividad (cada programación es una versión;
+solo una vigente). F28: la inscripción (Participacion) no cambia al pasar lista; la asistencia es por jornada."""
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -138,6 +140,11 @@ class Participacion(models.Model):
     # F25 F3: el rol es corto (Autoridad, Invitado o invitada…); el detalle va aquí, libre
     cargo = models.CharField("cargo o función", max_length=120, blank=True, help_text="Ej.: Alcalde de Hualpén, Prevencionista de obras públicas.")
     fecha = models.DateField(auto_now_add=True)
+    # F28: desde qué día está inscrita (aparece en las listas de las jornadas desde esa fecha) y, si se retiró, hasta cuándo
+    inscrito_en = models.DateField("inscrita desde", null=True, blank=True,
+                                   help_text="Aparece en las listas de las jornadas desde esta fecha. Si ya venía desde el inicio, pon la fecha de la primera jornada.")
+    retirado_en = models.DateField("retirada el", null=True, blank=True)
+    motivo_retiro = models.CharField("motivo del retiro", max_length=250, blank=True)
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     history = HistoricalRecords()
 
@@ -150,10 +157,29 @@ class Participacion(models.Model):
     def __str__(self):
         return f"{self.persona} · {self.rol} · {self.actividad}"
 
+    # F28: «Asistió» y «No asistió» ya no son estados de inscripción (la asistencia va por jornada): no sacan a nadie de
+    # la tarea. «Retirado» deja de ocupar cupo desde su retiro (y sigue en las listas de las jornadas anteriores).
+    INACTIVOS = ("rechazo", "cancelo", "lista_espera", "registro_erroneo", "retirado")
+
     @property
     def activa(self):
         """Ocupa cupo. «En lista de espera» no ocupa cupo hasta que se confirme [P]."""
-        return self.estado.codigo not in ("rechazo", "cancelo", "no_asistio", "lista_espera", "registro_erroneo")
+        return self.estado.codigo not in self.INACTIVOS
+
+    @property
+    def retirada(self):
+        return self.estado.codigo == "retirado"
+
+    def en_lista_de(self, fecha):
+        """F28: ¿aparece en la lista de una jornada de esa fecha? Inscripción activa en esa fecha: inscrita desde antes
+        (o el mismo día) y, si se retiró, no antes de ese día. Faltar nunca la saca de la lista."""
+        codigo = self.estado.codigo
+        if codigo == "retirado":
+            if not (self.retirado_en and fecha and fecha <= self.retirado_en):
+                return False
+        elif codigo in self.INACTIVOS:
+            return False
+        return not (self.inscrito_en and fecha and fecha < self.inscrito_en)
 
     @property
     def en_espera(self):
@@ -187,6 +213,10 @@ class Participacion(models.Model):
     def save(self, *args, **kwargs):
         if self.persona_id and self.actividad_id and (not self.institucion_id or not self.comunidad_id):
             self.completar_procedencia()
+        if self._state.adding and not self.inscrito_en:  # F28: inscrita desde hoy, si no se indica otra fecha
+            from django.utils import timezone
+
+            self.inscrito_en = timezone.localdate()
         super().save(*args, **kwargs)
 
 
@@ -256,6 +286,16 @@ class SesionActividad(models.Model):
     vigente = models.BooleanField(default=True)
     redactada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     creado_en = models.DateTimeField(auto_now_add=True, null=True)
+    # F28: la lista del día (en pantalla, la sesión es una «jornada»)
+    LISTA_ABIERTA, LISTA_CERRADA, SUSPENDIDA = "abierta", "cerrada", "suspendida"
+    ESTADOS_LISTA = [(LISTA_ABIERTA, "Abierta"), (LISTA_CERRADA, "Cerrada"), (SUSPENDIDA, "Suspendida")]
+    estado_lista = models.CharField("estado de la lista", max_length=12, choices=ESTADOS_LISTA, default=LISTA_ABIERTA)
+    cerrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+                                    verbose_name="lista cerrada por")
+    cerrada_en = models.DateTimeField("lista cerrada el", null=True, blank=True)
+    motivo_suspension = models.CharField("motivo de la suspensión", max_length=250, blank=True)
+    version_lista = models.PositiveIntegerField("versión de la lista", default=0, editable=False,
+                                                help_text="Sube con cada cambio de la lista: avisa si otra pestaña la cambió (F28).")
     history = HistoricalRecords()
 
     class Meta:
@@ -269,6 +309,27 @@ class SesionActividad(models.Model):
 
     def get_absolute_url(self):
         return reverse("actividades:sesion", args=[self.actividad_id, self.pk])
+
+    @property
+    def nombre_jornada(self):
+        """F28: cómo se nombra en las listas y la matriz: «Jornada 2» (o «Jornada programada» si aún no se guarda)."""
+        return f"Jornada {self.numero}" if self.pk else "Jornada programada"
+
+    @property
+    def lista_abierta(self):
+        return self.estado_lista == self.LISTA_ABIERTA
+
+    @property
+    def lista_cerrada(self):
+        return self.estado_lista == self.LISTA_CERRADA
+
+    @property
+    def suspendida(self):
+        return self.estado_lista == self.SUSPENDIDA
+
+    @property
+    def tiene_conteo(self):
+        return self.asistentes_sin_registro is not None
 
     @property
     def asistentes_registrados(self):
@@ -315,11 +376,20 @@ class SesionFacilitador(models.Model):
 
 
 class SesionAsistencia(models.Model):
-    """Asistencia de cada participante registrado a una sesión."""
+    """Asistencia del día (F28): la marca de una persona inscrita en una jornada, con observación, quién y cuándo.
+    Una sola por persona y jornada (ver apps/actividades/asistencia.py). `asistio` se deduce de la marca."""
+
+    PRESENTE, ATRASADO, RETIRO_ANTICIPADO, JUSTIFICADO, AUSENTE = "presente", "atrasado", "retiro_anticipado", "justificado", "ausente"
+    MARCAS = [(PRESENTE, "Presente"), (ATRASADO, "Atrasado"), (RETIRO_ANTICIPADO, "Se retiró antes"), (JUSTIFICADO, "Justificado"), (AUSENTE, "Ausente")]
+    CUENTAN = (PRESENTE, ATRASADO, RETIRO_ANTICIPADO)  # cuentan como asistencia; «Justificado» no cuenta para el porcentaje [P]
 
     sesion = models.ForeignKey(SesionActividad, on_delete=models.PROTECT, related_name="asistencias")
     participacion = models.ForeignKey(Participacion, on_delete=models.PROTECT, related_name="asistencias_sesion")
     asistio = models.BooleanField("asistió", null=True, blank=True)
+    marca = models.CharField(max_length=20, choices=MARCAS, blank=True, help_text="Vacío = sin marcar.")
+    observacion = models.CharField("observación", max_length=250, blank=True, help_text="Ej.: trae certificado médico.")
+    marcado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    marcado_en = models.DateTimeField(null=True, blank=True)
     history = HistoricalRecords()
 
     class Meta:
@@ -329,6 +399,37 @@ class SesionAsistencia(models.Model):
 
     def __str__(self):
         return f"{self.participacion.persona} · {self.sesion}"
+
+    @staticmethod
+    def asistio_de(marca):
+        if marca in SesionAsistencia.CUENTAN:
+            return True
+        return False if marca in (SesionAsistencia.AUSENTE, SesionAsistencia.JUSTIFICADO) else None
+
+    def save(self, *args, **kwargs):
+        if not self.marca and self.asistio is not None:  # registros con el formato anterior (asistió sí / no)
+            self.marca = self.PRESENTE if self.asistio else self.AUSENTE
+        self.asistio = self.asistio_de(self.marca)
+        super().save(*args, **kwargs)
+
+
+class CambioLista(models.Model):
+    """F28: cierres, reaperturas y suspensiones de la lista de una jornada, con quién, cuándo y por qué."""
+
+    ACCIONES = [("cerrada", "Lista cerrada"), ("reabierta", "Lista reabierta"), ("suspendida", "Jornada suspendida"), ("migrada", "Lista migrada")]
+    sesion = models.ForeignKey(SesionActividad, on_delete=models.PROTECT, related_name="cambios_lista")
+    accion = models.CharField(max_length=12, choices=ACCIONES)
+    motivo = models.CharField(max_length=250, blank=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha", "-pk"]
+        verbose_name = "cambio de la lista"
+        verbose_name_plural = "cambios de las listas"
+
+    def __str__(self):
+        return f"{self.get_accion_display()} · {self.sesion}"
 
 
 class AgendaActividad(models.Model):

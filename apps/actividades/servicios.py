@@ -5,6 +5,7 @@ from django.utils import timezone
 from apps.nucleo.auditoria import registrar
 from apps.nucleo.models import EstadoActividad
 
+from . import asistencia
 from .models import Actividad, AgendaActividad
 from .reglas import MOTIVO_OBLIGATORIO, TRANSICIONES, ReglaNegocio, conflicto_critico_permitido, revisar
 
@@ -63,6 +64,7 @@ def programar(actividad, usuario, fecha, hora_inicio=None, hora_fin=None, lugar=
     )
     accion = "reprogramada_ultimo_minuto" if ultimo_minuto else ("reprogramada" if vigente else "programada")
     registrar(usuario, accion, actividad, f"v{version} {fecha:%d-%m-%Y} {motivo}".strip())
+    nueva.avisos_jornadas = asistencia.al_reprogramar(actividad, vigente, nueva)  # F28: no borra jornadas con lista; avisa
     return nueva
 
 
@@ -144,7 +146,11 @@ def confirmar(actividad, usuario, acepta_advertencias=False, motivo_conflicto=""
 
 @transaction.atomic
 def finalizar(actividad, usuario):
-    """«Finalizar actividad»: exige asistencia (o «sin registro» explícito) y resultado. Queda *realizada* y de solo lectura."""
+    """«Finalizar actividad»: exige asistencia (o «sin registro» explícito) y resultado. Queda *realizada* y de solo lectura.
+
+    F28: con jornadas guardadas, cada jornada hasta hoy debe tener la lista cerrada, estar suspendida o tener conteo sin
+    nombres; las listas abiertas con todas las personas marcadas se cierran al finalizar [P]. «Sin registro de
+    asistencia» explícito sigue valiendo (decisión vigente del cierre). Sin jornadas guardadas, como antes."""
     actividad = Actividad.objects.select_for_update().get(pk=actividad.pk)
     if "realizada" not in TRANSICIONES.get(actividad.estado.codigo, set()):
         raise ReglaNegocio(f"No se puede finalizar una actividad {actividad.estado.nombre.lower()}.")
@@ -155,20 +161,25 @@ def finalizar(actividad, usuario):
         raise ReglaNegocio("Programa la fecha antes de finalizar: la actividad no tiene una fecha vigente.")
     if antes_de_la_fecha(actividad):
         raise ReglaNegocio(f"La actividad es el {actividad.agenda_vigente.fecha:%d-%m-%Y}: se puede finalizar desde ese día.")
-    faltan = []
-    registrada = actividad.participaciones.filter(asistencia__isnull=False).exists()
-    if not registrada and not actividad.asistencia_sin_registro:
-        faltan.append("Registra la asistencia o marca «sin registro de asistencia».")
+    faltan, por_cerrar = [], []
+    if not actividad.asistencia_sin_registro:
+        js = asistencia.jornadas(actividad)
+        if any(j.pk for j in js):
+            faltan, por_cerrar = asistencia.jornadas_pendientes(actividad, js)
+        elif not actividad.participaciones.filter(asistencia__isnull=False).exists():
+            faltan.append("Registra la asistencia o marca «sin registro de asistencia».")
     if not actividad.resultado.strip():
         faltan.append("Falta registrar el resultado.")
     if faltan:
         raise ReglaNegocio(*faltan)
+    for j in por_cerrar:
+        asistencia._cerrar(j, usuario, "Al finalizar la actividad")
     actividad.estado = _estado("realizada")
     actividad.finalizada_en = timezone.now()
     actividad.finalizada_por = usuario
     actividad.save()
     _sincronizar_estado_agenda(actividad)
-    registrar(usuario, "finalizada", actividad)
+    registrar(usuario, "finalizada", actividad, f"{len(por_cerrar)} listas cerradas al finalizar" if por_cerrar else "")
     return actividad
 
 
@@ -231,47 +242,8 @@ def asegurar_organizacion(participacion):
     return ActividadOrganizacion.objects.create(actividad_id=participacion.actividad_id, organizacion_id=org_id, tipo_intervencion=tipo, vigente=True)
 
 
-def participaciones_con_sesiones(actividad):
-    """F26 P1a: ids de las participaciones con al menos una marca (asistió o no) en las listas de las sesiones. Una consulta."""
-    from .models import SesionAsistencia
-
-    return set(SesionAsistencia.objects.filter(sesion__actividad=actividad, asistio__isnull=False)
-               .values_list("participacion_id", flat=True).distinct())
-
-
-def asistencia_desde_sesiones(actividad):
-    """F26 P1a (varios días): la asistencia de cada participación se calcula desde las listas de las sesiones.
-    Asistió si fue al menos a una sesión; no asistió si está marcada ausente en todas las sesiones con lista; sin datos de
-    sesiones (o con alguna sesión con lista donde no aparece), no se toca. La corrección manual sigue posible en «Pasar
-    lista». Consultas fijas. Devuelve cuántas participaciones cambiaron."""
-    from apps.nucleo.models import EstadoParticipacion
-
-    from .models import SesionAsistencia
-
-    marcas = {}
-    con_lista = set()
-    for sesion_id, part_id, asistio in SesionAsistencia.objects.filter(sesion__actividad=actividad, asistio__isnull=False).values_list(
-            "sesion_id", "participacion_id", "asistio"):
-        con_lista.add(sesion_id)
-        marcas.setdefault(part_id, {})[sesion_id] = asistio
-    if not marcas:
-        return 0
-    estados = {e.codigo: e for e in EstadoParticipacion.objects.filter(codigo__in=["asistio", "no_asistio"])}
-    n = 0
-    for p in actividad.participaciones.select_related("estado").filter(pk__in=marcas).exclude(estado__codigo="registro_erroneo"):
-        suyas = marcas[p.pk]
-        if any(suyas.values()):
-            nuevo = True
-        elif set(suyas) == con_lista:
-            nuevo = False
-        else:
-            continue
-        if nuevo != p.asistencia:
-            p.asistencia = nuevo
-            p.estado = estados["asistio" if nuevo else "no_asistio"]
-            p.save()
-            n += 1
-    return n
+# F28: la asistencia de cada participación es el resumen de sus marcas por jornada (asistencia.actualizar_resumen); la
+# marca ya no cambia el estado de inscripción. Reemplaza al cálculo «desde las sesiones» de F26 P1a.
 
 
 def rol_equipo_para_responsable():
