@@ -1050,3 +1050,65 @@ button[aria-busy="true"] { cursor: progress; }
 .fche-mosaico__icono--error { background: #fdecec; color: #b42318; }
 .fche-mosaico__icono--alerta { background: #fff3d1; color: #7a4f00; }
 .fche-mosaico--compacto + * { margin-top: 1.5rem; }
+
+/* F28 · Asistencia por jornada: fichas de jornadas, «Pasar lista» con cinco marcas por persona y matriz personas ×
+   jornadas. En el celular la lista se apila (persona, marcas, observación) y la matriz se desplaza de lado con la
+   columna de nombres fija. Las marcas usan los mismos tonos de las insignias de estado. */
+.fche-asistencia { margin: 0 0 1.5rem; }
+.fche-jornadas { list-style: none; margin: .25rem 0 .75rem; padding: 0 0 .25rem; display: flex; gap: .5rem; overflow-x: auto; }
+.fche-jornada { display: flex; flex-direction: column; gap: .1rem; min-width: 8.5rem; padding: .5rem .7rem; border: 1px solid var(--fche-borde);
+  border-radius: var(--fche-radio); background: var(--fche-superficie); color: var(--fche-texto); text-decoration: none; }
+.fche-jornada:hover { border-color: var(--fche-primario-borde); }
+.fche-jornada.is-activa { border-color: var(--fche-primario); box-shadow: 0 0 0 1px var(--fche-primario); }
+.fche-jornada.is-suspendida { background: var(--fche-superficie-2); }
+.fche-jornada__nombre { font-weight: 600; font-size: .85rem; }
+.fche-jornada__fecha { font-size: .8rem; color: var(--fche-texto-2); }
+.fche-jornada__pie { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-top: .15rem; }
+.fche-jornada__cifra { font-weight: 600; font-variant-numeric: tabular-nums; }
+.fche-lista-asistencia__cabeza { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; margin-bottom: .5rem; }
+.fche-lista-asistencia__form .fche-lista-asistencia__fila { grid-template-columns: minmax(10rem, 1.3fr) auto minmax(9rem, 1fr); }
+.fche-lista-asistencia__fila--lectura { grid-template-columns: minmax(0, 1fr) auto; }
+.fche-lista-asistencia__persona .fche-lista-asistencia__rol { display: block; font-weight: 400; }
+.fche-marcas { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; margin: 0; padding: 0; border: 0; min-width: 0; }
+.fche-marcar { --bs-btn-padding-y: .2rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .8rem; border: 1px solid var(--fche-borde-fuerte); background: var(--fche-superficie); color: var(--fche-texto-2); }
+.fche-marcar:hover { border-color: var(--fche-primario-borde); color: var(--fche-texto); }
+.btn-check:focus-visible + .fche-marcar { box-shadow: 0 0 0 .2rem var(--fche-anillo); }
+.btn-check:checked + .fche-marcar--presente { background: #eaf7ef; border-color: #22a55a; color: #13703a; font-weight: 600; }
+.btn-check:checked + .fche-marcar--atrasado { background: #fff7e0; border-color: #e9a800; color: #7a5100; font-weight: 600; }
+.btn-check:checked + .fche-marcar--retiro_anticipado { background: #fff1e7; border-color: #f97316; color: #9a400b; font-weight: 600; }
+.btn-check:checked + .fche-marcar--justificado { background: #edf2ff; border-color: #3b6cf0; color: #1d45b8; font-weight: 600; }
+.btn-check:checked + .fche-marcar--ausente { background: #fdeeed; border-color: #ef4437; color: #a8231a; font-weight: 600; }
+.btn-check:checked + .fche-marcar--vacia { background: var(--fche-superficie-2); border-color: var(--fche-borde-fuerte); color: var(--fche-texto); }
+.fche-lista-asistencia__obs { min-width: 0; }
+.fche-lista-asistencia__mas { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .5rem 1rem; margin-top: .75rem; }
+.fche-lista-asistencia__accion > summary { list-style: none; }
+.fche-lista-asistencia__accion > summary::-webkit-details-marker { display: none; }
+.fche-lista-asistencia__despues { margin-top: .75rem; }
+.fche-cierre-jornada { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-top: .9rem; padding-top: .75rem; border-top: 1px dashed var(--fche-borde); }
+.fche-matriz { margin-top: 1rem; }
+.fche-matriz__cabeza { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+.fche-matriz__filtros { display: flex; flex-wrap: wrap; gap: .3rem; }
+.fche-matriz__marco { max-width: 100%; overflow-x: auto; border: 1px solid var(--fche-borde); border-radius: var(--fche-radio); background: var(--fche-superficie); }
+.fche-matriz__tabla { min-width: max-content; }
+.fche-matriz__tabla th, .fche-matriz__tabla td { white-space: nowrap; }
+.fche-matriz__tabla thead th { font-size: .8rem; vertical-align: bottom; }
+.fche-matriz__jornada { text-align: center; min-width: 4.5rem; }
+.fche-matriz__jornada.is-activa { background: var(--fche-primario-suave); }
+.fche-matriz__persona { position: sticky; left: 0; z-index: 1; background: var(--fche-superficie); min-width: 11rem; max-width: 16rem; white-space: normal !important;
+  box-shadow: 1px 0 0 var(--fche-borde); }
+.fche-matriz__suspendida { background: var(--fche-superficie-2); }
+.fche-marca-celda { display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; font-size: .75rem; font-weight: 700;
+  border: 1px solid transparent; }
+.fche-marca-celda--presente { background: #eaf7ef; color: #13703a; border-color: #c7ead3; }
+.fche-marca-celda--atrasado { background: #fff7e0; color: #7a5100; border-color: #f7e2a6; }
+.fche-marca-celda--retiro_anticipado { background: #fff1e7; color: #9a400b; border-color: #fbd5b8; }
+.fche-marca-celda--justificado { background: #edf2ff; color: #1d45b8; border-color: #d3defc; }
+.fche-marca-celda--ausente { background: #fdeeed; color: #a8231a; border-color: #f8cdc9; }
+.fche-matriz__leyenda { margin-top: .5rem; line-height: 2; }
+.fche-matriz__leyenda .fche-marca-celda { width: 1.3rem; height: 1.3rem; font-size: .7rem; margin-left: .35rem; }
+@media (max-width: 767.98px) {
+  .fche-lista-asistencia__form .fche-lista-asistencia__fila { grid-template-columns: minmax(0, 1fr); gap: .4rem; }
+  .fche-lista-asistencia__cabeza { flex-direction: column; }
+  .fche-marcar { flex: 1 1 auto; }
+  .fche-matriz__persona { min-width: 8.5rem; max-width: 10rem; }
+}

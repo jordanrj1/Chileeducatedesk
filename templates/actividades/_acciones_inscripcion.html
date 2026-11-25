@@ -1,0 +1,5 @@
+{# Qué es: F28 · Acciones de la inscripción en las tablas: «Quitar de la tarea» (queda «Retirado» con fecha y motivo; conserva sus asistencias), «Reincorporar» (deshace un retiro) y «Registro erróneo» (se relacionó por error, HI-E2). #}
+{# Dónde se usa: pestañas participantes y beneficiarios de la actividad o tarea · Proceso: P3/P8 #}
+{% load fche %}{% if p.retirada %}<form method="post" action="{% url 'actividades:participante_reincorporar' object.pk p.pk %}" class="d-inline">{% csrf_token %}{% marca_envio %}<button class="btn btn-outline-secondary btn-sm" title="Deshace el retiro: vuelve a aparecer en las listas">Reincorporar</button></form>
+{% elif p.estado.codigo != "registro_erroneo" %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:participante_retirar' object.pk p.pk %}" title="Deja la {% if object.proyecto_id %}tarea{% else %}actividad{% endif %}: conserva sus asistencias">Quitar de la {% if object.proyecto_id %}tarea{% else %}actividad{% endif %}</a>
+<a class="btn btn-outline-danger btn-sm" href="{% url 'actividades:participante_quitar' object.pk p.pk %}" title="Se relacionó por error">Registro erróneo</a>{% endif %}

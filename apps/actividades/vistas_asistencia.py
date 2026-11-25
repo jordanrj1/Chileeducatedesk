@@ -18,7 +18,7 @@ from apps.nucleo.vistas_base import Permiso403Mixin
 
 from . import asistencia
 from .forms import JornadaForm, RetiroForm
-from .models import Actividad, CambioLista, Participacion, SesionActividad
+from .models import Actividad, CambioLista, Participacion
 from .reglas import ReglaNegocio
 
 FILTROS_GRUPO = [("", "Todos"), ("ejecutor", "Equipo ejecutor"), ("contacto", "Invitados y contactos"), ("asistente", "Beneficiarios")]
@@ -63,7 +63,9 @@ def contexto_asistencia(request, actividad, partes):
         "jornada": elegida, "lista_jornada": columna["lista"] if columna else [], "columna_elegida": columna,
         "ruta_jornada": ruta_jornada(elegida) if elegida is not None else "",
         "marcas_opciones": asistencia.MARCAS, "puede_pasar_lista": puede and puede_marcar, "motivo_sin_lista": motivo,
-        "puede_marcar": puede_marcar, "puede_nueva_jornada": u.has_perm("actividades.add_sesionactividad") and actividad.estado.codigo not in ("cancelada", "realizada"),
+        "puede_marcar": puede_marcar,
+        "puede_suspender": puede_marcar and elegida is not None and elegida.lista_abierta and actividad.estado.codigo in ("planificada", "confirmada", "reprogramada"),
+        "puede_nueva_jornada": u.has_perm("actividades.add_sesionactividad") and actividad.estado.codigo not in ("cancelada", "realizada"),
         "puede_exportar_asistencia": u.has_perm("actividades.exportar_actividad"),
         "inscritas_despues": despues, "cambios_lista": cambios,
         "url_gasto_jornada": url_gasto_de_jornada(elegida) if elegida is not None and elegida.pk else None,

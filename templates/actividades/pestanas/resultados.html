@@ -17,8 +17,11 @@ Los datos de la actividad ya no se editan; el resultado y la asistencia se puede
 <form method="post" action="{% url 'actividades:finalizar' object.pk %}" class="fche-tarjeta mt-4" style="max-width:48rem;">{% csrf_token %}
   <div class="fche-tarjeta__cuerpo">
     <h3 class="h6 mb-2">Finalizar actividad</h3>
-    <p class="small text-muted mb-2">Para finalizar se requiere la asistencia registrada (o «sin registro» explícito) y el resultado. La actividad quedará como <strong>realizada</strong>.</p>
-    {% if sin_asistencia and not object.asistencia_sin_registro %}<p class="small text-warning-emphasis d-flex gap-1 align-items-center mb-0">{% icono "alerta" 14 %}{{ sin_asistencia }} participante{{ sin_asistencia|pluralize }} aún no {{ sin_asistencia|pluralize:"tiene,tienen" }} asistencia registrada.</p>{% endif %}
+    <p class="small text-muted mb-2">Para finalizar se requiere la asistencia (cada jornada hasta hoy con su lista cerrada, suspendida o con conteo sin nombres; o «sin registro» explícito) y el resultado. La actividad quedará como <strong>realizada</strong>.</p>
+    {% if jornadas_pendientes %}<div class="small text-warning-emphasis mb-2" role="status"><p class="d-flex gap-1 align-items-center mb-1">{% icono "alerta" 14 %}Falta resolver {{ jornadas_pendientes|length }} jornada{{ jornadas_pendientes|pluralize }} (cerrar su lista, suspenderla o registrar un conteo sin nombres):</p>
+      <ul class="mb-0">{% for t in jornadas_pendientes %}<li>{{ t }}</li>{% endfor %}</ul> <a href="?tab=participantes#asistencia">Ir a la asistencia</a></div>{% endif %}
+    {% if jornadas_por_cerrar %}<p class="small text-muted mb-2">{{ jornadas_por_cerrar|length }} lista{{ jornadas_por_cerrar|pluralize }} abierta{{ jornadas_por_cerrar|pluralize }} con todas las personas marcadas se cerrará{{ jornadas_por_cerrar|pluralize:"n" }} al finalizar.</p>{% endif %}
+    {% if sin_asistencia and not object.asistencia_sin_registro and not jornadas_pendientes %}<p class="small text-warning-emphasis d-flex gap-1 align-items-center mb-0">{% icono "alerta" 14 %}{{ sin_asistencia }} participante{{ sin_asistencia|pluralize }} aún no {{ sin_asistencia|pluralize:"tiene,tienen" }} asistencia registrada.</p>{% endif %}
   </div>
   <div class="fche-form__acciones"><button class="btn btn-dark" onclick="return confirm('¿Finalizar la actividad? Quedará como realizada.')">Finalizar actividad</button></div>
 </form>

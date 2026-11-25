@@ -73,26 +73,30 @@ def _orden_jornada(j):
     return (j.fecha or date.max, j.hora_inicio or time.min, j.numero)
 
 
-def jornadas(actividad, con_programada=True):
-    """Jornadas vigentes en orden (fecha, hora, número) y, si la fecha programada vigente no tiene la suya, la
-    «jornada programada» sin guardar. Una consulta (y la de la agenda, si la ficha no la fijó antes)."""
-    todas = list(SesionActividad.objects.filter(actividad=actividad).select_related("lugar", "cerrada_por"))
+def armar_jornadas(actividad, todas, agenda):
+    """Sin consultas: las jornadas vigentes de `todas` (sus sesiones) en orden y la programada, si falta."""
     res = [j for j in todas if j.vigente]
-    agenda = actividad.agenda_vigente if con_programada else None
     if agenda and agenda.fecha and not any(j.fecha == agenda.fecha for j in res):
         res.append(jornada_programada(actividad, agenda, todas))
     return sorted(res, key=_orden_jornada)
 
 
+def jornadas(actividad, con_programada=True):
+    """Jornadas vigentes en orden (fecha, hora, número) y, si la fecha programada vigente no tiene la suya, la
+    «jornada programada» sin guardar. Una consulta (y la de la agenda, si la ficha no la fijó antes)."""
+    todas = list(SesionActividad.objects.filter(actividad=actividad).select_related("lugar", "cerrada_por"))
+    return armar_jornadas(actividad, todas, actividad.agenda_vigente if con_programada else None)
+
+
+def _marcas_qs(**filtro):
+    return (SesionAsistencia.objects.filter(**filtro).exclude(marca="").select_related("marcado_por")
+            .annotate(persona_ref=F("participacion__persona_id")).order_by("marcado_en", "pk"))
+
+
 def marcas(actividad):
     """{(jornada_id, persona_id): SesionAsistencia} de las marcas puestas. Si una persona tiene marcas con dos de sus
     participaciones en la misma jornada (registros antiguos), vale la más reciente. Una consulta."""
-    res = {}
-    qs = (SesionAsistencia.objects.filter(sesion__actividad=actividad).exclude(marca="")
-          .select_related("marcado_por").annotate(persona_ref=F("participacion__persona_id")).order_by("marcado_en", "pk"))
-    for m in qs:
-        res[(m.sesion_id, m.persona_ref)] = m
-    return res
+    return {(m.sesion_id, m.persona_ref): m for m in _marcas_qs(sesion__actividad=actividad)}
 
 
 @dataclass
@@ -158,7 +162,11 @@ def matriz(actividad, grupo=None, partes=None, js=None):
     Consultas fijas: participaciones, jornadas y marcas."""
     partes = participaciones(actividad) if partes is None else partes
     js = jornadas(actividad) if js is None else js
-    todas_marcas = marcas(actividad)
+    return armar_matriz(partes, js, marcas(actividad), grupo)
+
+
+def armar_matriz(partes, js, todas_marcas, grupo=None):
+    """Sin consultas: la matriz con lo ya leído (ver `matriz`)."""
     grupos_persona = por_persona(partes)
     columnas = []
     for j in js:
@@ -179,6 +187,8 @@ def matriz(actividad, grupo=None, partes=None, js=None):
             m = todas_marcas.get((j.pk, persona_id)) if j.pk else None
             celdas.append({"jornada": j, "marca": m, "en_lista": persona_id in c["personas"],
                            "corta": CORTA.get(m.marca, "") if m else "", "nombre": NOMBRE_MARCA.get(m.marca, "") if m else ""})
+        if not (principal.activa or principal.retirada) and not any(c["en_lista"] for c in celdas):
+            continue  # canceló, rechazó o en lista de espera, sin ninguna marca: no está en la tarea
         filas_matriz.append({"persona": principal.persona, "participacion": principal, "otras": lista[1:],
                              "roles": " · ".join(p.rol_y_cargo for p in lista), "celdas": celdas,
                              "resumen": resumen_persona([(c["jornada"], c["marca"]) for c in celdas])})
@@ -260,6 +270,48 @@ def jornadas_pendientes(actividad, js=None, partes=None, hoy=None):
     return pendientes, por_cerrar
 
 
+def resumen_proyecto(proyecto):
+    """Pestaña «Asistencia» del proyecto: por tarea (jornadas, inscritos, presentes y porcentaje promedio) y por
+    persona (tareas, días presentes y porcentaje), con lo mismo que la matriz de cada tarea. Cinco consultas, sin
+    importar cuántas tareas, jornadas o personas haya."""
+    from .models import AgendaActividad
+
+    tareas = list(proyecto.actividades.select_related("estado").order_by("creado_en", "pk"))
+    ids = [t.pk for t in tareas]
+    partes_de, sesiones_de, marcas_de = {}, {}, {}
+    for p in (Participacion.objects.filter(actividad_id__in=ids).exclude(estado__codigo="registro_erroneo")
+              .select_related("persona", "rol", "estado")):
+        partes_de.setdefault(p.actividad_id, []).append(p)
+    for j in SesionActividad.objects.filter(actividad_id__in=ids).select_related("lugar", "cerrada_por"):
+        sesiones_de.setdefault(j.actividad_id, []).append(j)
+    agendas = {a.actividad_id: a for a in AgendaActividad.objects.filter(actividad_id__in=ids, vigente=True).select_related("lugar")}
+    sesion_actividad = {j.pk: aid for aid, lista in sesiones_de.items() for j in lista}
+    for m in _marcas_qs(sesion__actividad_id__in=ids):
+        marcas_de.setdefault(sesion_actividad.get(m.sesion_id), {})[(m.sesion_id, m.persona_ref)] = m
+    filas_tareas, personas = [], {}
+    for t in tareas:
+        js = armar_jornadas(t, sesiones_de.get(t.pk, []), agendas.get(t.pk))
+        mat = armar_matriz(partes_de.get(t.pk, []), js, marcas_de.get(t.pk, {}))
+        porcentajes = [f["resumen"]["porcentaje"] for f in mat["filas"] if f["resumen"]["porcentaje"] is not None]
+        filas_tareas.append({
+            "tarea": t, "jornadas": len(js), "con_lista": sum(1 for c in mat["columnas"] if c["marcadas"] or c["jornada"].lista_cerrada),
+            "suspendidas": sum(1 for j in js if j.suspendida), "inscritos": len(mat["filas"]),
+            "presentes": sum(c["presentes"] for c in mat["columnas"]),
+            "promedio": round(sum(porcentajes) / len(porcentajes)) if porcentajes else None,
+        })
+        for f in mat["filas"]:
+            r = f["resumen"]
+            acum = personas.setdefault(f["persona"].pk, {"persona": f["persona"], "tareas": [], "presentes": 0, "con_marca": 0, "justificados": 0})
+            acum["tareas"].append(t)
+            acum["presentes"] += r["presentes"]
+            acum["con_marca"] += r["con_marca"]
+            acum["justificados"] += r["justificados"]
+    filas_personas = sorted(personas.values(), key=lambda x: _orden_persona(x["persona"]))
+    for x in filas_personas:
+        x["porcentaje"] = round(100 * x["presentes"] / x["con_marca"]) if x["con_marca"] else None
+    return {"tareas": filas_tareas, "personas": filas_personas}
+
+
 # --- Escrituras ----------------------------------------------------------------------------------------------------
 def _bloquear(actividad):
     return Actividad.objects.select_for_update().select_related("estado").get(pk=actividad.pk)
@@ -269,7 +321,7 @@ def _guardar_jornada(actividad, jornada):
     """La jornada guardada y bloqueada. Si viene sin guardar (la programada o la de hoy), se guarda; si otra petición
     ya la guardó, se usa esa. Se llama con la actividad bloqueada."""
     if jornada.pk:
-        return SesionActividad.objects.select_for_update().select_related("cerrada_por").get(pk=jornada.pk, actividad=actividad)
+        return SesionActividad.objects.select_for_update().get(pk=jornada.pk, actividad=actividad)
     ya = SesionActividad.objects.filter(actividad=actividad, vigente=True, fecha=jornada.fecha).order_by("hora_inicio", "numero").first()
     if ya:
         return SesionActividad.objects.select_for_update().get(pk=ya.pk)

@@ -1,0 +1,8 @@
+{# Qué es: F28 · Cierre de la lista de una jornada (opcional): «Evidencia del día» (foto u otro archivo, como documento de la jornada) y el punto de extensión «¿Hubo gastos este día?», que se muestra cuando el registro de gastos entrega su dirección (vistas_asistencia.url_gasto_de_jornada). #}
+{# Dónde se usa: actividades/_pasar_lista.html, con la lista cerrada · Proceso: P8 #}
+{% load fche %}<div class="fche-cierre-jornada" id="cierre-jornada">
+  <span class="small fw-semibold">Al cerrar la jornada (opcional)</span>
+  {% if perms.documentos.add_documento %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'documentos:nuevo' %}?sesion={{ jornada.pk }}&amp;actividad={{ object.pk }}">{% icono "subir" 14 %}Evidencia del día (foto)</a>{% endif %}
+  {% if url_gasto_jornada %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_gasto_jornada }}" data-gasto-jornada>{% icono "finanzas" 14 %}¿Hubo gastos este día?</a>{% endif %}
+  <a class="small" href="{{ jornada.get_absolute_url }}">Minuta de la jornada</a>
+</div>

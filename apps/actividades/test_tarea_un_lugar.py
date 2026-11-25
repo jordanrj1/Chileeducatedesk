@@ -10,7 +10,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from apps.actividades import servicios
-from apps.actividades.models import Participacion
+from apps.actividades.models import AgendaActividad, Participacion
 from apps.personas.models import ContactoEmergencia, Persona
 
 pytestmark = pytest.mark.django_db
@@ -81,13 +81,16 @@ def test_tab_agenda_en_una_tarea_abre_informacion_con_el_historial_de_reprograma
 def test_equipo_y_asistencia_separa_equipo_e_invitados_y_beneficiarios_va_aparte(cg, tarea, crear_persona, rol, estado_part):
     _participar(tarea, crear_persona("Tallerista"), rol("tallerista"), estado_part("confirmado"))
     _participar(tarea, crear_persona("Alcalde"), rol("autoridad"), estado_part("confirmado"), cargo="Alcalde de Comuna Ficticia")
+    AgendaActividad.objects.create(actividad=tarea, fecha=HOY, hora_inicio=time(10), estado=tarea.estado)  # F28: la lista es de una jornada
     _participar(tarea, crear_persona("Vecina", fecha_nacimiento=HOY.replace(year=HOY.year - 30) - timedelta(days=1)), rol("beneficiario"),
                 estado_part("confirmado"))
     equipo = cg.get(f"{tarea.get_absolute_url()}?tab=participantes").content.decode()
     assert "Equipo ejecutor" in equipo and "Invitados y contactos" in equipo
-    # F26 P1a: «Pasar lista» incluye a todos (también a los beneficiarios); el detalle del equipo sigue sin ellos
+    # F26 P1a: «Pasar lista» incluye a todos (también a los beneficiarios); el detalle del equipo sigue sin ellos.
+    # F28: la lista es de la jornada (la fecha programada) y la matriz filtra por grupo (Beneficiarios)
     lista, detalle = equipo.split('id="pasar-lista"')[1].split("</section>", 1)
-    assert "Vecina" in lista and "Beneficiarios" in lista
+    assert "Vecina" in lista and "Beneficiarios" in detalle.split('id="matriz"')[1]
+    detalle = detalle.split("</section>", 1)[1]
     assert "Tallerista" in detalle and "Autoridad · Alcalde de Comuna Ficticia" in detalle and "Vecina" not in detalle
     benef = cg.get(f"{tarea.get_absolute_url()}?tab=beneficiarios").content.decode()
     assert "Vecina" in benef and "Tallerista" not in benef and "30 años" in benef and "Inscrito" in benef
@@ -123,7 +126,9 @@ def test_registrar_beneficiario_el_dia_de_la_tarea_queda_asistio_y_usar_persona_
     assert r.status_code == 302
     assert Persona.objects.filter(nombres="Rosa").count() == 1
     p = Participacion.objects.get(actividad=tarea, persona=existente)
-    assert p.estado.codigo == "asistio" and p.asistencia is True and p.cargo == "Vecina de la Etapa 2"
+    # F28: queda «Inscrito» y «Presente» en la jornada del día (la marca no cambia el estado de inscripción)
+    assert p.estado.codigo == "confirmado" and p.asistencia is True and p.cargo == "Vecina de la Etapa 2"
+    assert p.asistencias_sesion.get().marca == "presente"
 
 
 def test_pestana_beneficiarios_con_consultas_fijas(cg, gestor, proyecto, crear_actividad, crear_persona, rol, estado_part, comuna):

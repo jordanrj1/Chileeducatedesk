@@ -1,4 +1,4 @@
-{# Qué es: Ficha de una sesión: fecha, minuta, asistencia de esa sesión y acuerdos. #}
+{# Qué es: Ficha de una sesión o jornada: fecha, minuta, la lista del día (F28: marcas por persona, solo lectura; se pasa en «Equipo y asistencia») y acuerdos. #}
 {# Dónde se usa: /actividades/<int:pk>/sesiones/<int:sid> · Proceso: P8 #}
 {% extends "base.html" %}
 {% load fche %}
@@ -52,18 +52,16 @@
   </div>
   <div class="col-12 col-xl-5">
     <section class="fche-tarjeta">
-      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">{% icono "usuarios_check" 18 "text-primary" %}Asistencia de la sesión</h2></div>
-      {% if filas %}
-      <form method="post" action="{% url 'actividades:sesion_asistencia' actividad.pk sesion.pk %}">{% csrf_token %}
-        <ul class="fche-pendiente__lista">{% for p, valor in filas %}
-          <li><span class="min-w-0"><a href="{{ p.persona.get_absolute_url }}">{{ p.persona }}</a><span class="d-block small text-muted">{{ p.rol }}</span></span>
-          {% if puede_asistencia %}<select class="form-select form-select-sm" style="max-width:9.5rem" name="asistio_{{ p.pk }}" aria-label="Asistencia de {{ p.persona }}">
-            <option value="" {% if valor is None %}selected{% endif %}>Sin registro</option><option value="si" {% if valor is True %}selected{% endif %}>Asistió</option><option value="no" {% if valor is False %}selected{% endif %}>No asistió</option></select>
-          {% else %}<span class="small">{% if valor is True %}Asistió{% elif valor is False %}No asistió{% else %}—{% endif %}</span>{% endif %}</li>{% endfor %}</ul>
-        {% if puede_asistencia %}<div class="fche-tarjeta__pie"><button class="btn btn-primary btn-sm">Guardar asistencia de la sesión</button>
-          <p class="small text-muted mb-0 mt-2">La asistencia de la actividad se calcula desde las sesiones: asistió si vino al menos a una; no asistió si faltó a todas. Se puede corregir en «Pasar lista».</p></div>{% endif %}
-      </form>
-      {% else %}<div class="fche-pendiente__vacio">La actividad aún no tiene participantes registrados.</div>{% endif %}
+      <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">{% icono "usuarios_check" 18 "text-primary" %}Lista de la jornada</h2>
+        {% if sesion.lista_cerrada %}{% estado "cerrada" "Cerrada" %}{% elif sesion.suspendida %}{% estado "suspendida" "Suspendida" %}{% else %}{% estado "abierta" "Abierta" %}{% endif %}</div>
+      {% if sesion.suspendida %}<div class="fche-pendiente__vacio">Jornada suspendida{% if sesion.motivo_suspension %}: {{ sesion.motivo_suspension }}{% endif %}.</div>
+      {% elif filas %}
+        <ul class="fche-pendiente__lista">{% for f in filas %}
+          <li><span class="min-w-0"><a href="{{ f.persona.get_absolute_url }}">{{ f.persona }}</a><span class="d-block small text-muted">{{ f.roles }}{% if f.marca.observacion %} · {{ f.marca.observacion }}{% endif %}</span></span>
+          {% if f.marca %}{% estado f.codigo f.nombre_marca %}{% else %}<span class="small text-muted">Sin marcar</span>{% endif %}</li>{% endfor %}</ul>
+      {% else %}<div class="fche-pendiente__vacio">Nadie inscrito en la fecha de esta jornada.</div>{% endif %}
+      {% if puede_asistencia %}<div class="fche-tarjeta__pie"><a class="btn btn-primary btn-sm" href="{{ url_pasar_lista }}">{% icono "usuarios_check" 15 %}{% if sesion.lista_abierta %}Pasar lista{% else %}Ver la lista{% endif %}</a>
+        <p class="small text-muted mb-0 mt-2">La lista de cada jornada se pasa en «Equipo y asistencia»: cinco marcas por persona, y se cierra al terminar.</p></div>{% endif %}
     </section>
     <section class="fche-tarjeta mt-4">
       <div class="fche-tarjeta__cabecera"><h2 class="fche-tarjeta__titulo">{% icono "documentos" 18 "text-primary" %}Evidencias</h2>

@@ -1,0 +1,5 @@
+{# Qué es: F28 · Resumen de asistencia de una participación en las tablas: días presentes sobre días con marca y porcentaje (sin justificados ni jornadas suspendidas); sin marcas, el resumen guardado (Asistió / No asistió) o «—». #}
+{# Dónde se usa: pestañas participantes y beneficiarios de la actividad o tarea · Proceso: P8 #}
+{% with r=p.resumen_asistencia %}{% if r and r.con_marca %}<span title="Días presentes sobre días con marca">{{ r.presentes }} de {{ r.con_marca }} día{{ r.con_marca|pluralize }}</span> · {{ r.porcentaje }} %{% if r.justificados %}<span class="d-block small text-muted">{{ r.justificados }} justificado{{ r.justificados|pluralize }}</span>{% endif %}
+{% elif r and r.justificados %}<span class="small text-muted">{{ r.justificados }} justificado{{ r.justificados|pluralize }}</span>
+{% elif p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% elif antes_de_fecha %}<span class="small text-muted">Se marca desde el día de la actividad</span>{% else %}<span class="text-muted">—</span>{% endif %}{% endwith %}

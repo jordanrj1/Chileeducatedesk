@@ -87,7 +87,8 @@ def test_alta_queda_inscrito(cg, actividad, crear_persona, rol):
 
 def test_el_estado_ofrece_solo_los_cinco_y_conserva_el_antiguo(actividad, crear_persona, rol, estado_part):
     cinco = set(ESTADOS_PARA_ELEGIR)
-    assert cinco == {"confirmado", "asistio", "no_asistio", "cancelo", "lista_espera"}
+    # F28: «Asistió» y «No asistió» ya no son estados de inscripción (la asistencia es por jornada): se eligen tres
+    assert cinco == {"confirmado", "cancelo", "lista_espera"}
     assert set(ParticipanteNuevoForm(actividad=actividad).fields["estado"].queryset.values_list("codigo", flat=True)) == cinco
     nueva = Participacion.objects.create(actividad=actividad, persona=crear_persona(), rol=rol("voluntario"), estado=estado_part("confirmado"))
     assert set(ParticipacionEditarForm(instance=nueva).fields["estado"].queryset.values_list("codigo", flat=True)) == cinco

@@ -162,7 +162,7 @@ def test_rechazados_y_cancelados_no_cuentan_para_capacidad(actividad, lugar, ges
     programar(actividad, gestor, lugar)
     for _ in range(20):
         participar(actividad, crear_persona(), rol)
-    for est in ("rechazo", "cancelo", "no_asistio"):
+    for est in ("rechazo", "cancelo", "retirado"):  # F28: «No asistió» ya no saca de la tarea; «Retirado» sí deja de ocupar cupo
         participar(actividad, crear_persona(), rol, estado=est)
     assert "capacidad" not in codigos(actividad)
 
@@ -344,7 +344,8 @@ def test_asistencia(cg, crear_actividad, crear_persona, rol, estado_part):
     for p in (a, b, c):
         p.refresh_from_db()
     assert (a.asistencia, b.asistencia, c.asistencia) == (True, False, None)
-    assert a.estado.codigo == "asistio" and b.estado.codigo == "no_asistio" and c.estado.codigo == "confirmado"
+    # F28: la marca va a la jornada de hoy y no cambia el estado de inscripción
+    assert a.estado.codigo == b.estado.codigo == c.estado.codigo == "confirmado"
 
 
 # --- finalizar (queda «realizada») ----------------------------------------------------------
@@ -584,7 +585,8 @@ def test_agregar_persona_que_llego(cg, crear_actividad, crear_persona, rol, esta
     p = crear_persona("Llegó")
     r = cg.post(f"/actividades/{actividad.pk}/participantes/nuevo", {"persona": p.pk, "rol": rol("participante").pk, "estado": estado_part("confirmado").pk, "llego": "1"})
     part = actividad.participaciones.get(persona=p)
-    assert r.status_code == 302 and "tab=participantes" in r["Location"] and part.asistencia is True and part.estado.codigo == "asistio"
+    # F28: queda «Inscrito» y «Presente» en la jornada de hoy
+    assert r.status_code == 302 and "tab=participantes" in r["Location"] and part.asistencia is True and part.estado.codigo == "confirmado"
     cg.post(f"/actividades/{actividad.pk}/participantes/rapido", {"nombres": "Nueva", "apellido_paterno": "Llegada", "rol": rol("participante").pk, "llego": "1"})
     nueva = actividad.participaciones.get(persona__nombres="Nueva")
     assert nueva.asistencia is True

@@ -1,0 +1,27 @@
+{# Qué es: F28 · Matriz de asistencia: una fila por persona (una sola aunque tenga dos roles) y una columna por jornada, con la marca de cada día (insignia con su inicial y el nombre completo para lectores de pantalla), los días presentes y el porcentaje; arriba de cada jornada, presentes sobre inscritos. Filtros: todos, equipo ejecutor, invitados y contactos, beneficiarios. En el celular la columna de nombres queda fija y la tabla se desplaza de lado. #}
+{# Dónde se usa: actividades/_asistencia.html · Proceso: P8 #}
+{% load fche %}<div class="fche-matriz" id="matriz">
+  <div class="fche-matriz__cabeza">
+    <h4 class="h6 mb-0">Matriz de asistencia</h4>
+    <nav class="fche-matriz__filtros" aria-label="Filtrar la matriz">{% for clave, etiqueta in filtros_grupo %}<a class="btn btn-sm {% if grupo_matriz == clave %}btn-secondary{% else %}btn-outline-secondary{% endif %}" href="?tab=participantes{% if clave %}&amp;grupo={{ clave }}{% endif %}{% if jornada.pk %}&amp;jornada={{ jornada.pk }}{% endif %}#matriz"{% if grupo_matriz == clave %} aria-current="true"{% endif %}>{{ etiqueta }}</a>{% endfor %}</nav>
+  </div>
+  {% if matriz.filas %}
+  <div class="fche-matriz__marco" role="region" aria-label="Matriz de asistencia: personas por jornadas" tabindex="0">
+    <table class="table table-sm align-middle mb-0 fche-matriz__tabla">
+      <thead><tr><th scope="col" class="fche-matriz__persona">Persona</th>
+        {% for c in matriz.columnas %}{% with j=c.jornada %}<th scope="col" class="fche-matriz__jornada{% if j is jornada %} is-activa{% endif %}">
+          <a href="?tab=participantes&amp;jornada={% if j.pk %}{{ j.pk }}{% else %}programada{% endif %}{% if grupo_matriz %}&amp;grupo={{ grupo_matriz }}{% endif %}#pasar-lista">{{ j.nombre_jornada }}</a>
+          <span class="d-block fw-normal small">{{ j.fecha|date:"d-m"|default:"—" }}</span>
+          <span class="d-block fw-normal small text-muted" title="Presentes sobre inscritos">{% if j.suspendida %}susp.{% else %}{{ c.presentes }}/{{ c.inscritos }}{% endif %}</span>
+        </th>{% endwith %}{% endfor %}
+        <th scope="col" class="text-end">Días</th><th scope="col" class="text-end">%</th></tr></thead>
+      <tbody>{% for f in matriz.filas %}<tr>
+        <th scope="row" class="fche-matriz__persona"><a href="{{ f.persona.get_absolute_url }}">{{ f.persona }}</a><span class="d-block small text-muted fw-normal">{{ f.roles }}{% if f.participacion.retirada %} · retirada{% endif %}</span></th>
+        {% for c in f.celdas %}<td class="text-center{% if c.jornada.suspendida %} fche-matriz__suspendida{% endif %}">{% if c.marca %}<span class="fche-marca-celda fche-marca-celda--{{ c.marca.marca }}" title="{{ c.nombre }}{% if c.marca.observacion %}: {{ c.marca.observacion }}{% endif %}"><span aria-hidden="true">{{ c.corta }}</span><span class="visually-hidden">{{ c.nombre }}</span></span>{% elif c.jornada.suspendida %}<span class="text-muted" title="Jornada suspendida">·</span>{% elif c.en_lista %}<span class="text-muted" title="Sin marcar">·<span class="visually-hidden">Sin marcar</span></span>{% else %}<span class="text-muted" title="No inscrita ese día">—<span class="visually-hidden">No inscrita ese día</span></span>{% endif %}</td>{% endfor %}
+        {% with r=f.resumen %}<td class="text-end">{{ r.presentes }}</td><td class="text-end">{% if r.porcentaje is not None %}{{ r.porcentaje }} %{% else %}<span class="text-muted">—</span>{% endif %}</td>{% endwith %}
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <p class="fche-matriz__leyenda small text-muted mb-0"><span class="fche-marca-celda fche-marca-celda--presente">P</span> Presente <span class="fche-marca-celda fche-marca-celda--atrasado">T</span> Atrasado <span class="fche-marca-celda fche-marca-celda--retiro_anticipado">R</span> Se retiró antes <span class="fche-marca-celda fche-marca-celda--justificado">J</span> Justificado (no cuenta para el %) <span class="fche-marca-celda fche-marca-celda--ausente">A</span> Ausente · «·» sin marcar · «—» no inscrita ese día. El % no cuenta jornadas suspendidas.</p>
+  {% else %}<p class="small text-muted mb-0">{% if grupo_matriz %}Nadie en este grupo.{% else %}Aún no hay personas en la {% if object.proyecto_id %}tarea{% else %}actividad{% endif %}.{% endif %}</p>{% endif %}
+</div>

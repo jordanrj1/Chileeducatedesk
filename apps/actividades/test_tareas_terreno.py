@@ -125,7 +125,7 @@ def test_persona_existente_con_grupo_sin_duplicar_vinculos(cg, crear_actividad, 
 
     PersonaOrganizacion.objects.create(persona=persona, organizacion=junta, cargo="Dirigente")
     ComunidadMiembro.objects.create(persona=persona, comunidad=comunidad, rol="dirigente")
-    t = crear_actividad("Tarea")
+    t = crear_actividad("Tarea", estado="confirmada")  # F28: «Llegó» marca en la lista del día: no en una actividad pendiente
     r = cg.post(f"/actividades/{t.pk}/participantes/nuevo", {
         "persona": persona.pk, "rol": rol("voluntario").pk, "estado": estado_part("confirmado").pk,
         "organizacion": junta.pk, "cargo": "dirigente", "comunidad": comunidad.pk, "llego": "1"})
@@ -138,10 +138,13 @@ def test_persona_existente_con_grupo_sin_duplicar_vinculos(cg, crear_actividad, 
 
 # --- Criterio 3: sesiones --------------------------------------------------------------
 def test_segunda_sesion_tiene_su_propia_lista(cg, crear_actividad, crear_persona, rol, estado_part):
-    t = crear_actividad("Tarea con sesiones")
-    a, b = (Participacion.objects.create(actividad=t, persona=crear_persona(), rol=rol("voluntario"), estado=estado_part("invitado")) for _ in range(2))
-    s1 = SesionActividad.objects.create(actividad=t, numero=1, fecha=FUTURO, hora_inicio=time(10))
-    s2 = SesionActividad.objects.create(actividad=t, numero=2, fecha=FUTURO + timedelta(days=2), hora_inicio=time(10))
+    # F28: la lista de una jornada se pasa desde su día y no en una actividad pendiente: la tarea está confirmada y las
+    # dos sesiones ya ocurrieron
+    t = crear_actividad("Tarea con sesiones", estado="confirmada")
+    a, b = (Participacion.objects.create(actividad=t, persona=crear_persona(), rol=rol("voluntario"), estado=estado_part("invitado"),
+                                         inscrito_en=date.today() - timedelta(days=7)) for _ in range(2))
+    s1 = SesionActividad.objects.create(actividad=t, numero=1, fecha=date.today() - timedelta(days=4), hora_inicio=time(10))
+    s2 = SesionActividad.objects.create(actividad=t, numero=2, fecha=date.today() - timedelta(days=2), hora_inicio=time(10))
     cg.post(f"/actividades/{t.pk}/sesiones/{s1.pk}/asistencia", {f"asistio_{a.pk}": "si", f"asistio_{b.pk}": "si"})
     cg.post(f"/actividades/{t.pk}/sesiones/{s2.pk}/asistencia", {f"asistio_{a.pk}": "si", f"asistio_{b.pk}": "no"})
     assert SesionAsistencia.objects.filter(sesion=s1, asistio=True).count() == 2

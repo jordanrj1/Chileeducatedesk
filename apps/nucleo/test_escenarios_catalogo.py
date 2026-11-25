@@ -585,10 +585,12 @@ def test_RE_E8_se_ve_la_fecha_real_y_la_de_registro(cg, crear_actividad, gestor,
 def test_RE_E9_quien_rechazo_pero_asistio(cg, crear_actividad, crear_persona, rol, estado_part):
     a = crear_actividad("Confirmada", estado="confirmada")
     p = Participacion.objects.create(actividad=a, persona=crear_persona("Rechazó"), rol=rol("participante"), estado=estado_part("rechazo"))
-    assert "Rechazó" in cg.get(f"{a.get_absolute_url()}?tab=asistencia").content.decode()
+    # F28: quien asiste está en Beneficiarios; marcarla «Presente» la deja como «persona que llegó»: vuelve a estar
+    # inscrita (el estado «Asistió» ya no existe como inscripción) y su historia conserva el rechazo
+    assert "Rechazó" in cg.get(f"{a.get_absolute_url()}?tab=beneficiarios").content.decode()
     cg.post(f"/actividades/{a.pk}/asistencia", {f"asistencia_{p.pk}": "si"})
     p.refresh_from_db()
-    assert p.asistencia is True and p.estado.codigo == "asistio" and p.history.filter(estado__codigo="rechazo").exists()
+    assert p.asistencia is True and p.estado.codigo == "confirmado" and p.history.filter(estado__codigo="rechazo").exists()
 
 
 def test_HI_E2_quitar_participante_por_error(cg, actividad, persona, rol, estado_part):

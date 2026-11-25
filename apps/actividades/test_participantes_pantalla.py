@@ -73,14 +73,15 @@ def test_E7_asistencia_se_marca_en_participantes(cg, crear_actividad, gestor, lu
     p = _participar(a, crear_persona(), rol("tallerista"), estado_part("confirmado"))
     servicios.programar(a, gestor, FUTURO, time(10), time(11), lugar, None)
     html = cg.get(f"{a.get_absolute_url()}?tab=participantes").content.decode()
-    # F26 P1a: «Pasar lista» usa una casilla por fila (name="asistio"); antes del día no se ofrece
-    assert "Se marca desde el día de la actividad" in html and f'name="asistio" value="{p.pk}"' not in html
+    # F26 P1a: «Pasar lista»; antes del día no se ofrece. F28: por jornada, con cinco marcas por persona (name="marca_<persona>")
+    assert "Se marca desde el día de la actividad" in html and f'name="marca_{p.persona_id}"' not in html
     servicios.programar(a, gestor, HOY, time(10), time(11), lugar, None, "se adelantó")
     r = cg.get(f"{a.get_absolute_url()}?tab=asistencia")  # la dirección antigua abre Participantes
     html = r.content.decode()
     assert r.context["pestana"] == "participantes" and "asistencia" not in [c for c, _ in r.context["pestanas"]]
-    assert f'name="asistio" value="{p.pk}"' in html and "Guardar asistencia" in html and "Sin registro de asistencia" in html
-    assert "+ Agregar persona" in html and "Agregar persona que llegó" not in html  # F26 P1a: un solo «+ Agregar persona»
+    # F28: la lista de la jornada de hoy («Sin registro de asistencia» quedó en Cierre) y «Agregar persona que llegó» en la lista
+    assert f'name="marca_{p.persona_id}"' in html and "Guardar lista" in html and "Marcar el resto como ausente" in html
+    assert html.count("+ Agregar persona") == 1 and "Agregar persona que llegó" in html.split('id="pasar-lista"')[1]
     r = cg.post(f"/actividades/{a.pk}/asistencia", {f"asistencia_{p.pk}": "si", "sin_registro": "0"})
     p.refresh_from_db()
     assert p.asistencia is True and r["Location"].endswith("?tab=participantes")

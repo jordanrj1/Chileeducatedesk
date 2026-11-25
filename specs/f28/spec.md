@@ -76,6 +76,21 @@ Migración de datos, reversible como no-op:
 - cada marca existente pasa a esa jornada (verdadero → Presente; falso → Ausente) y la lista queda cerrada como «migrada»;
 - se registra en el historial.
 
+## 6 bis. Decisiones de implementación de A [P]
+- **Jornada programada:** la fecha vigente de la agenda es una jornada aunque no se haya guardado; se guarda al usarla (pasar lista, suspenderla, conteo sin nombres, «+ Nueva jornada»). Así, reprogramar una tarea sin lista no deja jornadas vacías, y la jornada sin lista sigue a la fecha nueva. Una jornada con lista no se mueve ni se borra: se avisa.
+- **Inscrita desde** (`Participacion.inscrito_en`): por defecto, el día en que se inscribe; editable en «Editar participación». Para lo digitado tarde, la lista de una jornada pasada ofrece «Inscritas después de esta jornada → Incluir en esta lista». La migración la fija en la fecha más temprana entre el alta, la primera jornada y la fecha programada (nadie desaparece de listas que ya existían).
+- **Una marca por persona:** se guarda en su participación principal (la vigente, con el rol de menor orden); si tenía otra marca antigua en la misma jornada, se vacía.
+- **Resumen** (`Participacion.asistencia`): verdadero con una presencia o más; falso si sus marcas son ausencias; vacío sin marcas o con solo justificados. Se recalcula solo para las personas cuyas marcas cambian.
+- **Porcentaje:** presentes / (presentes + ausentes). No cuentan justificados, jornadas suspendidas ni personas sin marcar.
+- **Quién pasa lista:** desde el día de la jornada, en actividades planificadas, confirmadas, reprogramadas o realizadas (registro tardío, en la auditoría); no en pendientes, suspendidas ni canceladas. Permiso `change_participacion` (como antes); «+ Nueva jornada», `add_sesionactividad`; Excel, `exportar_actividad` (sin `exportar_persona`, los menores no se nombran: se cuentan).
+- **Suspender** solo una lista sin marcas. **Reabrir** (con motivo) vale para listas cerradas y jornadas suspendidas; queda en `CambioLista` y en la auditoría.
+- **Cerrar con personas sin marcar:** lo marcado se guarda y la lista sigue abierta, con el aviso de quiénes faltan.
+- **Finalizar:** con jornadas guardadas, cada jornada hasta hoy debe estar cerrada, suspendida o con conteo; las listas abiertas con todas las personas marcadas se cierran al finalizar («Al finalizar la actividad»). «Sin registro de asistencia» explícito sigue valiendo (decisión vigente del cierre). Sin jornadas guardadas, la regla de antes.
+- **Rutas de antes:** `/actividades/<id>/asistencia` (F26 P1a) y `/sesiones/<id>/asistencia` (F22) siguen: se traducen a Presente / Ausente en la jornada de hoy o en la indicada; quien no estaba en la lista ese día y viene marcado queda como «persona que llegó».
+- **«Asistió» y «No asistió»** quedan solo como estados históricos: ya no se eligen ni sacan a nadie de la tarea. «Llegó / asistió» deja «Inscrito» y «Presente» en la jornada.
+- **Punto de extensión para B:** al cerrar la lista, «Evidencia del día» (documento de la jornada) y «¿Hubo gastos este día?», que aparece cuando `vistas_asistencia.url_gasto_de_jornada()` entregue la dirección del registro de gastos.
+- **Pendiente para C:** en pantalla las sesiones siguen como «Sesión N» en su pestaña (minutas) y como «Jornada N» en la asistencia; unificar el nombre. Las horas de participación siguen calculándose con la programación, no por jornada.
+
 ## 7. Escenarios (cada uno con su prueba)
 **Asistencia**
 

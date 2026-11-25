@@ -1,5 +1,11 @@
 """Pruebas de F26 P1a (specs/f26/spec.md): «Pasar lista» único en «Equipo y asistencia», asistencia calculada desde las
-sesiones y un solo «+ Agregar persona». Todos los datos son ficticios."""
+sesiones y un solo «+ Agregar persona». Todos los datos son ficticios.
+
+F28 (specs/f28/spec.md) cambió a propósito parte de lo que aquí se prueba: «Pasar lista» es ahora por jornada, con cinco
+marcas por persona (name="marca_<persona>") en vez de una casilla por participación; la marca ya no cambia el estado de
+inscripción (no hay «Asistió» ni «No asistió») y la asistencia de la participación es el resumen de sus jornadas. Las
+rutas de antes (/asistencia y /sesiones/<id>/asistencia) siguen funcionando contra la jornada de hoy o la indicada. Cada
+prueba ajustada lo dice en su comentario."""
 from datetime import date, time, timedelta
 from pathlib import Path
 
@@ -45,29 +51,37 @@ def _tres(tarea, crear_persona, rol, estado_part):
 
 # --- Pasar lista ------------------------------------------------------------------------------
 def test_pasar_lista_un_formulario_con_todos_por_grupo(cg, tarea_hoy, crear_persona, rol, estado_part):
+    # F28: un solo formulario de lista por jornada, con todos (equipo, invitados y beneficiarios, en ese orden) y las cinco
+    # marcas por persona; «Sin registro de asistencia» quedó en Cierre y «Todos asistieron» es «Marcar el resto…»
     equipo, contacto, benef = _tres(tarea_hoy, crear_persona, rol, estado_part)
     erroneo = _p(tarea_hoy, crear_persona("Error"), rol("voluntario"), estado_part("registro_erroneo"))
     html = cg.get(f"{tarea_hoy.get_absolute_url()}?tab=participantes").content.decode()
     lista = html.split('id="pasar-lista"')[1].split("</section>", 1)[0]
-    assert lista.count("<form") == 1 and lista.count("Guardar asistencia") == 1
-    for etiqueta in ("Equipo ejecutor", "Invitados y contactos", "Beneficiarios", "Sin registro de asistencia", "Todos asistieron", "Marcar todos"):
+    assert lista.count("/jornadas/programada/lista") == 1 and lista.count("Guardar lista") == 1
+    for etiqueta in ("Marcar el resto como ausente", "Guardar y cerrar lista", "Agregar persona que llegó", "Presente", "Se retiró antes"):
         assert etiqueta in lista, etiqueta
     for p in (equipo, contacto, benef):
-        assert f'name="asistio" value="{p.pk}"' in lista and f'for="asistio-{p.pk}"' in lista  # casilla con su etiqueta
-    assert f'value="{erroneo.pk}"' not in lista
+        pid = p.persona_id
+        assert f'name="marca_{pid}" id="m-{pid}-presente"' in lista and f'for="m-{pid}-ausente"' in lista  # opción con su etiqueta
+    assert lista.index("Tallerista") < lista.index("Alcaldesa") < lista.index("Vecina")
+    assert f'value="{erroneo.persona_id}"' not in lista
     assert "<table" not in lista  # lista apilable, no tabla ancha
 
 
 def test_guardar_lista_marcada_asistio_y_sin_marcar_no_asistio(cg, tarea_hoy, crear_persona, rol, estado_part):
+    # F28: la ruta de F26 sigue, contra la jornada de hoy: marcada → Presente; sin marcar → Ausente. El estado de
+    # inscripción ya no cambia (queda «Inscrito»).
     equipo, contacto, benef = _tres(tarea_hoy, crear_persona, rol, estado_part)
     fuera = _p(tarea_hoy, crear_persona("Fuera"), rol("voluntario"), estado_part("confirmado"))  # no viene en el formulario
     r = cg.post(f"/actividades/{tarea_hoy.pk}/asistencia", {"en_lista": [equipo.pk, contacto.pk, benef.pk], "asistio": [benef.pk], "sin_registro": "0"})
     assert r.status_code == 302 and r["Location"].endswith("?tab=participantes")
     for p in (equipo, contacto, benef, fuera):
         p.refresh_from_db()
-    assert (benef.asistencia, benef.estado.codigo) == (True, "asistio")
-    assert (equipo.asistencia, equipo.estado.codigo) == (False, "no_asistio") and contacto.asistencia is False
+    assert (benef.asistencia, benef.estado.codigo) == (True, "confirmado")
+    assert (equipo.asistencia, equipo.estado.codigo) == (False, "confirmado") and contacto.asistencia is False
     assert fuera.asistencia is None  # solo las filas incluidas
+    jornada = SesionActividad.objects.get(actividad=tarea_hoy)
+    assert set(jornada.asistencias.values_list("marca", flat=True)) == {"presente", "ausente"}
     # «Todos asistieron», sin JavaScript
     cg.post(f"/actividades/{tarea_hoy.pk}/asistencia", {"en_lista": [equipo.pk, contacto.pk, benef.pk], "todos": "1"})
     assert set(Participacion.objects.filter(pk__in=[equipo.pk, contacto.pk, benef.pk]).values_list("asistencia", flat=True)) == {True}
@@ -86,7 +100,8 @@ def test_pasar_lista_solo_desde_el_dia(cg, gestor, crear_actividad, proyecto, cr
     servicios.programar(t, gestor, FUTURO, time(10), time(12), None, None)
     p = _p(t, crear_persona(), rol("tallerista"), estado_part("confirmado"))
     html = cg.get(f"{t.get_absolute_url()}?tab=participantes").content.decode()
-    assert 'id="pasar-lista"' in html and f'name="asistio" value="{p.pk}"' not in html and "La asistencia se marca desde el día" in html
+    # F28: la lista de la jornada se pasa desde su día (nombre de campo y aviso nuevos)
+    assert 'id="pasar-lista"' in html and f'name="marca_{p.persona_id}"' not in html and "La lista se pasa desde el día de la jornada" in html
     cg.post(f"/actividades/{t.pk}/asistencia", {"en_lista": [p.pk], "asistio": [p.pk]})
     p.refresh_from_db()
     assert p.asistencia is None
@@ -125,6 +140,8 @@ def test_beneficiarios_muestra_asistencia_y_enlaza_a_pasar_lista(cg, tarea_hoy, 
 
 # --- Asistencia desde las sesiones -------------------------------------------------------------
 def test_asistencia_calculada_desde_las_sesiones_y_corregible(cg, tarea_hoy, crear_persona, rol, estado_part):
+    # F28: la asistencia de la participación sigue siendo el resumen de las listas (ahora, de las jornadas), sin cambiar
+    # el estado de inscripción; la tabla muestra «días presentes de días con marca» en vez de «Calculada desde las sesiones»
     a, b, c = (_p(tarea_hoy, crear_persona(n), rol("beneficiario"), estado_part("confirmado")) for n in ("Uno", "Dos", "Tres"))
     s1 = SesionActividad.objects.create(actividad=tarea_hoy, numero=1, fecha=HOY, hora_inicio=time(10))
     s2 = SesionActividad.objects.create(actividad=tarea_hoy, numero=2, fecha=HOY, hora_inicio=time(15))
@@ -134,12 +151,12 @@ def test_asistencia_calculada_desde_las_sesiones_y_corregible(cg, tarea_hoy, cre
     cg.post(f"/actividades/{tarea_hoy.pk}/sesiones/{s2.pk}/asistencia", {f"asistio_{a.pk}": "si", f"asistio_{b.pk}": "no", f"asistio_{c.pk}": ""})
     for p in (a, b, c):
         p.refresh_from_db()
-    assert (a.asistencia, a.estado.codigo) == (True, "asistio")  # vino al menos a una
-    assert (b.asistencia, b.estado.codigo) == (False, "no_asistio")  # faltó a todas
-    assert c.asistencia is None  # sin datos de sesiones: no se toca
-    html = cg.get(f"{tarea_hoy.get_absolute_url()}?tab=participantes").content.decode()
-    assert "Calculada desde las sesiones" in html
-    # corrección manual desde «Pasar lista»
+    assert (a.asistencia, a.estado.codigo) == (True, "confirmado")  # vino al menos a una
+    assert (b.asistencia, b.estado.codigo) == (False, "confirmado")  # faltó a todas
+    assert c.asistencia is None  # sin marcas: no se toca
+    html = cg.get(f"{tarea_hoy.get_absolute_url()}?tab=beneficiarios").content.decode()
+    assert "1 de 2 días</span> · 50 %" in html
+    # corrección desde la ruta de «Pasar lista» de F26 (la jornada de hoy que sigue abierta: la de la mañana)
     cg.post(f"/actividades/{tarea_hoy.pk}/asistencia", {"en_lista": [a.pk, b.pk, c.pk], "asistio": [a.pk, b.pk]})
     b.refresh_from_db()
     assert b.asistencia is True
@@ -150,7 +167,9 @@ def test_un_solo_boton_agregar_persona(cg, tarea_hoy, crear_persona, rol, estado
     _tres(tarea_hoy, crear_persona, rol, estado_part)
     html = cg.get(f"{tarea_hoy.get_absolute_url()}?tab=participantes").content.decode()
     assert html.count("+ Agregar persona") == 1
-    for duplicado in ("Crear persona nueva", "Agregar persona que llegó", "Crear y marcar asistencia"):
+    # F28: «Agregar persona que llegó» vuelve, pero dentro de la lista de la jornada (lo pide la spec, punto 2)
+    assert html.split('id="pasar-lista"')[1].count("Agregar persona que llegó") == 1
+    for duplicado in ("Crear persona nueva", "Crear y marcar asistencia"):
         assert duplicado not in html, duplicado
 
 
@@ -173,7 +192,7 @@ def test_formulario_unico_y_guardar_y_agregar_otra(cg, tarea_hoy, crear_persona,
     r = cg.post(url, datos)
     assert r.status_code == 302 and r["Location"].startswith(url + "?")
     p = Participacion.objects.get(actividad=tarea_hoy, persona__nombres="Primera")
-    assert (p.asistencia, p.estado.codigo, p.institucion, p.comunidad) == (True, "asistio", junta, comunidad)
+    assert (p.asistencia, p.estado.codigo, p.institucion, p.comunidad) == (True, "confirmado", junta, comunidad)  # F28: inscrita y «Presente» hoy
     siguiente = cg.get(r["Location"])
     f = siguiente.context["form"]
     assert (f["rol"].value(), f["organizacion"].value(), f["comunidad"].value(), f["llego"].value()) == (rol("beneficiario").pk, junta.pk, comunidad.pk, True)

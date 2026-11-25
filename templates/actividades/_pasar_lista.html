@@ -1,0 +1,74 @@
+{# Qué es: F28 · «Pasar lista» de una jornada: una fila por persona inscrita ese día (una sola aunque tenga dos roles) con las cinco marcas como botones de opción (Presente, Atrasado, Se retiró antes, Justificado, Ausente), observación, «Guardar lista», «Marcar el resto como ausente», «Cerrar lista» y «+ Agregar persona que llegó». Cerrada: solo lectura, con quién la cerró y «Reabrir» con motivo. Suspendida: sin lista, con su motivo. Al cerrar: «Evidencia del día» y, cuando exista el registro de gastos, «¿Hubo gastos este día?». En pantalla angosta, cada fila se apila. #}
+{# Dónde se usa: actividades/_asistencia.html (pestaña participantes de la actividad o tarea) · Proceso: P8 #}
+{% load fche %}<section class="fche-lista-asistencia" id="pasar-lista" aria-labelledby="titulo-pasar-lista">
+<div class="fche-lista-asistencia__cabeza">
+  <div class="min-w-0">
+    <h4 class="h6 mb-0" id="titulo-pasar-lista">Pasar lista · {{ jornada.nombre_jornada }}{% if jornada.nombre %}: {{ jornada.nombre }}{% endif %}</h4>
+    <p class="small text-muted mb-0">{{ jornada.fecha|date:"l d-m-Y"|default:"Sin fecha" }}{% if jornada.hora_inicio %}, {{ jornada.hora_inicio|time:"H:i" }}{% if jornada.hora_fin %}–{{ jornada.hora_fin|time:"H:i" }}{% endif %}{% endif %}{% if jornada.lugar %} · {{ jornada.lugar }}{% endif %}{% if columna_elegida %} · {{ columna_elegida.inscritos }} inscrita{{ columna_elegida.inscritos|pluralize }}{% endif %}</p>
+  </div>
+  {% if jornada.lista_cerrada %}{% estado "cerrada" "Lista cerrada" %}{% elif jornada.suspendida %}{% estado "suspendida" "Suspendida" %}{% else %}{% estado "abierta" "Lista abierta" %}{% endif %}
+</div>
+
+{% if jornada.suspendida %}
+<p class="small mb-2">{% icono "alerta" 14 %} Jornada suspendida{% if jornada.motivo_suspension %}: {{ jornada.motivo_suspension }}{% endif %}. No tiene lista y no cuenta para el porcentaje.</p>
+{% elif jornada.lista_cerrada or not puede_pasar_lista %}
+{% if jornada.lista_cerrada %}<p class="small text-muted mb-2">{% icono "candado" 14 %} Solo lectura. Cerrada{% if jornada.cerrada_por %} por {{ jornada.cerrada_por.get_full_name|default:jornada.cerrada_por.get_username }}{% endif %}{% if jornada.cerrada_en %} el {{ jornada.cerrada_en|date:"d-m-Y H:i" }}{% endif %}.</p>
+{% else %}<p class="small text-muted mb-2">{{ motivo_sin_lista|default:"No tienes permiso para pasar lista." }}</p>{% endif %}
+{% if lista_jornada %}<ul class="fche-lista-asistencia__filas">{% for f in lista_jornada %}<li class="fche-lista-asistencia__fila fche-lista-asistencia__fila--lectura">
+  <span class="fche-lista-asistencia__persona">{{ f.persona }}<span class="fche-lista-asistencia__rol">{{ f.roles }}</span></span>
+  <span>{% if f.marca %}{% estado f.codigo f.nombre_marca %}{% else %}<span class="small text-muted">Sin marcar</span>{% endif %}{% if f.marca.observacion %} <span class="small text-muted">· {{ f.marca.observacion }}</span>{% endif %}</span>
+</li>{% endfor %}</ul>{% endif %}
+{% else %}
+<p class="small text-muted mb-2">Marca a cada persona. La lista queda abierta hasta que la cierres; cerrar exige que todas tengan marca. La marca no cambia su inscripción.</p>
+<form method="post" action="{% url 'actividades:lista_guardar' object.pk ruta_jornada %}" class="fche-lista-asistencia__form">{% csrf_token %}{% marca_envio %}
+<input type="hidden" name="_version" value="{{ jornada.version_lista }}">
+{% if lista_jornada %}
+<ul class="fche-lista-asistencia__filas">{% for f in lista_jornada %}{% with pid=f.persona.pk %}<li class="fche-lista-asistencia__fila">
+  <input type="hidden" name="en_lista" value="{{ pid }}">
+  <span class="fche-lista-asistencia__persona" id="persona-{{ pid }}">{{ f.persona }}<span class="fche-lista-asistencia__rol">{{ f.roles }}{% if not f.inscrita %} · no inscrita ese día{% endif %}</span></span>
+  <fieldset class="fche-marcas" aria-labelledby="persona-{{ pid }}">
+    {% for valor, etiqueta in marcas_opciones %}<input type="radio" class="btn-check" name="marca_{{ pid }}" id="m-{{ pid }}-{{ valor }}" value="{{ valor }}" autocomplete="off"{% if f.codigo == valor %} checked{% endif %}><label class="btn btn-sm fche-marcar fche-marcar--{{ valor }}" for="m-{{ pid }}-{{ valor }}">{{ etiqueta }}</label>{% endfor %}
+    <input type="radio" class="btn-check" name="marca_{{ pid }}" id="m-{{ pid }}-vacia" value="" autocomplete="off"{% if not f.codigo %} checked{% endif %}><label class="btn btn-sm fche-marcar fche-marcar--vacia" for="m-{{ pid }}-vacia" title="Sin marcar">—<span class="visually-hidden"> Sin marcar</span></label>
+  </fieldset>
+  <input class="form-control form-control-sm fche-lista-asistencia__obs" name="obs_{{ pid }}" value="{{ f.marca.observacion|default:'' }}" maxlength="250" placeholder="Observación" aria-label="Observación de {{ f.persona }}">
+</li>{% endwith %}{% endfor %}</ul>
+{% else %}<p class="small text-muted">Nadie está inscrito en esta fecha. Agrega a quien llegó o incluye a quienes se inscribieron después.</p>{% endif %}
+<div class="fche-lista-asistencia__acciones">
+  <button class="btn btn-primary btn-sm" name="accion" value="guardar">Guardar lista</button>
+  {% if lista_jornada %}<button class="btn btn-outline-secondary btn-sm" name="accion" value="resto">Marcar el resto como ausente</button>{% endif %}
+  <button class="btn btn-outline-dark btn-sm" name="accion" value="cerrar">{% icono "candado" 14 %}Guardar y cerrar lista</button>
+  {% if url_llego %}<a class="btn btn-outline-primary btn-sm" href="{{ url_llego }}">{% icono "persona_mas" 15 %}Agregar persona que llegó</a>{% endif %}
+</div>
+</form>
+{% endif %}
+
+{% if puede_marcar and jornada.fecha %}<div class="fche-lista-asistencia__mas">
+  {% if jornada.lista_cerrada or jornada.suspendida %}
+  <details class="fche-lista-asistencia__accion"><summary class="btn btn-outline-secondary btn-sm">Reabrir{% if jornada.suspendida %} la jornada{% else %} la lista{% endif %}</summary>
+    <form method="post" action="{% url 'actividades:lista_reabrir' object.pk ruta_jornada %}" class="d-flex flex-wrap gap-2 mt-2">{% csrf_token %}{% marca_envio %}
+      <input class="form-control form-control-sm" name="motivo" maxlength="250" required placeholder="Motivo (queda en el historial)" aria-label="Motivo para reabrir">
+      <button class="btn btn-outline-danger btn-sm">Reabrir</button></form></details>
+  {% elif puede_suspender %}
+  <details class="fche-lista-asistencia__accion"><summary class="btn btn-outline-secondary btn-sm">Suspender jornada</summary>
+    <form method="post" action="{% url 'actividades:jornada_suspender' object.pk ruta_jornada %}" class="d-flex flex-wrap gap-2 mt-2">{% csrf_token %}{% marca_envio %}
+      <input class="form-control form-control-sm" name="motivo" maxlength="250" required placeholder="Motivo (por ejemplo, lluvia)" aria-label="Motivo de la suspensión">
+      <button class="btn btn-outline-warning btn-sm">Suspender</button></form></details>
+  {% if perms.actividades.change_sesionactividad and not jornada.tiene_conteo %}
+  <form method="post" action="{% url 'actividades:jornada_conteo' object.pk ruta_jornada %}">{% csrf_token %}{% marca_envio %}
+    <button class="btn btn-outline-secondary btn-sm" title="Para público masivo: solo cifras por edad y sexo, sin datos personales">Conteo sin nombres</button></form>
+  {% endif %}{% endif %}
+  {% if jornada.tiene_conteo %}<span class="small text-muted">Conteo sin nombres: {{ jornada.asistentes_sin_registro }} persona{{ jornada.asistentes_sin_registro|pluralize }}{% if jornada.pk and perms.actividades.change_sesionactividad %} · <a href="{% url 'actividades:sesiones_editar' object.pk jornada.pk %}">Corregir</a>{% endif %}</span>{% endif %}
+</div>{% endif %}
+
+{% if inscritas_despues and puede_pasar_lista and jornada.lista_abierta %}
+<details class="fche-lista-asistencia__despues"><summary class="small">Inscritas después de esta jornada ({{ inscritas_despues|length }}): no aparecen en su lista</summary>
+  <form method="post" action="{% url 'actividades:lista_incluir' object.pk ruta_jornada %}" class="mt-2">{% csrf_token %}{% marca_envio %}
+    <p class="small text-muted mb-1">Si se digitaron tarde y sí estaban desde este día, márcalas: quedan inscritas desde el {{ jornada.fecha|date:"d-m-Y" }}.</p>
+    <ul class="list-unstyled small mb-2">{% for p in inscritas_despues %}<li class="form-check"><input class="form-check-input" type="checkbox" name="incluir" value="{{ p.pk }}" id="incluir-{{ p.pk }}"><label class="form-check-label" for="incluir-{{ p.pk }}">{{ p.persona }} · {{ p.rol_y_cargo }} (inscrita el {{ p.inscrito_en|date:"d-m-Y" }})</label></li>{% endfor %}</ul>
+    <button class="btn btn-outline-secondary btn-sm">Incluir en esta lista</button></form>
+</details>{% endif %}
+
+{% if cambios_lista %}<p class="small text-muted mt-2 mb-0">Historial de la lista: {% for c in cambios_lista %}{{ c.get_accion_display|lower }} el {{ c.fecha|date:"d-m-Y H:i" }}{% if c.usuario %} por {{ c.usuario.get_full_name|default:c.usuario.get_username }}{% endif %}{% if c.motivo %} ({{ c.motivo }}){% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
+
+{% if jornada.lista_cerrada and jornada.pk %}{% include "actividades/_cierre_jornada.html" %}{% endif %}
+</section>

@@ -630,7 +630,15 @@ class ActividadFicha(FichaBase):
         sensibles = self.request.user.has_perm("personas.ver_sensibles")
         extra = [Prefetch("persona__contactos_emergencia", queryset=ContactoEmergencia.objects.filter(vigente=True).order_by("pk"),
                           to_attr="emergencias")] if sensibles else []
-        partes = [p for p in self._participaciones_con_procedencia(*extra) if p.rol.grupo == "asistente"]
+        from . import asistencia
+
+        todas = self._participaciones_con_procedencia(*extra)
+        partes = [p for p in todas if p.rol.grupo == "asistente"]
+        if partes:  # F28: resumen por persona desde sus marcas por jornada (dos consultas más, fijas)
+            mat = asistencia.matriz(self.object, partes=[p for p in todas if p.estado.codigo != "registro_erroneo"])
+            resumen = {f["persona"].pk: f["resumen"] for f in mat["filas"]}
+            for p in partes:
+                p.resumen_asistencia = resumen.get(p.persona_id)
         return {"beneficiarios": partes, "ver_sensibles": sensibles, "capacidad_alerta": self._capacidad(),
                 "url_registrar_beneficiario": url_agregar_persona(self.object, rol="beneficiario", volver="beneficiarios",
                                                                   llego=BeneficiarioRegistrar._llego(self.object)),

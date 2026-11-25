@@ -126,6 +126,7 @@ class ProyectoFicha(FichaBase):
         ("comunidades", "Comunidades", "generico/_hijos.html", "comunidades.view_comunidad"),
         ("beneficiarios", "Beneficiarios", "proyectos/pestanas/beneficiarios.html"),
         ("tareas", "Tareas", "proyectos/pestanas/actividades.html", "actividades.view_actividad"),  # F25: la clave se conserva
+        ("asistencia", "Asistencia", "proyectos/pestanas/asistencia.html", "actividades.view_participacion"),  # F28
         ("postulacion", "Postulación", "generico/_hijos.html"),
         ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
@@ -237,6 +238,12 @@ class ProyectoFicha(FichaBase):
             .order_by("-creado_en")
         )
         return {"actividades": tareas, "url_nueva_tarea": reverse("actividades:tarea_nueva", args=[self.object.pk])}
+
+    def ctx_asistencia(self):
+        """F28: resumen de asistencia por tarea y por persona, con enlaces. Consultas fijas."""
+        from apps.actividades.asistencia import resumen_proyecto
+
+        return {"asistencia": resumen_proyecto(self.object)}
 
     def ctx_documentos(self):
         docs = self.object.documentos.select_related("tipo")

@@ -1,5 +1,5 @@
 # F28 — Tareas
-1. [ ] **A. Asistencia por jornada:**
+1. [x] **A. Asistencia por jornada** (`apps/actividades/asistencia.py`, `vistas_asistencia.py`; pruebas en `apps/actividades/test_f28_asistencia.py`):
    - modelo;
    - lista abierta, cerrada y reabrir;
    - retiro y reincorporación;

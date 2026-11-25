@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.actividades.models import ActividadComunidad, Participacion, SesionActividad, SesionAsistencia
 from apps.comunidades.models import Comunidad, ComunidadMiembro
-from apps.nucleo.models import AreaTematica, PerfilPersona, RolParticipacion
+from apps.nucleo.models import AreaTematica, EstadoActividad, PerfilPersona, RolParticipacion
 from apps.personas.models import Apoderado, Consentimiento, PerfilSensible, Persona, PersonaFormacion
 
 pytestmark = pytest.mark.django_db
@@ -185,6 +185,7 @@ def test_grupo_de_los_roles():
 def test_sesiones_visibles_sin_segunda_fase_con_minuta_y_asistencia(cg, sin_segunda_fase, actividad, persona, rol, estado_part):
     responsable = persona
     actividad.responsable = responsable
+    actividad.estado = EstadoActividad.objects.get(codigo="confirmada")  # F28: no se pasa lista en una actividad pendiente
     actividad.save()
     part = Participacion.objects.create(actividad=actividad, persona=persona, rol=rol("tallerista"), estado=estado_part("confirmado"))
     r = cg.post(f"/actividades/{actividad.pk}/sesiones/nuevo", {

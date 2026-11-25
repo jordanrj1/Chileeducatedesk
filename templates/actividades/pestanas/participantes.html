@@ -1,4 +1,4 @@
-{# Qué es: Pestaña Participantes (en una tarea, «Equipo y asistencia»): «Pasar lista» (F26 P1a: un solo formulario con todos, por grupo, una casilla «Asistió» por fila, «Marcar todos», «Sin registro de asistencia» y un solo «Guardar asistencia», desde el día de la actividad; en pantalla angosta es una lista apilada), el detalle por grupo con rol, estado, procedencia y asistencia, panel lateral con el resumen de cada persona, y botones «+ Agregar persona», buscar candidatos y cargar listado. #}
+{# Qué es: Pestaña Participantes (en una tarea, «Equipo y asistencia»): arriba, la asistencia por jornada (F28: jornadas, «Pasar lista» de la jornada elegida y matriz personas × jornadas; reemplaza al «Pasar lista» único de F26 P1a), el detalle por grupo con rol, estado de inscripción, procedencia y resumen de asistencia, «Quitar de la tarea» / «Reincorporar», panel lateral con el resumen de cada persona, y botones «+ Agregar persona», buscar candidatos y cargar listado. #}
 {# Dónde se usa: /actividades/<int:pk> y /proyectos/<int:proyecto_pk>/tareas/<int:pk> (también la pestaña Beneficiarios de una actividad suelta con la segunda fase) · Proceso: P3/P8 #}
 {% load fche %}<div class="fche-seccion">
   <h2 class="h6">{{ titulo_pestana }} <span class="fche-contador">{{ participaciones|length }}</span></h2>
@@ -17,37 +17,8 @@
 {% if capacidad_alerta %}<div class="alert {% if capacidad_alerta.excede %}alert-danger{% elif capacidad_alerta.lleno %}alert-warning{% else %}alert-light border{% endif %} py-2">
   <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center"><span>Cupos ocupados: {{ capacidad_alerta.n }} de {{ capacidad_alerta.capacidad }}{% if capacidad_alerta.participaciones != capacidad_alerta.n %} ({{ capacidad_alerta.participaciones }} participaciones de {{ capacidad_alerta.n }} personas: quien tiene varios roles ocupa un solo cupo){% endif %}{% if capacidad_alerta.espera %} · en lista de espera: {{ capacidad_alerta.espera }}{% endif %}{% if capacidad_alerta.excede %} — <strong>excede la capacidad</strong>{% elif capacidad_alerta.lleno %} — <strong>sin cupos</strong>: los nuevos pueden quedar «En lista de espera»{% endif %}</span>
   <div class="progress flex-grow-1" style="max-width:14rem;height:.45rem;" role="progressbar" aria-label="Cupos ocupados" aria-valuenow="{{ capacidad_alerta.n }}" aria-valuemin="0" aria-valuemax="{{ capacidad_alerta.capacidad }}"><div class="progress-bar {% if capacidad_alerta.excede %}bg-danger{% elif capacidad_alerta.lleno %}bg-warning{% endif %}" style="width:{% widthratio capacidad_alerta.n capacidad_alerta.capacidad 100 %}%"></div></div></div></div>{% endif %}
-{% if con_lista %}
-<section class="fche-lista-asistencia" id="pasar-lista" aria-labelledby="titulo-pasar-lista">
-<h3 class="h6 mt-2 mb-1" id="titulo-pasar-lista">Pasar lista{% if total_lista %} <span class="fche-contador">{{ total_lista }}</span>{% endif %}</h3>
-{% if not grupos_lista %}<p class="small text-muted">Aún no hay personas para pasar lista.</p>
-{% elif puede_asistencia %}
-{% if object.estado.codigo == "realizada" %}<p class="small text-muted mb-2">La actividad ya fue finalizada: la asistencia que registres ahora queda como registro tardío.</p>{% endif %}
-<p class="small text-muted mb-2">Marca a quienes asistieron. Al guardar, quien quede sin marcar queda «No asistió».</p>
-<form method="post" action="{% url 'actividades:asistencia' object.pk %}">{% csrf_token %}<input type="hidden" name="volver" value="participantes">
-{% for etiqueta_grupo, partes in grupos_lista %}
-<fieldset class="fche-lista-asistencia__grupo"><legend class="fche-lista-asistencia__titulo">{{ etiqueta_grupo }} <span class="fche-contador">{{ partes|length }}</span></legend>
-<ul class="fche-lista-asistencia__filas">{% for p in partes %}<li class="fche-lista-asistencia__fila">
-<input type="hidden" name="en_lista" value="{{ p.pk }}">
-<input class="form-check-input" type="checkbox" name="asistio" value="{{ p.pk }}" id="asistio-{{ p.pk }}"{% if p.asistencia is True %} checked{% endif %}>
-<label class="fche-lista-asistencia__persona" for="asistio-{{ p.pk }}"><span class="visually-hidden">Asistió: </span>{{ p.persona }}</label>
-<span class="fche-lista-asistencia__rol">{{ p.rol_y_cargo }}</span>
-<span class="fche-lista-asistencia__estado">{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% else %}Sin marcar{% endif %}{% if p.pk in calculadas_sesiones %} · <span class="text-muted">Calculada desde las sesiones</span>{% endif %}</span>
-</li>{% endfor %}</ul></fieldset>
-{% endfor %}
-<div class="fche-lista-asistencia__acciones">
-<button class="btn btn-primary btn-sm">Guardar asistencia</button>
-<button type="button" class="btn btn-outline-secondary btn-sm" data-marcar-todos hidden>Marcar todos</button>
-<button class="btn btn-outline-secondary btn-sm" name="todos" value="1" data-todos-sin-js>Todos asistieron</button>
-<div class="form-check mb-0"><input type="hidden" name="sin_registro" value="0"><input class="form-check-input" type="checkbox" name="sin_registro" value="1" id="sin-registro" {% if object.asistencia_sin_registro %}checked{% endif %}><label class="form-check-label small" for="sin-registro">Sin registro de asistencia (no se pasó lista; se indica al finalizar)</label></div>
-</div>
-</form>
-{% elif antes_de_fecha %}<p class="small text-muted">La asistencia se marca desde el día de la actividad ({{ agenda.fecha|date:"d-m-Y" }}).</p>
-{% else %}<p class="small text-muted">No se puede registrar asistencia en esta actividad.</p>{% endif %}
-</section>
-{% endif %}
+{% include "actividades/_asistencia.html" %}
 {% if participaciones %}
-{% if not con_lista and puede_asistencia %}<p class="small"><a href="?tab=participantes#pasar-lista">Pasar lista</a></p>{% endif %}
 {% for etiqueta_grupo, partes, ayuda_grupo in grupos_participacion %}
 <h3 class="h6 mt-3 mb-1">{{ etiqueta_grupo }} <span class="fche-contador">{{ partes|length }}</span></h3>
 {% if ayuda_grupo %}<p class="small text-muted mb-2">{{ ayuda_grupo }}</p>{% endif %}
@@ -56,16 +27,16 @@
 <tbody>{% for p in partes %}<tr class="{% if not p.activa %}text-muted{% endif %}{% if p.estado.codigo == 'registro_erroneo' %} text-decoration-line-through{% endif %}">
 <td><a href="{{ p.persona.get_absolute_url }}" hx-get="{% url 'personas:resumen' p.persona.pk %}" hx-target="#panel-persona-cuerpo" hx-swap="innerHTML"
   data-bs-toggle="offcanvas" data-bs-target="#panel-persona" aria-controls="panel-persona" title="Ver resumen de {{ p.persona }}">{{ p.persona }}</a></td>
-<td>{{ p.rol_y_cargo }}</td><td>{% estado p.estado %}</td>
-<td>{% if p.asistencia is True %}Asistió{% elif p.asistencia is False %}No asistió{% elif antes_de_fecha %}<span class="small text-muted">Se marca desde el día de la actividad</span>{% else %}<span class="text-muted">—</span>{% endif %}{% if p.pk in calculadas_sesiones %}<span class="d-block small text-muted">Calculada desde las sesiones</span>{% endif %}</td>
+<td>{{ p.rol_y_cargo }}</td><td>{% estado p.estado %}{% if p.retirada and p.retirado_en %}<span class="d-block small text-muted">el {{ p.retirado_en|date:"d-m-Y" }}{% if p.motivo_retiro %}: {{ p.motivo_retiro }}{% endif %}</span>{% endif %}</td>
+<td>{% include "actividades/_resumen_asistencia.html" %}</td>
 <td class="small">{% with pr=p.procedencia %}{% if pr.institucion %}<a href="{{ pr.institucion.get_absolute_url }}">{{ pr.institucion }}</a>{% with f=pr.formacion %}{% if f.sede_institucion %} · <a href="{{ f.sede_institucion.get_absolute_url }}">{{ f.sede_institucion }}</a>{% endif %}{% if f.carrera %} · <a href="{{ pr.institucion.get_absolute_url }}?tab=carreras">{{ f.carrera.nombre }}</a>{% endif %}{% endwith %}{% if pr.cargo %} · {{ pr.cargo }}{% endif %}{% if pr.institucion_calculada %} <span class="text-muted" title="No está en la participación: se toma de los vínculos vigentes de la persona">(de su ficha)</span>{% endif %}{% endif %}
 {% if pr.institucion and pr.comunidad %}<br>{% endif %}{% if pr.comunidad %}<a href="{{ pr.comunidad.get_absolute_url }}">{{ pr.comunidad }}</a>{% if pr.comunidad_calculada %} <span class="text-muted" title="No está en la participación: se toma del padrón de la comunidad">(de su ficha)</span>{% endif %}{% endif %}{% if not pr.institucion and not pr.comunidad %}<span class="text-muted">—</span>{% endif %}{% endwith %}</td>
 <td class="small">{{ p.observaciones }}</td>
 <td class="text-nowrap text-end">{% if p.asistencia is True %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:constancia' object.pk p.pk %}">{% icono "imprimir" 14 %}Constancia</a>{% endif %}
 {% if puede_agregar and perms.actividades.change_participacion %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'actividades:participante_editar' object.pk p.pk %}">Editar</a>
-{% if p.estado.codigo != "registro_erroneo" %}<a class="btn btn-outline-danger btn-sm" href="{% url 'actividades:participante_quitar' object.pk p.pk %}" title="Se relacionó por error">Quitar</a>{% endif %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% include "actividades/_acciones_inscripcion.html" %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
 {% endfor %}
-{% elif con_lista and grupos_lista %}<p class="small text-muted mt-3">Aún no hay {{ grupo }} registrados.</p>
+{% elif matriz.filas %}<p class="small text-muted mt-3">Aún no hay {{ grupo }} registrados.</p>
 {% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "personas" 18 %}</span><p class="fche-vacio__texto">Aún no hay {{ grupo }} registrados.</p>
 {% if puede_agregar and perms.actividades.add_participacion %}<a class="btn btn-primary btn-sm" href="{% url 'actividades:participante_nuevo' object.pk %}">+ Agregar persona</a>{% endif %}</div>{% endif %}
 {% include "actividades/_panel_persona.html" %}

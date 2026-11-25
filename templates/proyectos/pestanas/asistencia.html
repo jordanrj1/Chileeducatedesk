@@ -1,0 +1,24 @@
+{# Qué es: F28 · Pestaña «Asistencia» del proyecto: por tarea (jornadas, inscritos, presentes y porcentaje promedio, con enlace a su matriz) y por persona (en cuántas tareas está, días presentes y porcentaje; enlaces a la persona y a sus tareas). El porcentaje no cuenta justificados ni jornadas suspendidas. #}
+{# Dónde se usa: /proyectos/<int:pk>?tab=asistencia · Proceso: P8/P11 #}
+{% load fche %}<div class="fche-seccion"><div><h2 class="h6 mb-0">Asistencia del proyecto</h2>
+<p class="small text-muted mb-0">Calculada desde la lista de cada jornada de sus tareas. El porcentaje no cuenta justificados ni jornadas suspendidas.</p></div></div>
+{% if asistencia.tareas %}
+<h3 class="h6 mt-3 mb-2">Por tarea <span class="fche-contador">{{ asistencia.tareas|length }}</span></h3>
+<div class="table-responsive mb-4"><table class="table table-sm align-middle">
+<thead><tr><th>Tarea</th><th>Estado</th><th class="text-end">Jornadas</th><th class="text-end">Con lista</th><th class="text-end">Inscritos</th><th class="text-end">Presencias</th><th class="text-end">% promedio</th></tr></thead>
+<tbody>{% for f in asistencia.tareas %}<tr>
+<td><a href="{{ f.tarea.get_absolute_url }}?tab=participantes#asistencia">{{ f.tarea.nombre }}</a></td><td>{% estado f.tarea.estado %}</td>
+<td class="text-end">{{ f.jornadas }}{% if f.suspendidas %} <span class="small text-muted">({{ f.suspendidas }} susp.)</span>{% endif %}</td><td class="text-end">{{ f.con_lista }}</td>
+<td class="text-end">{{ f.inscritos }}</td><td class="text-end">{{ f.presentes }}</td>
+<td class="text-end">{% if f.promedio is not None %}{{ f.promedio }} %{% else %}<span class="text-muted">—</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% if asistencia.personas %}
+<h3 class="h6 mb-2">Por persona <span class="fche-contador">{{ asistencia.personas|length }}</span></h3>
+<div class="table-responsive"><table class="table table-sm align-middle">
+<thead><tr><th>Persona</th><th>Tareas</th><th class="text-end">Días presentes</th><th class="text-end">Días con marca</th><th class="text-end">%</th></tr></thead>
+<tbody>{% for x in asistencia.personas %}<tr>
+<td><a href="{{ x.persona.get_absolute_url }}">{{ x.persona }}</a></td>
+<td class="small">{% for t in x.tareas %}<a href="{{ t.get_absolute_url }}?tab=participantes#asistencia">{{ t.nombre }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+<td class="text-end">{{ x.presentes }}</td><td class="text-end">{{ x.con_marca }}{% if x.justificados %} <span class="small text-muted">(+{{ x.justificados }} just.)</span>{% endif %}</td>
+<td class="text-end">{% if x.porcentaje is not None %}{{ x.porcentaje }} %{% else %}<span class="text-muted">—</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% endif %}
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "usuarios_check" 18 %}</span><p class="fche-vacio__texto">El proyecto aún no tiene tareas con asistencia.</p></div>{% endif %}
