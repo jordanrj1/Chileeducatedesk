@@ -22,7 +22,7 @@ from apps.proyectos.models import Proyecto
 
 pytestmark = pytest.mark.django_db
 HOY = date.today()
-OCHO = ["info", "participantes", "beneficiarios", "organizaciones", "sesiones", "resultados", "documentos", "historial"]
+OCHO = ["info", "participantes", "beneficiarios", "organizaciones", "sesiones", "gastos", "resultados", "documentos", "historial"]
 
 
 def _claves(html):

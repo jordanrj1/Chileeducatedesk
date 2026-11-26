@@ -130,6 +130,7 @@ class ProyectoFicha(FichaBase):
         ("postulacion", "Postulación", "generico/_hijos.html"),
         ("alcance", "Alcance", "actividades/pestanas/alcance.html", "actividades.view_participacion"),
         ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
+        ("gastos", "Gastos", "finanzas/pestanas/gastos_proyecto.html", "finanzas.view_movimiento"),  # F28 B: visible siempre
         ("presupuesto", "Presupuesto", "proyectos/pestanas/presupuesto.html", "finanzas.view_movimiento"),
         ("historial", "Historial", "generico/_historial.html", "proyectos.view_historicalproyecto"),
     ]
@@ -252,6 +253,17 @@ class ProyectoFicha(FichaBase):
         pk = self.object.pk
         return {"documentos": docs, "titulo_documentos": "Documentos del proyecto", "sin_contador_documentos": True,
                 "url_nuevo_doc": f"/documentos/nuevo?proyecto={pk}", "url_asociar_doc": f"/documentos/asociar?proyecto={pk}"}
+
+    def ctx_gastos(self):
+        """F28 B: gasto del proyecto por tarea, jornada y categoría frente al presupuesto. Dos consultas."""
+        from apps.finanzas.resumen import gastos_proyecto
+
+        u, pk = self.request.user, self.object.pk
+        return {
+            "gastos_res": gastos_proyecto(self.object), "puede_exportar_gastos": u.has_perm("proyectos.exportar_proyecto"),
+            "puede_cambiar_presupuesto": u.has_perm("finanzas.change_itempresupuesto"), "puede_agregar_presupuesto": u.has_perm("finanzas.add_itempresupuesto"),
+            "url_nuevo_item": reverse("finanzas:presupuesto_nuevo", args=[pk]),
+        }
 
     def ctx_presupuesto(self):
         from apps.finanzas.resumen import resumen_proyecto

@@ -8,7 +8,7 @@
    - jornadas;
    - Finalizar;
    - migración de datos (AS-E1…E17).
-2. [ ] **B. Gastos de la actividad:**
+2. [x] **B. Gastos de la actividad** (`apps/finanzas/views_gastos.py`, `forms.py`, `comprobante.py`, `resumen.py`; pruebas en `apps/finanzas/test_f28_gastos.py`):
    - modelo;
    - comprobante;
    - estados;

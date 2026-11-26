@@ -91,6 +91,14 @@ Migración de datos, reversible como no-op:
 - **Punto de extensión para B:** al cerrar la lista, «Evidencia del día» (documento de la jornada) y «¿Hubo gastos este día?», que aparece cuando `vistas_asistencia.url_gasto_de_jornada()` entregue la dirección del registro de gastos.
 - **Pendiente para C:** en pantalla las sesiones siguen como «Sesión N» en su pestaña (minutas) y como «Jornada N» en la asistencia; unificar el nombre. Las horas de participación siguen calculándose con la programación, no por jornada.
 
+## 6 ter. Decisiones de implementación de B [P]
+- **Rutas visibles:** `/actividades/<id>/gastos/…` y `/proyectos/<id>/gastos/exportar` (no empiezan con `/finanzas`, que sigue oculto). Los ítems de presupuesto se cargan en `/proyectos/<id>/presupuesto/…`, desde la pestaña «Gastos» del proyecto.
+- **Modelo:** `Movimiento.proyecto` pasa a opcional, con restricción «proyecto o actividad». La tarea fija el proyecto del gasto. `estado` y `anulado` no se contradicen (se sincronizan al guardar). Categoría de gasto: catálogo `CategoriaGasto` (Catálogos), con descripción.
+- **Permisos:** ver, agregar y cambiar movimiento (el Gestor los tiene; la migración 0004 los asegura). «Revisar» y «Anular» usan `change_movimiento` [V: ¿debe revisar otra persona?]. Excel: ver movimiento más `exportar_actividad` o `exportar_proyecto`; sin RUT.
+- **Comprobante:** JPG, PNG, WEBP o PDF ≤ 5 MB, validado por sus primeros bytes; se guarda con nombre aleatorio como documento restringido (tipo «Comprobante de gasto»), ligado a actividad, jornada y proyecto. También se puede elegir un documento existente.
+- **Presupuesto:** cada categoría de gasto se compara con un tipo de ítem (`apps/finanzas/categorias.py`: alimentación, traslado y arriendo con «operacional»; honorarios con «recursos humanos»; los valores nuevos con «otros»). Sin ítems no hay comparación.
+- **Cierre de la lista:** «¿Hubo gastos este día?» abre el registro con la jornada elegida y su fecha; solo con permiso para agregar gastos.
+
 ## 7. Escenarios (cada uno con su prueba)
 **Asistencia**
 

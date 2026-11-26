@@ -62,7 +62,7 @@ def test_plural_correcto(n, esperado):
 
 def test_catalogos_agrupados_por_area(cg):
     html = cg.get("/administracion/catalogos/").content.decode()
-    titulos = ["Actividades", "Personas", "Organizaciones", "Lugares y territorio", "Documentos"]
+    titulos = ["Actividades", "Personas", "Organizaciones", "Lugares y territorio", "Documentos", "Finanzas"]
     pos = [html.index(f">{t}</h2>") for t in titulos]
     assert pos == sorted(pos) and "data-filtrar-tarjetas" in html and ">Otros</h2>" not in html
-    assert html.index("/administracion/catalogos/tipo-documento/") > pos[-1]
+    assert html.index("/administracion/catalogos/tipo-documento/") > pos[-2]

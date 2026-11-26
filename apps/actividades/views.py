@@ -450,6 +450,7 @@ PESTANAS_TAREA = [
     ("beneficiarios", "Beneficiarios", "actividades/pestanas/beneficiarios.html"),
     ("organizaciones", "Organizaciones", "generico/_hijos.html"),
     ("sesiones", "Sesiones", "actividades/pestanas/sesiones.html"),
+    ("gastos", "Gastos", "finanzas/pestanas/gastos_actividad.html", "finanzas.view_movimiento"),  # F28 B: visible siempre
     ("resultados", "Cierre", "actividades/pestanas/resultados.html"),
     ("documentos", "Documentos", "documentos/pestanas/lista.html", "documentos.view_documento"),
     ("historial", "Historial", "actividades/pestanas/historial.html", "actividades.view_historicalactividad"),
@@ -621,6 +622,19 @@ class ActividadFicha(FichaBase):
         from .alcance import alcance
 
         return {"alcance": alcance([self.object]), "contexto_alcance": "esta actividad"}
+
+    def ctx_gastos(self):
+        """F28 B: gastos de la tarea por jornada, con el total y los que no tienen comprobante. Una consulta."""
+        from apps.finanzas.resumen import gastos_actividad
+        from apps.finanzas.views_gastos import url_nuevo_gasto
+
+        u = self.request.user
+        return {
+            "gastos_res": gastos_actividad(self.object), "url_nuevo_gasto": url_nuevo_gasto(self.object),
+            "puede_registrar_gasto": u.has_perm("finanzas.add_movimiento"), "puede_cambiar_gasto": u.has_perm("finanzas.change_movimiento"),
+            "puede_exportar_gastos": u.has_perm("actividades.exportar_actividad"),
+            "puede_ver_comprobantes": u.has_perm("documentos.view_documento") and u.has_perm("documentos.ver_restringido"),
+        }
 
     def ctx_beneficiarios(self):
         """F25 F2: los asistentes de la tarea (rol del grupo «Asistentes»), con su edad y, para quien puede ver datos

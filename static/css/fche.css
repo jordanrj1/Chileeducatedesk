@@ -1112,3 +1112,21 @@ button[aria-busy="true"] { cursor: progress; }
   .fche-marcar { flex: 1 1 auto; }
   .fche-matriz__persona { min-width: 8.5rem; max-width: 10rem; }
 }
+
+/* F28 B · Gastos de la tarea y del proyecto */
+.fche-gastos-grupo { margin-bottom: 1rem; overflow: hidden; }
+.fche-gastos-grupo__cabecera { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .75rem 1.1rem; background: var(--fche-superficie-2); border-bottom: 1px solid var(--fche-borde); }
+.fche-gastos-grupo__total { font-weight: 700; }
+.fche-gasto, .fche-gasto-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem 1rem; align-items: start; padding: .85rem 1.1rem; }
+.fche-gasto + .fche-gasto, .fche-gasto-fila + .fche-gasto-fila { border-top: 1px solid var(--fche-borde); }
+.fche-gasto__titulo { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; }
+.fche-gasto__concepto { font-weight: 600; }
+.fche-gasto__meta { display: flex; flex-wrap: wrap; gap: .15rem 1rem; margin-top: .25rem; font-size: .82rem; color: var(--fche-texto-suave); }
+.fche-gasto__monto { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fche-gasto__sin { display: inline-flex; align-items: center; gap: .25rem; padding: .05rem .5rem; border-radius: 2rem; background: #fff3d1; color: #8a5a00; font-size: .75rem; font-weight: 600; }
+.fche-gasto__acciones { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-start; gap: .4rem; }
+.fche-gasto__anular > summary { list-style: none; cursor: pointer; }
+.fche-gasto__anular > summary::-webkit-details-marker { display: none; }
+.fche-gasto.is-anulado .fche-gasto__concepto, .fche-gasto.is-anulado .fche-gasto__monto { text-decoration: line-through; color: var(--fche-texto-suave); }
+.fche-tabla-gastos .fche-num, .fche-gasto__monto.fche-num { font-variant-numeric: tabular-nums; }
+@media (max-width: 575.98px) { .fche-gasto, .fche-gasto-fila { grid-template-columns: minmax(0, 1fr); } .fche-gasto__monto { order: -1; } }

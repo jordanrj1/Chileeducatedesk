@@ -180,6 +180,15 @@ class RelacionLugar(Catalogo):
         permissions = [("desactivar_relacionlugar", "Puede desactivar valores de relaciones con un lugar")]
 
 
+class CategoriaGasto(Catalogo):
+    """F28 B: en qué se gastó (alimentación, traslado, materiales…). Cada valor explica cuándo usarlo."""
+
+    class Meta(Catalogo.Meta):
+        verbose_name = "categoría de gasto"
+        verbose_name_plural = "categorías de gasto"
+        permissions = [("desactivar_categoriagasto", "Puede desactivar valores de categorías de gasto")]
+
+
 CATALOGOS = {
     "estado-actividad": EstadoActividad,
     "estado-solicitud": EstadoSolicitud,
@@ -204,6 +213,7 @@ CATALOGOS = {
     "naturaleza-juridica": NaturalezaJuridica,
     "rol-organizacion": RolOrganizacion,
     "relacion-lugar": RelacionLugar,
+    "categoria-gasto": CategoriaGasto,
 }
 
 

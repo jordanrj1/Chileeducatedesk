@@ -1,0 +1,39 @@
+{# Qué es: F28 B · Pestaña «Gastos» del proyecto: lo gastado por tarea, jornada y categoría frente al presupuesto, con aviso si se excede. #}
+{# Dónde se usa: /proyectos/<int:pk>?tab=gastos · Proceso: P11 #}
+{% load fche %}<div class="fche-seccion"><div><h2 class="h6 mb-0">Gastos del proyecto</h2>
+<p class="small text-muted mb-0">Suma los gastos de todas sus tareas (los anulados no cuentan) y los compara con el presupuesto. Se registran en la pestaña «Gastos» de cada tarea.</p></div>
+<div class="fche-seccion__acciones">{% if puede_exportar_gastos and gastos_res.n %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'finanzas:gastos_proyecto_exportar' object.pk %}">{% icono "descargar" 14 %}Excel</a>{% endif %}</div></div>
+{% if gastos_res.excedido %}<div class="alert alert-warning d-flex gap-2 align-items-start" role="alert">{% icono "alerta" 18 %}<div><strong>El gasto supera el presupuesto en {{ gastos_res.exceso|pesos }}.</strong> Se gastaron {{ gastos_res.total|pesos }} de {{ gastos_res.presupuestado|pesos }} presupuestados.</div></div>{% endif %}
+<ul class="fche-kpis fche-kpis--compactos">
+  <li><div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "finanzas" 16 %}</span>Gastado</span><span class="fche-kpi__valor fche-num">{{ gastos_res.total|pesos }}</span><span class="fche-kpi__nota">{{ gastos_res.n }} gasto{{ gastos_res.n|pluralize }}</span></div></li>
+  <li><div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "documentos" 16 %}</span>Presupuestado</span><span class="fche-kpi__valor fche-num">{{ gastos_res.presupuestado|pesos }}</span><span class="fche-kpi__nota">{% if gastos_res.sin_presupuesto %}Aún no hay ítems de presupuesto{% else %}Ítems vigentes{% endif %}</span></div></li>
+  <li><div class="fche-kpi{% if gastos_res.excedido %} fche-kpi--alerta{% elif not gastos_res.sin_presupuesto %} fche-kpi--ok{% endif %}"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "ok" 16 %}</span>{% if gastos_res.excedido %}Excedido{% else %}Disponible{% endif %}</span><span class="fche-kpi__valor fche-num">{% if gastos_res.sin_presupuesto %}—{% elif gastos_res.excedido %}{{ gastos_res.exceso|pesos }}{% else %}{{ gastos_res.diferencia|pesos }}{% endif %}</span></div></li>
+  <li><div class="fche-kpi{% if gastos_res.sin_comprobante %} fche-kpi--atencion{% endif %}"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "alerta" 16 %}</span>Sin comprobante</span><span class="fche-kpi__valor">{{ gastos_res.sin_comprobante }}</span></div></li>
+</ul>
+{% if gastos_res.n %}
+<h3 class="h6 mb-2">Por tarea y jornada</h3>
+<div class="fche-tarjeta fche-gastos-grupo mb-4">
+{% for t in gastos_res.tareas %}
+  <div class="fche-gasto-fila">
+    <div class="fche-gasto__cuerpo">
+      <div class="fche-gasto__titulo">{% if t.tarea %}<a href="{{ t.tarea.get_absolute_url }}?tab=gastos">{{ t.tarea.nombre }}</a>{% else %}<span class="fche-gasto__concepto">Del proyecto (sin tarea)</span>{% endif %}{% if t.sin_comprobante %} <span class="fche-gasto__sin">{% icono "alerta" 13 %}{{ t.sin_comprobante }} sin comprobante</span>{% endif %}</div>
+      <div class="fche-gasto__meta">{% for j in t.jornadas.values %}<span>Jornada {{ j.jornada.numero }}{% if j.jornada.fecha %} ({{ j.jornada.fecha|date:"d-m" }}){% endif %}: {{ j.total|pesos }}</span>{% endfor %}{% if t.sin_jornada %}<span>Toda la tarea: {{ t.sin_jornada|pesos }}</span>{% endif %}</div>
+    </div>
+    <div class="fche-gasto__monto fche-num">{{ t.total|pesos }}</div>
+  </div>
+{% endfor %}
+</div>
+<h3 class="h6 mb-2">Por categoría</h3>
+<div class="table-responsive mb-4"><table class="table table-sm align-middle fche-tabla-gastos"><thead><tr><th>Categoría</th><th class="text-end">Gastado</th></tr></thead>
+<tbody>{% for c in gastos_res.categorias %}<tr><td>{{ c.nombre }}</td><td class="text-end fche-num">{{ c.total|pesos }}</td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "finanzas" 18 %}</span><p class="fche-vacio__texto">Aún no hay gastos en las tareas de este proyecto.</p></div>{% endif %}
+<div class="fche-seccion mt-4"><div><h3 class="h6 mb-0">Presupuesto</h3><p class="small text-muted mb-0">Cada gasto se compara con el ítem de su tipo (alimentación y traslado, con operacional; materiales; honorarios, con recursos humanos; difusión; otros).</p></div>
+{% if puede_agregar_presupuesto %}<div class="fche-seccion__acciones"><a class="btn btn-outline-primary btn-sm" href="{{ url_nuevo_item }}">{% icono "mas" 14 %}Ítem de presupuesto</a></div>{% endif %}</div>
+{% if gastos_res.comparacion %}
+<div class="table-responsive mb-3"><table class="table table-sm align-middle fche-tabla-gastos"><thead><tr><th>Categoría</th><th class="text-end">Presupuestado</th><th class="text-end">Gastado</th><th class="text-end">Diferencia</th></tr></thead>
+<tbody>{% for c in gastos_res.comparacion %}<tr class="{% if c.excedido %}table-warning{% endif %}"><td>{{ c.categoria }}{% if c.excedido %} <span class="fche-gasto__sin">{% icono "alerta" 13 %}Excedido</span>{% elif c.sin_presupuesto %} <span class="small text-muted">(sin presupuesto)</span>{% endif %}</td>
+<td class="text-end fche-num">{{ c.presupuestado|pesos }}</td><td class="text-end fche-num">{{ c.gastado|pesos }}</td><td class="text-end fche-num">{% if c.sin_presupuesto %}—{% else %}{{ c.diferencia|pesos }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+{% endif %}
+{% if gastos_res.items %}<ul class="fche-items">{% for i in gastos_res.items %}<li><div class="fche-items__texto"><div class="fche-items__titulo">{{ i.concepto }} · {{ i.monto_estimado|pesos }}</div><div class="fche-items__detalle">{{ i.get_categoria_display }}</div></div>
+{% if puede_cambiar_presupuesto %}<div class="fche-items__acciones"><a class="btn btn-outline-secondary btn-sm" href="{% url 'finanzas:presupuesto_editar' object.pk i.pk %}">{% icono "editar" 14 %}Editar</a></div>{% endif %}</li>{% endfor %}</ul>
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "documentos" 18 %}</span><p class="fche-vacio__texto mb-0">Sin presupuesto cargado: los gastos se registran igual, sin comparación.</p></div>{% endif %}

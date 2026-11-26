@@ -90,3 +90,12 @@ def separar_nombre(texto: str):
 def plural(n, singular: str, plural: str = "") -> str:
     """«1 actividad», «2 actividades»: la cifra con la palabra en singular o plural (por defecto, singular + «s»)."""
     return f"{n} {singular if n == 1 else (plural or singular + 's')}"
+
+
+def pesos(valor) -> str:
+    """«$1.234.567»: pesos chilenos con punto de miles (sin decimales). Negativos: «-$1.500»."""
+    try:
+        n = int(valor or 0)
+    except (TypeError, ValueError):
+        n = 0
+    return ("-" if n < 0 else "") + "$" + f"{abs(n):,}".replace(",", ".")

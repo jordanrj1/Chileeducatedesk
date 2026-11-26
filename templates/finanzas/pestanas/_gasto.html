@@ -1,0 +1,32 @@
+{# Qué es: F28 B · Un gasto dentro de la pestaña «Gastos» de una tarea: concepto, categoría, quién pagó, comprobante, estado y sus acciones (editar si está registrado, revisar, anular con motivo). #}
+{# Dónde se usa: finanzas/pestanas/gastos_actividad.html · Proceso: P8 #}
+{% load fche %}<article class="fche-gasto{% if g.anulado %} is-anulado{% endif %}" id="gasto-{{ g.pk }}">
+  <div class="fche-gasto__cuerpo">
+    <div class="fche-gasto__titulo">
+      <span class="fche-gasto__concepto">{{ g.concepto }}</span>
+      {% estado g.estado g.get_estado_display %}
+      {% if g.sin_comprobante and not g.anulado %}<span class="fche-gasto__sin" title="Falta la boleta, factura o foto del gasto">{% icono "alerta" 13 %}Sin comprobante</span>{% endif %}
+    </div>
+    <div class="fche-gasto__meta">
+      <span>{{ g.fecha|date:"d-m-Y" }}</span>
+      {% if g.categoria %}<span>{{ g.categoria }}</span>{% endif %}
+      {% if g.proveedor or g.organizacion %}<span>{{ g.proveedor|default:g.organizacion }}</span>{% endif %}
+      {% if g.pagado_por %}<span>Pagó {{ g.pagado_por }}</span>{% endif %}
+      {% if g.documento_id %}<span>{% if puede_ver_comprobantes %}<a href="{% if g.documento.visible_en_navegador %}{% url 'documentos:ver' g.documento_id %}{% else %}{% url 'documentos:archivo' g.documento_id %}{% endif %}" target="_blank" rel="noopener">{% icono "documentos" 13 %}Ver comprobante</a>{% else %}{% icono "documentos" 13 %}Con comprobante (restringido){% endif %}</span>{% endif %}
+    </div>
+    {% if g.anulado %}<div class="small text-muted mt-1">Anulado: {{ g.motivo_anulacion }}</div>
+    {% elif g.estado == "revisado" %}<div class="small text-muted mt-1">Revisado{% if g.revisado_por %} por {{ g.revisado_por.get_username }}{% endif %}{% if g.revisado_en %} el {{ g.revisado_en|date:"d-m-Y H:i" }}{% endif %}. No se edita: si hay un error, anúlalo con un motivo y registra otro.</div>{% endif %}
+  </div>
+  <div class="fche-gasto__monto fche-num">{{ g.monto|pesos }}</div>
+  {% if puede_cambiar_gasto and not g.anulado %}
+  <div class="fche-gasto__acciones">
+    {% if g.editable %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'finanzas:gasto_editar' object.pk g.pk %}">{% icono "editar" 14 %}Editar</a>
+    <form method="post" action="{% url 'finanzas:gasto_revisar' object.pk g.pk %}" class="d-inline">{% csrf_token %}{% marca_envio %}<button class="btn btn-outline-primary btn-sm" hx-disabled-elt="this">{% icono "ok" 14 %}Marcar como revisado</button></form>{% endif %}
+    <details class="fche-gasto__anular"><summary class="btn btn-outline-danger btn-sm">Anular</summary>
+      <form method="post" action="{% url 'finanzas:gasto_anular' object.pk g.pk %}" class="d-flex flex-wrap gap-2 mt-2">{% csrf_token %}{% marca_envio %}
+        <input class="form-control form-control-sm" name="motivo" maxlength="250" placeholder="Motivo de la anulación" aria-label="Motivo de la anulación del gasto" required>
+        <button class="btn btn-danger btn-sm" hx-disabled-elt="this">Anular gasto</button>
+      </form>
+    </details>
+  </div>{% endif %}
+</article>

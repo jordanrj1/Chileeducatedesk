@@ -55,6 +55,7 @@ AREAS = {
     "Organizaciones": ("tipo-organizacion", "naturaleza-juridica", "rol-organizacion"),
     "Lugares y territorio": ("tipo-lugar", "relacion-lugar"),
     "Documentos": ("tipo-documento",),
+    "Finanzas": ("categoria-gasto",),
 }
 
 

@@ -95,6 +95,8 @@ TONOS = {
     # F28: marcas de la lista del día y estado de la lista de una jornada
     "presente": "verde", "atrasado": "amarillo", "retiro_anticipado": "naranja", "justificado": "azul", "ausente": "rojo",
     "abierta": "azul", "cerrada": "morado",
+    # F28 B: estado de un gasto
+    "registrado": "azul", "revisado": "verde",
     "activo": "verde", "incompleto": "amarillo", "por_verificar": "naranja", "desactualizado": "gris", "fallecida": "gris", "fusionada": "gris",
     "en_curso": "azul", "hecha": "verde",
     "enviada": "gris", "respondio": "azul", "aceptada": "verde", "rechazada": "rojo", "sin_respuesta": "amarillo", "cumplida": "verde",
@@ -174,6 +176,14 @@ def resumen_elegidas(nombres):
     cuenta = "1 opción elegida" if n == 1 else f"{n} opciones elegidas"
     lista = " y ".join(nombres) if n <= 2 else f"{nombres[0]}, {nombres[1]} y {n - 2} más"
     return f"{cuenta}: {lista}"
+
+
+@register.filter
+def pesos(valor):
+    """«$1.234.567»: pesos chilenos con punto de miles, sin depender del idioma del sistema. Vacío o inválido: «$0»."""
+    from apps.nucleo.utilidades import pesos as formato
+
+    return formato(valor)
 
 
 @register.filter

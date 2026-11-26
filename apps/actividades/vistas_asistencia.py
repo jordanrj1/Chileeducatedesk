@@ -24,10 +24,12 @@ from .reglas import ReglaNegocio
 FILTROS_GRUPO = [("", "Todos"), ("ejecutor", "Equipo ejecutor"), ("contacto", "Invitados y contactos"), ("asistente", "Beneficiarios")]
 
 
-def url_gasto_de_jornada(jornada):
-    """Punto de extensión para el registro de gastos (F28 B): la dirección de «¿Hubo gastos este día?» de una jornada
-    guardada. Mientras no exista, no se muestra nada."""
-    return None
+def url_gasto_de_jornada(jornada, usuario=None):
+    """F28 B: la dirección de «¿Hubo gastos este día?» de una jornada guardada (el registro de gasto con la jornada elegida).
+    Sin permiso para registrar gastos, no se muestra."""
+    if jornada is None or not jornada.pk or (usuario is not None and not usuario.has_perm("finanzas.add_movimiento")):
+        return None
+    return f"{reverse('finanzas:gasto_nuevo', args=[jornada.actividad_id])}?jornada={jornada.pk}"
 
 
 def url_lista(actividad, jornada=None):
@@ -68,7 +70,7 @@ def contexto_asistencia(request, actividad, partes):
         "puede_nueva_jornada": u.has_perm("actividades.add_sesionactividad") and actividad.estado.codigo not in ("cancelada", "realizada"),
         "puede_exportar_asistencia": u.has_perm("actividades.exportar_actividad"),
         "inscritas_despues": despues, "cambios_lista": cambios,
-        "url_gasto_jornada": url_gasto_de_jornada(elegida) if elegida is not None and elegida.pk else None,
+        "url_gasto_jornada": url_gasto_de_jornada(elegida, u) if elegida is not None else None,
         "url_llego": (_url_llego(actividad, elegida) if elegida is not None and u.has_perm("actividades.add_participacion") else None),
     }
 

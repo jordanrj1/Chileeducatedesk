@@ -45,10 +45,10 @@ def _participar(a, persona, rol, estado, **kw):
 
 
 # --- F1 · pestañas ------------------------------------------------------------------
-OCHO = ["Información", "Equipo y asistencia", "Beneficiarios", "Organizaciones", "Sesiones", "Cierre", "Documentos", "Historial"]
+OCHO = ["Información", "Equipo y asistencia", "Beneficiarios", "Organizaciones", "Sesiones", "Gastos", "Cierre", "Documentos", "Historial"]
 
 
-def test_tarea_tiene_exactamente_ocho_pestanas_y_la_suelta_tambien(cg, tarea, actividad):
+def test_tarea_tiene_exactamente_nueve_pestanas_y_la_suelta_tambien(cg, tarea, actividad):
     assert _pestanas(cg.get(tarea.get_absolute_url()).content.decode()) == OCHO
     # la misma tarea abierta por /actividades/<id> también es tarea
     assert "Equipo y asistencia" in _pestanas(cg.get(f"/actividades/{tarea.pk}").content.decode())

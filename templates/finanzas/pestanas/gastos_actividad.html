@@ -1,0 +1,24 @@
+{# Qué es: F28 B · Pestaña «Gastos» de la tarea o actividad: rendición simple por jornada, con el total, los gastos sin comprobante y el Excel. No hay pagos, reembolsos ni contabilidad (decisión pendiente [V] con el tutor). #}
+{# Dónde se usa: /actividades/<int:pk>?tab=gastos y /proyectos/<id>/tareas/<id>?tab=gastos · Proceso: P8/P11 #}
+{% load fche %}<div class="fche-seccion"><div><h2 class="h6 mb-0">Gastos{% if gastos_res.n_total %} <span class="fche-contador">{{ gastos_res.n_total }}</span>{% endif %}</h2>
+<p class="small text-muted mb-0">Registro de lo gastado, con su comprobante. No incluye pagos ni reembolsos: solo lleva la cuenta de lo que se gastó.</p></div>
+<div class="fche-seccion__acciones">
+  {% if puede_exportar_gastos and gastos_res.n_total %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'finanzas:gastos_exportar' object.pk %}">{% icono "descargar" 14 %}Excel</a>{% endif %}
+  {% if puede_registrar_gasto %}<a class="btn btn-primary btn-sm" href="{{ url_nuevo_gasto }}">{% icono "mas" 14 %}Registrar gasto</a>{% endif %}
+</div></div>
+{% if gastos_res.grupos %}
+<ul class="fche-kpis fche-kpis--compactos">
+  <li><div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "finanzas" 16 %}</span>Total gastado</span><span class="fche-kpi__valor fche-num">{{ gastos_res.total|pesos }}</span><span class="fche-kpi__nota">{{ gastos_res.n }} gasto{{ gastos_res.n|pluralize }} (sin anulados)</span></div></li>
+  <li><div class="fche-kpi{% if gastos_res.sin_comprobante %} fche-kpi--atencion{% else %} fche-kpi--ok{% endif %}"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "documentos" 16 %}</span>Sin comprobante</span><span class="fche-kpi__valor">{{ gastos_res.sin_comprobante }}</span><span class="fche-kpi__nota">{% if gastos_res.sin_comprobante %}Súbelos al editar cada gasto{% else %}Todos respaldados{% endif %}</span></div></li>
+  <li><div class="fche-kpi"><span class="fche-kpi__cabecera"><span class="fche-kpi__icono">{% icono "ok" 16 %}</span>Por revisar</span><span class="fche-kpi__valor">{{ gastos_res.por_revisar }}</span><span class="fche-kpi__nota">Registrados que aún no se revisan</span></div></li>
+</ul>
+{% for grupo in gastos_res.grupos %}
+<section class="fche-tarjeta fche-gastos-grupo" aria-label="{% if grupo.jornada %}Jornada {{ grupo.jornada.numero }}{% else %}Toda la tarea{% endif %}">
+  <header class="fche-gastos-grupo__cabecera">
+    <h3 class="h6 mb-0">{% if grupo.jornada %}Jornada {{ grupo.jornada.numero }}{% if grupo.jornada.fecha %} · {{ grupo.jornada.fecha|date:"d-m-Y" }}{% endif %}{% else %}Toda la tarea <span class="small fw-normal text-muted">(sin jornada)</span>{% endif %}</h3>
+    <span class="fche-gastos-grupo__total fche-num">{{ grupo.total|pesos }}</span>
+  </header>
+  {% for g in grupo.gastos %}{% include "finanzas/pestanas/_gasto.html" %}{% endfor %}
+</section>
+{% endfor %}
+{% else %}<div class="fche-vacio fche-vacio--compacto"><span class="fche-vacio__icono">{% icono "finanzas" 18 %}</span><p class="fche-vacio__texto">Aún no hay gastos registrados en esta {% if es_tarea %}tarea{% else %}actividad{% endif %}.</p>{% if puede_registrar_gasto %}<a class="btn btn-primary btn-sm" href="{{ url_nuevo_gasto }}">Registrar gasto</a>{% endif %}</div>{% endif %}
