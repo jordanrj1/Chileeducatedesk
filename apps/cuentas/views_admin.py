@@ -1,6 +1,10 @@
-"""Pantallas de Administración (solo Administrador): usuarios (crear, editar, activar o desactivar, desbloquear,
-restablecer contraseña), roles con sus permisos, y la auditoría con filtros por fecha y acción.
-Cada cambio de cuenta o de rol queda registrado en la auditoría."""
+"""Pantallas de Administración (solo Superadministrador): usuarios (crear, editar, activar o desactivar, desbloquear,
+restablecer contraseña), roles con sus permisos (matriz por módulo y acción), la auditoría con filtros por fecha y acción
+y los respaldos (lista y «Respaldar ahora»). Cada cambio de cuenta, rol o permiso queda registrado en la auditoría."""
+import io
+import os
+from datetime import datetime
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -17,7 +21,8 @@ from apps.nucleo.vistas_base import Filtro, ListaBase, Permiso403Mixin
 from apps.personas.selector import PERSONAS_SIN_CUENTA
 
 from .forms_admin import ClaveForm, UsuarioForm
-from .roles import OPERATIVAS
+from .protecciones import MENSAJE_ULTIMO, es_el_ultimo
+from .roles import OPERATIVAS, SUPERADMIN, restablecer_rol
 
 User = get_user_model()
 CRUMB = [("Administración", "/administracion/")]
@@ -109,6 +114,10 @@ class UsuarioAlternar(Permiso403Mixin, View):
         if usuario.pk == request.user.pk:
             messages.error(request, "No puedes desactivar tu propia cuenta.")
             return redirect("cuentas_admin:usuarios")
+        if usuario.is_active and es_el_ultimo(usuario):
+            messages.error(request, MENSAJE_ULTIMO)
+            registrar(request.user, "usuario_desactivacion_rechazada", usuario.username, "último Superadministrador activo")
+            return redirect("cuentas_admin:usuarios")
         usuario.is_active = not usuario.is_active
         usuario.save(update_fields=["is_active"])
         registrar(request.user, "usuario_activado" if usuario.is_active else "usuario_desactivado", usuario.username)
@@ -135,7 +144,7 @@ class UsuarioDesbloquear(Permiso403Mixin, View):
 
 
 class UsuarioClave(Permiso403Mixin, View):
-    """Solo el Administrador restablece contraseñas [V#9]."""
+    """Solo el Superadministrador restablece contraseñas [V#9]."""
 
     permission_required = "auth.change_user"
 
@@ -163,26 +172,41 @@ class PersonasLibres(OpcionesVista):
 
 # --- Roles y permisos ---------------------------------------------------
 ACCIONES = {"view": "Ver", "add": "Crear", "change": "Editar"}
-PROTEGIDOS_ADMIN = {"auth.view_user", "auth.add_user", "auth.change_user", "auth.view_group", "auth.change_group", "auth.view_permission"}
+MODULOS = {"auth": "Cuentas y roles", "cuentas": "Respaldos y perfiles", "nucleo": "Núcleo y catálogos", "coordinacion": "Coordinación", "importaciones": "Importaciones", "organizaciones": "Organizaciones"}
+
 
 
 def permisos_editables():
-    """Permisos que se pueden asignar: sin 'eliminar' (el sistema no borra) ni modelos de historial."""
+    """Permisos que se pueden asignar: sin 'eliminar' (el sistema no borra) ni modelos de historial.
+    Devuelve (módulo, modelo, accion, etiqueta, permiso)."""
     res = []
     for p in Permission.objects.select_related("content_type").order_by("content_type__app_label", "content_type__model", "codename"):
         app = p.content_type.app_label
         if app not in OPERATIVAS + ["auth", "cuentas", "finanzas"]:
             continue
-        if p.codename.startswith("delete_") or "historical" in p.codename or p.content_type.model in {"permisoinicial", "permission", "contenttype"}:
+        if p.codename.startswith("delete_") or "historical" in p.codename or p.content_type.model in {"permisoinicial", "permission", "contenttype"} and p.codename != "respaldar":
             continue
         if app == "auth" and p.content_type.model not in {"user", "group"}:
             continue
         modelo = p.content_type.model_class()
-        nombre_modelo = str(modelo._meta.verbose_name) if modelo else p.content_type.model
+        nombre_modelo = "respaldos" if p.codename == "respaldar" else str(modelo._meta.verbose_name) if modelo else p.content_type.model
         accion = p.codename.split("_", 1)[0]
-        etiqueta = f"{ACCIONES[accion]} {nombre_modelo}" if accion in ACCIONES else p.name
-        res.append((app, etiqueta, p))
+        etiqueta = p.name
+        res.append((app, nombre_modelo, accion if accion in ACCIONES else "otra", etiqueta, p))
     return res
+
+
+def matriz(grupo):
+    """[(módulo, [(modelo, [ver, crear, editar] como (pk, marcado) o None, [(pk, etiqueta, marcado)])])] para dibujar la matriz de un rol."""
+    asignados = set(grupo.permissions.values_list("pk", flat=True))
+    modulos = {}
+    for app, modelo, accion, etiqueta, p in permisos_editables():
+        fila = modulos.setdefault(app, {}).setdefault(modelo, ({}, []))
+        if accion == "otra":
+            fila[1].append((p.pk, etiqueta, p.pk in asignados))
+        else:
+            fila[0][accion] = (p.pk, p.pk in asignados)
+    return [(MODULOS.get(app, app.capitalize()), [(m, [acc.get(a) for a in ACCIONES], otras) for m, (acc, otras) in sorted(filas.items())]) for app, filas in sorted(modulos.items())]
 
 
 class RolLista(Permiso403Mixin, TemplateView):
@@ -200,27 +224,92 @@ class RolEditar(Permiso403Mixin, View):
     permission_required = "auth.change_group"
 
     def contexto(self, grupo):
-        asignados = set(grupo.permissions.values_list("pk", flat=True))
-        grupos = {}
-        for app, etiqueta, p in permisos_editables():
-            grupos.setdefault(app, []).append((p.pk, etiqueta, p.pk in asignados, f"{app}.{p.codename}" in PROTEGIDOS_ADMIN and grupo.name == "Administrador"))
-        return {"grupo": grupo, "grupos": sorted(grupos.items()), "titulo": f"Permisos del rol {grupo.name}", "breadcrumb": CRUMB + [("Roles", "/administracion/roles")]}
+        return {"grupo": grupo, "matriz": matriz(grupo), "fijo": grupo.name == SUPERADMIN, "titulo": f"Permisos del rol {grupo.name}", "breadcrumb": CRUMB + [("Roles", "/administracion/roles")]}
 
     def get(self, request, pk):
         return render(request, "administracion/rol_editar.html", self.contexto(get_object_or_404(Group, pk=pk)))
 
     def post(self, request, pk):
         grupo = get_object_or_404(Group, pk=pk)
+        if grupo.name == SUPERADMIN:  # tiene todos los permisos y no se recorta: así nunca se pierde el acceso
+            messages.info(request, "El Superadministrador tiene todos los permisos; no se pueden quitar.")
+            return redirect("cuentas_admin:roles")
+        if request.POST.get("restablecer"):
+            restablecer_rol(grupo)
+            registrar(request.user, "permisos_restablecidos", grupo.name, f"{grupo.permissions.count()} permisos")
+            messages.success(request, f"Permisos iniciales restablecidos para {grupo.name}.")
+            return redirect("cuentas_admin:rol_editar", pk=grupo.pk)
         ids = {int(i) for i in request.POST.getlist("permisos") if i.isdigit()}
-        validos = {p.pk for _, _, p in permisos_editables()}
-        if grupo.name == "Administrador":  # evita quedarse sin acceso a la administración
-            ids |= {p.pk for _, _, p in permisos_editables() if f"{p.content_type.app_label}.{p.codename}" in PROTEGIDOS_ADMIN}
+        validos = {p.pk for *_, p in permisos_editables()}
         antes = set(grupo.permissions.values_list("pk", flat=True))
         conservar = antes - validos  # lo que esta pantalla no gestiona (p. ej. permisos de historial)
         grupo.permissions.set(Permission.objects.filter(pk__in=(ids & validos) | conservar))
-        registrar(request.user, "permisos_modificados", grupo.name, f"{len(ids & validos)} permisos")
+        nuevos = (ids & validos) - antes
+        quitados = (antes & validos) - ids
+        registrar(request.user, "permisos_modificados", grupo.name, f"{len(ids & validos)} permisos; agregados {len(nuevos)}, quitados {len(quitados)}")
         messages.success(request, "Permisos guardados.")
         return redirect("cuentas_admin:roles")
+
+
+# --- Respaldos ----------------------------------------------------------
+def carpeta_respaldos():
+    from pathlib import Path
+
+    from django.conf import settings
+
+    return Path(os.environ.get("RESPALDO_DIR") or str(settings.BASE_DIR.parent / "fche_respaldos"))
+
+
+def lista_respaldos():
+    """[(nombre, fecha, tamaño en KB, tipo)] de los archivos de respaldo, del más nuevo al más antiguo."""
+    carpeta = carpeta_respaldos()
+    tipos = {"fche_bd_": "Base de datos", "fche_documentos_": "Documentos", "fche_config_": "Configuración"}
+    res = []
+    if carpeta.is_dir():
+        for f in carpeta.glob("fche_*"):
+            if f.is_file():
+                tipo = next((t for pre, t in tipos.items() if f.name.startswith(pre)), "Otro")
+                st = f.stat()
+                res.append((f.name, datetime.fromtimestamp(st.st_mtime), max(1, st.st_size // 1024), tipo))
+    return sorted(res, key=lambda r: r[1], reverse=True)
+
+
+class RespaldoLista(Permiso403Mixin, TemplateView):
+    permission_required = "cuentas.respaldar"
+    template_name = "administracion/respaldos.html"
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        filas = lista_respaldos()
+        ctx.update(titulo="Respaldos", breadcrumb=CRUMB, filas=filas[:60], total=len(filas), carpeta=carpeta_respaldos(), ultimo=filas[0][1] if filas else None)
+        return ctx
+
+
+class RespaldoAhora(Permiso403Mixin, View):
+    """Solo POST. Ejecuta el comando `respaldar`; un segundo clic mientras corre no lanza otro."""
+
+    permission_required = "cuentas.respaldar"
+    http_method_names = ["post"]
+
+    def post(self, request):
+        from django.core.cache import cache
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        if not cache.add("fche_respaldando", 1, 600):
+            messages.warning(request, "Ya hay un respaldo en curso. Espera a que termine.")
+            return redirect("cuentas_admin:respaldos")
+        try:
+            salida = io.StringIO()
+            call_command("respaldar", destino=str(carpeta_respaldos()), stdout=salida)
+            registrar(request.user, "respaldo_manual", str(carpeta_respaldos()))
+            messages.success(request, "Respaldo listo. " + salida.getvalue().strip())
+        except CommandError as e:
+            registrar(request.user, "respaldo_fallido", str(carpeta_respaldos()), str(e))
+            messages.error(request, f"No se pudo respaldar: {e}")
+        finally:
+            cache.delete("fche_respaldando")
+        return redirect("cuentas_admin:respaldos")
 
 
 class AuditoriaLista(ListaBase):

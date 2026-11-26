@@ -1,4 +1,4 @@
-"""Fusión controlada de fichas duplicadas (PE-E14, OR-E1, CO-E4). Solo el Administrador.
+"""Fusión controlada de fichas duplicadas (PE-E14, OR-E1, CO-E4). Solo el Superadministrador.
 
 Todo lo que apuntaba a la ficha de origen pasa a la de destino. Lo que no se puede mover sin duplicar
 (por ejemplo, la misma persona dos veces en la misma actividad con el mismo rol) se deja en la ficha de origen,

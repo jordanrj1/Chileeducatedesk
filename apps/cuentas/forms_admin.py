@@ -1,4 +1,4 @@
-"""Formularios del Administrador: crear o editar una cuenta (ligada a una persona registrada, con su rol)
+"""Formularios del Superadministrador: crear o editar una cuenta (ligada a una persona registrada, con su rol)
 y restablecer la contraseña de otra cuenta."""
 from django import forms
 from django.contrib.auth import get_user_model
@@ -9,6 +9,8 @@ from apps.nucleo.formularios import BootstrapMixin, SelectorField, fijar_valores
 from apps.personas.selector import PERSONAS_SIN_CUENTA
 
 from .models import PerfilCuenta
+from .protecciones import MENSAJE_ULTIMO, es_el_ultimo
+from .roles import SUPERADMIN
 
 User = get_user_model()
 
@@ -49,6 +51,9 @@ class UsuarioForm(BootstrapMixin, forms.ModelForm):
 
     def clean(self):
         d = super().clean()
+        rol = d.get("rol")
+        if not self.crear and rol and rol.name != SUPERADMIN and es_el_ultimo(self.instance):
+            self.add_error("rol", MENSAJE_ULTIMO)
         if self.crear:
             if d.get("password1") != d.get("password2"):
                 self.add_error("password2", "Las contraseñas no coinciden.")

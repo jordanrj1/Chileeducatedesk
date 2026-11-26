@@ -51,7 +51,7 @@ Fuentes, de más a menos reciente: **«FCHE — Requerimientos por módulo»** (
   - **Rol:** cada rol de participación tiene un perfil asociado.
   - Lo [V] queda en la spec.
 - **Proyecto** es agrupador opcional con su ficha (equipo, organizaciones, actividades) [V#7]. Ninguna actividad lo exige.
-- **Catálogos:** el Gestor agrega y edita valores; **desactivar** es solo del Administrador.
+- **Catálogos:** el Gestor agrega y edita valores; **desactivar** y **unir** son solo del Superadministrador.
 - **Cuentas:** desde la pantalla, una cuenta se crea solo para una persona ya registrada. La primera cuenta se crea por consola (`crear_usuario`).
 - **Territorio:** dirección en cascada y nombres alternativos de sector (`SectorAlias`).
 - **Documentos:** se puede asociar un documento existente a otra ficha sin copiar el archivo; tienen fecha de vencimiento; transcribir datos con el documento al lado (origen «por revisar»).
@@ -101,7 +101,7 @@ La **Actividad** es la unidad central. Persona, Organización y Lugar son maestr
 |---|---|
 | Stack | Django + PostgreSQL + plantillas de Django con Bootstrap y HTMX |
 | Entorno | Local, Windows. Podría alojarse en la web más adelante (aún no definido) |
-| Roles | **Gestor** (Claudio, único digitador) y **Administrador** (programador). Operador adicional: opcional [O], no se crea |
+| Roles (F29, 25-11-2026) | **Gestor** (Claudio, único digitador) y **Superadministrador** (mantenimiento y programación; reemplaza al antiguo Administrador y tiene todos los permisos). Operador adicional: opcional [O], no se crea. Siempre debe quedar al menos un Superadministrador activo |
 | Digitación | Toda la ingesta la hace Claudio |
 | Registro | Sin portal público. Sin autoservicio |
 | Persona ≠ Cuenta | Relación 1 a 0..1 [O] |
@@ -117,7 +117,7 @@ La **Actividad** es la unidad central. Persona, Organización y Lugar son maestr
 
 ## 4. Pendientes: pregunta, no asumas
 
-1. **[V]** ¿Quién será Administrador después del 30-11? (el programador, el tutor u otra persona).
+1. **[V]** ¿Quién será Superadministrador después del 30-11? (el programador, el tutor u otra persona).
 2. **[V]** Menores de edad: qué datos se conservan, autorización del apoderado y por cuánto tiempo.
 3. **[V]** Si una actividad con incompatibilidad crítica se puede confirmar de todos modos, con motivo. RF-22 dice "impedir o advertir".
 4. **[V]** Si una actividad realizada se puede reabrir o corregir.
@@ -125,7 +125,7 @@ La **Actividad** es la unidad central. Persona, Organización y Lugar son maestr
 6. **[V]** Notificaciones internas o por correo: hoy no hay ninguna definida.
 7. **[V]** Proyecto/campaña como agrupador opcional: confirmar con Manuel.
 8. **[V]** Alcance real del matching (RF-19/20 son MVP oficial, pero el tutor pudo marcarlo).
-9. **[V]** Recuperación de contraseña: hoy solo la restablece el Administrador.
+9. **[V]** Recuperación de contraseña: hoy solo la restablece el Superadministrador.
 10. **[V]** Qué documentos emite la Fundación (constancias, informes) y cada cuánto caducan verificaciones y listas de autoridades.
 
 ---
@@ -150,7 +150,7 @@ fche/
 ├── config/                 # settings (base, local, produccion), urls, wsgi
 ├── apps/
 │   ├── nucleo/             # layout, buscador global, dashboard, utilidades, auditoría
-│   ├── cuentas/            # Gestor / Administrador, permisos, mi cuenta
+│   ├── cuentas/            # Gestor / Superadministrador, permisos, mi cuenta
 │   ├── territorio/         # región, provincia, comuna, sector, dirección
 │   ├── personas/           # persona, contactos, formación
 │   ├── organizaciones/     # organización, carreras, cargos
@@ -231,8 +231,8 @@ Reunión (asistentes, objetivos, asuntos, compromisos), tarea con varios respons
 
 ## 9. Roles y permisos (siempre validados en el servidor)
 
-- **Gestor (Claudio):** todo lo operativo (solicitudes, actividades, personas, organizaciones, lugares, agenda, resultados, documentos, cargas, historial, exportar) y agregar valores a catálogos.
-- **Administrador (programador):** usuarios y roles, estructura de catálogos, auditoría, respaldos y migraciones. Puede ver todos los datos, **solo para mantenimiento**.
+- **Gestor (Claudio):** todo lo operativo (solicitudes, actividades, personas, organizaciones, lugares, agenda, resultados, documentos, cargas, historial, exportar) y agregar o editar valores de catálogos. No administra cuentas ni roles, no ve la auditoría ni los respaldos, no desactiva catálogos, no reabre actividades ni une fichas.
+- **Superadministrador (F29; reemplaza al Administrador):** **todos los permisos del sistema**, también los que se agreguen después (`asegurar_permisos_superadmin()` al migrar y al arrancar): cuentas y roles, matriz de permisos con «Restablecer permisos iniciales», catálogos (agregar, editar, desactivar y unir), auditoría, respaldos («Respaldar ahora»), datos sensibles, exportaciones, reabrir actividades y unir fichas. No borra nada con historia: desactiva, anula o revoca. **Nunca puede quedar sin uno activo:** no se desactiva ni se le quita el rol al último. La primera cuenta se crea por consola: `crear_usuario <usuario> --correo … --rol Superadministrador`. Cada acción sobre cuentas, roles, permisos y catálogos queda en la auditoría. Detalle: `specs/f29/spec.md`.
 - Un permiso por acción (ver, crear, editar, reprogramar, cerrar, exportar), mediante grupos de Django. Rechazo con 403, con pantalla propia.
 - Los documentos restringidos se sirven con una vista que comprueba permiso, nunca como archivo estático.
 

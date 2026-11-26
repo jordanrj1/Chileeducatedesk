@@ -16,9 +16,41 @@ def gestor(db):
     return _usuario("gestor_prueba", "Gestor")
 
 
+def _permisos_consulta(p):
+    """Rol de prueba de solo lectura (las reglas del antiguo «Administrador», anterior a F29): ve todo lo operativo, exporta,
+    importa y administra cuentas y roles, pero no digita. Las pruebas existentes de «quien solo lee» siguen usándolo;
+    el Superadministrador real (todos los permisos) se prueba con el fixture `superadmin`."""
+    app, cod = p.content_type.app_label, p.codename
+    accion = cod.split("_", 1)[0]
+    modelo = cod.split("_", 1)[1] if "_" in cod else ""
+    from apps.cuentas.roles import CATALOGOS_MODELOS, OPERATIVAS
+
+    if app == "auth":
+        return modelo in {"user", "group", "permission"} and accion in {"view", "add", "change"}
+    if app == "cuentas":
+        return accion in {"view", "add", "change"} or cod == "respaldar"
+    if app == "finanzas" or app not in OPERATIVAS:
+        return False
+    if accion in {"view", "fusionar"} or (app == "nucleo" and accion == "desactivar"):
+        return True
+    if app == "nucleo" and modelo in CATALOGOS_MODELOS and accion in {"add", "change"}:
+        return True
+    return accion in {"exportar", "importar", "ver"}
+
+
 @pytest.fixture
 def administrador(db):
-    return _usuario("admin_prueba", "Administrador")
+    """Cuenta de solo lectura con acceso a Administración (rol de prueba «Consulta»). No es el Superadministrador: ver `superadmin`."""
+    from django.contrib.auth.models import Permission
+
+    g, _ = Group.objects.get_or_create(name="Consulta")
+    g.permissions.set([p for p in Permission.objects.select_related("content_type") if _permisos_consulta(p)])
+    return _usuario("admin_prueba", "Consulta")
+
+
+@pytest.fixture
+def superadmin(db):
+    return _usuario("superadmin_prueba", "Superadministrador")
 
 
 @pytest.fixture
@@ -40,6 +72,11 @@ def cg(gestor):
 @pytest.fixture
 def ca(administrador):
     return _cliente(administrador)
+
+
+@pytest.fixture
+def csa(superadmin):
+    return _cliente(superadmin)
 
 
 @pytest.fixture

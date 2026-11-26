@@ -1,4 +1,4 @@
-{# Qué es: Menú de Administración (solo Administrador): usuarios, roles, catálogos, auditoría, respaldos. #}
+{# Qué es: Menú de Administración (Superadministrador; el Gestor solo ve Catálogos): usuarios, roles, catálogos, auditoría, respaldos. #}
 {# Dónde se usa: /administracion/ · Proceso: P13 #}
 {% extends "base.html" %}
 {% load fche %}
@@ -9,8 +9,9 @@
 <p class="fche-pagina__bajada">Cuentas de acceso, permisos de cada rol, opciones de los formularios y registro de auditoría.</p></div></header>
 <div class="fche-mosaico">
   {% if perms.auth.view_user %}<a class="fche-mosaico__item" href="/administracion/usuarios"><span class="fche-mosaico__icono">{% icono "personas" 20 %}</span><span><span class="fche-mosaico__titulo">Usuarios</span><span class="fche-mosaico__texto">Crear cuentas, asignar rol, restablecer contraseña y desbloquear accesos.</span></span></a>{% endif %}
-  {% if perms.auth.view_group %}<a class="fche-mosaico__item" href="/administracion/roles"><span class="fche-mosaico__icono">{% icono "candado" 20 %}</span><span><span class="fche-mosaico__titulo">Roles y permisos</span><span class="fche-mosaico__texto">Qué puede ver y hacer cada rol (Gestor, Administrador).</span></span></a>{% endif %}
+  {% if perms.auth.view_group %}<a class="fche-mosaico__item" href="/administracion/roles"><span class="fche-mosaico__icono">{% icono "candado" 20 %}</span><span><span class="fche-mosaico__titulo">Roles y permisos</span><span class="fche-mosaico__texto">Qué puede ver y hacer cada rol (Gestor, Superadministrador).</span></span></a>{% endif %}
   <a class="fche-mosaico__item" href="/administracion/catalogos/"><span class="fche-mosaico__icono">{% icono "catalogos" 20 %}</span><span><span class="fche-mosaico__titulo">Catálogos</span><span class="fche-mosaico__texto">Opciones de los formularios: estados, tipos, roles de participación y más.</span></span></a>
   {% if perms.nucleo.view_auditoria %}<a class="fche-mosaico__item" href="/administracion/auditoria"><span class="fche-mosaico__icono">{% icono "historial" 20 %}</span><span><span class="fche-mosaico__titulo">Auditoría</span><span class="fche-mosaico__texto">Quién hizo qué y cuándo: ingresos, exportaciones, fusiones y respaldos.</span></span></a>{% endif %}
+  {% if perms.cuentas.respaldar %}<a class="fche-mosaico__item" href="/administracion/respaldos"><span class="fche-mosaico__icono">{% icono "descargar" 20 %}</span><span><span class="fche-mosaico__titulo">Respaldos</span><span class="fche-mosaico__texto">Último respaldo y botón «Respaldar ahora».</span></span></a>{% endif %}
 </div>
 {% endblock %}

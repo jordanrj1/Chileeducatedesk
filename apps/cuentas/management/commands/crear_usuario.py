@@ -1,4 +1,4 @@
-"""Comando de consola para crear una cuenta con rol Gestor o Administrador.
+"""Comando de consola para crear una cuenta con rol Gestor o Superadministrador.
 Sirve para la primera cuenta, cuando aún no hay nadie que pueda crearla desde la pantalla.
 Pide la contraseña por teclado sin mostrarla; ninguna contraseña queda escrita en el código."""
 from getpass import getpass
@@ -13,12 +13,12 @@ from apps.cuentas.models import PerfilCuenta
 
 
 class Command(BaseCommand):
-    help = "Crea un usuario con rol Gestor o Administrador."
+    help = "Crea un usuario con rol Gestor o Superadministrador."
 
     def add_arguments(self, parser):
         parser.add_argument("usuario")
         parser.add_argument("--correo", required=True)
-        parser.add_argument("--rol", required=True, choices=["Gestor", "Administrador"])
+        parser.add_argument("--rol", required=True, choices=["Gestor", "Superadministrador"])
         parser.add_argument("--nombres", default="")
         parser.add_argument("--apellidos", default="")
         parser.add_argument("--password", help="Solo para automatizar; por defecto se pide por teclado.")

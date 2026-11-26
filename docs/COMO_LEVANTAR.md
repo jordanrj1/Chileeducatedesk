@@ -74,7 +74,7 @@ set DJANGO_SETTINGS_MODULE=config.settings.produccion
 ```
 
 - `comprobar_bd` confirma que el sistema llega a la base.
-- `migrate` crea todas las tablas, carga los catálogos iniciales (tipos, estados, roles…) y crea los dos roles, **Gestor** y **Administrador**, con sus permisos.
+- `migrate` crea todas las tablas, carga los catálogos iniciales (tipos, estados, roles…) y crea los dos roles, **Gestor** y **Superadministrador**, con sus permisos.
 
 > Por qué a mano la primera vez: `iniciar.bat` hace un respaldo **antes** de aplicar cambios en la base. Si `PG_DUMP` no está bien configurado, el respaldo falla y no aplica nada. Hacer el primer `migrate` a mano evita ese tropiezo.
 
@@ -92,11 +92,11 @@ set DJANGO_SETTINGS_MODULE=config.settings.produccion
 
 ## 7. Crear las cuentas
 
-Solo existen dos roles: **Administrador** (el programador) y **Gestor** (Claudio). Las personas registradas (estudiantes, voluntarios, vecinos) **no tienen cuenta**.
+Solo existen dos roles: **Superadministrador** (mantenimiento, todos los permisos) y **Gestor** (Claudio). Las personas registradas (estudiantes, voluntarios, vecinos) **no tienen cuenta**.
 
-**Primero el Administrador:**
+**Primero el Superadministrador:**
 ```bat
-.venv\Scripts\python manage.py crear_usuario admin --correo admin@fundacion.cl --rol Administrador --nombres "Nombre" --apellidos "Apellido"
+.venv\Scripts\python manage.py crear_usuario admin --correo admin@fundacion.cl --rol Superadministrador --nombres "Nombre" --apellidos "Apellido"
 ```
 
 **Luego el Gestor:**
@@ -111,9 +111,9 @@ Solo existen dos roles: **Administrador** (el programador) y **Gestor** (Claudio
 
 **Después, desde la pantalla:**
 - Cada uno puede cambiar su contraseña en **Mi cuenta → Cambiar contraseña**.
-- Si alguien la olvida, el Administrador la restablece en **Administración → Usuarios → la cuenta → Restablecer contraseña**. No hay recuperación por correo [V#9].
+- Si alguien la olvida, el Superadministrador la restablece en **Administración → Usuarios → la cuenta → Restablecer contraseña**. No hay recuperación por correo [V#9].
 - Las cuentas nuevas se crean en **Administración → Usuarios → «+ Nuevo usuario»** y **siempre para una persona ya registrada** en Personas.
-- Para ligar la cuenta de Claudio a su ficha, registra a Claudio en Personas. Luego, como Administrador, edita su cuenta y elige esa persona.
+- Para ligar la cuenta de Claudio a su ficha, registra a Claudio en Personas. Luego, como Superadministrador, edita su cuenta y elige esa persona.
 
 ## 8. Datos de demostración (opcional, solo para ensayar)
 

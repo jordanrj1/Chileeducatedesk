@@ -9,7 +9,7 @@
   <ol class="mb-0 ps-3">
     <li class="mb-2"><strong>Es la misma persona:</strong> no se guarda nada.
       {% for c in form.repetidos %}<a href="{{ c.persona.get_absolute_url }}">Ver la ficha de {{ c.persona.nombre_completo }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}
-      {% if puede_fusionar %} · <a href="{{ url_fusionar }}">Unir fichas</a>{% else %} · Para unir las fichas, pídeselo al Administrador.{% endif %}</li>
+      {% if puede_fusionar %} · <a href="{{ url_fusionar }}">Unir fichas</a>{% else %} · Para unir las fichas, pídeselo al Superadministrador.{% endif %}</li>
     <li class="mb-2"><strong>Es otra persona que comparte este contacto:</strong> elige el motivo y guarda. La decisión queda registrada con tu usuario y la fecha.
       <div class="row g-2 mt-1">
         {% for campo in form.compartir %}<div class="col-12 col-md-6">{% include "generico/_campo.html" with campo=campo %}</div>{% endfor %}

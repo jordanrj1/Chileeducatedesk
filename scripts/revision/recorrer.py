@@ -1,4 +1,4 @@
-"""Recorre todas las páginas y pestañas de FCHE como Gestor y Administrador y reporta errores 5xx o de plantilla.
+"""Recorre todas las páginas y pestañas de FCHE como Gestor y Superadministrador y reporta errores 5xx o de plantilla.
 
 Uso (desde la raíz del repositorio):  .venv/bin/python scripts/revision/recorrer.py
 Usa la base de desarrollo (config.settings.local) y solo hace GET: no modifica datos.
@@ -39,7 +39,7 @@ def urls():
 
 def main():
     errores, vistas = [], 0
-    for rol in ("Gestor", "Administrador"):
+    for rol in ("Gestor", "Superadministrador"):
         u = User.objects.filter(groups__name=rol, is_active=True).first()
         if not u:
             print(f"Sin usuario activo con rol {rol}: se omite.")

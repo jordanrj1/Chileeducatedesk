@@ -7,7 +7,7 @@
 4. Copiar `.env.example` a `.env` y completar: `SECRET_KEY` (larga y aleatoria), `DB_*`, `ALLOWED_HOSTS`, `MEDIA_ROOT` (carpeta **fuera** del código, p. ej. `C:\fche_media`), `RESPALDO_DIR`.
 5. `iniciar.bat` (migra, junta estáticos y arranca con `waitress` en `127.0.0.1:8000`).
 6. Cargar el territorio oficial: `python manage.py cargar_territorio` (sin argumentos usa la lista oficial que trae el sistema, `apps/territorio/datos/cut_chile.csv`; `iniciar.bat` también la carga si falta). Con `--simular` muestra lo que cambiaría sin guardar.
-7. Crear los usuarios: `python manage.py crear_usuario claudio --correo ... --rol Gestor` y `python manage.py crear_usuario admin --correo ... --rol Administrador`.
+7. Crear los usuarios: `python manage.py crear_usuario claudio --correo ... --rol Gestor` y `python manage.py crear_usuario admin --correo ... --rol Superadministrador`.
 8. Opcional para ensayar: `python manage.py cargar_demo --si-estoy-seguro` (datos **ficticios**; no usar si ya hay datos reales).
 
 En Mac/Linux: `./iniciar.sh`, `./respaldar.sh`.

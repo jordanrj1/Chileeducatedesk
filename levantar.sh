@@ -42,6 +42,6 @@ echo "FCHE listo: http://localhost:$puerto"
 if ! docker compose --env-file .env.docker exec -T web python manage.py shell -c "from django.contrib.auth.models import User; import sys; sys.exit(0 if User.objects.exists() else 1)" >/dev/null 2>&1; then
   echo ""
   echo "Aún no hay cuentas. Crea la primera (te pedirá la contraseña):"
-  echo "  docker compose --env-file .env.docker exec web python manage.py crear_usuario <usuario> --correo <correo> --rol Administrador"
+  echo "  docker compose --env-file .env.docker exec web python manage.py crear_usuario <usuario> --correo <correo> --rol Superadministrador"
 fi
 open "http://localhost:$puerto" >/dev/null 2>&1 || true

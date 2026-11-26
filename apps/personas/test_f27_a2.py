@@ -121,7 +121,7 @@ def test_contacto_compartido_guarda_con_motivo_y_queda_en_auditoria(cg, persona,
 def test_contacto_misma_persona_sin_permiso_de_fusion(cg, persona, otra):
     # el Gestor (sin permiso de fusión) ve la ficha de la otra persona y que se le pida al Administrador
     html = cg.post(f"/personas/{persona.pk}/contactos/nuevo", {"tipo": tipo("telefono_movil").pk, "valor": "+56911112222"}).content.decode()
-    assert otra.get_absolute_url() in html and "pídeselo al Administrador" in html
+    assert otra.get_absolute_url() in html and "pídeselo al Superadministrador" in html
 
 
 def test_contacto_misma_persona_con_permiso_de_fusion(persona, otra, gestor, client):

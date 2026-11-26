@@ -33,7 +33,7 @@ def test_anonimo_va_al_login():
 
 
 def test_grupos_existen():
-    assert set(Group.objects.values_list("name", flat=True)) >= {"Gestor", "Administrador"}
+    assert set(Group.objects.values_list("name", flat=True)) >= {"Gestor", "Superadministrador"}
 
 
 def test_ingreso_correcto_lleva_al_dashboard():
@@ -64,9 +64,9 @@ def test_gestor_no_entra_a_administracion():
     assert c.get("/administracion/").status_code == 403
 
 
-def test_administrador_entra_a_administracion():
+def test_superadmin_entra_a_administracion():
     c = Client()
-    c.force_login(crear_usuario("Administrador"))
+    c.force_login(crear_usuario("Superadministrador"))
     assert c.get("/administracion/").status_code == 200
 
 

@@ -23,7 +23,7 @@ def agregar_aviso(libro, usuario):
     hoja = libro.create_sheet("Aviso")
     hoja.append(["Contiene datos personales. Uso interno de la Fundación Chile Edúcate; no compartir fuera de ella."])
     hoja.append([f"Exportado por {usuario.get_username() if usuario else '—'} el {timezone.localtime():%d-%m-%Y %H:%M}."])
-    hoja.append(["Si este archivo se pierde o se envía por error, avisa al Administrador."])
+    hoja.append(["Si este archivo se pierde o se envía por error, avisa al Superadministrador."])
 
 
 def respuesta_xlsx(usuario, titulo, encabezados, filas):

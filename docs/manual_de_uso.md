@@ -6,10 +6,10 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 1. Abre la dirección del sistema (por defecto `http://127.0.0.1:8000`).
 2. Escribe tu **usuario o correo** y tu contraseña → **Ingresar**.
 3. Para salir: tu nombre (arriba a la derecha) → **Cerrar sesión**. La sesión se cierra sola tras 60 minutos sin actividad.
-4. Cambiar tu contraseña: tu nombre (arriba) → **Cambiar contraseña**. Si la olvidas, el Administrador la restablece.
+4. Cambiar tu contraseña: tu nombre (arriba) → **Cambiar contraseña**. Si la olvidas, el Superadministrador la restablece.
 
 ## 1b. Seguridad
-- Tras 5 intentos fallidos el acceso se bloquea 15 minutos; el Administrador puede desbloquearlo antes.
+- Tras 5 intentos fallidos el acceso se bloquea 15 minutos; el Superadministrador puede desbloquearlo antes.
 - Si la sesión vence mientras escribes, al volver a ingresar se recupera lo escrito («Se recuperó lo que habías escrito»).
 - Si otra pestaña cambió el registro mientras lo editabas, el sistema avisa en vez de pisar los cambios.
 
@@ -66,7 +66,7 @@ Para Claudio (Gestor) y quien administre el sistema. Todos los datos de los ejem
 6. Una persona **no necesita cuenta** para existir ni participar.
 7. Personas extranjeras: en la ficha completa se registra el pasaporte u otro documento.
 8. Si una persona fallece: estado «Fallecida/o»; no se elimina y ya no aparece como candidata.
-9. Fichas duplicadas descubiertas tarde: el Administrador usa «Fusionar con otra ficha»; todo pasa a la que queda (también perfiles e intereses).
+9. Fichas duplicadas descubiertas tarde: el Superadministrador usa «Fusionar con otra ficha»; todo pasa a la que queda (también perfiles e intereses).
 10. «Exportar sus datos personales» entrega todo lo que el sistema guarda de esa persona (los datos sensibles, solo a quien tiene permiso).
 11. Al desactivar una persona, organización o lugar con actividades futuras, el sistema las muestra antes de confirmar. «Reasignar sus actividades» pasa las de un responsable que se va a otra persona.
 
@@ -194,13 +194,15 @@ Cada encuentro de una actividad se registra en la pestaña **Sesiones y minutas*
 - Los listados con botón **Exportar** generan un Excel con los filtros aplicados. Cada exportación queda en la auditoría.
 
 ## 11. Segunda fase
-Reuniones con asistentes, tareas, beneficiarios, verificaciones y finanzas están construidas pero ocultas (las **sesiones y minutas** ya están siempre visibles). Para mostrarlas, el Administrador pone `SEGUNDA_FASE=True` en `.env` y reinicia.
+Reuniones con asistentes, tareas, beneficiarios, verificaciones y finanzas están construidas pero ocultas (las **sesiones y minutas** ya están siempre visibles). Para mostrarlas, el Superadministrador pone `SEGUNDA_FASE=True` en `.env` y reinicia.
 
 ## 11b. Finanzas (solo usuarios autorizados, segunda fase)
 Presupuesto por proyecto (ítems), gastos, aportes y donaciones. Los movimientos no se borran: se **anulan** con motivo. No registres cuentas bancarias.
 
-## 12. Administración (rol Administrador)
-- **Usuarios**: crear cuenta (vinculada a una persona, opcional), asignar rol, desactivar, restablecer contraseña.
-- **Roles y permisos**: qué puede hacer cada rol. El sistema no ofrece «eliminar».
-- **Catálogos**: el Gestor agrega y edita valores; solo el Administrador desactiva. Desactivar no borra el historial.
-- **Auditoría**: ingresos, cambios de rol, exportaciones, confirmaciones, importaciones, respaldos.
+## 12. Administración (rol Superadministrador)
+El Superadministrador reemplaza al antiguo Administrador: tiene **todos los permisos**. Solo existen dos roles, Gestor y Superadministrador. El Gestor no ve estas pantallas (recibe «403»), salvo Catálogos.
+- **Usuarios**: crear cuenta (siempre para una persona ya registrada), asignar rol (Gestor o Superadministrador), desactivar, restablecer contraseña y desbloquear. **Siempre debe quedar al menos un Superadministrador activo:** el sistema no deja desactivar ni quitar el rol al último.
+- **Roles y permisos**: matriz por módulo y acción (ver, crear, editar y otras acciones). **Restablecer permisos iniciales** devuelve el rol a su configuración de fábrica. Los permisos del Superadministrador no se pueden quitar. El sistema no ofrece «eliminar».
+- **Catálogos**: el Gestor agrega y edita valores; solo el Superadministrador desactiva y une valores repetidos. Desactivar no borra el historial.
+- **Auditoría**: ingresos, cambios de rol y de permisos, cambios de catálogos, exportaciones, confirmaciones, importaciones, respaldos.
+- **Respaldos**: lista de respaldos (fecha y tamaño) y botón **Respaldar ahora**, que copia la base de datos y los documentos en la carpeta de respaldos (`RESPALDO_DIR`).

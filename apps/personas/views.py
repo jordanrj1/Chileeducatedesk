@@ -1,5 +1,5 @@
 """Pantallas de personas: listado con filtros, crear con aviso de duplicados, ficha con pestañas (las restringidas solo
-con permiso), editar, desactivar, unir repetidas (Administrador), reasignar, datos personales y datos sensibles."""
+con permiso), editar, desactivar, unir repetidas (Superadministrador), reasignar, datos personales y datos sensibles."""
 from apps.nucleo.utilidades import plural
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied

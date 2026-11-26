@@ -23,14 +23,14 @@ class LoginForm(AuthenticationForm):
         if bloqueado(self.cleaned_data.get("username")):
             minutos = getattr(settings, "BLOQUEO_MINUTOS", 15)
             raise ValidationError(
-                f"Demasiados intentos fallidos. Espera {minutos} minutos o pide al Administrador que desbloquee el acceso.", code="bloqueado"
+                f"Demasiados intentos fallidos. Espera {minutos} minutos o pide al Superadministrador que desbloquee el acceso.", code="bloqueado"
             )
         try:
             return super().clean()
         except ValidationError:
             usuario = self._cuenta_desactivada()
             if usuario:
-                contacto = getattr(settings, "CONTACTO_ADMINISTRADOR", "") or "el Administrador del sistema"
+                contacto = getattr(settings, "CONTACTO_ADMINISTRADOR", "") or "el Superadministrador del sistema"
                 raise ValidationError(f"Tu cuenta está desactivada, por eso no puedes ingresar. Consulta a {contacto}.", code="inactive")
             raise
 

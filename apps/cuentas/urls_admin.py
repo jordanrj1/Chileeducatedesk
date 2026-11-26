@@ -1,4 +1,4 @@
-"""Direcciones (rutas) de Administración: usuarios, roles y permisos, y auditoría. Solo para el Administrador."""
+"""Direcciones (rutas) de Administración: usuarios, roles y permisos, auditoría y respaldos. Solo para el Superadministrador."""
 from django.urls import path
 
 from . import views_admin as v
@@ -15,5 +15,7 @@ urlpatterns = [
     path("usuarios/<int:pk>/desbloquear", v.UsuarioDesbloquear.as_view(), name="usuario_desbloquear"),
     path("roles", v.RolLista.as_view(), name="roles"),
     path("roles/<int:pk>", v.RolEditar.as_view(), name="rol_editar"),
+    path("respaldos", v.RespaldoLista.as_view(), name="respaldos"),
+    path("respaldos/ahora", v.RespaldoAhora.as_view(), name="respaldo_ahora"),
     path("auditoria", v.AuditoriaLista.as_view(), name="auditoria"),
 ]

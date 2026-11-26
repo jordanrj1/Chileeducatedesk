@@ -37,11 +37,11 @@ Esta guía es para quien instala el sistema en un computador nuevo: Claudio, en 
    - aplica la estructura de datos y carga las 346 comunas oficiales;
    - abre el navegador en http://localhost:8000.
 4. **Guarda una copia de `.env.docker`** en un lugar seguro, como un pendrive o un gestor de contraseñas. Sin ese archivo no se puede abrir la base de datos.
-5. **Crea la primera cuenta** (solo la primera vez; te pedirá la contraseña):
+5. **Crea la primera cuenta, de Superadministrador** (solo la primera vez; te pedirá la contraseña):
    ```
-   docker compose --env-file .env.docker exec web python manage.py crear_usuario claudio --correo claudio@ejemplo.cl --rol Administrador
+   docker compose --env-file .env.docker exec web python manage.py crear_usuario admin --correo admin@ejemplo.cl --rol Superadministrador
    ```
-   Desde la pantalla se crean las demás cuentas, siempre para una persona ya registrada.
+   Desde la pantalla (Administración → Usuarios) el Superadministrador crea las demás cuentas, como la de Claudio con rol Gestor, siempre para una persona ya registrada.
 
 ---
 

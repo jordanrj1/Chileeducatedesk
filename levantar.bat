@@ -40,6 +40,6 @@ if errorlevel 1 (
 
 echo FCHE listo: http://localhost:8000
 echo Si es la primera vez, crea la primera cuenta (te pedira la contrasena):
-echo   docker compose --env-file .env.docker exec web python manage.py crear_usuario USUARIO --correo CORREO --rol Administrador
+echo   docker compose --env-file .env.docker exec web python manage.py crear_usuario USUARIO --correo CORREO --rol Superadministrador
 start "" http://localhost:8000
 pause

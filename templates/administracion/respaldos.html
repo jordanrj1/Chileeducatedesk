@@ -1,0 +1,20 @@
+{# Qué es: Respaldos guardados (fecha y tamaño) y botón «Respaldar ahora». #}
+{# Dónde se usa: /administracion/respaldos · Proceso: P13 #}
+{% extends "base.html" %}
+{% load fche %}
+{% block titulo %}Respaldos{% endblock %}
+{% block breadcrumb %}{% include "generico/_breadcrumb.html" %}<li class="breadcrumb-item active" aria-current="page">Respaldos</li>{% endblock %}
+{% block contenido %}
+<header class="fche-pagina"><div class="fche-pagina__texto"><p class="fche-pagina__antetitulo">Configuración</p><h1 class="fche-pagina__titulo">Respaldos <span class="fche-contador">{{ total }}</span></h1>
+<p class="fche-pagina__bajada">Copias de la base de datos y de los documentos. {% if ultimo %}El último respaldo es del <strong>{{ ultimo|date:"d-m-Y H:i" }}</strong>.{% else %}Todavía no hay respaldos en esta carpeta.{% endif %} Carpeta: <code>{{ carpeta }}</code></p></div>
+<div class="fche-pagina__acciones"><form method="post" action="{% url 'cuentas_admin:respaldo_ahora' %}">{% csrf_token %}<button class="btn btn-primary btn-sm">{% icono "descargar" 15 %}Respaldar ahora</button></form></div></header>
+{% if filas %}
+<div class="table-responsive"><table class="table align-middle fche-tabla-apilable">
+  <thead><tr><th>Archivo</th><th>Tipo</th><th>Fecha</th><th class="text-end">Tamaño</th></tr></thead>
+  <tbody>{% for nombre, fecha, kb, tipo in filas %}
+    <tr><td><code class="small">{{ nombre }}</code></td><td data-label="Tipo">{{ tipo }}</td><td data-label="Fecha">{{ fecha|date:"d-m-Y H:i" }}</td><td class="text-end fche-num" data-label="Tamaño">{{ kb }} KB</td></tr>{% endfor %}</tbody></table></div>
+{% if total > filas|length %}<p class="small text-muted">Se muestran los {{ filas|length }} más recientes.</p>{% endif %}
+{% else %}
+<div class="fche-vacio"><span class="fche-vacio__icono">{% icono "descargar" 22 %}</span><p class="fche-vacio__titulo">Aún no hay respaldos</p><p class="fche-vacio__texto">Usa «Respaldar ahora» o programa <code>respaldar.bat</code> para que se hagan solos.</p></div>
+{% endif %}
+{% endblock %}

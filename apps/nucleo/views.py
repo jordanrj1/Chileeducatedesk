@@ -6,7 +6,7 @@ from django.db.utils import Error as ErrorBD
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 
-from .permisos import ADMINISTRADOR, GESTOR, grupo_requerido
+from .permisos import GESTOR, SUPERADMINISTRADOR, grupo_requerido
 
 
 def inicio(request):

@@ -1,5 +1,5 @@
 """Pantalla base para unir dos fichas repetidas (personas u organizaciones): se elige cuál queda,
-se pide motivo y confirmación, y el historial de ambas se junta. Solo para el Administrador."""
+se pide motivo y confirmación, y el historial de ambas se junta. Solo para el Superadministrador."""
 from apps.nucleo.utilidades import plural
 from django import forms
 from django.contrib import messages
@@ -28,7 +28,7 @@ class FusionForm(BootstrapMixin, forms.Form):
 
 
 class FusionarBase(View):
-    """Fusión controlada (solo con el permiso de fusionar, que tiene el Administrador)."""
+    """Fusión controlada (solo con el permiso de fusionar, que tiene el Superadministrador)."""
 
     modelo = None
     permiso = None

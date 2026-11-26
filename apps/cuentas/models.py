@@ -1,17 +1,18 @@
 """Tablas propias de las cuentas: PerfilCuenta liga una cuenta con la ficha de su persona (una persona tiene como máximo una cuenta);
-PermisoInicial recuerda qué permisos ya se dieron a cada rol, para no deshacer los cambios del Administrador al migrar."""
+PermisoInicial recuerda qué permisos ya se dieron a cada rol, para no deshacer los cambios del Superadministrador al migrar."""
 from django.contrib.auth.models import Group, Permission
 from django.db import models
 
 
 class PermisoInicial(models.Model):
-    """Permisos ya sembrados a un rol. Evita que un cambio del Administrador se revierta al migrar."""
+    """Permisos ya sembrados a un rol. Evita que un cambio del Superadministrador se revierta al migrar."""
 
     grupo = models.ForeignKey(Group, on_delete=models.CASCADE)
     permiso = models.ForeignKey(Permission, on_delete=models.CASCADE)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["grupo", "permiso"], name="permiso_inicial_unico")]
+        permissions = [("respaldar", "Ver los respaldos y respaldar ahora")]
 
 
 class PerfilCuenta(models.Model):

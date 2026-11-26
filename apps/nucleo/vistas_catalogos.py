@@ -7,6 +7,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
+from .auditoria import registrar
 from .formularios import BootstrapMixin
 from .models import CATALOGOS
 from .vistas_base import Permiso403Mixin  # noqa: F401
@@ -23,6 +24,12 @@ def dependencias(obj):
             dueno = rel.related_model._meta.auto_created or rel.related_model
             res.append((str(dueno._meta.verbose_name_plural), n))
     return res
+
+
+def _crumb(request, con_catalogos=False):
+    """Migas de pan: el enlace a Administración solo lo ve quien puede entrar (el Gestor llega a Catálogos desde el menú)."""
+    migas = [("Administración", "/administracion/")] if request.user.has_perm("auth.view_user") else []
+    return migas + ([("Catálogos", "/administracion/catalogos/")] if con_catalogos else [])
 
 
 def _modelo(slug):
@@ -72,7 +79,7 @@ class Indice(Permiso403Mixin, View):
     permission_required = "nucleo.view_estadoactividad"
 
     def get(self, request):
-        return render(request, "administracion/catalogos.html", {"areas": catalogos_por_area(), "titulo": "Catálogos", "breadcrumb": [("Administración", "/administracion/")]})
+        return render(request, "administracion/catalogos.html", {"areas": catalogos_por_area(), "titulo": "Catálogos", "breadcrumb": _crumb(request)})
 
 
 class Lista(View):
@@ -90,7 +97,7 @@ class Lista(View):
             "puede_crear": request.user.has_perm(f"nucleo.add_{modelo._meta.model_name}"),
             "puede_editar": request.user.has_perm(f"nucleo.change_{modelo._meta.model_name}"),
             "puede_desactivar": request.user.has_perm(f"nucleo.desactivar_{modelo._meta.model_name}"),
-            "breadcrumb": [("Administración", "/administracion/"), ("Catálogos", "/administracion/catalogos/")],
+            "breadcrumb": _crumb(request, True),
         })
 
     def post(self, request, slug):
@@ -98,7 +105,8 @@ class Lista(View):
         _perm(request, "add", modelo)
         form = _form(modelo)(request.POST)
         if form.is_valid():
-            form.save()
+            obj = form.save()
+            registrar(request.user, "catalogo_agregado", f"{slug}: {obj}")
             messages.success(request, "Opción creada.")
         else:
             messages.error(request, "No se pudo crear: " + "; ".join(e for es in form.errors.values() for e in es))
@@ -115,7 +123,7 @@ class Editar(View):
         modelo, obj = self._obj(request, slug, pk)
         return render(request, "generico/formulario.html", {
             "form": _form(modelo)(instance=obj), "titulo": f"Editar: {obj}", "volver_url": f"/administracion/catalogos/{slug}/",
-            "breadcrumb": [("Administración", "/administracion/"), ("Catálogos", "/administracion/catalogos/")],
+            "breadcrumb": _crumb(request, True),
         })
 
     def post(self, request, slug, pk):
@@ -123,6 +131,7 @@ class Editar(View):
         form = _form(modelo)(request.POST, instance=obj)
         if form.is_valid():
             form.save()
+            registrar(request.user, "catalogo_editado", f"{slug}: {obj}", ", ".join(form.changed_data))
             messages.success(request, "Opción actualizada.")
             return redirect("nucleo:catalogo", slug=slug)
         return render(request, "generico/formulario.html", {"form": form, "titulo": f"Editar: {obj}", "volver_url": f"/administracion/catalogos/{slug}/", "breadcrumb": []}, status=400)
@@ -160,5 +169,6 @@ class Alternar(View):
         obj = get_object_or_404(modelo, pk=pk)
         obj.activo = not obj.activo
         obj.save()
+        registrar(request.user, "catalogo_activado" if obj.activo else "catalogo_desactivado", f"{slug}: {obj}")
         messages.success(request, "Opción activada." if obj.activo else "Opción desactivada; el historial se conserva.")
         return redirect("nucleo:catalogo", slug=slug)
